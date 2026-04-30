@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico em Tempo Real — CITi</title>
+  <style>
+    /* ── Reset e base ──────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --cyan:      #79c0ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --radius:    6px;
+      --gap:       12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: var(--gap);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    /* ── Painel genérico ───────────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    #header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    /* Barra de progresso de saturação */
+    .progress-wrap {
+      flex: 1;
+      min-width: 160px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--cyan);
+      border-radius: 4px;
+      transition: width .4s ease;
+      width: 0%;
+    }
+
+    .progress-pct {
+      font-size: 12px;
+      color: var(--cyan);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Badges de status (stream paused / saturado) */
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-warning  { background: rgba(210,153,34,.18); color: var(--yellow); }
+    .badge-success  { background: rgba(63,185,80,.18);  color: var(--green);  }
+
+    /* Status de conexão WS */
+    .ws-status {
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+    }
+    .ws-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background .3s;
+    }
+    .ws-dot.connected    { background: var(--green); }
+    .ws-dot.connecting   { background: var(--yellow); animation: pulse 1s infinite; }
+    .ws-dot.disconnected { background: var(--red); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .3; }
+    }
+
+    /* ── Cobertura ─────────────────────────────────────────────────────────── */
+    .coverage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 24px;
+    }
+
+    .area-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+    }
+
+    .area-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-RED    { background: var(--red);    }
+    .status-YELLOW { background: var(--yellow); }
+    .status-GREEN  { background: var(--green);  }
+
+    .area-name {
+      color: var(--text);
+      font-size: 12px;
+    }
+    .area-kind-tag {
+      font-size: 10px;
+      color: var(--muted);
+      margin-left: 2px;
+    }
+
+    /* ── Alertas ───────────────────────────────────────────────────────────── */
+    .alert-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .alert-critical {
+      background: rgba(248,81,73,.10);
+      border: 1px solid rgba(248,81,73,.30);
+      color: #ffa198;
+    }
+    .alert-warning {
+      background: rgba(210,153,34,.10);
+      border: 1px solid rgba(210,153,34,.30);
+      color: #e3b341;
+    }
+    .alert-icon { flex-shrink: 0; }
+
+    .no-data { color: var(--muted); font-size: 12px; }
+
+    /* ── Sugestões ─────────────────────────────────────────────────────────── */
+    .suggestion-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 5px;
+    }
+    .suggestion-item:last-child { margin-bottom: 0; }
+
+    .suggestion-body { flex: 1; min-width: 0; }
+
+    .suggestion-q {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .suggestion-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+    }
+    .suggestion-area { color: var(--cyan); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .suggestion-why  { font-size: 11px; color: var(--muted); }
+
+    .dismiss-btn {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+      opacity: .5;
+      transition: opacity .15s, color .15s;
+    }
+    .dismiss-btn:hover { opacity: 1; color: var(--red); }
+
+    /* ── Botões de ação (rodapé) ────────────────────────────────────────────── */
+    #footer {
+      display: flex;
+      gap: var(--gap);
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      user-select: none;
+    }
+    .action-btn:hover  { background: #21262d; border-color: var(--cyan); }
+    .action-btn:active { background: #2d333b; }
+
+    .btn-key {
+      display: inline-block;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      background: rgba(63,185,80,.08);
+    }
+
+    .action-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+    .action-btn:disabled:hover { background: var(--surface); border-color: var(--border); }
+
+    /* ── Scrollbar mínima ──────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header: título + barra de saturação ──────────────────────────────── -->
+  <div class="panel" id="header">
+    <h1>DIAGNÓSTICO EM TEMPO REAL</h1>
+
+    <div class="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+
+    <span class="badge badge-warning" id="badgePaused" style="display:none">⚠ stream pausado</span>
+    <span class="badge badge-success" id="badgeSaturated" style="display:none">✅ saturação atingida</span>
+
+    <div class="ws-status">
+      <div class="ws-dot connecting" id="wsDot"></div>
+      <span id="wsLabel">conectando…</span>
+    </div>
+  </div>
+
+  <!-- ── Cobertura ─────────────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Cobertura</div>
+    <div class="coverage-grid" id="coverageGrid">
+      <span class="no-data">Aguardando dados…</span>
+    </div>
+  </div>
+
+  <!-- ── Alertas ───────────────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Alertas</div>
+    <div class="alert-list" id="alertList">
+      <span class="no-data">Nenhum alerta ainda.</span>
+    </div>
+  </div>
+
+  <!-- ── Sugestões ─────────────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Sugestões</div>
+    <div id="suggestionsBody">
+      <span class="no-data" id="suggestionsHint">
+        Clique em <strong>[P] Perguntas</strong> para gerar sugestões para as lacunas atuais.
+      </span>
+    </div>
+  </div>
+
+  <!-- ── Rodapé: botões de ação ─────────────────────────────────────────────── -->
+  <div id="footer">
+    <button class="action-btn" id="btnQuestions" onclick="sendCmd('questions')">
+      <span class="btn-key">P</span> Perguntas
+    </button>
+    <button class="action-btn" id="btnReport" onclick="sendCmd('report')">
+      <span class="btn-key">R</span> Relatório
+    </button>
+    <button class="action-btn" id="btnSync" onclick="sendCmd('sync')">
+      <span class="btn-key">S</span> Sync
+    </button>
+    <button class="action-btn" id="btnQuit"
+            style="margin-left:auto; border-color:rgba(248,81,73,.4); color:#ffa198;"
+            onclick="confirmQuit()">
+      <span class="btn-key" style="color:#ffa198">Q</span> Encerrar
+    </button>
+  </div>
+
+<script>
+  // ── WebSocket ────────────────────────────────────────────────────────────
+
+  const WS_URL = `ws://${location.host}/ws`;
+  let ws = null;
+  let reconnectTimer = null;
+  let state = {};
+  let loadingQuestions = false;
+  let loadingQuestionsTimer = null;
+  let dismissedIndices = new Set();  // índices (0,1,2) das perguntas descartadas
+  let suggestionsSignature = '';     // detecta quando o servidor envia novas perguntas
+
+  function connect() {
+    setWsStatus('connecting');
+
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      setWsStatus('connected');
+      clearTimeout(reconnectTimer);
+    };
+
+    ws.onmessage = (evt) => {
+      try {
+        state = JSON.parse(evt.data);
+        render(state);
+      } catch (e) {
+        console.error('JSON inválido:', e);
+      }
+    };
+
+    ws.onclose = () => {
+      setWsStatus('disconnected');
+      // Tenta reconectar após 2s — cobre reload do servidor durante dev
+      reconnectTimer = setTimeout(connect, 2000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  }
+
+  function sendCmd(cmd) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ cmd }));
+      if (cmd === 'questions') {
+        setQuestionsLoading(true);
+      }
+    }
+  }
+
+  function setQuestionsLoading(on) {
+    loadingQuestions = on;
+    clearTimeout(loadingQuestionsTimer);
+    const btn = document.getElementById('btnQuestions');
+    if (on) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-key">P</span> Gerando…';
+      document.getElementById('suggestionsBody').innerHTML =
+        '<span class="no-data">⏳ Consultando IA…</span>';
+      // Segurança: desbloqueia o botão em 30s caso o servidor não responda
+      loadingQuestionsTimer = setTimeout(() => setQuestionsLoading(false), 30000);
+    } else {
+      btn.disabled = false;
+    }
+  }
+
+  function setWsStatus(status) {
+    const dot   = document.getElementById('wsDot');
+    const label = document.getElementById('wsLabel');
+    dot.className = `ws-dot ${status}`;
+    const labels = { connecting: 'conectando…', connected: 'conectado', disconnected: 'reconectando…' };
+    label.textContent = labels[status] || status;
+  }
+
+  // ── Renderização ─────────────────────────────────────────────────────────
+
+  function render(s) {
+    renderHeader(s);
+    renderCoverage(s.coverage || []);
+    renderAlerts(s.alerts || []);
+    renderSuggestions(s.suggestions || [], s.suggestions_visible);
+  }
+
+  // ── Header ────────────────────────────────────────────────────────────────
+
+  function renderHeader(s) {
+    const pct = Math.round((s.score || 0) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent  = pct + '%';
+
+    // Cor da barra muda conforme saturação
+    const fill = document.getElementById('progressFill');
+    if (pct >= 85) fill.style.background = 'var(--green)';
+    else if (pct >= 50) fill.style.background = 'var(--yellow)';
+    else fill.style.background = 'var(--cyan)';
+
+    setVisible('badgePaused',   s.stream_paused);
+    setVisible('badgeSaturated', s.saturated);
+  }
+
+  // ── Cobertura ─────────────────────────────────────────────────────────────
+
+  function renderCoverage(areas) {
+    const grid = document.getElementById('coverageGrid');
+
+    if (!areas.length) {
+      grid.innerHTML = '<span class="no-data">Aguardando dados…</span>';
+      return;
+    }
+
+    // Ordena: RED → YELLOW → GREEN
+    const order = { RED: 0, YELLOW: 1, GREEN: 2 };
+    const sorted = [...areas].sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
+
+    grid.innerHTML = sorted.map(a => {
+      const tag = a.kind === 'specific' ? '<span class="area-kind-tag">(esp.)</span>'
+                : a.kind === 'dynamic'  ? '<span class="area-kind-tag">(din.)</span>'
+                : '';
+      return `
+        <div class="area-cell">
+          <div class="area-dot status-${a.status}"></div>
+          <span class="area-name">${escHtml(a.name)}${tag}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Alertas ───────────────────────────────────────────────────────────────
+
+  function renderAlerts(alerts) {
+    const list = document.getElementById('alertList');
+
+    if (!alerts.length) {
+      list.innerHTML = '<span class="no-data">Nenhum alerta ainda.</span>';
+      return;
+    }
+
+    list.innerHTML = alerts.slice(0, 3).map(a => {
+      const cls = a.level === 'critical' ? 'alert-critical' : 'alert-warning';
+      return `
+        <div class="alert-item ${cls}">
+          <span class="alert-icon">${a.icon || (a.level === 'critical' ? '🚨' : '⚠️')}</span>
+          <span>${escHtml(a.text)}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Sugestões ─────────────────────────────────────────────────────────────
+
+  // Event delegation no container: um único listener permanente que sobrevive
+  // ao innerHTML ser substituído. Cliques em .dismiss-btn sobem até aqui.
+  document.getElementById('suggestionsBody').addEventListener('click', function(e) {
+    const btn = e.target.closest('.dismiss-btn');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    if (!isNaN(idx)) {
+      dismissedIndices.add(idx);
+      renderSuggestions(state.suggestions || [], true);
+    }
+  });
+
+  function renderSuggestions(questions, _visible) {
+    const body = document.getElementById('suggestionsBody');
+    const btn  = document.getElementById('btnQuestions');
+
+    // Aguarda resposta da IA: não sobrescreve o spinner com estado vazio
+    if (loadingQuestions && !questions.length) return;
+
+    // Perguntas chegaram: libera botão e cancela timeout de segurança
+    if (questions.length) setQuestionsLoading(false);
+
+    // Novo conjunto de perguntas do servidor → reseta os índices descartados
+    const sig = questions.map(q => q.question).join('§');
+    if (sig !== suggestionsSignature) {
+      suggestionsSignature = sig;
+      dismissedIndices.clear();
+    }
+
+    if (!questions.length) {
+      body.innerHTML = '<span class="no-data">Aguardando transcrição para gerar perguntas…</span>';
+      btn.innerHTML = '<span class="btn-key">P</span> Atualizar';
+      return;
+    }
+
+    btn.innerHTML = '<span class="btn-key">P</span> Atualizar';
+
+    const rows = questions
+      .map((q, i) => ({ q, i }))
+      .filter(({ i }) => !dismissedIndices.has(i));
+
+    if (!rows.length) {
+      body.innerHTML = '<span class="no-data">Todas as perguntas foram feitas. Aguardando nova análise…</span>';
+      return;
+    }
+
+    body.innerHTML = rows.map(({ q, i }) => `
+      <div class="suggestion-item">
+        <div class="suggestion-body">
+          <div class="suggestion-q">${escHtml(q.question || '')}</div>
+          <div class="suggestion-meta">
+            ${q.area_id  ? `<span class="suggestion-area">${escHtml(q.area_id)}</span>` : ''}
+            ${q.rationale ? `<span class="suggestion-why">↳ ${escHtml(q.rationale)}</span>` : ''}
+          </div>
+        </div>
+        <button class="dismiss-btn" data-idx="${i}" title="Já perguntei isso">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // ── Utilitários ───────────────────────────────────────────────────────────
+
+  function setVisible(id, show) {
+    document.getElementById(id).style.display = show ? '' : 'none';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function confirmQuit() {
+    if (confirm('Encerrar a sessão de diagnóstico?')) {
+      sendCmd('quit');
+    }
+  }
+
+  // Inicia a conexão quando a página carrega
+  connect();
+</script>
+</body>
+</html>
