@@ -1,0 +1,18 @@
+{"session_id":"demo-001","speaker":"sales","text":"Então me conta mais sobre o projeto, o que vocês precisam construir?","ts":"2026-04-29T14:00:00Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"A gente quer construir uma loja virtual completa, com carrinho, pagamento via PIX e cartão de crédito, e integração com nosso ERP para atualizar o estoque automaticamente.","ts":"2026-04-29T14:00:10Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"Que ERP vocês usam atualmente?","ts":"2026-04-29T14:00:25Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Usamos o TOTVS Protheus. Ele tem API mas a documentação é bem fraca, tivemos problemas com outras integrações antes.","ts":"2026-04-29T14:00:35Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"Quantos produtos vocês têm no catálogo?","ts":"2026-04-29T14:01:00Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Umas 15 mil SKUs. E os preços mudam todo dia dependendo do dólar, então a sincronização precisa ser em tempo real.","ts":"2026-04-29T14:01:10Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"E qual o prazo que vocês têm em mente?","ts":"2026-04-29T14:01:30Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"A gente precisa estar no ar em 6 semanas. Temos uma campanha de lançamento marcada e não dá pra atrasar.","ts":"2026-04-29T14:01:40Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"Vocês já têm design pronto ou vamos criar do zero?","ts":"2026-04-29T14:02:00Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Não temos nada ainda. Imaginávamos que vocês fariam tudo. Ah, e precisamos de um app mobile também, iOS e Android.","ts":"2026-04-29T14:02:15Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"O gateway de pagamento, vocês já têm contrato com algum ou a gente escolhe?","ts":"2026-04-29T14:02:45Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Temos contrato com o Mercado Pago, mas nunca integramos ele em nenhum sistema antes. O pessoal do Mercado Pago disse que tem sandbox mas nunca testamos.","ts":"2026-04-29T14:03:00Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"Vocês têm alguém técnico do lado de vocês para validar as entregas?","ts":"2026-04-29T14:03:30Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Não, somos uma empresa familiar. Quem vai acompanhar é o meu sócio, mas ele não é da área de tecnologia. A gente confia em vocês para tomar as decisões técnicas.","ts":"2026-04-29T14:03:45Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"E o TOTVS, vocês têm acesso à API de homologação para a gente testar antes de conectar em produção?","ts":"2026-04-29T14:04:10Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"Olha, a API do TOTVS é só em produção mesmo. Não tem ambiente de teste separado. Mas a gente pode fazer testes em horário de baixo movimento.","ts":"2026-04-29T14:04:25Z","is_final":true}
+{"session_id":"demo-001","speaker":"sales","text":"Qual seria o volume esperado de pedidos por dia?","ts":"2026-04-29T14:05:00Z","is_final":true}
+{"session_id":"demo-001","speaker":"client","text":"No início uns 200 por dia. Mas temos uma campanha com influencer planejada pro segundo mês, esperamos bater 5 mil pedidos num único dia.","ts":"2026-04-29T14:05:15Z","is_final":true}
