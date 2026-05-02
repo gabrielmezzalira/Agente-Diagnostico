@@ -14,12 +14,12 @@
 #   python3 main.py --mode realtime --source file
 #
 # Casos de uso:
-#   1. Dev sem Taqtic: outra ferramenta escreve transcrições no arquivo
+#   1. Dev sem Recall.ai: outra ferramenta escreve transcrições no arquivo
 #      e o agente as consome em tempo real.
 #   2. Replay de reunião gravada: arquivo já existe com todos os chunks
 #      e o agente os processa como se fosse ao vivo. Útil para ajustar
 #      os prompts do classificador com dados reais.
-#   3. Fallback se o webhook cair mid-meeting: redireciona o Taqtic para
+#   3. Fallback se o webhook cair mid-meeting: redireciona o Recall.ai para
 #      escrever num arquivo e o agente continua a partir daí.
 #
 # Formato esperado do arquivo .jsonl:

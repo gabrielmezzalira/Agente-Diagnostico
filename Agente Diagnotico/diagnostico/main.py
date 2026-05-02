@@ -45,7 +45,7 @@ def _run_interactive() -> None:
 
     Este é o modo original da aplicação — o comercial digita as respostas
     do cliente manualmente. Funciona exatamente como antes da integração
-    com o Taqtic. Preservado intacto como fallback e para dev/testes.
+    com webhook. Preservado intacto como fallback e para dev/testes.
     """
     print("\n" + "=" * 60)
     print("  🚨 AGENTE DE DIAGNÓSTICO TÉCNICO — CITi")
@@ -129,7 +129,7 @@ def _make_renderer(ui_mode: str, tracker):
     """Cria o renderer correto baseado no modo de UI.
 
     Separado de _run_realtime para ser chamado em cada branch de source
-    (file, taqtic, stdin) sem duplicar código.
+    (file, webhook, stdin) sem duplicar código.
 
     Args:
         ui_mode: "cli" → CLIRenderer (terminal Rich); "web" → WebRenderer (browser).
@@ -144,7 +144,7 @@ def _make_renderer(ui_mode: str, tracker):
 
 
 async def _run_realtime(source_name: str, ui_mode: str = "cli") -> None:
-    """Modo tempo real: recebe transcrição do Taqtic e assiste a reunião ao vivo.
+    """Modo tempo real: recebe transcrição via webhook e assiste a reunião ao vivo.
 
     Esta função é assíncrona (async def) porque o modo realtime usa asyncio
     para rodar múltiplas tarefas concorrentemente (ingestão, render, teclado).
@@ -152,9 +152,9 @@ async def _run_realtime(source_name: str, ui_mode: str = "cli") -> None:
     a função terminar.
 
     O source_name determina de onde vem a transcrição:
-    - "taqtic" → webhook HTTP do Taqtic (passo 9, ainda não implementado)
-    - "file"   → tail de arquivo .jsonl (passo 12, ainda não implementado)
-    - "stdin"  → lê do stdin linha por linha (implementado agora, usado para dev)
+    - "webhook" → servidor HTTP local que recebe POSTs do Recall.ai via ngrok
+    - "file"    → tail de arquivo .jsonl
+    - "stdin"   → lê do stdin linha por linha (usado para dev/testes)
     """
     # Import local para não carregar os módulos de realtime quando só o modo
     # interativo for usado — mantém o startup do modo legado rápido
@@ -200,11 +200,11 @@ async def _run_realtime(source_name: str, ui_mode: str = "cli") -> None:
         return
 
     # Seleciona a fonte de transcrição.
-    # Taqtic é o modo principal (webhook HTTP local).
-    # Stdin é o fallback para dev/demo sem a extensão Chrome instalada.
-    if source_name == "taqtic":
+    # Webhook é o modo principal (recebe POSTs do Recall.ai via ngrok).
+    # Stdin é o fallback para dev/demo sem infraestrutura externa.
+    if source_name == "webhook":
         from transcription.webhook_server import WebhookServer
-        from transcription.taqtic import TaqticWebhookSource
+        from transcription.webhook_source import WebhookSource
         from coverage.tracker import CoverageTracker
 
         # Lê configurações opcionais do ambiente.
@@ -223,7 +223,7 @@ async def _run_realtime(source_name: str, ui_mode: str = "cli") -> None:
             pass  # config não encontrada → usa defaults
 
         server = WebhookServer(host=webhook_host, port=webhook_port, secret=webhook_secret)
-        source = TaqticWebhookSource(server=server)
+        source = WebhookSource(server=server)
 
         print("\n" + "=" * 60)
         print("  🚀 DIAGNÓSTICO EM TEMPO REAL — CITi")
@@ -251,7 +251,7 @@ async def _run_realtime(source_name: str, ui_mode: str = "cli") -> None:
         # O WebhookServer precisa ser iniciado ANTES do orchestrator.run()
         # porque o run() já dispara a _ingestion_task que consome o stream().
         await source.server.start()
-        print(f"\n✅ Aguardando conexão do Taqtic em http://{webhook_host}:{webhook_port}")
+        print(f"\n✅ Aguardando conexão do Recall.ai em http://{webhook_host}:{webhook_port}")
         print("   Ou simule com: python3 scripts/simulate_transcript.py\n")
 
         try:
@@ -320,9 +320,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--source",
-        choices=["taqtic", "file", "stdin"],
-        default="taqtic",
-        help="Fonte de transcrição no modo realtime (default: taqtic)",
+        choices=["webhook", "file", "stdin"],
+        default="webhook",
+        help="Fonte de transcrição no modo realtime (default: webhook)",
     )
     parser.add_argument(
         "--ui",

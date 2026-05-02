@@ -12,7 +12,7 @@
 #   python3 scripts/simulate_transcript.py --url http://127.0.0.1:9000  # porta diferente
 #
 # Fluxo de uso completo (dois terminais):
-#   Terminal 1: python3 main.py --mode realtime --source taqtic
+#   Terminal 1: python3 main.py --mode realtime --source webhook
 #   Terminal 2: python3 scripts/simulate_transcript.py
 #
 # O simulador:
@@ -179,7 +179,7 @@ def main() -> None:
         if not wait_for_server(args.url):
             print(f"\n✗ Servidor não respondeu após {_HEALTHZ_RETRIES} tentativas.")
             print("  Certifique-se de que o agente está rodando:")
-            print("  python3 main.py --mode realtime --source taqtic")
+            print("  python3 main.py --mode realtime --source webhook")
             sys.exit(1)
 
     run(fixture_path=args.fixture, base_url=args.url, delay=args.delay)

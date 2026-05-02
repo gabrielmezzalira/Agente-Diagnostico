@@ -17,6 +17,9 @@
 
 import asyncio
 from abc import ABC, abstractmethod
+from typing import Literal
+
+AlertLevel = Literal["warning", "critical"]
 
 
 class BaseRenderer(ABC):
@@ -46,13 +49,8 @@ class BaseRenderer(ABC):
         """
 
     @abstractmethod
-    def add_alert(self, level: str, text: str) -> None:
-        """Adiciona um alerta de risco ao painel.
-
-        Args:
-            level: "warning" (⚠️) ou "critical" (🚨)
-            text:  descrição do risco
-        """
+    def add_alert(self, level: AlertLevel, text: str) -> None:
+        """Adiciona um alerta de risco ao painel."""
 
     @abstractmethod
     def set_suggestions(self, questions: list[dict]) -> None:

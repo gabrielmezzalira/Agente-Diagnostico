@@ -82,7 +82,7 @@ class CLIRenderer(BaseRenderer):
         self._alerts: list[Alert] = []     # lista de alertas ativos (máx 5)
         self._suggestions: list[dict] = [] # perguntas sugeridas pelo QuestionPlanner
         self._suggestions_visible = False  # toggle: mostra/esconde as sugestões
-        self._stream_paused = False        # True quando o Taqtic parou de mandar chunks
+        self._stream_paused = False        # True quando o Recall.ai parou de mandar chunks
         self._saturated = False            # True quando atingiu o threshold de cobertura
 
         # Constrói a estrutura de painéis (ainda sem conteúdo)

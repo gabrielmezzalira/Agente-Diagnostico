@@ -104,7 +104,7 @@ class TranscriptBuffer:
     def last_chunk_at(self) -> datetime | None:
         """Timestamp do chunk mais recente. None se o buffer estiver vazio.
 
-        Usado pelo watchdog para detectar se o stream do Taqtic pausou:
+        Usado pelo watchdog para detectar se o stream do Recall.ai pausou:
         se agora - last_chunk_at() > 60s, o stream provavelmente caiu.
         """
         return self._chunks[-1].ts if self._chunks else None

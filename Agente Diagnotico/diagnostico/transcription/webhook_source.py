@@ -1,12 +1,12 @@
 # =============================================================================
-# transcription/taqtic.py
+# transcription/webhook_source.py
 #
-# TaqticWebhookSource: implementa TranscriptionSource consumindo da queue
+# WebhookSource: implementa TranscriptionSource consumindo da queue
 # alimentada pelo WebhookServer.
 #
 # Separação de responsabilidades:
-#   - WebhookServer   → sabe como rodar um servidor HTTP e receber POSTs
-#   - TaqticWebhookSource → sabe como expor os chunks como AsyncIterator
+#   - WebhookServer → sabe como rodar um servidor HTTP e receber POSTs
+#   - WebhookSource → sabe como expor os chunks como AsyncIterator
 #
 # Por que separar server e source em classes diferentes?
 # Single Responsibility Principle: o servidor não deve saber como os chunks
@@ -14,7 +14,7 @@
 # A asyncio.Queue é o canal desacoplado entre os dois.
 #
 # Fluxo completo:
-#   [Taqtic ext.] → HTTP POST → [WebhookServer] → queue.put() → [TaqticWebhookSource.stream()] → [RealtimeOrchestrator]
+#   [Recall.ai] → HTTP POST → [WebhookServer] → queue.put() → [WebhookSource.stream()] → [RealtimeOrchestrator]
 # =============================================================================
 
 import asyncio
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 _QUEUE_TIMEOUT_SECS = 1.0
 
 
-class TaqticWebhookSource(TranscriptionSource):
+class WebhookSource(TranscriptionSource):
     """Fonte de transcrição que consome da queue do WebhookServer.
 
     Implementa TranscriptionSource.stream() como AsyncGenerator:
@@ -41,7 +41,7 @@ class TaqticWebhookSource(TranscriptionSource):
     não bloqueia o event loop enquanto espera.
 
     Lifecycle:
-    1. O RealtimeOrchestrator cria TaqticWebhookSource (e com ele o WebhookServer)
+    1. O RealtimeOrchestrator cria WebhookSource (e com ele o WebhookServer)
     2. O orchestrator chama server.start() antes de iniciar as tasks
     3. A _ingestion_task faz "async for chunk in source.stream():"
     4. stream() drena a queue até shutdown ser sinalizado
@@ -88,7 +88,7 @@ class TaqticWebhookSource(TranscriptionSource):
         orchestrator ficaria preso esperando um chunk que nunca virá quando
         o usuário pressionar Q.
         """
-        logger.info("TaqticWebhookSource: aguardando chunks do webhook...")
+        logger.info("WebhookSource: aguardando chunks do webhook...")
 
         while not self._shutdown.is_set():
             try:
@@ -108,4 +108,4 @@ class TaqticWebhookSource(TranscriptionSource):
                 # O loop while já checa is_set(), então só continuamos.
                 continue
 
-        logger.info("TaqticWebhookSource: stream encerrado.")
+        logger.info("WebhookSource: stream encerrado.")

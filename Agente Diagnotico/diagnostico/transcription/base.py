@@ -6,7 +6,7 @@
 # Por que uma classe abstrata em vez de implementar direto?
 # Seguindo o princípio da Inversão de Dependência (SOLID), o RealtimeOrchestrator
 # depende desta abstração — não de uma implementação específica. Isso significa
-# que posso trocar TaqticWebhookSource por FileTailSource ou StdinSource sem
+# que posso trocar WebhookSource por FileTailSource ou StdinSource sem
 # alterar nada no orchestrator. Basta implementar este contrato.
 # =============================================================================
 
@@ -20,7 +20,7 @@ from typing import AsyncIterator
 class TranscriptChunk:
     """Um trecho de transcrição recebido em tempo real.
 
-    No Taqtic, a transcrição chega em pedaços conforme as pessoas falam —
+    No Recall.ai, a transcrição chega em pedaços conforme as pessoas falam —
     não em um bloco só. Cada pedaço é um TranscriptChunk.
 
     Campos:
@@ -32,7 +32,7 @@ class TranscriptChunk:
         ts         → timestamp de quando o chunk foi recebido
         is_final   → True = chunk completo / False = ainda digitando (parcial)
                      Chunks parciais podem ser ignorados ou tratados diferente
-        session_id → ID da sessão do Taqtic (útil para correlacionar chunks
+        session_id → ID da sessão do Recall.ai (útil para correlacionar chunks
                      de uma mesma reunião)
     """
     text: str
@@ -51,7 +51,7 @@ class TranscriptionSource(ABC):
 
     Implementações existentes:
         StdinSource         → lê linhas do stdin (fallback / dev)
-        TaqticWebhookSource → recebe HTTP POST do Taqtic (passo 9)
+        WebhookSource  → recebe HTTP POST do Recall.ai via ngrok
         FileTailSource      → faz tail de um arquivo .jsonl (passo 12)
     """
 
@@ -65,7 +65,7 @@ class TranscriptionSource(ABC):
         e retoma quando o consumidor pede o próximo item.
 
         Por que assíncrono? Porque esperar por transcrição é I/O-bound:
-        ficamos esperando o Taqtic mandar dados, a rede, o arquivo crescer...
+        ficamos esperando o Recall.ai mandar dados, a rede, o arquivo crescer...
         Usar async permite que o event loop faça outras coisas enquanto espera
         (renderizar o painel, processar teclas, rodar o watchdog, etc.).
         """

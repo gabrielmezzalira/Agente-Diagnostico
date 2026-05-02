@@ -4,7 +4,7 @@
 # StdinSource: fonte de transcrição via entrada padrão (stdin).
 #
 # Casos de uso:
-#   1. Desenvolvimento/teste sem o Taqtic:
+#   1. Desenvolvimento/teste sem o Recall.ai:
 #      echo "texto da reunião" | python3 main.py --mode realtime --source stdin
 #
 #   2. Teste manual: rodar o app e digitar linhas simulando a transcrição

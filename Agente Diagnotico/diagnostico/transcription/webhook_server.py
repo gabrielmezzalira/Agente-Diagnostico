@@ -1,15 +1,15 @@
 # =============================================================================
 # transcription/webhook_server.py
 #
-# WebhookServer: servidor HTTP local que recebe transcrições do Taqtic.
+# WebhookServer: servidor HTTP local que recebe transcrições do Recall.ai.
 #
-# O Taqtic (extensão Chrome para Google Meet) captura o áudio da reunião,
+# O Recall.ai (extensão Chrome para Google Meet) captura o áudio da reunião,
 # transcreve em tempo real e envia cada trecho via HTTP POST para este servidor.
 # O servidor converte o payload JSON em TranscriptChunk e coloca numa
-# asyncio.Queue para ser consumida pelo TaqticWebhookSource.
+# asyncio.Queue para ser consumida pelo Recall.aiWebhookSource.
 #
 # Por que asyncio.Queue como intermediário?
-# O servidor HTTP (aiohttp) e o consumidor (TaqticWebhookSource.stream) rodam
+# O servidor HTTP (aiohttp) e o consumidor (Recall.aiWebhookSource.stream) rodam
 # no mesmo event loop. A Queue é o canal seguro entre os dois:
 # - O handler do POST faz queue.put_nowait(chunk) — não bloqueia
 # - O stream() faz await queue.get() — suspende até chegar um chunk
@@ -23,7 +23,7 @@
 # Segurança:
 # - Bind em 127.0.0.1 (loopback) — nunca exposto na rede local ou internet
 # - Token de autenticação via header Authorization: Bearer <secret>
-#   ou X-Taqtic-Signature. Se TAQTIC_WEBHOOK_SECRET não estiver configurado,
+#   ou X-Webhook-Signature. Se TAQTIC_WEBHOOK_SECRET não estiver configurado,
 #   a autenticação é desabilitada (desenvolvimento local).
 # =============================================================================
 
@@ -39,19 +39,19 @@ from .base import TranscriptChunk
 logger = logging.getLogger(__name__)
 
 # Formato aceito nos campos de timestamp do payload.
-# O Taqtic envia ISO 8601 com Z (UTC), ex: "2026-04-29T14:32:11Z"
+# O Recall.ai envia ISO 8601 com Z (UTC), ex: "2026-04-29T14:32:11Z"
 _ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class WebhookServer:
-    """Servidor HTTP local que recebe chunks de transcrição do Taqtic.
+    """Servidor HTTP local que recebe chunks de transcrição do Recall.ai.
 
     Expõe dois endpoints:
         POST /transcription → recebe um chunk de transcrição
         GET  /healthz       → verifica se o servidor está de pé
 
     Os chunks recebidos são colocados numa asyncio.Queue que o
-    TaqticWebhookSource consome via stream().
+    Recall.aiWebhookSource consome via stream().
     """
 
     def __init__(
@@ -68,13 +68,13 @@ class WebhookServer:
             secret:          token de autenticação. Se vazio, auth desabilitada.
             payload_adapter: função opcional para converter payloads não-padrão
                              em TranscriptChunk. Se None, usa o formato padrão
-                             do Taqtic (ver _default_adapter).
+                             do Recall.ai (ver _default_adapter).
         """
         self._host = host
         self._port = port
         self._secret = secret
         # O adapter permite trocar o formato do payload sem alterar o servidor.
-        # Princípio Aberto/Fechado: se o Taqtic mudar o formato do JSON, só
+        # Princípio Aberto/Fechado: se o Recall.ai mudar o formato do JSON, só
         # o adapter muda — o servidor e o source ficam intocados.
         self._adapter = payload_adapter or _default_adapter
 
@@ -90,7 +90,7 @@ class WebhookServer:
 
     @property
     def queue(self) -> asyncio.Queue[TranscriptChunk]:
-        """Expõe a queue para o TaqticWebhookSource consumir."""
+        """Expõe a queue para o Recall.aiWebhookSource consumir."""
         return self._queue
 
     async def start(self) -> None:
@@ -146,7 +146,7 @@ class WebhookServer:
         # ── Autenticação ──────────────────────────────────────────────────────
         if self._secret:
             auth_header = request.headers.get("Authorization", "")
-            sig_header = request.headers.get("X-Taqtic-Signature", "")
+            sig_header = request.headers.get("X-Webhook-Signature", "")
 
             # Aceita Bearer token no Authorization ou no header customizado
             token = ""
@@ -198,9 +198,9 @@ class WebhookServer:
 # ── Adapter padrão (module-level) ─────────────────────────────────────────────
 
 def _default_adapter(payload: dict) -> TranscriptChunk:
-    """Converte o payload JSON do Taqtic para TranscriptChunk.
+    """Converte o payload JSON do Recall.ai para TranscriptChunk.
 
-    Formato esperado do Taqtic:
+    Formato esperado do Recall.ai:
     {
       "session_id": "abc-123",
       "speaker":    "client" | "sales" | "unknown",

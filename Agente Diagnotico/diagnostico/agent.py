@@ -159,52 +159,17 @@ class DiagnosticAgent:
     def generate_report_with_coverage(self, tracker) -> tuple[str, Path]:
         """Gera relatório prefixado com o mapa de cobertura final (modo realtime).
 
-        No modo realtime, o contexto da entrevista vem da transcrição — não de
-        perguntas/respostas digitadas. O mapa de cobertura do CoverageTracker
-        é a síntese estruturada do que foi discutido: quais áreas foram cobertas,
-        com qual evidência e com qual profundidade.
-
-        Por que prefixar o REPORT_PROMPT com o mapa?
-        O LLM vai gerar o relatório com base no contexto disponível. Sem o mapa,
-        ele só teria a transcrição bruta. Com o mapa, ele tem:
-        1. Status final de cada área de risco (RED/YELLOW/GREEN)
-        2. A evidência que justificou cada status (trecho real da conversa)
-        3. O score de saturação (indica confiança diagnóstica)
-
-        Isso permite que o relatório gerado seja mais preciso — a seção
-        "Perguntas sem resposta" (seção 4) pode ser populada diretamente
-        das áreas que ficaram em RED, sem depender de inferência do LLM.
-
         Args:
             tracker: CoverageTracker com o estado final das áreas de risco.
 
         Returns:
             Tupla (conteúdo_do_relatório, caminho_do_arquivo_salvo)
         """
-        # Serializa o mapa de cobertura final como contexto adicional.
-        coverage_context = _build_coverage_summary(tracker)
-
-        # Combina o mapa de cobertura com o REPORT_PROMPT original.
-        # O mapa vai no início para que o LLM o leia antes das instruções
-        # de formato — garante que ele o use ativamente na geração.
-        augmented_prompt = (
-            "=== MAPA DE COBERTURA FINAL DA REUNIÃO ===\n"
-            f"{coverage_context}\n\n"
-            "Use o mapa acima para preencher a seção 4 (Perguntas sem resposta) "
-            "com as áreas que ficaram em RED, e para calibrar o nível de complexidade "
-            "baseado na profundidade real do diagnóstico.\n\n"
-            f"{REPORT_PROMPT}"
-        )
-
-        # Mesmo padrão do generate_report(): cria lista temporária sem modificar
-        # o histórico real do ConversationManager.
         history_with_report = self._conversation.get_history() + [
-            Message(role="user", content=augmented_prompt)
+            Message(role="user", content=_build_augmented_report_prompt(tracker))
         ]
-
         report_content = self._llm.generate(history_with_report)
         filepath = self._reporter.save(report_content)
-
         return report_content, filepath
 
     def ingest_transcript_chunk(self, chunk) -> None:
@@ -254,7 +219,20 @@ class DiagnosticAgent:
         return planner.plan(history=self._conversation.get_history())
 
 
-# ── Função auxiliar (module-level) ────────────────────────────────────────────
+# ── Funções auxiliares (module-level) ────────────────────────────────────────
+
+def _build_augmented_report_prompt(tracker) -> str:
+    """Combina o mapa de cobertura com o REPORT_PROMPT para geração de relatório."""
+    coverage_context = _build_coverage_summary(tracker)
+    return (
+        "=== MAPA DE COBERTURA FINAL DA REUNIÃO ===\n"
+        f"{coverage_context}\n\n"
+        "Use o mapa acima para preencher a seção 4 (Perguntas sem resposta) "
+        "com as áreas que ficaram em RED, e para calibrar o nível de complexidade "
+        "baseado na profundidade real do diagnóstico.\n\n"
+        f"{REPORT_PROMPT}"
+    )
+
 
 def _build_coverage_summary(tracker) -> str:
     """Serializa o estado final do CoverageTracker em texto para o LLM.
