@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: project-configuration-supabase-schema
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-24
+reviewed_at: 2026-05-24
 ---
 
 # Phase 1 — UI Design Contract
@@ -60,7 +61,7 @@ Exceptions:
 
 | Role | Size | Weight | Font | Line Height | Letter Spacing | Usage |
 |------|------|--------|------|-------------|----------------|-------|
-| Label uppercase | 10px | 600 | DM Sans | 1.2 | 0.1em | Section headers, block tags, status labels, field group titles |
+| Label uppercase | 10px | 500 | DM Sans | 1.2 | 0.1em | Section headers, block tags, status labels, field group titles |
 | Small | 12px | 400 | DM Sans | 1.4 | normal | Helper text, timestamps, secondary metadata |
 | Small mono | 12px | 400 | DM Mono | 1.4 | normal | Budget values (secondary), cost figures |
 | Body | 13px | 400 | DM Sans | 1.5 | normal | Form field values, card body text, placeholder text |
@@ -71,7 +72,7 @@ Exceptions:
 Rules:
 - Nothing exceeds 14px in the application UI (source: CONTEXT.md — "section headings: nothing above 14px")
 - DM Mono is exclusively for: timer, budget consumed/limit values, token counts, shortcut badges inside buttons
-- All uppercase labels use `font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase`
+- All uppercase labels use `font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase`
 - No italics in Phase 1 components
 
 ---
@@ -122,8 +123,9 @@ The green accent is used ONLY on:
 8. Pin button hover state
 9. Budget fill bar when usage < 60%
 10. Coverage status dot — "covered" state
+11. Form focus rings (`border-color: #22a267`, box-shadow `rgba(34, 162, 103, 0.12)`)
 
-Accent is NOT used on: navigation links, general hover states, text links, form focus rings (use `border-hover` `#cccccc` instead), or body text.
+Accent is NOT used on: navigation links, general hover states, text links, or body text.
 
 ### Semantic Colors
 
@@ -159,10 +161,12 @@ transition: border-color 150ms ease, box-shadow 150ms ease
 Contents:
 - Row 1: Project name (14px, 500) + type badge (right-aligned)
 - Row 2: Client name (13px, 400, color #888888)
-- Row 3 (if active session): "ao vivo" badge — bg #22a267, color #fff, font 10px 600 uppercase, padding 2px 8px, border-radius 99px
+- Row 3 (if active session): "ao vivo" badge — bg #22a267, color #fff, font 10px 500 uppercase, padding 2px 8px, border-radius 99px
 - Row 4 (bottom metadata): creation date (12px, #888888)
 
-Type badge: bg `#f0ede6`, color `#1a1a1a`, font 10px 600 uppercase, padding 2px 8px, border-radius 4px. One badge per card.
+Type badge: bg `#f0ede6`, color `#1a1a1a`, font 10px 500 uppercase, padding 2px 8px, border-radius 4px. One badge per card.
+
+Primary visual anchor: project name (14px/500) at card top-left — draws the eye as the largest and heaviest text element per F-pattern reading.
 
 ### Project Grid (Home Screen)
 
@@ -231,7 +235,7 @@ Labels row below slider — 5 equal-width cells aligned to tick positions:
 4 — Quantificado
 5 — Otimizado
 ```
-Label font: 10px, 400, #888888. Active label (current value): 10px, 600, #1a1a1a.
+Label font: 10px, 400, #888888. Active label (current value): 10px, 500, #1a1a1a.
 
 Tooltip on hover (optional): shows full definition text for the current level (from SDD Section 4.10). Tooltip bg #1a1a1a, color #fff, font 12px, border-radius 6px, max-width 220px.
 
@@ -243,7 +247,7 @@ Single scrollable page. Named sections with uppercase label headers:
 
 ```
 Section header:
-  font: 10px, weight 600, letter-spacing 0.1em, color #888888
+  font: 10px, weight 500, letter-spacing 0.1em, color #888888
   text-transform: uppercase
   margin-bottom: 12px
   padding-bottom: 8px
@@ -376,14 +380,14 @@ font: 13px, weight 500
 padding: 0 16px
 transition: background 120ms ease, border-color 120ms ease
 
-Primary (Criar projeto / Salvar projeto):
+Primary (Criar projeto / Salvar alterações):
   bg: #22a267
   color: #ffffff
   border: 1px solid #22a267
   hover bg: #1a8a56
   active: scale(0.98)
 
-Secondary (Cancelar, Sync):
+Secondary (Descartar, Sync):
   bg: #ffffff
   color: #1a1a1a
   border: 1px solid #e0ddd6
@@ -398,7 +402,7 @@ Danger (Excluir projeto):
 
 Button shortcut badge (monitoring screen only — Phase 6):
 ```
-font: DM Mono 11px, bg #f0ede6, color #888, padding 1px 5px, border-radius 3px
+font: DM Mono 10px, bg #f0ede6, color #888, padding 1px 5px, border-radius 3px
 Positioned inside button, right-aligned
 ```
 
@@ -478,7 +482,7 @@ TTL bar (bottom of card):
 Block tag:
   bg: #edfaf3
   color: #22a267
-  font: 10px, weight 600, text-transform: uppercase
+  font: 10px, weight 500, text-transform: uppercase
   padding: 2px 6px
   border-radius: 4px
 
@@ -487,6 +491,9 @@ Pin button / Dismiss button:
   border-radius: 6px
   border: 1px solid #e8e6e0
   bg: transparent
+  aria-label="Fixar pergunta" (pin button)
+  aria-label="Descartar pergunta" (dismiss button)
+  aria-label="Marcar como usada" (used button)
 
   Pin hover:
     bg: #edfaf3
@@ -593,7 +600,7 @@ Right column (Questions):
 | Primary CTA (home, empty state) | "Criar projeto" |
 | Primary CTA (form — create) | "Criar projeto" |
 | Primary CTA (form — edit) | "Salvar alterações" |
-| Cancel button | "Cancelar" |
+| Cancel button (exit form without saving) | "Descartar" |
 | Delete project button | "Excluir projeto" |
 | Empty state heading | "Nenhum projeto ainda" |
 | Empty state body | "Crie o primeiro projeto para começar um diagnóstico." |
@@ -621,7 +628,7 @@ Right column (Questions):
 | Delete confirmation heading | "Excluir projeto?" |
 | Delete confirmation body | "Esta ação não pode ser desfeita. Sessões encerradas serão mantidas no histórico." |
 | Delete confirmation CTA | "Sim, excluir" |
-| Delete cancel | "Cancelar" |
+| Delete dialog dismiss | "Manter projeto" |
 
 ### Error State Copies
 
