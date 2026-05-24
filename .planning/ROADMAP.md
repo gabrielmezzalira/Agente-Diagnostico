@@ -34,7 +34,11 @@ The v1 Python backend (realtime pipeline, LLM agents, webhook server, CLI render
   3. Projects with active sessions display a green "ao vivo" badge in the project list
   4. All 9 Supabase tables (projects, sessions, questions, red_flags, coverage_snapshots, reports, question_bank, session_prompts, transcript_chunks) are initialized and accepting data
   5. Gemini API key is stored via Supabase Vault (pgsodium); it is never returned to the frontend in plaintext
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold + Schema (backend structure, Vite frontend, 9-table migration SQL, [BLOCKING] migration apply)
+- [ ] 01-02-PLAN.md — Project API (FastAPI router, Pydantic models, Vault integration, integration tests)
+- [ ] 01-03-PLAN.md — Project UI (HomePage, ProjectFormPage, components, API client, design system applied)
 **UI hint**: yes
 
 ### Phase 2: Session Setup
@@ -154,7 +158,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Configuration + Supabase Schema | 0/? | Not started | - |
+| 1. Project Configuration + Supabase Schema | 0/3 | Not started | - |
 | 2. Session Setup | 0/? | Not started | - |
 | 3. Tunnel URL Exposure | 0/? | Not started | - |
 | 4. Question Bank | 0/? | Not started | - |
