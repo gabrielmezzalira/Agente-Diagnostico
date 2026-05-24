@@ -1,0 +1,19 @@
+{
+  "filepath": "./CLAUDE.md",
+  "type": "SPEC",
+  "source": "heuristic",
+  "title": "Agente Diagnóstico — Software Design Document v2.0",
+  "summary": "Full SDD for the v2 system: architecture, DB schema, 10 features (F1-F10), API contracts, WebSocket events, implementation order, migration guide from v1.",
+  "scope": "full-system",
+  "locked_decisions": [],
+  "key_sections": [
+    "Architecture (2.1-2.3)",
+    "DB Schema (3)",
+    "Features F1-F10 (4)",
+    "API Contracts (5)",
+    "WebSocket Events (6)",
+    "Implementation Order (7)",
+    "Risks and Open Decisions (8)",
+    "v1->v2 Migration (9)"
+  ]
+}

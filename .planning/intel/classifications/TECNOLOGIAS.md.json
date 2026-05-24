@@ -1,0 +1,21 @@
+{
+  "filepath": "./TECNOLOGIAS.md",
+  "type": "ADR",
+  "source": "heuristic",
+  "title": "Documentação de Tecnologias — Agente de Diagnóstico CITi",
+  "summary": "ADR-style technology log: rationale for Gemini, aiohttp, asyncio, rich, python-dotenv, Recall.ai. Includes risks, alerts, and development history.",
+  "scope": "full-system",
+  "locked_decisions": [
+    "No LangChain/LangGraph: 6 concurrent async tasks don't fit LangGraph's sequential/conditional model",
+    "aiohttp over FastAPI for v1 webhook server (2 routes, loopback-only)",
+    "Migrate from google-generativeai (deprecated) to google.genai",
+    "asyncio.to_thread() for all LLM calls to avoid blocking the event loop"
+  ],
+  "key_risks": [
+    "google-generativeai SDK deprecated — migrate to google.genai (only impacts llm/gemini_client.py)",
+    "Blocking LLM calls must use asyncio.to_thread()",
+    "aiohttp queue is unbounded — risk for very long meetings",
+    "Recall.ai adapter built for observed payload format; may break if schema changes",
+    "CoverageClassifier may hallucinate area IDs not present in schema"
+  ]
+}
