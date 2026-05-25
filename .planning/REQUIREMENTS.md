@@ -13,7 +13,7 @@ Generated: 2026-05-24 via gsd-ingest-docs
 - [ ] **PROJ-02**: User can edit a project at any time; edits do not affect sessions already closed
 - [ ] **PROJ-03**: Project list displays active-session green badge for projects with live sessions
 - [ ] **PROJ-04**: Gemini API key stored via Supabase Vault (pgsodium); masked in UI after save; re-entry required to update
-- [ ] **PROJ-05**: Supabase schema initialized: tables projects, sessions, questions, red_flags, coverage_snapshots, reports, question_bank, session_prompts, transcript_chunks
+- [x] **PROJ-05**: Supabase schema initialized: tables projects, sessions, questions, red_flags, coverage_snapshots, reports, question_bank, session_prompts, transcript_chunks
 
 ### F2 — Session Setup
 
