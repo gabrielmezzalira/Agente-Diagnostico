@@ -761,22 +761,25 @@ Not `gemini_api_key text`. The ProjectResponse Pydantic model exposes `has_api_k
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Supabase project credentials**
    - What we know: SUPABASE_URL and SUPABASE_KEY are required env vars for the backend
    - What's unclear: Does the Supabase project already exist? Has it been linked?
    - Recommendation: Plan must include a "create Supabase project at supabase.com" step or verify it exists. Add `SUPABASE_URL` and `SUPABASE_KEY` to `backend/.env` as Wave 0 setup.
+   - RESOLVED: Plan 01-01a Task 3 is a [BLOCKING] human-action checkpoint requiring Supabase project creation and `.env` setup before execution proceeds.
 
 2. **`transcript_chunks` table schema**
    - What we know: Referenced in REQUIREMENTS.md (PROJ-05) and CONTEXT.md as one of 9 tables; not defined in CLAUDE.md Section 3
    - What's unclear: Exact column schema
    - Recommendation: Define minimal schema: `id uuid PK, session_id uuid FK, speaker text, text text NOT NULL, timestamp timestamptz`. Phase 9 can add columns if needed.
+   - RESOLVED: Inferred schema (id uuid PK, session_id uuid FK, speaker text, text text NOT NULL, timestamp timestamptz) used in migration. Phase 9 adds columns as needed.
 
 3. **Vault extension default availability**
    - What we know: Vault is documented as a Supabase extension; officially available on all Supabase projects
    - What's unclear: Whether it needs explicit enablement via Dashboard > Extensions
    - Recommendation: Plan includes a verification step: `SELECT * FROM vault.secrets LIMIT 1;` to confirm Vault is active before writing migration.
+   - RESOLVED: Plan 01-01a Task 3 Step 2 includes a verification query (`SELECT * FROM vault.secrets LIMIT 1;`) before the migration is applied.
 
 ---
 
