@@ -17,6 +17,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.routers import projects_router, question_bank_router, questions_router, sessions_router, webhook_router, ws_router
+
 app = FastAPI(
     title="Agente Diagnóstico v2.0",
     description="Backend do sistema de diagnóstico técnico de projetos — CITi",
@@ -30,8 +32,8 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
-    allow_credentials=True,
+    allow_origins=["*"],  # extensão Chrome + Vite dev server + produção
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -40,6 +42,14 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Health check — usado pelo frontend para verificar conectividade.
 # ---------------------------------------------------------------------------
+app.include_router(projects_router)
+app.include_router(sessions_router)
+app.include_router(questions_router)
+app.include_router(question_bank_router)
+app.include_router(webhook_router)
+app.include_router(ws_router)
+
+
 @app.get("/health")
 async def health_check() -> dict:
     """Verifica se o backend está rodando.

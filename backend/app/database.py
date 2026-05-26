@@ -9,7 +9,11 @@
 # =============================================================================
 
 import os
+
+from dotenv import load_dotenv
 from supabase import create_client, Client
+
+load_dotenv()
 
 # Singleton — inicializado na primeira chamada de get_supabase()
 _supabase: Client | None = None

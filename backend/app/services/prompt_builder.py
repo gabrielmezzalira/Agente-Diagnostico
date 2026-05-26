@@ -1,0 +1,396 @@
+"""
+PromptBuilder — gera system prompts personalizados por agente.
+
+Calibração dupla: DMS (1–5) × tipo de projeto (bi, ml, data_engineering, automation, integration, science).
+"""
+
+DMS_LABEL = {
+    1: "Inicial",
+    2: "Gerenciado",
+    3: "Definido",
+    4: "Quantificado",
+    5: "Otimizado",
+}
+
+DMS_DESCRIPTION = {
+    1: "dados em planilhas manuais, sem pipeline, sem integração entre sistemas",
+    2: "dados centralizados mas sem qualidade garantida, ETL manual ou básico",
+    3: "pipelines funcionando, alguma qualidade de dados, DW básico presente",
+    4: "dados confiáveis, pipelines monitorados, KPIs consolidados",
+    5: "dados como ativo estratégico, governança completa, observabilidade, data mesh",
+}
+
+_ADVANCED_TERMS = (
+    "data contracts, lakehouse, data mesh, MLOps, feature store, "
+    "data lineage, SLA de pipeline, observabilidade de dados, "
+    "governança de dados, data catalog"
+)
+
+# ---------------------------------------------------------------------------
+# Configuração de áreas por tipo de projeto
+#   critical  — avaliar com rigor, cobertura fraca é gap real
+#   optional  — avaliar se o cliente mencionar
+#   inactive  — não aplicável; inicializar como not_applicable no state
+# ---------------------------------------------------------------------------
+
+AREAS_BY_PROJECT_TYPE: dict[str, dict[str, list[str]]] = {
+    "bi": {
+        "critical": ["negocio", "visualizacao", "eng_dados", "parceria"],
+        "optional": ["integracao", "consumo"],
+        "inactive": ["ciencia_dados", "automacao"],
+    },
+    "ml": {
+        "critical": ["negocio", "ciencia_dados", "eng_dados", "parceria"],
+        "optional": ["integracao", "consumo"],
+        "inactive": ["visualizacao", "automacao"],
+    },
+    "data_engineering": {
+        "critical": ["negocio", "eng_dados", "integracao", "parceria"],
+        "optional": ["automacao", "consumo"],
+        "inactive": ["visualizacao", "ciencia_dados"],
+    },
+    "automation": {
+        "critical": ["negocio", "automacao", "integracao", "parceria"],
+        "optional": ["eng_dados", "consumo"],
+        "inactive": ["visualizacao", "ciencia_dados"],
+    },
+    "integration": {
+        "critical": ["negocio", "integracao", "parceria"],
+        "optional": ["eng_dados", "consumo", "automacao"],
+        "inactive": ["visualizacao", "ciencia_dados"],
+    },
+    "science": {
+        "critical": ["negocio", "ciencia_dados", "eng_dados", "parceria"],
+        "optional": ["integracao", "consumo"],
+        "inactive": ["visualizacao", "automacao"],
+    },
+}
+
+_TYPE_RED_FLAG_HINTS: dict[str, str] = {
+    "bi": (
+        "Riscos específicos de BI: dashboards sem KPIs definidos pelo cliente, "
+        "dados sem atualização automatizada, usuários finais sem acesso ou treinamento definido, "
+        "ausência de fonte única de verdade para os KPIs."
+    ),
+    "ml": (
+        "Riscos específicos de ML: volume ou qualidade insuficiente de dados para treinamento, "
+        "ausência de pipeline de retraining, modelo em produção sem monitoramento de drift, "
+        "label ou target mal definido ou inexistente."
+    ),
+    "data_engineering": (
+        "Riscos específicos de Engenharia de Dados: fontes sem documentação ou schema instável, "
+        "ETL frágil sem retry e sem observabilidade, ausência de contratos de dados, "
+        "latência incompatível com o caso de uso downstream."
+    ),
+    "automation": (
+        "Riscos específicos de Automação: processo com muitas exceções que exigem decisão humana, "
+        "ausência de tratamento de falhas e reprocessamento, fluxo não documentado, "
+        "dependência de sistema legado instável ou sem API."
+    ),
+    "integration": (
+        "Riscos específicos de Integração: APIs sem documentação ou instáveis, "
+        "autenticação complexa mal mapeada, sistemas legados com comportamento imprevisível, "
+        "ausência de versionamento ou contrato de API."
+    ),
+    "science": (
+        "Riscos específicos de Ciência de Dados: hipótese não validável com os dados disponíveis, "
+        "ausência de dados históricos suficientes, resultado esperado não mensurável, "
+        "viés de seleção nos dados de análise."
+    ),
+}
+
+_TYPE_QUESTION_FOCUS: dict[str, str] = {
+    "bi": (
+        "FOCO PARA ESTE PROJETO (BI): blocos visualizacao (KPIs já definidos?, quem acessa?, "
+        "frequência de uso, nível de interação) e eng_dados (fontes, frequência de atualização, "
+        "qualidade dos dados). Negócio: qual decisão concreta o dashboard vai suportar?"
+    ),
+    "ml": (
+        "FOCO PARA ESTE PROJETO (ML): bloco ciencia_dados (tipo de problema — "
+        "classificação/regressão/clustering, volume histórico, existe label/target definido?) "
+        "e eng_dados (qualidade, frequência dos dados de treino). "
+        "Negócio: qual ação concreta o modelo vai automatizar?"
+    ),
+    "data_engineering": (
+        "FOCO PARA ESTE PROJETO (Engenharia de Dados): bloco eng_dados (número de fontes, "
+        "formatos, qualidade, latência esperada, consumidores downstream) e integracao "
+        "(APIs disponíveis, autenticação, estabilidade). "
+        "Negócio: quem são os consumidores finais dos dados e como os usam?"
+    ),
+    "automation": (
+        "FOCO PARA ESTE PROJETO (Automação): bloco automacao (processo atual passo a passo, "
+        "quantas exceções manuais existem, o que acontece quando o fluxo falha?) "
+        "e integracao (sistemas envolvidos, APIs existentes). "
+        "Negócio: quanto tempo/custo o processo manual consome hoje?"
+    ),
+    "integration": (
+        "FOCO PARA ESTE PROJETO (Integração): bloco integracao (sistemas envolvidos, "
+        "APIs documentadas?, tipo de autenticação, SLA de disponibilidade, versão estável?) "
+        "e eng_dados (volume de dados, frequência, transformações necessárias). "
+        "Negócio: qual fluxo de informação precisa ser conectado e por quê?"
+    ),
+    "science": (
+        "FOCO PARA ESTE PROJETO (Ciência de Dados): bloco ciencia_dados (hipótese de negócio "
+        "que guia a análise, dados disponíveis e período histórico, granularidade, "
+        "tipo de insight esperado) e eng_dados (qualidade, completude, vieses conhecidos). "
+        "Negócio: qual decisão estratégica será tomada com base na análise?"
+    ),
+}
+
+
+class PromptBuilder:
+    def __init__(
+        self,
+        dms: int,
+        pre_meeting_context: str = "",
+        project_type: str = "",
+    ):
+        self.dms = max(1, min(5, dms))
+        self.context = pre_meeting_context or "não fornecido"
+        self.project_type = project_type or ""
+        self.dms_label = DMS_LABEL[self.dms]
+        self.dms_desc = DMS_DESCRIPTION[self.dms]
+
+    # -------------------------------------------------------------------------
+    # Helpers de tipo de projeto
+    # -------------------------------------------------------------------------
+
+    def _area_hint(self) -> str:
+        config = AREAS_BY_PROJECT_TYPE.get(self.project_type, {})
+        if not config:
+            return ""
+        critical = config.get("critical", [])
+        optional = config.get("optional", [])
+        inactive = config.get("inactive", [])
+        parts = [f"TIPO DE PROJETO: {self.project_type}"]
+        if critical:
+            parts.append(f"Áreas OBRIGATÓRIAS (avaliar com rigor): {', '.join(critical)}")
+        if optional:
+            parts.append(f"Áreas OPCIONAIS (avaliar se mencionadas): {', '.join(optional)}")
+        if inactive:
+            parts.append(
+                f"Áreas NÃO APLICÁVEIS para este tipo: {', '.join(inactive)}. "
+                "Para estas áreas retorne exatamente: "
+                'status="not_applicable", score=0, notes="não aplicável para este tipo de projeto".'
+            )
+        return "\n".join(parts)
+
+    # -------------------------------------------------------------------------
+    # CoverageClassifier
+    # -------------------------------------------------------------------------
+
+    def build_coverage_classifier(self) -> str:
+        if self.dms <= 2:
+            priority_hint = (
+                "ÁREAS PRIORITÁRIAS para este cliente: negocio (entender a dor e o processo atual), "
+                "eng_dados (quantas fontes, qualidade dos dados, se há processo manual de coleta), "
+                "parceria (prazo, urgência, ponto focal).\n"
+                "ÁREAS DE MENOR PESO: ciencia_dados e visualizacao — clientes neste nível raramente "
+                "têm infraestrutura para ML ou dashboards complexos; avalie com cautela.\n"
+                "IMPORTANTE: ausência de DW, ETL manual e dados em planilhas NÃO são gaps de cobertura "
+                "— são a realidade esperada para DMS 1-2. Não penalize por isso."
+            )
+        elif self.dms == 3:
+            priority_hint = (
+                "Todas as áreas aplicáveis têm peso equilibrado para este cliente. "
+                "O cliente já tem infraestrutura básica; foque em entender a qualidade dos dados, "
+                "cobertura do DW existente e capacidade de modelagem. "
+                "automacao e integracao começam a ser relevantes neste nível."
+            )
+        else:
+            priority_hint = (
+                "ÁREAS CRÍTICAS para este cliente: eng_dados (observabilidade dos pipelines, "
+                "monitoramento de qualidade, data lineage), ciencia_dados (qualidade do dado de "
+                "treinamento, monitoramento de modelo em produção), integracao (estabilidade das APIs, "
+                "documentação, autenticação).\n"
+                "Questione ausência de governança, falta de monitoramento e escalabilidade — "
+                "esses são gaps reais para um cliente DMS 4-5."
+            )
+
+        area_hint = self._area_hint()
+        area_block = f"{area_hint}\n\n" if area_hint else ""
+
+        return (
+            f"Você é um CoverageClassifier para diagnóstico de projetos de dados/tecnologia.\n"
+            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Contexto pré-reunião: {self.context}\n\n"
+            f"{area_block}"
+            f"{priority_hint}\n\n"
+            "REGRAS ESTRITAS DE PONTUAÇÃO — siga à risca:\n"
+            "- score 0 + 'uncovered': área NÃO foi mencionada na transcrição.\n"
+            "- score 1–40 + 'partial': área foi tocada superficialmente (1–2 menções rápidas).\n"
+            "- score 41–79 + 'partial': área foi discutida mas ainda há gaps importantes.\n"
+            "- score 80–100 + 'covered': área foi discutida em profundidade, aspectos principais confirmados com detalhes concretos.\n"
+            "- 'not_applicable': use APENAS para áreas declaradas NÃO APLICÁVEIS acima.\n"
+            "Se a transcrição for curta (< 200 palavras), a MAIORIA das áreas DEVE ser 'uncovered' com score 0.\n"
+            "NUNCA extrapole — não infira cobertura de algo não dito explicitamente.\n"
+            "Texto fragmentado, palavras soltas ou frases incompletas NÃO contam como cobertura.\n"
+            "Repetição da mesma frase várias vezes conta como UMA única menção.\n"
+            "Quando houver dúvida entre 'partial' e 'covered', escolha 'partial'.\n"
+            "Quando houver dúvida entre 'uncovered' e 'partial', escolha 'uncovered'.\n\n"
+            "Analise a transcrição e classifique a cobertura de cada área.\n"
+            "Retorne APENAS JSON válido (sem markdown fences):\n"
+            '{"areas":{"negocio":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"eng_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"visualizacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"ciencia_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"automacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"integracao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"consumo":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+            '"parceria":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""}}}'
+        )
+
+    # -------------------------------------------------------------------------
+    # RedFlagDetector
+    # -------------------------------------------------------------------------
+
+    def build_red_flag_detector(self) -> str:
+        if self.dms <= 2:
+            calibration = (
+                "SENSIBILIDADE CALIBRADA para DMS baixo:\n"
+                "✅ EMITA alerta se: o cliente quer ML/IA complexo sem ter dados organizados, "
+                "não há nenhum ponto focal técnico definido, o prazo é irreal para o escopo descrito, "
+                "ou o cliente descreve dados completamente caóticos sem nenhuma estrutura.\n"
+                "🚫 NÃO emita alerta para: ausência de DW, ETL manual, dados em planilhas, "
+                "falta de pipeline automatizado — isso é normal e esperado para DMS 1-2."
+            )
+        elif self.dms == 3:
+            calibration = (
+                "SENSIBILIDADE CALIBRADA para DMS médio:\n"
+                "✅ EMITA alerta se: dados de baixa qualidade para projetos ML, "
+                "ausência de DW para BI complexo, prazo agressivo para escopo amplo, "
+                "integrações críticas sem documentação de API.\n"
+                "🚫 NÃO emita alerta para: processos ainda não totalmente automatizados "
+                "ou falta de observabilidade avançada — são gaps esperados neste nível."
+            )
+        else:
+            calibration = (
+                "SENSIBILIDADE CALIBRADA para DMS alto:\n"
+                "✅ EMITA alerta se: pipelines sem monitoramento, dados sensíveis sem governança, "
+                "modelo em produção sem sistema de retraining, APIs críticas sem SLA definido, "
+                "ausência de documentação e data lineage em integrações complexas.\n"
+                "Para um cliente DMS 4-5, gaps de observabilidade e governança SÃO riscos reais."
+            )
+
+        type_hint = _TYPE_RED_FLAG_HINTS.get(self.project_type, "")
+        type_block = (
+            f"RISCOS ESPECÍFICOS PARA ESTE TIPO DE PROJETO ({self.project_type.upper()}):\n"
+            f"{type_hint}\n\n"
+        ) if type_hint else ""
+
+        return (
+            f"Você é um RedFlagDetector para diagnóstico de projetos de dados/tecnologia.\n"
+            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Contexto pré-reunião: {self.context}\n\n"
+            f"{type_block}"
+            f"{calibration}\n\n"
+            "Identifique até 2 riscos críticos na transcrição. Se não houver riscos reais, retorne lista vazia.\n"
+            "Retorne APENAS JSON válido:\n"
+            '{"red_flags":[{"text":"...","severity":"warning|critical","evidence":"trecho exato da transcrição"}]}'
+        )
+
+    # -------------------------------------------------------------------------
+    # QuestionPlanner
+    # -------------------------------------------------------------------------
+
+    def build_question_planner(self) -> str:
+        if self.dms <= 2:
+            vocab_hint = (
+                "VOCABULÁRIO: use linguagem simples e prática. "
+                f"EVITE completamente: {_ADVANCED_TERMS}. "
+                "Perguntas devem ser acessíveis: 'Como os dados chegam hoje?', "
+                "'Quem faz isso manualmente?', 'Existe alguma planilha central?'."
+            )
+        elif self.dms == 3:
+            vocab_hint = (
+                "VOCABULÁRIO: use nível intermediário. Pode mencionar DW, pipeline, ETL, dashboard, "
+                "qualidade de dados, frequência de atualização. "
+                "Evite termos de ponta como data mesh, lakehouse, MLOps."
+            )
+        else:
+            vocab_hint = (
+                "VOCABULÁRIO: pode usar vocabulário técnico completo — observabilidade, data contracts, "
+                "MLOps, governança, SLA, data lineage, lakehouse, feature store. "
+                "Este cliente entende e espera perguntas técnicas de alto nível."
+            )
+
+        type_focus = _TYPE_QUESTION_FOCUS.get(self.project_type, "")
+        type_block = f"{type_focus}\n\n" if type_focus else ""
+
+        return (
+            f"Você é um QuestionPlanner para diagnóstico de projetos de dados/tecnologia.\n"
+            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Contexto pré-reunião (o que já se sabe antes da conversa): {self.context}\n\n"
+            f"{type_block}"
+            f"{vocab_hint}\n\n"
+            "Sua tarefa: gerar exatamente 3 perguntas em português para o comercial fazer ao cliente.\n\n"
+            "ESTILO OBRIGATÓRIO — curtas, diretas, interrogativas:\n"
+            "✅ BOM: 'Quantas fontes de dados?', 'Precisa de IA?', 'Prazo do projeto?', 'Já tem DW?'\n"
+            "❌ RUIM: 'Poderia nos contar mais sobre como os dados chegam atualmente ao sistema?'\n"
+            "Máximo 10 palavras por pergunta. Sem introduções, sem contexto embutido — só a pergunta.\n\n"
+            "PRIORIDADE:\n"
+            "1. Analise a transcrição — identifique o que já foi dito e o que está sendo discutido agora.\n"
+            "2. Olhe a cobertura — priorize áreas ainda descobertas ou com score baixo.\n"
+            "3. Use o banco de perguntas apenas como REFERÊNCIA de temas. "
+            "Adapte, combine, reformule ou ignore completamente — use o que fizer sentido para a conversa atual.\n"
+            "4. Não repita perguntas recentes.\n\n"
+            "Retorne APENAS JSON válido:\n"
+            '{"questions":[{"text":"...","block":"negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"}]}'
+        )
+
+    # -------------------------------------------------------------------------
+    # ReportGenerator
+    # -------------------------------------------------------------------------
+
+    def build_report_generator(self) -> str:
+        if self.dms <= 2:
+            maturity_hint = (
+                "Na seção 'Maturidade de Dados': explique de forma simples o que o nível atual significa "
+                "na prática, que tipo de projeto é viável agora e o que seria necessário para evoluir. "
+                "Evite recomendar soluções complexas sem antes estruturar o básico."
+            )
+        elif self.dms == 3:
+            maturity_hint = (
+                "Na seção 'Maturidade de Dados': o cliente tem base funcional. "
+                "Foque no gap entre o que tem hoje e o que o projeto exige. "
+                "Recomende evoluções incrementais e pragmáticas."
+            )
+        else:
+            maturity_hint = (
+                "Na seção 'Maturidade de Dados': o cliente tem infraestrutura avançada. "
+                "Questione se há observabilidade, governança e escalabilidade adequadas para o projeto. "
+                "Se houver gaps nessas áreas, sinalize como riscos prioritários."
+            )
+
+        type_label = self.project_type.upper() if self.project_type else "não especificado"
+
+        return (
+            "Você é um tech lead sênior gerando um relatório de diagnóstico em português brasileiro.\n"
+            f"Tipo de projeto: {type_label}.\n"
+            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n\n"
+            "Escreva em Markdown claro e profissional. Seja específico e orientado a ações. Sem texto de preenchimento.\n\n"
+            f"{maturity_hint}\n\n"
+            "Estruture o relatório com estas seções:\n"
+            "## Resumo Executivo\n"
+            "## Cobertura por Área (tabela: Área | Status | Score | Observações — omita áreas not_applicable)\n"
+            "## Alertas Detectados\n"
+            "## Perguntas Realizadas\n"
+            "## Riscos e Recomendações\n"
+            "## Maturidade de Dados\n"
+            "  - Nível atual e o que isso significa na prática\n"
+            "  - Maturidade mínima necessária para o tipo de projeto\n"
+            "  - Gap identificado e impacto no projeto\n"
+            "  - Recomendações para elevar a maturidade\n"
+        )
+
+    # -------------------------------------------------------------------------
+    # Build all at once
+    # -------------------------------------------------------------------------
+
+    def build_all(self) -> dict[str, str]:
+        return {
+            "coverage_classifier": self.build_coverage_classifier(),
+            "red_flag_detector": self.build_red_flag_detector(),
+            "question_planner": self.build_question_planner(),
+            "report_generator": self.build_report_generator(),
+        }

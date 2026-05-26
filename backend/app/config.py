@@ -20,33 +20,13 @@ load_dotenv()
 
 @dataclass(frozen=True)
 class AppConfig:
-    """Configurações imutáveis do backend v2.
-
-    Por que frozen=True?
-    O parâmetro frozen=True torna o dataclass imutável: após criado, nenhum
-    campo pode ser alterado. Isso garante que a configuração carregada no
-    início da execução não seja acidentalmente modificada em outro lugar do
-    código. Se alguém tentar fazer config.supabase_url = "outro", o Python
-    levanta FrozenInstanceError.
-
-    Campos:
-        supabase_url  → URL do projeto Supabase (ex: https://xyz.supabase.co).
-                        Obrigatória: sem ela, nenhuma conexão com o banco funciona.
-        supabase_key  → service_role key do Supabase. Nunca exposta ao frontend.
-                        Obrigatória: usada para todas as operações server-side.
-    """
-
     supabase_url: str
     supabase_key: str
+    recall_api_key: str = ""
+    recall_region: str = "us-west-2"
 
 
 def load_config() -> AppConfig:
-    """Lê as variáveis de ambiente e retorna uma AppConfig validada.
-
-    Lança ValueError se SUPABASE_URL ou SUPABASE_KEY não estiverem definidas —
-    é melhor falhar cedo com mensagem clara do que deixar o erro aparecer mais
-    tarde em uma chamada ao banco de dados.
-    """
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
 
@@ -61,4 +41,9 @@ def load_config() -> AppConfig:
             "Add it to backend/.env: SUPABASE_KEY=your-service-role-key"
         )
 
-    return AppConfig(supabase_url=url, supabase_key=key)
+    return AppConfig(
+        supabase_url=url,
+        supabase_key=key,
+        recall_api_key=os.environ.get("RECALL_API_KEY", ""),
+        recall_region=os.environ.get("RECALL_REGION", "us-west-2"),
+    )

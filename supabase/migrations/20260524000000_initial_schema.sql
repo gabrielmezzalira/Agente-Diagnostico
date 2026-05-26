@@ -193,11 +193,61 @@ CREATE INDEX IF NOT EXISTS idx_session_prompts_session_agent ON session_prompts(
 
 
 -- =============================================================================
+-- Trigger: atualiza updated_at automaticamente em projects
+-- =============================================================================
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER trg_projects_updated_at
+    BEFORE UPDATE ON projects
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+-- =============================================================================
+-- Funções wrapper para Supabase Vault
+--
+-- Chamadas pelo backend FastAPI via supabase.rpc().
+-- SECURITY DEFINER + search_path = '' garante que apenas o service_role
+-- (usado pelo backend) consegue executar — anon/authenticated não têm acesso.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.vault_create_secret(p_secret text, p_name text)
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT vault.create_secret(p_secret, p_name);
+$$;
+
+REVOKE ALL ON FUNCTION public.vault_create_secret(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.vault_create_secret(text, text) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.vault_delete_secret(p_secret_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    DELETE FROM vault.secrets WHERE id = p_secret_id;
+$$;
+
+REVOKE ALL ON FUNCTION public.vault_delete_secret(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.vault_delete_secret(uuid) TO service_role;
+
+
+-- =============================================================================
 -- NOTA SOBRE O VAULT
 -- =============================================================================
 -- A extensão supabase_vault é necessária para armazenar a chave de API do Gemini.
--- Esta migration não chama vault.create_secret() — isso é feito pela aplicação
--- FastAPI no momento de criação de cada projeto.
+-- Esta migration cria as funções wrapper vault_create_secret e vault_delete_secret
+-- que o backend FastAPI chama via supabase.rpc().
 --
 -- Verifique que o Vault está disponível ANTES de rodar esta migration:
 --   SELECT count(*) FROM vault.secrets;
