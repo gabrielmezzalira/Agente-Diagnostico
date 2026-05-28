@@ -4,9 +4,6 @@
 **/*.pyc
 **/.venv
 **/venv
-**/node_modules
-**/dist
-frontend/dist
 backend/tests
 reports/
 *.pdf
@@ -14,3 +11,4 @@ reports/
 .github
 .playwright-mcp
 diagnostico
+frontend/
