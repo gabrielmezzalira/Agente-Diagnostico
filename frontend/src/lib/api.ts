@@ -1,4 +1,6 @@
-export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
+const _fromEnv = import.meta.env.VITE_API_URL as string | undefined
+export const API_BASE = _fromEnv ??
+  (window.location.hostname === 'localhost' ? 'http://localhost:8000' : window.location.origin)
 
 export interface Project {
   id: string
