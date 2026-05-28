@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agente Diagnóstico</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      background: #0f1117;
+      color: #e2e8f0;
+    }
+
+    header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #1e2535;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header svg { color: #22a267; }
+
+    header span {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .status-bar {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #161b27;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #374151;
+      flex-shrink: 0;
+    }
+
+    .dot.active {
+      background: #22a267;
+      box-shadow: 0 0 0 3px rgba(34,162,103,.2);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .6; }
+    }
+
+    .status-text { color: #94a3b8; }
+    .status-text strong { color: #e2e8f0; font-weight: 500; }
+
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .section label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 6px;
+    }
+
+    .session-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      background: #1e2535;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #94a3b8;
+      word-break: break-all;
+    }
+
+    .manual-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #1e2535;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #e2e8f0;
+      font-size: 12px;
+      outline: none;
+    }
+
+    input[type="text"]:focus { border-color: #22a267; }
+
+    button {
+      background: #22a267;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #1a8a57; }
+
+    .info {
+      padding: 12px 16px 14px;
+      color: #64748b;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .info a { color: #22a267; text-decoration: none; }
+
+    .no-session {
+      padding: 20px 16px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .no-session p { margin-bottom: 4px; }
+    .no-session small { font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 8v4l3 3"/>
+    </svg>
+    <span>Agente Diagnóstico</span>
+  </header>
+
+  <div class="status-bar">
+    <div class="dot" id="dot"></div>
+    <span class="status-text" id="status-text">Verificando...</span>
+  </div>
+
+  <div id="session-panel" style="display:none">
+    <div class="section">
+      <label>Session ID (detectado automaticamente)</label>
+      <div class="session-id" id="session-id-display">—</div>
+    </div>
+    <div class="section">
+      <label>Trocar sessão</label>
+      <div class="manual-row">
+        <input type="text" id="override-id" placeholder="novo uuid da sessão..." />
+        <button id="override-btn">Trocar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="no-session-panel" style="display:none" class="no-session">
+    <p>Nenhuma sessão ativa detectada.</p>
+    <small>Abra o app e inicie uma sessão.<br/>A extensão detectará automaticamente.</small>
+
+    <div class="section" style="margin-top:12px; padding: 0;">
+      <label style="text-align:left; margin-bottom:6px; display:block;">Ou cole o ID manualmente:</label>
+      <div class="manual-row">
+        <input type="text" id="manual-id" placeholder="uuid da sessão..." />
+        <button id="manual-btn">Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>URL do backend</label>
+    <div class="manual-row">
+      <input type="text" id="backend-url" placeholder="http://localhost:8000" />
+      <button id="save-url-btn">Salvar</button>
+    </div>
+  </div>
+
+  <div class="info">
+    Legendas do Meet devem estar ativas (botão <strong>CC</strong>).
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

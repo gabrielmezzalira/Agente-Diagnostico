@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Agente Diagnóstico — CITi",
+  "version": "1.0.0",
+  "description": "Captura transcrições do Google Meet para o Agente Diagnóstico em tempo real.",
+
+  "permissions": ["storage", "tabs"],
+
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://localhost:*/*",
+    "ws://localhost:*/*",
+    "https://*.railway.app/*",
+    "wss://*.railway.app/*",
+    "https://*.up.railway.app/*",
+    "wss://*.up.railway.app/*",
+    "https://*.vercel.app/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:*/*",
+        "https://*.railway.app/*",
+        "https://*.up.railway.app/*",
+        "https://*.vercel.app/*"
+      ],
+      "js": ["content_app.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content_meet.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Agente Diagnóstico"
+  }
+}
