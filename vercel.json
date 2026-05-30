@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://agente-diagnostico.vercel.app/$1",
+      "permanent": true
+    }
+  ]
+}
