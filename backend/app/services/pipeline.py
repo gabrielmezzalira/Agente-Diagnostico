@@ -29,6 +29,11 @@ class SessionPipeline:
             asyncio.create_task(self._expire_task(), name=f"expire-{self.state.session_id}"),
         ]
 
+    async def load_state_only(self) -> None:
+        """Carrega transcrição, red flags e cobertura do banco sem subir tasks de background.
+        Usado para gerar relatório de sessões já encerradas."""
+        await self._send_initial_state()
+
     async def stop(self) -> None:
         self._running = False
         for t in self._tasks:
@@ -501,8 +506,14 @@ class PipelineManager:
         )
 
         pipeline = SessionPipeline(state)
-        self._pipelines[session_id] = pipeline
-        await pipeline.start()
+        session_status = session.get("status", "active")
+        if session_status == "active":
+            self._pipelines[session_id] = pipeline
+            await pipeline.start()
+        else:
+            # Sessão encerrada: carrega contexto do banco sem subir tasks de background.
+            # Não armazena em _pipelines — uso único para gerar relatório.
+            await pipeline.load_state_only()
         return pipeline
 
     async def push_chunk(
