@@ -11,12 +11,19 @@ COVERAGE_AREAS = [
 ]
 
 
-def _init_coverage(project_type: str) -> "Dict[str, CoverageArea]":
+def _init_coverage(
+    project_type: str, custom_areas: "Optional[List[dict]]" = None
+) -> "Dict[str, CoverageArea]":
     inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
-    return {
+    coverage = {
         a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
         for a in COVERAGE_AREAS
     }
+    for area in custom_areas or []:
+        key = area.get("key")
+        if key:
+            coverage[key] = CoverageArea(name=area.get("name", ""))
+    return coverage
 
 
 @dataclass
@@ -24,6 +31,7 @@ class CoverageArea:
     status: str = "uncovered"  # uncovered | partial | covered
     score: int = 0
     notes: str = ""
+    name: str = ""  # nome legível (preenchido só para áreas específicas do projeto)
 
 
 @dataclass
@@ -58,6 +66,7 @@ class SessionState:
     question_ttl_seconds: int = 30
     bank_questions: List[dict] = field(default_factory=list)
     prompts: Dict[str, str] = field(default_factory=dict)
+    custom_areas: List[dict] = field(default_factory=list)
 
     transcript_chunks: List[dict] = field(default_factory=list)
     coverage: Dict[str, CoverageArea] = field(default_factory=dict)
@@ -71,7 +80,7 @@ class SessionState:
 
     def __post_init__(self) -> None:
         if not self.coverage:
-            self.coverage = _init_coverage(self.project_type)
+            self.coverage = _init_coverage(self.project_type, self.custom_areas)
 
     def get_transcript_text(self, last_n: int = 0) -> str:
         chunks = self.transcript_chunks[-last_n:] if last_n else self.transcript_chunks
@@ -107,6 +116,6 @@ class SessionState:
 
     def coverage_to_dict(self) -> dict:
         return {
-            area: {"status": c.status, "score": c.score, "notes": c.notes}
+            area: {"status": c.status, "score": c.score, "notes": c.notes, "name": c.name}
             for area, c in self.coverage.items()
         }

@@ -156,6 +156,44 @@ async def infer_project_type(api_key: str, context: str) -> tuple[str, int, int]
     return (inferred if inferred in valid else "bi"), inp, out
 
 
+async def generate_custom_areas(
+    api_key: str, project_type: str, pre_meeting_context: str, dms: int
+) -> tuple[list[dict], int, int]:
+    """Gera 2-4 áreas de cobertura específicas deste projeto a partir do contexto.
+
+    Retorna lista de {"key", "name"} — áreas que complementam as padrão do tipo.
+    """
+    system = (
+        "Você define áreas de risco/cobertura ESPECÍFICAS para um projeto de dados/tecnologia, "
+        "que serão monitoradas durante a reunião de diagnóstico.\n"
+        "As áreas PADRÃO (negócio, eng. de dados, visualização, ciência de dados, automação, "
+        "integração, consumo, parceria) JÁ existem — NÃO as repita.\n"
+        "Gere de 2 a 4 áreas adicionais que sejam particulares deste projeto e que NÃO estejam "
+        "cobertas pelas padrão. Exemplos: 'Qualidade da base documental', 'Latência de resposta', "
+        "'Confiabilidade jurídica', 'Conformidade LGPD', 'Custo por consulta'.\n"
+        "Se o contexto não sugerir nada específico, retorne lista vazia.\n"
+        "Retorne APENAS JSON válido:\n"
+        '{"areas":[{"key":"slug_curto_sem_espacos","name":"Nome Legível"}]}'
+    )
+    user = (
+        f"Tipo de projeto: {project_type or 'não especificado'}\n"
+        f"Data Maturity Score: {dms}/5\n"
+        f"Contexto pré-reunião:\n{pre_meeting_context or 'não fornecido'}"
+    )
+    text, inp, out = await _call(api_key, system, user)
+    try:
+        data = _parse_json(text)
+        areas = []
+        for a in data.get("areas", [])[:4]:
+            key = str(a.get("key", "")).strip().lower().replace(" ", "_")
+            name = str(a.get("name", "")).strip()
+            if key and name:
+                areas.append({"key": f"custom_{key}"[:40], "name": name[:60]})
+        return areas, inp, out
+    except Exception:
+        return [], inp, out
+
+
 async def generate_questions(
     api_key: str,
     transcript: str,

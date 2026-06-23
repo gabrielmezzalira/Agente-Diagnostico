@@ -144,10 +144,12 @@ class PromptBuilder:
         dms: int,
         pre_meeting_context: str = "",
         project_type: str = "",
+        custom_areas: "list[dict] | None" = None,
     ):
         self.dms = max(1, min(5, dms))
         self.context = pre_meeting_context or "não fornecido"
         self.project_type = project_type or ""
+        self.custom_areas = custom_areas or []
         self.dms_label = DMS_LABEL[self.dms]
         self.dms_desc = DMS_DESCRIPTION[self.dms]
 

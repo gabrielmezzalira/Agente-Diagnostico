@@ -128,15 +128,27 @@ class SessionPipeline:
         )
         self.state.add_token_cost(inp, out)
         if data:
+            changed = False
             for area, info in data.get("areas", {}).items():
-                if area in self.state.coverage:
-                    if self.state.coverage[area].status == "not_applicable":
-                        continue
-                    self.state.coverage[area] = CoverageArea(
-                        status=info.get("status", "uncovered"),
-                        score=info.get("score", 0),
-                        notes=info.get("notes", ""),
-                    )
+                if area not in self.state.coverage:
+                    continue
+                current = self.state.coverage[area]
+                if current.status == "not_applicable":
+                    continue
+                new_score = int(info.get("score", 0) or 0)
+                # Cobertura é monotônica: só sobe quando um tópico é de fato
+                # coberto. Nunca abaixa sozinha por causa da janela deslizante
+                # da transcrição — evita a flutuação aleatória do mapa.
+                if new_score <= current.score:
+                    continue
+                self.state.coverage[area] = CoverageArea(
+                    status=info.get("status", current.status),
+                    score=new_score,
+                    notes=info.get("notes", "") or current.notes,
+                )
+                changed = True
+            if not changed:
+                return
             db = get_supabase()
             db.table("coverage_snapshots").insert({
                 "session_id": self.state.session_id,
