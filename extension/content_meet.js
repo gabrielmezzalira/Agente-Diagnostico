@@ -101,13 +101,16 @@
 
     let startIdx = 0
     if (emittedTail.length) {
-      const aLen = Math.min(ANCHOR, emittedTail.length)
-      const anchor = emittedTail.slice(-aLen).map(norm).join(' ')
-      // procura a última ocorrência da âncora no texto visível
-      for (let i = words.length - aLen; i >= 0; i--) {
-        if (words.slice(i, i + aLen).map(norm).join(' ') === anchor) {
-          startIdx = i + aLen
-          break
+      let found = false
+      // Tenta âncoras de tamanho decrescente (ANCHOR → 1) para ser robusto a resets parciais da legenda
+      for (let aLen = Math.min(ANCHOR, emittedTail.length); aLen >= 1 && !found; aLen--) {
+        const anchor = emittedTail.slice(-aLen).map(norm).join(' ')
+        for (let i = words.length - aLen; i >= 0; i--) {
+          if (words.slice(i, i + aLen).map(norm).join(' ') === anchor) {
+            startIdx = i + aLen
+            found = true
+            break
+          }
         }
       }
     }

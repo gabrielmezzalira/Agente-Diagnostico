@@ -39,8 +39,22 @@ class SessionPipeline:
     async def push_chunk(self, text: str, speaker: Optional[str] = None) -> None:
         ts = datetime.now(timezone.utc).isoformat()
         chunk = {"text": text, "speaker": speaker, "timestamp": ts}
+
+        # Se o novo chunk é uma extensão do último chunk do mesmo speaker,
+        # transmite ao frontend só a parte nova (evita repetições na tela).
+        broadcast_text = text
+        if self.state.transcript_chunks:
+            last = self.state.transcript_chunks[-1]
+            if last.get("speaker") == speaker and text.startswith(last["text"]):
+                new_part = text[len(last["text"]):].strip()
+                if not new_part:
+                    return  # duplicata exata, descarta
+                broadcast_text = new_part
+
         self.state.transcript_chunks.append(chunk)
-        await ws_manager.broadcast(self.state.session_id, "transcript_chunk", chunk)
+        await ws_manager.broadcast(
+            self.state.session_id, "transcript_chunk", {**chunk, "text": broadcast_text}
+        )
 
     async def trigger_questions(self) -> None:
         asyncio.create_task(self._run_question_planner())
