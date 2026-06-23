@@ -1,7 +1,94 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Activity, Database } from 'lucide-react'
+import { Plus, Activity, Database, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
 import { api, type Project } from '../lib/api'
+
+const EXTENSION_URL =
+  'https://github.com/gabrielmezzalira/Agente-Diagnostico/releases/download/v1.0.0/agente-diagnostico-extension-v1.0.0.zip'
+
+const INSTALL_STEPS = [
+  'Baixe o arquivo .zip clicando no botão abaixo.',
+  'Extraia a pasta do arquivo baixado.',
+  'No Chrome, acesse chrome://extensions na barra de endereço.',
+  'Ative o "Modo do desenvolvedor" no canto superior direito.',
+  'Clique em "Carregar sem compactação" e selecione a pasta extraída.',
+  'O ícone do Agente Diagnóstico aparecerá na barra de extensões.',
+]
+
+function ExtensionBanner() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="mb-6 rounded-lg border border-[var(--color-border-green)] bg-[var(--color-green-bg-light)] overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--color-green-bg-tag)] transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <Puzzle size={15} className="text-[var(--color-accent)] shrink-0" />
+          <div>
+            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+              Extensão Chrome disponível
+            </span>
+            <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
+              Necessária para capturar transcrições do Google Meet
+            </span>
+          </div>
+        </div>
+        <ChevronDown
+          size={15}
+          className={`text-[var(--color-text-secondary)] transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 border-t border-[var(--color-border-green)]">
+          <p className="text-xs text-[var(--color-text-secondary)] mt-3 mb-3">
+            Instale a extensão no Chrome para que o Agente consiga capturar as transcrições
+            da reunião em tempo real.
+          </p>
+
+          <ol className="space-y-2 mb-4">
+            {INSTALL_STEPS.map((step, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-bold shrink-0 mt-0.5">
+                  {i + 1}
+                </div>
+                <span className="text-xs text-[var(--color-text-primary)] leading-relaxed">
+                  {i === 2 ? (
+                    <>
+                      No Chrome, acesse{' '}
+                      <code className="font-mono bg-[var(--color-muted)] px-1 py-0.5 rounded text-[11px]">
+                        chrome://extensions
+                      </code>{' '}
+                      na barra de endereço.
+                    </>
+                  ) : (
+                    step
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <a
+            href={EXTENSION_URL}
+            download
+            className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-accent)] text-white text-xs font-medium rounded-md hover:bg-[var(--color-accent-hover)] transition-colors"
+          >
+            <Download size={13} />
+            Baixar extensão v1.0.0
+          </a>
+
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+            <CheckCircle size={12} className="text-[var(--color-accent)]" />
+            Após instalar, basta abrir o Meet e a extensão começa a capturar automaticamente.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   bi: 'BI',
@@ -54,6 +141,8 @@ export default function HomePage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        <ExtensionBanner />
+
         <h1 className="text-lg font-semibold text-[var(--color-text-primary)] mb-5">Projetos</h1>
 
         {loading && (
