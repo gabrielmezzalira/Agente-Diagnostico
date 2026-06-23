@@ -149,7 +149,7 @@ async def get_session_report(session_id: UUID, db: Client = Depends(get_supabase
 @router.post("/{session_id}/report", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 async def generate_session_report(session_id: UUID, db: Client = Depends(get_supabase)):
     from app.services.pipeline import pipeline_manager
-    pipeline = await pipeline_manager.get_or_create(str(session_id))
+    pipeline = await pipeline_manager.get_or_create(str(session_id), allow_finished=True)
     if not pipeline:
         raise HTTPException(status_code=404, detail="Session not found or not active")
     markdown = await pipeline.trigger_report()

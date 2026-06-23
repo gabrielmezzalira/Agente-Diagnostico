@@ -417,18 +417,21 @@ class PipelineManager:
     def __init__(self):
         self._pipelines: Dict[str, SessionPipeline] = {}
 
-    async def get_or_create(self, session_id: str) -> Optional[SessionPipeline]:
+    async def get_or_create(
+        self, session_id: str, allow_finished: bool = False
+    ) -> Optional[SessionPipeline]:
         if session_id in self._pipelines:
             return self._pipelines[session_id]
 
         db = get_supabase()
-        session_res = (
+        query = (
             db.table("sessions")
             .select("*, projects(*)")
             .eq("id", session_id)
-            .eq("status", "active")
-            .execute()
         )
+        if not allow_finished:
+            query = query.eq("status", "active")
+        session_res = query.execute()
         if not session_res.data:
             return None
 
