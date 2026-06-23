@@ -455,7 +455,7 @@ class PipelineManager:
 
         if not project_type and gemini_key and pre_meeting_context:
             try:
-                inferred, inp, out = await llm_service.infer_project_type(
+                inferred, _, _ = await llm_service.infer_project_type(
                     gemini_key, pre_meeting_context
                 )
                 if inferred:
