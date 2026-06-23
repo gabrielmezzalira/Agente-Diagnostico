@@ -97,7 +97,7 @@ async def generate_report(
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
 ) -> tuple[str, int, int]:
-    from app.services.prompt_builder import CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
+    from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
     dms_levels = {1: "Inicial", 2: "Gerenciado", 3: "Definido", 4: "Quantificado", 5: "Otimizado"}
     dms_label = dms_levels.get(dms, str(dms))
@@ -113,26 +113,28 @@ async def generate_report(
     ) or "Nenhum alerta detectado."
 
     system = system_prompt or (
-        "Você é um tech lead sênior gerando um relatório de diagnóstico em português brasileiro.\n"
-        "Escreva em Markdown claro e profissional. Seja específico e orientado a ações. Sem texto de preenchimento.\n\n"
-        "Estruture o relatório com estas seções:\n"
-        "## Resumo Executivo\n"
+        "Você é um tech lead sênior da CITi gerando um relatório de diagnóstico técnico-comercial "
+        "em português brasileiro.\n"
+        "Escreva em Markdown claro e profissional. Seja específico, direto e orientado a ações. "
+        "Sem texto de preenchimento. Quando houver risco ou expectativa irreal, diga claramente.\n\n"
+        "Estruture o relatório com estas seções na ordem exata:\n"
+        "## Nível de Complexidade\n"
+        "  - Classificação: Simples | Médio | Complexo | Bomba\n"
+        "  - Justificativa\n"
         "## Cobertura por Área\n"
         "  Tabela: Área | Status | Score | Observações\n"
-        "## Alertas e Riscos\n"
+        "## Riscos e Alertas\n"
+        "  - 🚨 ALERTA CRÍTICO | ⚠️ RED FLAG\n"
         "## Arquitetura Recomendada\n"
-        "  Tabela: Camada | Tecnologia Recomendada | Justificativa\n"
-        "  Camadas possíveis: Ingestão | Armazenamento/DW | Transformação | Orquestração | Consumo/Visualização | IA/ML\n"
-        "  Omita camadas não aplicáveis. Justifique com base no projeto e no DMS.\n"
+        "  ### Stack por Camada (tabela: Camada | Tecnologia | Justificativa)\n"
+        "  ### Componentes e Fluxo de Dados\n"
+        "  ### Possíveis Armadilhas\n"
         "## Estrutura de Sprints Recomendada\n"
-        "  Selecione apenas módulos do catálogo CITi relevantes para este projeto.\n"
-        "  Tabela: Sprint | Módulo CITi | Principais Atividades | Duração (semanas)\n"
-        "  Adicione uma linha 'Total' com a soma de semanas ao final.\n"
+        "  Tabela: Sprint | Módulo CITi | Atividades | Duração (semanas) + linha Total\n"
+        "## Perguntas Ainda Sem Resposta\n"
+        "## Recomendação Final\n"
+        "  ✅ Fechar | ⚠️ Fechar com condições | ❌ Não fechar sem antes resolver X\n"
         "## Maturidade de Dados\n"
-        "  - Nível atual e significado prático\n"
-        "  - Maturidade mínima necessária para o projeto\n"
-        "  - Gap e impacto\n"
-        "  - Recomendações para elevar a maturidade\n"
     )
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
@@ -140,6 +142,7 @@ async def generate_report(
         f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
         f"## Cobertura final\n{coverage_text}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
+        f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
         f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
         f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
         f"## Transcrição completa\n{transcript}"

@@ -138,6 +138,34 @@ _TYPE_QUESTION_FOCUS: dict[str, str] = {
 }
 
 
+CITI_PORTFOLIO = """
+PORTFÓLIO CITi — FRENTES DE DADOS (use para alinhar recomendações comerciais):
+
+Strategy & Vision (entrada consultiva):
+  - Consultoria e Assessment de Dados: imersão estratégica (3-6 semanas). Recomendado quando
+    o cliente não sabe o que precisa ou tem DMS baixo. Substitui o kick-off de projetos maiores.
+  - IA Enterprise: adoção de IA na operação (frente técnica + frente humana). Exige DMS mínimo 3.
+  - Agentes de IA e Chatbots: soluções conversacionais alimentadas pela base de conhecimento do
+    cliente. Sem base de dados sólida, produz alucinações. Exige estrutura prévia.
+
+Business Intelligence:
+  - Análise de Dados: responde perguntas de negócio (descritiva → diagnóstica → preditiva → prescritiva)
+  - Dashboards e Visualização: painéis sob medida por perfil de usuário (CEO ≠ gerente ≠ operação)
+  - Automação de Relatórios e Alertas: elimina trabalho manual; geralmente acompanha BI ou Sustentação
+
+Data Infrastructure (necessidade frequentemente oculta):
+  - Pipelines e Centralização: ETL automatizado, Data Warehouse, Data Lake, infra em nuvem
+  - Integração de Sistemas: APIs, conectores nativos, webhooks, dev customizado
+  - Qualidade de Dados: limpeza, padronização, governança, LGPD — raramente vendido isolado
+
+REGRAS COMERCIAIS (aplique na Recomendação Final e nos Sprints):
+- Data Infrastructure quase sempre é necessidade oculta atrás de pedidos de BI ou IA.
+  Se o cliente pede BI/IA mas os dados não estão organizados → sinalize e inclua infraestrutura nos sprints.
+- Cliente quer IA com DMS ≤ 2 → recomende vender Discovery/Assessment antes da execução.
+- Assessment pode ser o projeto inicial E substituir o kick-off de projetos maiores.
+- Sem base de dados sólida, Agentes de IA e BI avançado produzem resultados ruins.
+""".strip()
+
 CITI_SERVICE_CATALOG = """
 CATÁLOGO DE SERVIÇOS CITi (use como referência para montar a estrutura de sprints):
 
@@ -445,45 +473,76 @@ class PromptBuilder:
 
         type_label = self.project_type.upper() if self.project_type else "não especificado"
 
+        complexity_hint = (
+            "Na seção 'Nível de Complexidade': clientes DMS 1-2 frequentemente subestimam o esforço "
+            "porque não enxergam o trabalho de infraestrutura que está por trás. Considere isso na "
+            "classificação — um pedido de BI simples para um cliente DMS 1 raramente é Simples."
+            if self.dms <= 2 else
+            "Na seção 'Nível de Complexidade': avalie com base no escopo real, número de integrações, "
+            "qualidade dos dados disponíveis, riscos técnicos e alinhamento entre expectativa e realidade."
+        )
+
         sprint_hint = (
             "Na seção 'Estrutura de Sprints': inclua obrigatoriamente um sprint de Diagnóstico e "
-            "Estratégia de Dados antes da execução — o cliente precisa estruturar o básico antes "
-            "de qualquer entrega técnica."
+            "Estratégia de Dados no início — o cliente precisa estruturar o básico antes de qualquer "
+            "entrega técnica. Se quiser IA com DMS ≤ 2, inclua Discovery antes."
             if self.dms <= 2 else
-            "Na seção 'Estrutura de Sprints': o cliente já tem base funcional. "
-            "Pode pular etapas básicas de infraestrutura se já as tiver. "
-            "Foque nos módulos que realmente entregam valor incremental."
+            "Na seção 'Estrutura de Sprints': cliente tem base funcional. Pode pular setup básico "
+            "se já o tiver. Foque nos módulos que entregam valor incremental real."
             if self.dms == 3 else
-            "Na seção 'Estrutura de Sprints': cliente DMS avançado. "
-            "Pule setup básico. Priorize módulos de qualidade, observabilidade e entrega de valor rápida."
+            "Na seção 'Estrutura de Sprints': cliente DMS avançado. Pule setup básico. "
+            "Priorize qualidade, observabilidade e entrega de valor rápida."
         )
 
         return (
-            "Você é um tech lead sênior gerando um relatório de diagnóstico em português brasileiro.\n"
+            "Você é um tech lead sênior da CITi gerando um relatório de diagnóstico técnico-comercial "
+            "em português brasileiro.\n"
             f"Tipo de projeto: {type_label}.\n"
             f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n\n"
-            "Escreva em Markdown claro e profissional. Seja específico e orientado a ações. Sem texto de preenchimento.\n\n"
+            "Escreva em Markdown claro e profissional. Seja específico, direto e orientado a ações. "
+            "Sem texto de preenchimento. Quando houver risco legal ou expectativa irreal, diga claramente.\n\n"
+            f"{complexity_hint}\n\n"
             f"{maturity_hint}\n\n"
             f"{sprint_hint}\n\n"
-            "Estruture o relatório com estas seções:\n"
-            "## Resumo Executivo\n"
+            "Na seção 'Recomendação Final', a decisão deve ser uma de:\n"
+            "  ✅ Fechar — projeto viável conforme apresentado\n"
+            "  ⚠️ Fechar com condições — liste o que precisa ser resolvido antes/durante\n"
+            "  ❌ Não fechar sem antes resolver X — liste o que inviabiliza o fechamento agora\n\n"
+            "Estruture o relatório com estas seções na ordem exata:\n"
+            "## Nível de Complexidade\n"
+            "  - Classificação: Simples | Médio | Complexo | Bomba\n"
+            "  - Justificativa baseada no escopo, DMS, riscos técnicos e alinhamento de expectativas\n"
             "## Cobertura por Área\n"
-            "  Tabela: Área | Status | Score | Observações (omita áreas not_applicable)\n"
-            "## Alertas e Riscos\n"
+            "  Tabela: Área | Status | Score | Observações (omita not_applicable)\n"
+            "## Riscos e Alertas\n"
+            "  - 🚨 ALERTA CRÍTICO: riscos que podem inviabilizar o projeto ou gerar prejuízo\n"
+            "  - ⚠️ RED FLAG: pontos de atenção que precisam ser endereçados antes ou durante\n"
             "## Arquitetura Recomendada\n"
-            "  Tabela: Camada | Tecnologia Recomendada | Justificativa\n"
-            "  Camadas possíveis: Ingestão | Armazenamento/DW | Transformação | Orquestração | Consumo/Visualização | IA/ML\n"
-            "  Omita camadas não aplicáveis ao tipo de projeto.\n"
-            "  Justifique cada escolha com base no projeto e no DMS do cliente.\n"
+            "  ### Stack por Camada\n"
+            "    Tabela: Camada | Tecnologia Recomendada | Justificativa\n"
+            "    Camadas possíveis: Ingestão | Armazenamento/DW | Transformação | Orquestração | Consumo/Visualização | IA/ML\n"
+            "    Omita camadas não aplicáveis. Justifique cada escolha com base no projeto e DMS.\n"
+            "  ### Componentes e Fluxo de Dados\n"
+            "    - Liste os módulos principais numerados\n"
+            "    - Descreva o fluxo de dados entre eles em uma linha (ex: Módulo A → Módulo B → ...)\n"
+            "  ### Possíveis Armadilhas\n"
+            "    - Riscos arquiteturais específicos deste projeto que costumam ser subestimados\n"
             "## Estrutura de Sprints Recomendada\n"
-            "  Selecione apenas os módulos do catálogo CITi relevantes para este projeto.\n"
+            "  Selecione apenas módulos do catálogo CITi relevantes. Use o portfólio CITi para guiar "
+            "quais frentes incluir.\n"
             "  Tabela: Sprint | Módulo CITi | Principais Atividades | Duração (semanas)\n"
-            "  Adicione uma linha 'Total' com a soma de semanas ao final.\n"
-            "  Estime com base na complexidade indicada na transcrição e no DMS do cliente.\n"
+            "  Adicione linha 'Total' com a soma de semanas ao final.\n"
+            "## Perguntas Ainda Sem Resposta\n"
+            "  - Liste o que ficou sem resposta na reunião e precisa ser esclarecido antes de fechar\n"
+            "  - Para cada pergunta: por que é crítica e o que a falta dela implica\n"
+            "## Recomendação Final\n"
+            "  - Decisão com emoji (✅ / ⚠️ / ❌)\n"
+            "  - Justificativa objetiva\n"
+            "  - Próximos passos concretos numerados\n"
             "## Maturidade de Dados\n"
-            "  - Nível atual e o que isso significa na prática\n"
-            "  - Maturidade mínima necessária para o tipo de projeto\n"
-            "  - Gap identificado e impacto no projeto\n"
+            "  - Nível atual e o que significa na prática para este cliente\n"
+            "  - Maturidade mínima necessária para o projeto proposto\n"
+            "  - Gap identificado e impacto concreto no projeto\n"
             "  - Recomendações para elevar a maturidade\n"
         )
 
