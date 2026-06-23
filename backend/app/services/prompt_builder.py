@@ -138,6 +138,85 @@ _TYPE_QUESTION_FOCUS: dict[str, str] = {
 }
 
 
+CITI_SERVICE_CATALOG = """
+CATÁLOGO DE SERVIÇOS CITi (use como referência para montar a estrutura de sprints):
+
+Geral
+  - Onboarding e Alinhamento | Mapeamento de Regras de Negócio
+
+Diagnóstico e Estratégia de Dados
+  - Fase 1: Imersão Estratégica
+  - Fase 2: Mapeamento de Dados e Processos
+  - Fase 3: Análise e Diagnóstico
+  - Fase 4: Plano de Ação
+
+Engenharia de Dados
+  - Ingestão de dados (planilha/banco) | Construção de API | Ingestão via API
+  - Tratamento e limpeza | Padronização e regras de negócio | Integração entre fontes
+  - Configuração de automação e orquestração de pipeline
+  - Integração com APIs externas | Construção de endpoints
+
+Data Warehouse
+  - Setup da infraestrutura | Configuração do ambiente (cloud, banco, permissões)
+  - Definição da arquitetura (camadas, tecnologia) | Modelagem de dados
+  - Construção da camada RAW | Construção da camada tratada
+  - Integração de dados no ambiente analítico | Estruturação de tabelas analíticas
+  - Testes e validação | Documentação do modelo de dados
+
+Dashboards
+  - Definição de métricas e KPIs | Construção de visualizações básicas
+  - Implementação de filtros e segmentações | Drill-down
+  - Apresentação e entrega | Ajustes pós-feedback
+
+Automação
+  - Mapeamento do fluxo | Integração com APIs | Construção do fluxo
+  - Regras de decisão | Tratamento de erros | Testes e validação
+
+Análise e Insights Estratégicos
+  - Levantamento e preparação dos dados | Exploração e cruzamento
+  - Identificação de padrões e gargalos | Teste de hipóteses
+  - Identificação de oportunidades e riscos | Recomendações estratégicas
+  - Modelagem preditiva (se aplicável) | Avaliação e treinamento de modelo
+  - Apresentação executiva
+
+IA Aplicada ao Negócio
+  - Entendimento do problema | Ingestão de dados (PDF/API/planilha)
+  - Tratamento e estruturação | Criação de embeddings | Construção do RAG
+  - Definição de regras e contexto | Lógica de recomendação
+  - Construção de agente (se aplicável) | Integração com sistemas
+  - Interface (chat/web) | Testes e validação | Deploy
+""".strip()
+
+CITI_TECH_REFERENCE = """
+REFERÊNCIA DE TECNOLOGIAS (recomende o que se aplica ao projeto e ao DMS):
+
+Linguagem / Backend:
+  Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2.0, asyncpg
+
+Banco de Dados / DW:
+  PostgreSQL 16, BigQuery, Snowflake, DuckDB, dbt, pgvector
+
+Ingestão / ETL:
+  pandas, polars, Airbyte, Apache Spark (volumes grandes)
+
+Orquestração:
+  n8n (automação low-code), Apache Airflow, Prefect, APScheduler
+
+BI / Visualização:
+  Power BI, Metabase, Looker Studio, Apache Superset
+
+IA / ML:
+  Google Gemini 2.5 Flash, OpenAI GPT-4o, LangChain, LangGraph,
+  scikit-learn, XGBoost, MLflow, ChromaDB, FAISS
+
+Infraestrutura:
+  Docker, Docker Compose, Railway, Vercel, GCP (Cloud Run, BigQuery), AWS
+
+Qualidade:
+  pytest, Great Expectations, dbt tests
+""".strip()
+
+
 class PromptBuilder:
     def __init__(
         self,
@@ -366,18 +445,41 @@ class PromptBuilder:
 
         type_label = self.project_type.upper() if self.project_type else "não especificado"
 
+        sprint_hint = (
+            "Na seção 'Estrutura de Sprints': inclua obrigatoriamente um sprint de Diagnóstico e "
+            "Estratégia de Dados antes da execução — o cliente precisa estruturar o básico antes "
+            "de qualquer entrega técnica."
+            if self.dms <= 2 else
+            "Na seção 'Estrutura de Sprints': o cliente já tem base funcional. "
+            "Pode pular etapas básicas de infraestrutura se já as tiver. "
+            "Foque nos módulos que realmente entregam valor incremental."
+            if self.dms == 3 else
+            "Na seção 'Estrutura de Sprints': cliente DMS avançado. "
+            "Pule setup básico. Priorize módulos de qualidade, observabilidade e entrega de valor rápida."
+        )
+
         return (
             "Você é um tech lead sênior gerando um relatório de diagnóstico em português brasileiro.\n"
             f"Tipo de projeto: {type_label}.\n"
             f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n\n"
             "Escreva em Markdown claro e profissional. Seja específico e orientado a ações. Sem texto de preenchimento.\n\n"
             f"{maturity_hint}\n\n"
+            f"{sprint_hint}\n\n"
             "Estruture o relatório com estas seções:\n"
             "## Resumo Executivo\n"
-            "## Cobertura por Área (tabela: Área | Status | Score | Observações — omita áreas not_applicable)\n"
-            "## Alertas Detectados\n"
-            "## Perguntas Realizadas\n"
-            "## Riscos e Recomendações\n"
+            "## Cobertura por Área\n"
+            "  Tabela: Área | Status | Score | Observações (omita áreas not_applicable)\n"
+            "## Alertas e Riscos\n"
+            "## Arquitetura Recomendada\n"
+            "  Tabela: Camada | Tecnologia Recomendada | Justificativa\n"
+            "  Camadas possíveis: Ingestão | Armazenamento/DW | Transformação | Orquestração | Consumo/Visualização | IA/ML\n"
+            "  Omita camadas não aplicáveis ao tipo de projeto.\n"
+            "  Justifique cada escolha com base no projeto e no DMS do cliente.\n"
+            "## Estrutura de Sprints Recomendada\n"
+            "  Selecione apenas os módulos do catálogo CITi relevantes para este projeto.\n"
+            "  Tabela: Sprint | Módulo CITi | Principais Atividades | Duração (semanas)\n"
+            "  Adicione uma linha 'Total' com a soma de semanas ao final.\n"
+            "  Estime com base na complexidade indicada na transcrição e no DMS do cliente.\n"
             "## Maturidade de Dados\n"
             "  - Nível atual e o que isso significa na prática\n"
             "  - Maturidade mínima necessária para o tipo de projeto\n"

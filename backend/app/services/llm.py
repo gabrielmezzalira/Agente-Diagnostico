@@ -97,33 +97,42 @@ async def generate_report(
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
 ) -> tuple[str, int, int]:
+    from app.services.prompt_builder import CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
+
     dms_levels = {1: "Inicial", 2: "Gerenciado", 3: "Definido", 4: "Quantificado", 5: "Otimizado"}
     dms_label = dms_levels.get(dms, str(dms))
 
     coverage_text = "\n".join(
         f"- {area}: {info['status']} ({info['score']}%) — {info.get('notes', '')}".rstrip(" — ")
         for area, info in coverage.items()
+        if info.get("status") != "not_applicable"
     )
     flags_text = "\n".join(
         f"- [{f.get('severity', 'warning').upper()}] {f.get('text', '')} | evidência: {f.get('evidence', '')}"
         for f in red_flags
     ) or "Nenhum alerta detectado."
-    questions_text = "\n".join(f"- {q}" for q in questions_used) or "Nenhuma pergunta registrada."
 
     system = system_prompt or (
-        "You are a senior data tech lead generating a diagnostic report in Brazilian Portuguese.\n"
-        "Write in clear, professional Markdown. Be specific and actionable. No filler text.\n"
-        "Structure the report with these sections:\n"
+        "Você é um tech lead sênior gerando um relatório de diagnóstico em português brasileiro.\n"
+        "Escreva em Markdown claro e profissional. Seja específico e orientado a ações. Sem texto de preenchimento.\n\n"
+        "Estruture o relatório com estas seções:\n"
         "## Resumo Executivo\n"
-        "## Cobertura por Área (table: Área | Status | Score | Observações)\n"
-        "## Alertas Detectados\n"
-        "## Perguntas Realizadas\n"
-        "## Riscos e Recomendações\n"
+        "## Cobertura por Área\n"
+        "  Tabela: Área | Status | Score | Observações\n"
+        "## Alertas e Riscos\n"
+        "## Arquitetura Recomendada\n"
+        "  Tabela: Camada | Tecnologia Recomendada | Justificativa\n"
+        "  Camadas possíveis: Ingestão | Armazenamento/DW | Transformação | Orquestração | Consumo/Visualização | IA/ML\n"
+        "  Omita camadas não aplicáveis. Justifique com base no projeto e no DMS.\n"
+        "## Estrutura de Sprints Recomendada\n"
+        "  Selecione apenas módulos do catálogo CITi relevantes para este projeto.\n"
+        "  Tabela: Sprint | Módulo CITi | Principais Atividades | Duração (semanas)\n"
+        "  Adicione uma linha 'Total' com a soma de semanas ao final.\n"
         "## Maturidade de Dados\n"
-        "  - Score atual e nível\n"
-        "  - Maturidade mínima necessária para o tipo de projeto\n"
-        "  - Gap e impacto no projeto\n"
-        "  - Recomendações para elevar maturidade\n"
+        "  - Nível atual e significado prático\n"
+        "  - Maturidade mínima necessária para o projeto\n"
+        "  - Gap e impacto\n"
+        "  - Recomendações para elevar a maturidade\n"
     )
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
@@ -131,7 +140,8 @@ async def generate_report(
         f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
         f"## Cobertura final\n{coverage_text}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
-        f"## Perguntas realizadas\n{questions_text}\n\n"
+        f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
+        f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
         f"## Transcrição completa\n{transcript}"
     )
     text, inp, out = await _call(api_key, system, user)
