@@ -5,19 +5,19 @@ Calibração dupla: DMS (1–5) × tipo de projeto (bi, ml, data_engineering, au
 """
 
 DMS_LABEL = {
-    1: "Inicial",
-    2: "Gerenciado",
-    3: "Definido",
-    4: "Quantificado",
-    5: "Otimizado",
+    1: "Sem estrutura",
+    2: "Estrutura inicial",
+    3: "Dados centralizados",
+    4: "Maturidade analítica",
+    5: "Data-driven",
 }
 
 DMS_DESCRIPTION = {
-    1: "dados em planilhas manuais, sem pipeline, sem integração entre sistemas",
-    2: "dados centralizados mas sem qualidade garantida, ETL manual ou básico",
-    3: "pipelines funcionando, alguma qualidade de dados, DW básico presente",
-    4: "dados confiáveis, pipelines monitorados, KPIs consolidados",
-    5: "dados como ativo estratégico, governança completa, observabilidade, data mesh",
+    1: "dados espalhados em planilhas, WhatsApp e sistemas desconectados; sem governança, sem centralização",
+    2: "dados minimamente organizados em algum sistema, mas sem integração entre fontes e sem processo de qualidade",
+    3: "infraestrutura básica funcionando, dados acessíveis e centralizados, mas sem camada analítica consolidada",
+    4: "dados organizados, BI em uso, time consome informação para decisão; pronto para automações e primeiros casos de IA",
+    5: "cultura analítica consolidada, infraestrutura robusta e escalável, time preparado para IA estruturada",
 }
 
 _ADVANCED_TERMS = (
@@ -164,6 +164,13 @@ REGRAS COMERCIAIS (aplique na Recomendação Final e nos Sprints):
 - Cliente quer IA com DMS ≤ 2 → recomende vender Discovery/Assessment antes da execução.
 - Assessment pode ser o projeto inicial E substituir o kick-off de projetos maiores.
 - Sem base de dados sólida, Agentes de IA e BI avançado produzem resultados ruins.
+
+COMO INTERPRETAR O DMS (4 dimensões: Infraestrutura, Qualidade, Cultura Analítica, Maturidade com IA):
+- O nível final é sempre o MENOR entre as 4 dimensões — a fundação determina o teto.
+- Cliente com BI consolidado mas sem infraestrutura de dados = DMS 2, não DMS 3.
+- Se o cliente não consegue explicar onde os dados vivem → infraestrutura não está resolvida → DMS ≤ 2.
+- Sinais DMS 1-2: planilhas, coleta manual, sem cloud, sem responsável pelos dados, sem dashboard em uso.
+- Sinais DMS 4-5: pipeline automatizado, BI em uso diário, time data-driven, já experimentou IA.
 """.strip()
 
 CITI_SERVICE_CATALOG = """
