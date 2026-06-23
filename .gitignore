@@ -19,3 +19,6 @@ reports/
 
 # PDFs e outros binários pesados
 *.pdf
+
+# Playwright MCP
+.playwright-mcp/
