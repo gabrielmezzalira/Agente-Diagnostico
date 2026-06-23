@@ -36,7 +36,16 @@ async def _call(api_key: str, system: str, user: str) -> tuple[str, int, int]:
         contents=user,
         config=config,
     )
-    text = response.text or ""
+    # gemini-2.5-* has thinking enabled by default. response.text concatenates ALL
+    # candidate parts — including thought parts (drafts) — producing repeated sections
+    # and ~1.8MB of whitespace padding. Collect only non-thought output parts.
+    text = ""
+    if response.candidates and response.candidates[0].content.parts:
+        for part in response.candidates[0].content.parts:
+            if not getattr(part, "thought", False):
+                text += part.text or ""
+    if not text:
+        text = response.text or ""
     usage = response.usage_metadata
     return text, usage.prompt_token_count or 0, usage.candidates_token_count or 0
 
