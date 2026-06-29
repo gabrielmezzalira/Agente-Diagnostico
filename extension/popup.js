@@ -13,38 +13,57 @@ const overrideBtn = document.getElementById('override-btn')
 const backendUrlInput = document.getElementById('backend-url')
 const saveUrlBtn = document.getElementById('save-url-btn')
 
-function renderQuestions(questions) {
-  if (!questions || questions.length === 0) {
-    questionsList.innerHTML = '<div class="no-questions">Nenhuma pergunta ainda.</div>'
-    return
-  }
+function generateQuestions() {
+  chrome.runtime.sendMessage({ type: 'GET_STATE' }, (state) => {
+    if (!state.backendUrl || !state.sessionId) return
+    const btn = document.getElementById('generate-btn')
+    if (btn) { btn.textContent = 'Gerando...'; btn.disabled = true }
+    fetch(`${state.backendUrl}/sessions/${state.sessionId}/questions/generate`, { method: 'POST' })
+      .then(() => {
+        if (btn) { btn.textContent = '✓ Enviado'; setTimeout(() => { btn.textContent = '⚡ Gerar'; btn.disabled = false }, 2000) }
+      })
+      .catch(() => {
+        if (btn) { btn.textContent = '⚡ Gerar'; btn.disabled = false }
+      })
+  })
+}
 
-  questionsList.innerHTML = questions
-    .filter(q => q.status === 'queued' || q.status === 'pinned')
-    .map(q => `
-      <div class="question-card" data-id="${q.id}">
-        ${q.block ? `<div class="q-block">${q.block}</div>` : ''}
-        <div class="q-text">${q.text}</div>
-        <div class="q-actions">
-          <button class="btn-pin" data-action="pinned" data-id="${q.id}">${q.status === 'pinned' ? 'Fixada' : 'Fixar'}</button>
-          <button class="btn-used" data-action="used" data-id="${q.id}">Usada</button>
-          <button class="btn-dismiss" data-action="dismissed" data-id="${q.id}">Descartar</button>
+function renderQuestions(questions) {
+  const visible = (questions || []).filter(q => q.status === 'queued' || q.status === 'pinned')
+
+  questionsList.innerHTML = `
+    <button id="generate-btn" style="width:100%;padding:6px;margin-bottom:8px;background:#22a267;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">⚡ Gerar</button>
+    ${visible.length === 0
+      ? '<div class="no-questions">Nenhuma pergunta ainda.</div>'
+      : visible.map(q => `
+        <div class="question-card" data-id="${q.id}">
+          ${q.block ? `<div class="q-block">${q.block}</div>` : ''}
+          <div class="q-text">${q.text}</div>
+          <div class="q-actions">
+            <button class="btn-pin" data-action="pinned" data-id="${q.id}">${q.status === 'pinned' ? 'Fixada' : 'Fixar'}</button>
+            <button class="btn-used" data-action="used" data-id="${q.id}">Usada</button>
+            <button class="btn-dismiss" data-action="dismissed" data-id="${q.id}">Descartar</button>
+          </div>
         </div>
-      </div>
-    `).join('')
+      `).join('')
+    }
+  `
+
+  document.getElementById('generate-btn').addEventListener('click', generateQuestions)
 
   questionsList.querySelectorAll('.q-actions button').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id
       const status = btn.dataset.action
+      // Optimistic removal: remove card immediately from DOM
+      const card = questionsList.querySelector(`.question-card[data-id="${id}"]`)
+      if (card) card.remove()
       chrome.runtime.sendMessage({ type: 'GET_STATE' }, (state) => {
         if (!state.backendUrl || !id) return
         fetch(`${state.backendUrl}/questions/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
-        }).then(() => {
-          chrome.runtime.sendMessage({ type: 'GET_STATE' }, render)
         }).catch(() => {})
       })
     })

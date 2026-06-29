@@ -232,10 +232,10 @@ class SessionPipeline:
         recent = list({
             q.text
             for q in self.state.questions
-            if q.source == "pre_mapped"
+            if q.source == "pre_mapped" or q.status == "dismissed"
         } | {
             q.text
-            for q in self.state.questions[-3:]
+            for q in self.state.questions[-6:]
             if q.status in ("queued", "pinned", "used")
         })
         questions, inp, out = await llm_service.generate_questions(

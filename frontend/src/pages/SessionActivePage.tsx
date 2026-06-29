@@ -567,6 +567,7 @@ export default function SessionActivePage() {
   const [error, setError] = useState<string | null>(null)
   const [finishing, setFinishing] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [reportModal, setReportModal] = useState<string | null>(null)
   const [finishedReport, setFinishedReport] = useState<Report | null>(null)
 
@@ -626,6 +627,21 @@ export default function SessionActivePage() {
 
   function handleForceClassify() {
     send('force_classify')
+  }
+
+  async function handleRegenerate() {
+    if (!sessionId || regenerating) return
+    setRegenerating(true)
+    setError(null)
+    try {
+      const report = await api.sessions.generateReport(sessionId)
+      setFinishedReport(report)
+      setReportModal(report.markdown_content)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erro ao regenerar relatório')
+    } finally {
+      setRegenerating(false)
+    }
   }
 
   async function handleGenerateReport() {
@@ -698,15 +714,25 @@ export default function SessionActivePage() {
               </Link>
               <span className="text-sm font-medium text-[var(--color-text-primary)]">Sessão encerrada</span>
             </div>
-            {finishedReport && (
+            <div className="flex items-center gap-2">
+              {finishedReport && (
+                <button
+                  onClick={() => setReportModal(finishedReport.markdown_content)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] border border-[var(--color-border-green)] rounded-[var(--radius-btn)] hover:bg-[var(--color-green-bg-tag)] transition-colors"
+                >
+                  <FileText size={12} />
+                  Ver Relatório
+                </button>
+              )}
               <button
-                onClick={() => setReportModal(finishedReport.markdown_content)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] border border-[var(--color-border-green)] rounded-[var(--radius-btn)] hover:bg-[var(--color-green-bg-tag)] transition-colors"
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-50"
               >
-                <FileText size={12} />
-                Ver Relatório
+                <RefreshCw size={12} />
+                {regenerating ? 'Gerando...' : 'Regenerar'}
               </button>
-            )}
+            </div>
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
@@ -759,6 +785,26 @@ export default function SessionActivePage() {
               >
                 Ver relatório completo →
               </button>
+            </div>
+          )}
+
+          {ws.transcript.length > 0 && (
+            <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[var(--color-border-std)]">
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+                  Transcrição ({ws.transcript.length} blocos)
+                </span>
+              </div>
+              <div className="overflow-y-auto max-h-96 px-4 py-3 space-y-2">
+                {ws.transcript.map((c, i) => (
+                  <div key={i} className="text-sm">
+                    {c.speaker && (
+                      <span className="text-xs font-medium text-[var(--color-accent)] mr-1">{c.speaker}:</span>
+                    )}
+                    <span className="text-[var(--color-text-primary)]">{c.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

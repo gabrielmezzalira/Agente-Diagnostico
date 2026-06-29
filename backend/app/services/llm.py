@@ -25,11 +25,12 @@ def _parse_json(text: str) -> Any:
     return json.loads(raw)
 
 
-async def _call(api_key: str, system: str, user: str) -> tuple[str, int, int]:
+async def _call(api_key: str, system: str, user: str, max_output_tokens: int | None = None) -> tuple[str, int, int]:
     client = genai.Client(api_key=api_key)
     config = genai_types.GenerateContentConfig(
         system_instruction=system,
         temperature=0.3,
+        max_output_tokens=max_output_tokens,
     )
     response = await client.aio.models.generate_content(
         model=MODEL,
@@ -169,7 +170,7 @@ async def generate_report(
         f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
         f"## Transcrição completa\n{transcript}"
     )
-    text, inp, out = await _call(api_key, system, user)
+    text, inp, out = await _call(api_key, system, user, max_output_tokens=16384)
     return text, inp, out
 
 
