@@ -298,6 +298,7 @@ class SessionPipeline:
             dms=self.state.data_maturity_score,
             pre_meeting_context=self.state.pre_meeting_context,
             system_prompt=self.state.prompts.get("report_generator"),
+            structured_context=self.state.structured_context,
         )
         self.state.add_token_cost(inp, out)
         db = get_supabase()
@@ -474,10 +475,21 @@ class PipelineManager:
             except Exception:
                 pass
 
+        from app.services.structured_context import extract_structured_context
+        structured_ctx = None
+        if gemini_key and pre_meeting_context:
+            try:
+                structured_ctx, _, _ = await extract_structured_context(gemini_key, pre_meeting_context)
+                if structured_ctx.is_empty():
+                    structured_ctx = None
+            except Exception:
+                pass
+
         builder = PromptBuilder(
             dms=project.get("data_maturity_score") or 3,
             pre_meeting_context=pre_meeting_context,
             project_type=project_type,
+            structured_context=structured_ctx,
         )
         prompts = builder.build_all()
 
@@ -503,6 +515,7 @@ class PipelineManager:
             prompts=prompts,
             tokens_used=session.get("tokens_used") or 0,
             cost_usd=float(session.get("cost_usd") or 0),
+            structured_context=structured_ctx,
         )
 
         pipeline = SessionPipeline(state)

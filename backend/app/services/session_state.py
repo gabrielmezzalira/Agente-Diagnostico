@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from app.services.llm import INPUT_COST_PER_1K, OUTPUT_COST_PER_1K
 from app.services.prompt_builder import AREAS_BY_PROJECT_TYPE
@@ -75,6 +75,7 @@ class SessionState:
 
     tokens_used: int = 0
     cost_usd: float = 0.0
+    structured_context: Optional[Any] = None  # StructuredContext | None
 
     chunk_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
 

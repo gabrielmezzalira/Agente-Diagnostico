@@ -259,6 +259,7 @@ class PromptBuilder:
         pre_meeting_context: str = "",
         project_type: str = "",
         custom_areas: "list[dict] | None" = None,
+        structured_context: "object | None" = None,
     ):
         self.dms = max(1, min(5, dms))
         self.context = pre_meeting_context or "não fornecido"
@@ -266,6 +267,8 @@ class PromptBuilder:
         self.custom_areas = custom_areas or []
         self.dms_label = DMS_LABEL[self.dms]
         self.dms_desc = DMS_DESCRIPTION[self.dms]
+        # StructuredContext | None — duck typing, sem import em runtime
+        self.sc = structured_context if (structured_context and not structured_context.is_empty()) else None
 
     # -------------------------------------------------------------------------
     # Helpers de tipo de projeto
@@ -326,11 +329,15 @@ class PromptBuilder:
         area_hint = self._area_hint()
         area_block = f"{area_hint}\n\n" if area_hint else ""
 
+        stack_hint = self.sc.to_stack_hint() if self.sc else ""
+        stack_block = f"{stack_hint}\n\n" if stack_hint else ""
+
         return (
             f"Você é um CoverageClassifier para diagnóstico de projetos de dados/tecnologia.\n"
             f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
             f"Contexto pré-reunião: {self.context}\n\n"
             f"{area_block}"
+            f"{stack_block}"
             f"{priority_hint}\n\n"
             "REGRAS ESTRITAS DE PONTUAÇÃO — siga à risca:\n"
             "- score 0 + 'uncovered': área NÃO foi mencionada na transcrição.\n"
@@ -394,11 +401,15 @@ class PromptBuilder:
             f"{type_hint}\n\n"
         ) if type_hint else ""
 
+        flag_hint = self.sc.to_flag_hint() if self.sc else ""
+        flag_block = f"{flag_hint}\n\n" if flag_hint else ""
+
         return (
             f"Você é um RedFlagDetector para diagnóstico de projetos de dados/tecnologia.\n"
             f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
             f"Contexto pré-reunião: {self.context}\n\n"
             f"{type_block}"
+            f"{flag_block}"
             f"{calibration}\n\n"
             "Identifique até 2 riscos críticos na transcrição. Se não houver riscos reais, retorne lista vazia.\n"
             "Retorne APENAS JSON válido:\n"
@@ -433,11 +444,15 @@ class PromptBuilder:
         type_focus = _TYPE_QUESTION_FOCUS.get(self.project_type, "")
         type_block = f"{type_focus}\n\n" if type_focus else ""
 
+        question_hint = self.sc.to_question_hint() if self.sc else ""
+        question_block = f"{question_hint}\n\n" if question_hint else ""
+
         return (
             f"Você é um QuestionPlanner para diagnóstico de projetos de dados/tecnologia.\n"
             f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
             f"Contexto pré-reunião (o que já se sabe antes da conversa): {self.context}\n\n"
             f"{type_block}"
+            f"{question_block}"
             f"{vocab_hint}\n\n"
             "Sua tarefa: gerar exatamente 3 perguntas em português para o comercial fazer ao cliente.\n\n"
             "ESTILO OBRIGATÓRIO — curtas, diretas, interrogativas:\n"
@@ -479,6 +494,16 @@ class PromptBuilder:
             )
 
         type_label = self.project_type.upper() if self.project_type else "não especificado"
+        pre_meeting_section = (
+            "## Diagnóstico Pré-Reunião vs Realidade\n"
+            "  Esta é a PRIMEIRA seção do relatório. "
+            "Use o bloco '## Contexto pré-reunião estruturado' da mensagem do usuário.\n"
+            "  - **O que já se sabia:** resuma dores, stack e restrições que a CITi levou para a reunião\n"
+            "  - **O que a reunião confirmou:** o que a transcrição validou do pré-mapeamento\n"
+            "  - **O que mudou ou surpreendeu:** divergências entre o esperado e o revelado ao vivo\n"
+            "  - **Riscos não discutidos com o cliente:** liste TODOS os riscos marcados como "
+            "'NÃO discutidos' — inclua-os também nos Próximos Passos da Recomendação Final\n"
+        ) if self.sc else ""
 
         complexity_hint = (
             "Na seção 'Nível de Complexidade': clientes DMS 1-2 frequentemente subestimam o esforço "
@@ -516,6 +541,7 @@ class PromptBuilder:
             "  ⚠️ Fechar com condições — liste o que precisa ser resolvido antes/durante\n"
             "  ❌ Não fechar sem antes resolver X — liste o que inviabiliza o fechamento agora\n\n"
             "Estruture o relatório com estas seções na ordem exata:\n"
+            f"{pre_meeting_section}"
             "## Nível de Complexidade\n"
             "  - Classificação: Simples | Médio | Complexo | Bomba\n"
             "  - Justificativa baseada no escopo, DMS, riscos técnicos e alinhamento de expectativas\n"

@@ -105,6 +105,7 @@ async def generate_report(
     dms: int,
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
+    structured_context: Any = None,
 ) -> tuple[str, int, int]:
     from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
@@ -145,10 +146,19 @@ async def generate_report(
         "  ✅ Fechar | ⚠️ Fechar com condições | ❌ Não fechar sem antes resolver X\n"
         "## Maturidade de Dados\n"
     )
+    sc = structured_context
+    if sc and not sc.is_empty():
+        context_block = (
+            f"## Contexto pré-reunião estruturado\n{sc.to_report_block()}\n\n"
+            + (f"Contexto pré-reunião completo:\n{pre_meeting_context}\n\n" if pre_meeting_context else "")
+        )
+    else:
+        context_block = f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
+
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
         f"Data Maturity Score: {dms}/5 ({dms_label})\n"
-        f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
+        f"{context_block}"
         f"## Cobertura final\n{coverage_text}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
         f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
