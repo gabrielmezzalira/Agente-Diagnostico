@@ -19,7 +19,7 @@ export interface WSQuestion {
   id: string
   text: string
   block: string
-  source: 'auto' | 'manual'
+  source: 'auto' | 'manual' | 'pre_mapped'
   status: 'queued' | 'pinned' | 'dismissed' | 'used'
   generated_at: string
   expires_at: string

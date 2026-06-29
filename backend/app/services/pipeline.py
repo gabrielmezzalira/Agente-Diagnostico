@@ -229,11 +229,15 @@ class SessionPipeline:
         if queued_count >= 5:
             return
         transcript = self.state.get_transcript_text(last_n=80)
-        recent = [
+        recent = list({
+            q.text
+            for q in self.state.questions
+            if q.source == "pre_mapped"
+        } | {
             q.text
             for q in self.state.questions[-3:]
             if q.status in ("queued", "pinned", "used")
-        ]
+        })
         questions, inp, out = await llm_service.generate_questions(
             self.state.gemini_api_key,
             transcript,
@@ -377,7 +381,9 @@ class SessionPipeline:
             .in_("status", ["queued", "pinned"])
             .execute()
         )
+        existing_texts = set()
         for q in questions.data:
+            existing_texts.add(q["text"])
             self.state.questions.append(Question(
                 id=q["id"],
                 text=q["text"],
@@ -387,6 +393,44 @@ class SessionPipeline:
                 generated_at=q.get("generated_at", ""),
                 expires_at=q.get("expires_at", ""),
             ))
+
+        # Injetar perguntas recomendadas do contexto pré-reunião como pinned,
+        # caso ainda não existam na fila desta sessão.
+        sc = self.state.structured_context
+        if sc and not sc.is_empty() and sc.recommended_questions:
+            now = datetime.now(timezone.utc)
+            rows_to_insert = []
+            for block, texts in sc.recommended_questions.items():
+                for text in texts:
+                    if text in existing_texts:
+                        continue
+                    q_id = str(uuid.uuid4())
+                    q = Question(
+                        id=q_id,
+                        text=text,
+                        block=block,
+                        source="pre_mapped",
+                        status="pinned",
+                        generated_at=now.isoformat(),
+                        expires_at="",
+                    )
+                    self.state.questions.append(q)
+                    existing_texts.add(text)
+                    rows_to_insert.append({
+                        "id": q_id,
+                        "session_id": self.state.session_id,
+                        "text": text,
+                        "block": block,
+                        "source": "pre_mapped",
+                        "status": "pinned",
+                        "generated_at": now.isoformat(),
+                        "expires_at": None,
+                    })
+            if rows_to_insert:
+                try:
+                    db.table("questions").insert(rows_to_insert).execute()
+                except Exception:
+                    pass
 
     # -------------------------------------------------------------------------
     # Budget payload

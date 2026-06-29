@@ -81,7 +81,7 @@ export interface Question {
   session_id: string
   text: string
   block: string | null
-  source: 'auto' | 'manual'
+  source: 'auto' | 'manual' | 'pre_mapped'
   status: 'queued' | 'pinned' | 'dismissed' | 'used'
   generated_at: string
   expires_at: string | null

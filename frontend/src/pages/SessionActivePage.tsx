@@ -370,6 +370,9 @@ function QuestionCard({
         </div>
       </div>
       <p className="text-sm text-[var(--color-text-primary)] leading-snug">{question.text}</p>
+      {question.source === 'pre_mapped' && (
+        <p className="text-[10px] text-[var(--color-text-secondary)] mt-1 opacity-70">pré-mapeada</p>
+      )}
       {question.status === 'queued' && question.expires_at && (
         <TTLBar expiresAt={question.expires_at} />
       )}
@@ -394,7 +397,8 @@ function QuestionsPanel({
   onDismiss: (id: string) => void
   onUse: (id: string) => void
 }) {
-  const pinned = questions.filter(q => q.status === 'pinned')
+  const preMapped = questions.filter(q => q.status === 'pinned' && q.source === 'pre_mapped')
+  const pinned = questions.filter(q => q.status === 'pinned' && q.source !== 'pre_mapped')
   const queued = questions.filter(q => q.status === 'queued')
 
   return (
@@ -413,6 +417,25 @@ function QuestionsPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        {preMapped.length > 0 && (
+          <div>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-1.5 font-medium">
+              Pré-reunião
+            </p>
+            <div className="space-y-2">
+              {preMapped.map(q => (
+                <QuestionCard
+                  key={q.id}
+                  question={q}
+                  onPin={() => onPin(q.id)}
+                  onDismiss={() => onDismiss(q.id)}
+                  onUse={() => onUse(q.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {pinned.length > 0 && (
           <div>
             <p className="text-xs text-[var(--color-text-secondary)] mb-1.5 font-medium">
@@ -453,7 +476,7 @@ function QuestionsPanel({
           </div>
         )}
 
-        {pinned.length === 0 && queued.length === 0 && (
+        {preMapped.length === 0 && pinned.length === 0 && queued.length === 0 && (
           <p className="text-sm text-[var(--color-text-secondary)] text-center pt-8">
             Nenhuma pergunta na fila
           </p>
