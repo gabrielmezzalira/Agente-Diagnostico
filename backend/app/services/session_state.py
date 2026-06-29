@@ -59,7 +59,7 @@ class SessionState:
     session_id: str
     project_id: str = ""
     project_type: str = ""
-    data_maturity_score: int = 3
+    data_maturity_score: Optional[int] = None
     pre_meeting_context: str = ""
     budget_usd: Optional[float] = None
     gemini_api_key: str = ""

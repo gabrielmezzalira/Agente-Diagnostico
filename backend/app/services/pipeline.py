@@ -486,7 +486,7 @@ class PipelineManager:
                 pass
 
         builder = PromptBuilder(
-            dms=project.get("data_maturity_score") or 3,
+            dms=project.get("data_maturity_score"),
             pre_meeting_context=pre_meeting_context,
             project_type=project_type,
             structured_context=structured_ctx,
@@ -506,7 +506,7 @@ class PipelineManager:
             session_id=session_id,
             project_id=str(project.get("id", "")),
             project_type=project_type,
-            data_maturity_score=project.get("data_maturity_score") or 3,
+            data_maturity_score=project.get("data_maturity_score"),
             pre_meeting_context=pre_meeting_context,
             budget_usd=budget_usd,
             gemini_api_key=gemini_key,

@@ -17,7 +17,7 @@ const DEFAULT_FORM: ProjectCreate & { gemini_api_key: string } = {
   description: '',
   gemini_api_key: '',
   budget_usd: undefined,
-  data_maturity_score: 3,
+  data_maturity_score: undefined,
   pre_meeting_context: '',
   meeting_url: '',
   source: 'extension',
@@ -69,7 +69,7 @@ export default function ProjectFormPage() {
           description: p.description ?? '',
           gemini_api_key: '',
           budget_usd: p.budget_usd ? Number(p.budget_usd) : undefined,
-          data_maturity_score: p.data_maturity_score ?? 3,
+          data_maturity_score: p.data_maturity_score ?? undefined,
           pre_meeting_context: p.pre_meeting_context ?? '',
           meeting_url: p.meeting_url ?? '',
           source: (p.source === 'recall' ? 'recall' : 'extension') as 'extension' | 'recall',
@@ -121,7 +121,7 @@ export default function ProjectFormPage() {
     )
   }
 
-  const dms = form.data_maturity_score ?? 3
+  const dms = form.data_maturity_score
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-page)]">
@@ -179,17 +179,41 @@ export default function ProjectFormPage() {
           />
         </Field>
 
-        <Field label={`Data Maturity Score — ${dms} · ${DMS_META[dms].title}`} required>
-          <input
-            type="range"
-            min={1}
-            max={5}
-            step={1}
-            value={dms}
-            onChange={e => set('data_maturity_score', Number(e.target.value))}
-            className="w-full accent-[var(--color-accent)] mt-1"
-          />
-          <p className="text-xs text-[var(--color-text-secondary)]">{DMS_META[dms].description}</p>
+        <Field label={dms != null ? `Data Maturity Score — ${dms} · ${DMS_META[dms].title}` : 'Data Maturity Score'}>
+          {dms == null ? (
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-sm text-[var(--color-text-secondary)] italic">Não mapeado</span>
+              <button
+                type="button"
+                onClick={() => set('data_maturity_score', 3)}
+                className="text-xs text-[var(--color-accent)] hover:underline"
+              >
+                Definir nível
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={dms}
+                onChange={e => set('data_maturity_score', Number(e.target.value))}
+                className="w-full accent-[var(--color-accent)] mt-1"
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[var(--color-text-secondary)]">{DMS_META[dms].description}</p>
+                <button
+                  type="button"
+                  onClick={() => set('data_maturity_score', undefined)}
+                  className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] ml-3 shrink-0"
+                >
+                  Limpar
+                </button>
+              </div>
+            </>
+          )}
         </Field>
 
         <Field label="Contexto pré-reunião">

@@ -255,18 +255,18 @@ Qualidade:
 class PromptBuilder:
     def __init__(
         self,
-        dms: int,
+        dms: "int | None",
         pre_meeting_context: str = "",
         project_type: str = "",
         custom_areas: "list[dict] | None" = None,
         structured_context: "object | None" = None,
     ):
-        self.dms = max(1, min(5, dms))
+        self.dms = max(1, min(5, dms)) if dms is not None else None
         self.context = pre_meeting_context or "não fornecido"
         self.project_type = project_type or ""
         self.custom_areas = custom_areas or []
-        self.dms_label = DMS_LABEL[self.dms]
-        self.dms_desc = DMS_DESCRIPTION[self.dms]
+        self.dms_label = DMS_LABEL[self.dms] if self.dms is not None else "Não mapeado"
+        self.dms_desc = DMS_DESCRIPTION[self.dms] if self.dms is not None else "maturidade de dados ainda não avaliada para este cliente"
         # StructuredContext | None — duck typing, sem import em runtime
         self.sc = structured_context if (structured_context and not structured_context.is_empty()) else None
 
@@ -298,8 +298,19 @@ class PromptBuilder:
     # CoverageClassifier
     # -------------------------------------------------------------------------
 
+    def _dms_str(self) -> str:
+        if self.dms is None:
+            return f"Não mapeado ({self.dms_label}): {self.dms_desc}"
+        return f"{self.dms}/5 ({self.dms_label}): {self.dms_desc}"
+
     def build_coverage_classifier(self) -> str:
-        if self.dms <= 2:
+        if self.dms is None:
+            priority_hint = (
+                "DMS DO CLIENTE NÃO FOI MAPEADO. Avalie todas as áreas aplicáveis sem pressupor "
+                "nível de maturidade. Se a transcrição revelar sinais claros de maturidade baixa "
+                "(planilhas, sem DW, dados manuais), calibre a pontuação a partir disso."
+            )
+        elif self.dms <= 2:
             priority_hint = (
                 "ÁREAS PRIORITÁRIAS para este cliente: negocio (entender a dor e o processo atual), "
                 "eng_dados (quantas fontes, qualidade dos dados, se há processo manual de coleta), "
@@ -334,7 +345,7 @@ class PromptBuilder:
 
         return (
             f"Você é um CoverageClassifier para diagnóstico de projetos de dados/tecnologia.\n"
-            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n"
             f"Contexto pré-reunião: {self.context}\n\n"
             f"{area_block}"
             f"{stack_block}"
@@ -368,7 +379,14 @@ class PromptBuilder:
     # -------------------------------------------------------------------------
 
     def build_red_flag_detector(self) -> str:
-        if self.dms <= 2:
+        if self.dms is None:
+            calibration = (
+                "SENSIBILIDADE para DMS não mapeado: avalie riscos com base apenas no que a "
+                "transcrição revelar. Emita alertas quando houver expectativas claramente irreais, "
+                "falta de ponto focal, prazo incompatível com escopo ou dados caóticos. "
+                "Calibre conforme sinais de maturidade que emergirem na conversa."
+            )
+        elif self.dms <= 2:
             calibration = (
                 "SENSIBILIDADE CALIBRADA para DMS baixo:\n"
                 "✅ EMITA alerta se: o cliente quer ML/IA complexo sem ter dados organizados, "
@@ -406,7 +424,7 @@ class PromptBuilder:
 
         return (
             f"Você é um RedFlagDetector para diagnóstico de projetos de dados/tecnologia.\n"
-            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n"
             f"Contexto pré-reunião: {self.context}\n\n"
             f"{type_block}"
             f"{flag_block}"
@@ -421,7 +439,13 @@ class PromptBuilder:
     # -------------------------------------------------------------------------
 
     def build_question_planner(self) -> str:
-        if self.dms <= 2:
+        if self.dms is None:
+            vocab_hint = (
+                "DMS NÃO MAPEADO: adapte o vocabulário ao que a conversa revelar. "
+                "Comece com perguntas de nível médio e ajuste para cima ou para baixo "
+                "conforme o cliente demonstrar familiaridade técnica."
+            )
+        elif self.dms <= 2:
             vocab_hint = (
                 "VOCABULÁRIO: use linguagem simples e prática. "
                 f"EVITE completamente: {_ADVANCED_TERMS}. "
@@ -449,7 +473,7 @@ class PromptBuilder:
 
         return (
             f"Você é um QuestionPlanner para diagnóstico de projetos de dados/tecnologia.\n"
-            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n"
+            f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n"
             f"Contexto pré-reunião (o que já se sabe antes da conversa): {self.context}\n\n"
             f"{type_block}"
             f"{question_block}"
@@ -474,7 +498,13 @@ class PromptBuilder:
     # -------------------------------------------------------------------------
 
     def build_report_generator(self) -> str:
-        if self.dms <= 2:
+        if self.dms is None:
+            maturity_hint = (
+                "Na seção 'Maturidade de Dados': o DMS não foi pré-mapeado. "
+                "Infira o nível a partir do que a transcrição revelou e explique a classificação. "
+                "Deixe claro que é uma estimativa baseada na reunião, não um assessment formal."
+            )
+        elif self.dms <= 2:
             maturity_hint = (
                 "Na seção 'Maturidade de Dados': explique de forma simples o que o nível atual significa "
                 "na prática, que tipo de projeto é viável agora e o que seria necessário para evoluir. "
@@ -509,7 +539,7 @@ class PromptBuilder:
             "Na seção 'Nível de Complexidade': clientes DMS 1-2 frequentemente subestimam o esforço "
             "porque não enxergam o trabalho de infraestrutura que está por trás. Considere isso na "
             "classificação — um pedido de BI simples para um cliente DMS 1 raramente é Simples."
-            if self.dms <= 2 else
+            if self.dms is not None and self.dms <= 2 else
             "Na seção 'Nível de Complexidade': avalie com base no escopo real, número de integrações, "
             "qualidade dos dados disponíveis, riscos técnicos e alinhamento entre expectativa e realidade."
         )
@@ -518,19 +548,20 @@ class PromptBuilder:
             "Na seção 'Estrutura de Sprints': inclua obrigatoriamente um sprint de Diagnóstico e "
             "Estratégia de Dados no início — o cliente precisa estruturar o básico antes de qualquer "
             "entrega técnica. Se quiser IA com DMS ≤ 2, inclua Discovery antes."
-            if self.dms <= 2 else
+            if self.dms is not None and self.dms <= 2 else
             "Na seção 'Estrutura de Sprints': cliente tem base funcional. Pode pular setup básico "
             "se já o tiver. Foque nos módulos que entregam valor incremental real."
             if self.dms == 3 else
-            "Na seção 'Estrutura de Sprints': cliente DMS avançado. Pule setup básico. "
-            "Priorize qualidade, observabilidade e entrega de valor rápida."
+            "Na seção 'Estrutura de Sprints': client DMS não mapeado ou avançado. "
+            "Monte sprints com base no que a transcrição revelou sobre a infraestrutura atual. "
+            "Inclua setup básico se sinais de baixa maturidade forem detectados."
         )
 
         return (
             "Você é um tech lead sênior da CITi gerando um relatório de diagnóstico técnico-comercial "
             "em português brasileiro.\n"
             f"Tipo de projeto: {type_label}.\n"
-            f"Perfil do cliente — Data Maturity Score: {self.dms}/5 ({self.dms_label}): {self.dms_desc}.\n\n"
+            f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n\n"
             "Escreva em Markdown claro e profissional. Seja específico, direto e orientado a ações. "
             "Sem texto de preenchimento. Quando houver risco legal ou expectativa irreal, diga claramente.\n\n"
             f"{complexity_hint}\n\n"

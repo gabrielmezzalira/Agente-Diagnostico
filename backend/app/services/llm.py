@@ -51,12 +51,13 @@ async def _call(api_key: str, system: str, user: str) -> tuple[str, int, int]:
 
 
 async def classify_coverage(
-    api_key: str, transcript: str, project_type: str, dms: int,
+    api_key: str, transcript: str, project_type: str, dms: Optional[int],
     system_prompt: str | None = None,
 ) -> tuple[Optional[dict], int, int]:
+    dms_str = f"{dms}/5" if dms is not None else "not mapped"
     system = system_prompt or (
         f"You are a CoverageClassifier for a data/tech project diagnostic.\n"
-        f"Project type: {project_type or 'unknown'}, Data Maturity Score: {dms}/5.\n"
+        f"Project type: {project_type or 'unknown'}, Data Maturity Score: {dms_str}.\n"
         "Analyze the transcript and classify coverage for each area.\n"
         "Return ONLY valid JSON (no markdown fences, no extra text):\n"
         '{"areas":{"negocio":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
@@ -77,12 +78,13 @@ async def classify_coverage(
 
 
 async def detect_red_flags(
-    api_key: str, transcript: str, context: str, dms: int,
+    api_key: str, transcript: str, context: str, dms: Optional[int],
     system_prompt: str | None = None,
 ) -> tuple[list, int, int]:
+    dms_str = f"{dms}/5" if dms is not None else "not mapped"
     system = system_prompt or (
         f"You are a RedFlagDetector for a data/tech project diagnostic.\n"
-        f"Pre-meeting context: {context or 'none'}. Data Maturity Score: {dms}/5.\n"
+        f"Pre-meeting context: {context or 'none'}. Data Maturity Score: {dms_str}.\n"
         "Identify up to 2 critical risks or red flags in the transcript.\n"
         "Return ONLY valid JSON:\n"
         '{"red_flags":[{"text":"...","severity":"warning|critical","evidence":"..."}]}'
@@ -102,7 +104,7 @@ async def generate_report(
     red_flags: list,
     questions_used: list[str],
     project_type: str,
-    dms: int,
+    dms: Optional[int],
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
     structured_context: Any = None,
@@ -110,7 +112,8 @@ async def generate_report(
     from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
     dms_levels = {1: "Inicial", 2: "Gerenciado", 3: "Definido", 4: "Quantificado", 5: "Otimizado"}
-    dms_label = dms_levels.get(dms, str(dms))
+    dms_label = dms_levels.get(dms, "Não mapeado") if dms is not None else "Não mapeado"
+    dms_str = f"{dms}/5 ({dms_label})" if dms is not None else "Não mapeado"
 
     coverage_text = "\n".join(
         f"- {area}: {info['status']} ({info['score']}%) — {info.get('notes', '')}".rstrip(" — ")
@@ -157,7 +160,7 @@ async def generate_report(
 
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
-        f"Data Maturity Score: {dms}/5 ({dms_label})\n"
+        f"Data Maturity Score: {dms_str}\n"
         f"{context_block}"
         f"## Cobertura final\n{coverage_text}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
@@ -189,7 +192,7 @@ async def infer_project_type(api_key: str, context: str) -> tuple[str, int, int]
 
 
 async def generate_custom_areas(
-    api_key: str, project_type: str, pre_meeting_context: str, dms: int
+    api_key: str, project_type: str, pre_meeting_context: str, dms: Optional[int]
 ) -> tuple[list[dict], int, int]:
     """Gera 2-4 áreas de cobertura específicas deste projeto a partir do contexto.
 
@@ -207,9 +210,10 @@ async def generate_custom_areas(
         "Retorne APENAS JSON válido:\n"
         '{"areas":[{"key":"slug_curto_sem_espacos","name":"Nome Legível"}]}'
     )
+    dms_display = f"{dms}/5" if dms is not None else "não mapeado"
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
-        f"Data Maturity Score: {dms}/5\n"
+        f"Data Maturity Score: {dms_display}\n"
         f"Contexto pré-reunião:\n{pre_meeting_context or 'não fornecido'}"
     )
     text, inp, out = await _call(api_key, system, user)
@@ -232,7 +236,7 @@ async def generate_questions(
     coverage: dict,
     recent_questions: list,
     project_type: str,
-    dms: int,
+    dms: Optional[int],
     bank_questions: list[dict] | None = None,
     system_prompt: str | None = None,
     pre_meeting_context: str = "",
@@ -254,9 +258,10 @@ async def generate_questions(
             lines.extend(f"  - {t}" for t in texts)
         bank_text = "\n".join(lines)
 
+    dms_display = f"{dms}/5" if dms is not None else "não mapeado"
     system = system_prompt or (
         "Você é um QuestionPlanner para diagnóstico de projetos de dados/tecnologia.\n"
-        f"Data Maturity Score do cliente: {dms}/5.\n\n"
+        f"Data Maturity Score do cliente: {dms_display}.\n\n"
         "Sua tarefa: gerar exatamente 3 perguntas em português para o comercial fazer ao cliente.\n\n"
         "ESTILO OBRIGATÓRIO — curtas, diretas, interrogativas:\n"
         "✅ BOM: 'Quantas fontes de dados?', 'Precisa de IA?', 'Prazo do projeto?', 'Já tem DW?'\n"
