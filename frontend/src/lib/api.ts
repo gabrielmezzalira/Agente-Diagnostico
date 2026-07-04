@@ -102,6 +102,19 @@ export const api = {
       request<Report>(`/sessions/${id}/report`, { method: 'POST' }),
     getReport: (id: string) =>
       request<Report>(`/sessions/${id}/report`),
+    uploadTranscript: async (id: string, file: File): Promise<Report> => {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${API_BASE}/sessions/${id}/transcript/upload`, {
+        method: 'POST',
+        body: form,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(err.detail ?? `HTTP ${res.status}`)
+      }
+      return res.json() as Promise<Report>
+    },
   },
   projects: {
     list: () => request<Project[]>('/projects/'),

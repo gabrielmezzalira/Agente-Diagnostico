@@ -1,13 +1,17 @@
 import asyncio
+import io
 import os
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import pdfplumber
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from supabase import Client, create_client
 
 from app.database import get_supabase
 from app.models.sessions import ReportResponse, SessionCreate, SessionResponse
+from app.services import llm as llm_service
+from app.services.llm import tokens_to_usd
 from app.services.tunnel import tunnel_manager
 from app.services.recall import RecallService
 
@@ -163,6 +167,126 @@ async def generate_session_report(session_id: UUID, db: Client = Depends(get_sup
         .limit(1)
         .execute()
     )
+    return result.data[0]
+
+
+@router.post(
+    "/{session_id}/transcript/upload",
+    response_model=ReportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_pdf_transcript(
+    session_id: UUID,
+    file: UploadFile = File(...),
+    db: Client = Depends(get_supabase),
+):
+    """Ingere um PDF com transcrição da reunião e gera um relatório para a sessão."""
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=422, detail="O arquivo deve ser um PDF (.pdf)")
+
+    session_res = (
+        db.table("sessions")
+        .select("*, projects(*)")
+        .eq("id", str(session_id))
+        .execute()
+    )
+    if not session_res.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session = session_res.data[0]
+    project = session.get("projects") or {}
+
+    gemini_key = ""
+    secret_id = project.get("gemini_api_key_secret_id")
+    if secret_id:
+        try:
+            key_res = db.rpc("vault_get_secret", {"p_secret_id": secret_id}).execute()
+            gemini_key = key_res.data or ""
+        except Exception:
+            pass
+    if not gemini_key:
+        raise HTTPException(status_code=503, detail="Chave Gemini não configurada para este projeto")
+
+    pdf_bytes = await file.read()
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            pages_text = [page.extract_text() or "" for page in pdf.pages]
+        transcript = "\n\n".join(p for p in pages_text if p.strip())
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Erro ao processar PDF: {exc}") from exc
+
+    if not transcript.strip():
+        raise HTTPException(status_code=422, detail="Não foi possível extrair texto do PDF")
+
+    last_snapshot = (
+        db.table("coverage_snapshots")
+        .select("coverage_json")
+        .eq("session_id", str(session_id))
+        .order("snapshot_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    coverage: dict = {}
+    if last_snapshot.data:
+        coverage = last_snapshot.data[0].get("coverage_json") or {}
+
+    red_flags_res = (
+        db.table("red_flags")
+        .select("text, severity, evidence")
+        .eq("session_id", str(session_id))
+        .execute()
+    )
+    red_flags = red_flags_res.data or []
+
+    questions_res = (
+        db.table("questions")
+        .select("text, status")
+        .eq("session_id", str(session_id))
+        .in_("status", ["used", "pinned"])
+        .execute()
+    )
+    questions_used = [q["text"] for q in (questions_res.data or [])]
+
+    project_type = project.get("project_type") or ""
+    dms = project.get("data_maturity_score")
+    pre_meeting_context = project.get("pre_meeting_context") or ""
+
+    prompts_res = (
+        db.table("session_prompts")
+        .select("agent, prompt_text")
+        .eq("session_id", str(session_id))
+        .execute()
+    )
+    prompts = {row["agent"]: row["prompt_text"] for row in (prompts_res.data or [])}
+
+    markdown, inp, out = await llm_service.generate_report(
+        api_key=gemini_key,
+        transcript=transcript,
+        coverage=coverage,
+        red_flags=red_flags,
+        questions_used=questions_used,
+        project_type=project_type,
+        dms=dms,
+        pre_meeting_context=pre_meeting_context,
+        system_prompt=prompts.get("report_generator"),
+    )
+
+    cost = round(tokens_to_usd(inp, out), 6)
+    result = (
+        db.table("reports")
+        .insert({
+            "session_id": str(session_id),
+            "markdown_content": markdown,
+            "cost_usd": str(cost),
+        })
+        .execute()
+    )
+
+    db.table("sessions").update({
+        "tokens_used": (session.get("tokens_used") or 0) + inp + out,
+        "cost_usd": str(round((float(session.get("cost_usd") or 0)) + cost, 8)),
+    }).eq("id", str(session_id)).execute()
+
     return result.data[0]
 
 

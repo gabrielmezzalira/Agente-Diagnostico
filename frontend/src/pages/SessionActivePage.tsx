@@ -12,6 +12,7 @@ import {
   Radio,
   RefreshCw,
   Square,
+  Upload,
   X,
 } from 'lucide-react'
 import { api, type Report, type Session } from '../lib/api'
@@ -570,6 +571,8 @@ export default function SessionActivePage() {
   const [regenerating, setRegenerating] = useState(false)
   const [reportModal, setReportModal] = useState<string | null>(null)
   const [finishedReport, setFinishedReport] = useState<Report | null>(null)
+  const [uploadingPdf, setUploadingPdf] = useState(false)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
 
   const { state: ws, send, updateQuestionStatus } = useSessionWS(sessionId)
   const { copied, copy } = useCopy(session?.id ?? '')
@@ -641,6 +644,23 @@ export default function SessionActivePage() {
       setError(e instanceof Error ? e.message : 'Erro ao regenerar relatório')
     } finally {
       setRegenerating(false)
+    }
+  }
+
+  async function handleUploadPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !sessionId) return
+    e.target.value = ''
+    setUploadingPdf(true)
+    setError(null)
+    try {
+      const report = await api.sessions.uploadTranscript(sessionId, file)
+      setFinishedReport(report)
+      setReportModal(report.markdown_content)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao processar PDF')
+    } finally {
+      setUploadingPdf(false)
     }
   }
 
@@ -726,11 +746,27 @@ export default function SessionActivePage() {
               )}
               <button
                 onClick={handleRegenerate}
-                disabled={regenerating}
+                disabled={regenerating || uploadingPdf}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-50"
               >
                 <RefreshCw size={12} />
                 {regenerating ? 'Gerando...' : 'Regenerar'}
+              </button>
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={handleUploadPdf}
+              />
+              <button
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={uploadingPdf || regenerating}
+                title="Importar transcrição em PDF para gerar relatório"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-50"
+              >
+                <Upload size={12} />
+                {uploadingPdf ? 'Processando...' : 'Importar PDF'}
               </button>
             </div>
           </div>
