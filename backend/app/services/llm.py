@@ -116,11 +116,30 @@ async def generate_report(
     dms_label = dms_levels.get(dms, "Não mapeado") if dms is not None else "Não mapeado"
     dms_str = f"{dms}/5 ({dms_label})" if dms is not None else "Não mapeado"
 
-    coverage_text = "\n".join(
-        f"- {area}: {info['status']} ({info['score']}%) — {info.get('notes', '')}".rstrip(" — ")
+    area_labels = {
+        "negocio": "Negócio", "eng_dados": "Eng. de Dados", "visualizacao": "Visualização",
+        "ciencia_dados": "Ciência de Dados", "automacao": "Automação", "integracao": "Integração",
+        "consumo": "Consumo", "parceria": "Parceria",
+    }
+    status_labels = {"covered": "Coberto", "partial": "Parcial", "uncovered": "Não coberto"}
+    coverage_rows = [
+        (area_labels.get(area, area), status_labels.get(info["status"], info["status"]),
+         info.get("score", 0), info.get("notes", ""))
         for area, info in coverage.items()
         if info.get("status") != "not_applicable"
-    )
+    ]
+    if coverage_rows:
+        coverage_table = (
+            "| Área | Status | Score | Observações |\n"
+            "| --- | --- | --- | --- |\n"
+            + "\n".join(
+                f"| {label} | {status} | {score}% | {notes} |"
+                for label, status, score, notes in coverage_rows
+            )
+        )
+    else:
+        coverage_table = "_Nenhuma área classificada ainda._"
+
     flags_text = "\n".join(
         f"- [{f.get('severity', 'warning').upper()}] {f.get('text', '')} | evidência: {f.get('evidence', '')}"
         for f in red_flags
@@ -136,7 +155,7 @@ async def generate_report(
         "  - Classificação: Simples | Médio | Complexo | Bomba\n"
         "  - Justificativa\n"
         "## Cobertura por Área\n"
-        "  Tabela: Área | Status | Score | Observações\n"
+        "  Copie EXATAMENTE a tabela markdown fornecida em '## Cobertura final' no prompt. Não altere, não resuma, não omita linhas.\n"
         "## Riscos e Alertas\n"
         "  - 🚨 ALERTA CRÍTICO | ⚠️ RED FLAG\n"
         "## Arquitetura Recomendada\n"
@@ -163,7 +182,7 @@ async def generate_report(
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
         f"Data Maturity Score: {dms_str}\n"
         f"{context_block}"
-        f"## Cobertura final\n{coverage_text}\n\n"
+        f"## Cobertura final\n{coverage_table}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
         f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
         f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
