@@ -15,6 +15,8 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { api, type Report, type Session } from '../lib/api'
 import { useSessionWS, type WSQuestion } from '../lib/useSessionWS'
 
@@ -517,9 +519,30 @@ function ReportModal({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          <pre className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap font-sans leading-relaxed">
-            {markdown}
-          </pre>
+          <div className="prose prose-sm max-w-none text-[var(--color-text-primary)]
+            [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2
+            [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1.5
+            [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-2
+            [&_ul]:text-sm [&_ul]:pl-4 [&_ul]:space-y-1 [&_ul]:list-disc
+            [&_ol]:text-sm [&_ol]:pl-4 [&_ol]:space-y-1 [&_ol]:list-decimal
+            [&_li]:leading-relaxed
+            [&_strong]:font-semibold
+            [&_hr]:border-[var(--color-border-std)] [&_hr]:my-4
+            [&_table]:w-full [&_table]:text-sm [&_table]:border-collapse
+            [&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2
+              [&_th]:border [&_th]:border-[var(--color-border-std)]
+              [&_th]:bg-[var(--color-muted)]
+            [&_td]:px-3 [&_td]:py-2
+              [&_td]:border [&_td]:border-[var(--color-border-std)]
+              [&_td]:align-top [&_td]:leading-snug
+            [&_tr:nth-child(even)_td]:bg-[var(--color-muted)]
+            [&_code]:font-mono [&_code]:text-xs [&_code]:px-1 [&_code]:py-0.5
+              [&_code]:bg-[var(--color-muted)] [&_code]:rounded
+          ">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {markdown}
+            </ReactMarkdown>
+          </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-[var(--color-border-std)]">
           <button
@@ -812,9 +835,18 @@ export default function SessionActivePage() {
                   {new Date(finishedReport.generated_at).toLocaleString('pt-BR')}
                 </span>
               </div>
-              <pre className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap font-sans leading-relaxed line-clamp-6 overflow-hidden">
-                {finishedReport.markdown_content}
-              </pre>
+              <div className="text-sm text-[var(--color-text-primary)] leading-relaxed line-clamp-6 overflow-hidden
+                [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1
+                [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-1
+                [&_p]:mb-1 [&_ul]:pl-3 [&_ul]:list-disc [&_li]:leading-snug
+                [&_table]:w-full [&_table]:text-xs [&_table]:border-collapse
+                [&_th]:px-2 [&_th]:py-1 [&_th]:border [&_th]:border-[var(--color-border-std)] [&_th]:bg-[var(--color-muted)] [&_th]:font-semibold
+                [&_td]:px-2 [&_td]:py-1 [&_td]:border [&_td]:border-[var(--color-border-std)]
+              ">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {finishedReport.markdown_content}
+                </ReactMarkdown>
+              </div>
               <button
                 onClick={() => setReportModal(finishedReport.markdown_content)}
                 className="mt-3 text-xs text-[var(--color-accent)] hover:underline"
