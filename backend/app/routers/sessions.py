@@ -227,8 +227,36 @@ async def upload_pdf_transcript(
         .execute()
     )
     coverage: dict = {}
+    total_inp = 0
+    total_out = 0
     if last_snapshot.data:
         coverage = last_snapshot.data[0].get("coverage_json") or {}
+
+    # Se não há snapshot de cobertura (sessão sem monitoramento ao vivo),
+    # classifica a transcrição agora para popular a tabela de cobertura.
+    if not coverage:
+        prompts_res_early = (
+            db.table("session_prompts")
+            .select("agent, prompt_text")
+            .eq("session_id", str(session_id))
+            .execute()
+        )
+        prompts_early = {row["agent"]: row["prompt_text"] for row in (prompts_res_early.data or [])}
+        coverage_data, c_inp, c_out = await llm_service.classify_coverage(
+            api_key=gemini_key,
+            transcript=transcript,
+            project_type=project.get("project_type") or "",
+            dms=project.get("data_maturity_score"),
+            system_prompt=prompts_early.get("coverage_classifier"),
+        )
+        total_inp += c_inp
+        total_out += c_out
+        if coverage_data and "areas" in coverage_data:
+            coverage = coverage_data["areas"]
+            db.table("coverage_snapshots").insert({
+                "session_id": str(session_id),
+                "coverage_json": coverage,
+            }).execute()
 
     red_flags_res = (
         db.table("red_flags")
@@ -270,8 +298,10 @@ async def upload_pdf_transcript(
         pre_meeting_context=pre_meeting_context,
         system_prompt=prompts.get("report_generator"),
     )
+    total_inp += inp
+    total_out += out
 
-    cost = round(tokens_to_usd(inp, out), 6)
+    cost = round(tokens_to_usd(total_inp, total_out), 6)
     result = (
         db.table("reports")
         .insert({
@@ -283,7 +313,7 @@ async def upload_pdf_transcript(
     )
 
     db.table("sessions").update({
-        "tokens_used": (session.get("tokens_used") or 0) + inp + out,
+        "tokens_used": (session.get("tokens_used") or 0) + total_inp + total_out,
         "cost_usd": str(round((float(session.get("cost_usd") or 0)) + cost, 8)),
     }).eq("id", str(session_id)).execute()
 
