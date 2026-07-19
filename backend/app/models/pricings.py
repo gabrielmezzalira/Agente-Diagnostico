@@ -111,3 +111,15 @@ class PricingWithDetails(PricingResponse):
 # Required for forward references when TYPE_CHECKING is False at runtime
 from app.models.pricing_features import PricingFeatureResponse  # noqa: E402
 PricingWithDetails.model_rebuild()
+
+
+class SuggestedFeature(BaseModel):
+    """Sugestão de funcionalidade gerada pelo LLM — não inserida automaticamente.
+
+    O usuário decide se aceita ou rejeita cada sugestão na UI do Precificador.
+    """
+
+    bloco: str
+    funcionalidade: str
+    horas: Decimal
+    justificativa: Optional[str] = None
