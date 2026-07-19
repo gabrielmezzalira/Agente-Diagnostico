@@ -101,6 +101,42 @@ Generated: 2026-05-24 via gsd-ingest-docs
 
 ---
 
+## Agente Precificador Requirements
+
+### P0 — LLM Infrastructure (transversal a todas as fases do Precificador)
+
+- [ ] **PREC-INF-01**: Agente Precificador usa LangChain + LangGraph obrigatoriamente para toda integração com LLM — permite troca de provider/modelo sem reescrever lógica de negócio
+- [ ] **PREC-INF-02**: Cada projeto tem campos de configuração de IA do Precificador: `pricing_llm_provider` (openai/anthropic/google), `pricing_llm_model` (ex: gpt-4o, claude-3-5-sonnet, gemini-2.0-flash), `pricing_api_key` (armazenada via Supabase Vault, nunca exposta no frontend)
+- [ ] **PREC-INF-03**: UI do projeto expõe campos editáveis para provider, model name e API key (password input, mascarado após save); usuário pode alterar a qualquer momento
+- [ ] **PREC-INF-04**: O service de LLM do Precificador instancia `BaseChatModel` do LangChain a partir da configuração do projeto — o restante do código só conhece a abstração, nunca o provider concreto
+- [ ] **PREC-INF-05**: Dependências adicionadas ao `backend/requirements.txt`: `langchain`, `langchain-openai`, `langchain-anthropic`, `langchain-google-genai`, `langgraph`
+
+### P1 — Pricing Foundation
+
+- [ ] **PREC-01**: User can create a pricing linked to a project; pricing stores: start_date, num_analysts, hours_per_day, ticket_price (BRL), extra_calendar_days, status (draft/approved); multiple pricings per project are allowed
+- [ ] **PREC-02**: Pricing screen displays a feature table with columns: Bloco | Funcionalidade | Horas | Dias (calculated) | CITI?; user can add, edit, and remove features inline
+- [ ] **PREC-03**: Calculation engine computes in real time: business_days = SUM(hours) / (num_analysts × hours_per_day); calendar_days = business_days × 7/5 + extra_calendar_days; price = ticket_price × (calendar_days / 30); sprints = business_days / 5; end_date = start_date + calendar_days
+- [ ] **PREC-04**: Calculated outputs displayed prominently: Preço Total (R$), Data Final, Duração em dias corridos, Duração em semanas, Duração em meses, Nº Sprints, Nº Dias Úteis
+- [ ] **PREC-05**: Project detail page lists all pricings for that project with status badge (rascunho/aprovada) and calculated price
+- [ ] **PREC-06**: User can approve a pricing; on approval, a snapshot (inputs + feature list + outputs) is saved to pricing_history; only approved pricings enter the history
+- [ ] **PREC-07**: Approved pricings are read-only snapshots visible on the project page
+
+### P2 — LLM-Powered Suggestions
+
+- [ ] **PREC-08**: "Importar do diagnóstico" button parses one or more diagnosis reports from the project and extracts features (bloco, funcionalidade, horas estimadas) as the initial feature list
+- [ ] **PREC-09**: "Sugerir funcionalidades" button calls LLM which, given the current feature list and diagnosis report, suggests additional features not yet included, based on patterns from approved historical pricings of similar projects
+- [ ] **PREC-10**: LLM suggests initial hour estimates for each feature based on similar features found in approved historical pricings
+- [ ] **PREC-11**: LLM prompt context includes: (a) diagnosis report markdown(s), (b) current feature list, (c) top-3 approved pricings from history matching the project type, (d) instruction not to repeat existing features
+
+### P3 — Embedded Chatbot
+
+- [ ] **PREC-12**: Embedded chat panel on the pricing screen; LLM context includes: diagnosis report content + approved pricing history + current feature list + current inputs
+- [ ] **PREC-13**: User can instruct the chatbot to add, remove, or modify features and hours via natural language; chatbot applies changes to the feature table in real time
+- [ ] **PREC-14**: Chatbot can discuss the content of the diagnosis report and explain why certain features or hour estimates were suggested
+- [ ] **PREC-15**: Chatbot uses structured tool calls: add_feature(bloco, funcionalidade, horas), remove_feature(feature_id), update_feature(feature_id, fields), update_inputs(fields); results reflected immediately in the feature table
+
+---
+
 ## v2 Requirements (Deferred)
 
 - Dynamic report cost estimation (data-driven, after 10 sessions per project type)
@@ -133,3 +169,7 @@ Generated: 2026-05-24 via gsd-ingest-docs
 | BUDGET-01 to BUDGET-07 | F7 Budget Control | Phase 8 |
 | HIST-01 to HIST-09 | F8 Persistence + History | Phase 9 |
 | DMS-01 to DMS-03 | F10 Data Maturity Score | Phase 10 |
+| PREC-INF-01 to PREC-INF-05 | P0 LLM Infrastructure | Phase 11 (bundled) |
+| PREC-01 to PREC-07 | P1 Pricing Foundation | Phase 11 |
+| PREC-08 to PREC-11 | P2 LLM Suggestions | Phase 12 |
+| PREC-12 to PREC-15 | P3 Embedded Chatbot | Phase 13 |

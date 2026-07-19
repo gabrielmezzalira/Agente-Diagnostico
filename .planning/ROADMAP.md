@@ -151,20 +151,60 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+- [ ] **Phase 11: Precificador Foundation** - DB schema (4 new tables), pricing CRUD API, real-time calculation engine, feature-list UI with inline editing, approval flow that saves to pricing_history
+- [ ] **Phase 12: LLM-Powered Suggestions** - Parse diagnosis reports to seed feature list, LLM suggests additional features + hour estimates from approved historical pricings, history seed with past approved examples
+- [ ] **Phase 13: Embedded Pricing Chatbot** - Chat panel on pricing screen, LLM context = diagnosis report + history + current feature list, tool calls to apply feature CRUD and input updates from conversation
+
+## Phase Details
+
+### Phase 11: Precificador Foundation
+**Goal**: Users can create a pricing for a project, manage a feature list (bloco, funcionalidade, horas), see all calculated outputs in real time, and approve a pricing to save it as a historical snapshot
+**Mode:** mvp
+**Depends on**: Phase 1 (projects table, Supabase)
+**Requirements**: PREC-INF-01, PREC-INF-02, PREC-INF-03, PREC-INF-04, PREC-INF-05, PREC-01, PREC-02, PREC-03, PREC-04, PREC-05, PREC-06, PREC-07
+**Success Criteria** (what must be TRUE):
+  1. Project configuration screen has new LLM fields: provider (openai/anthropic/google), model name (free text), API key (masked after save); user can update at any time
+  2. User can create a pricing from a project page with inputs: data_inicio, num_analistas, horas_por_dia, ticket_preco, dias_corridos_extras
+  3. Feature table accepts inline add/edit/remove with columns: Bloco, Funcionalidade, Horas, Dias (calculado), CITI?
+  4. All 6 outputs update in real time as features or inputs change: preco_total, data_final, dias_corridos, semanas, meses, sprints
+  5. Approving a pricing saves an immutable snapshot to pricing_history; only approved pricings enter the history
+  6. Project detail page lists all pricings with status (rascunho/aprovada) and calculated price
+  7. Backend pricing service factory instantiates BaseChatModel from project config; swapping provider requires only a config change, zero code change
+**Plans**: TBD
+
+### Phase 12: LLM-Powered Suggestions
+**Goal**: The pricing screen can auto-populate features from diagnosis reports and the LLM suggests additional features with hour estimates learned from approved historical pricings
+**Mode:** mvp
+**Depends on**: Phase 11
+**Requirements**: PREC-08, PREC-09, PREC-10, PREC-11
+**Success Criteria** (what must be TRUE):
+  1. "Importar do diagnóstico" extracts features from one or more diagnosis reports linked to the project and populates the feature table
+  2. "Sugerir funcionalidades" generates at least 3 additional feature suggestions not already in the table, with hour estimates, based on approved history
+  3. The LLM prompt correctly includes: diagnosis report text, current feature list, top-3 matching approved pricings from history
+  4. History is seeded with at least 7 past approved pricings (from provided examples)
+**Plans**: TBD
+
+### Phase 13: Embedded Pricing Chatbot
+**Goal**: An embedded chatbot in the pricing screen allows the commercial team to refine the pricing via natural language — discussing the diagnosis, querying the history, and applying edits to the feature table
+**Mode:** mvp
+**Depends on**: Phase 11, Phase 12
+**Requirements**: PREC-12, PREC-13, PREC-14, PREC-15
+**Success Criteria** (what must be TRUE):
+  1. Chat panel renders alongside the feature table; conversation history is persisted in pricing_chat_messages
+  2. User can say "adiciona uma funcionalidade de autenticação OAuth com 20 horas no bloco Geral" and the feature appears in the table
+  3. User can say "remove a funcionalidade de deploy" and the feature is removed from the table
+  4. User can ask "por que esse projeto está custando R$25k?" and the chatbot explains using the current inputs and outputs
+  5. Tool calls (add_feature, remove_feature, update_feature, update_inputs) are applied atomically and immediately reflected in the table
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases 1–10: Agente Diagnóstico (already built). Phases 11–13: Agente Precificador.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Configuration + Supabase Schema | 1/5 | In Progress|  |
-| 2. Session Setup | 0/? | Not started | - |
-| 3. Tunnel URL Exposure | 0/? | Not started | - |
-| 4. Question Bank | 0/? | Not started | - |
-| 5. Dynamic Prompt Generation | 0/? | Not started | - |
-| 6. Monitoring Screen (base) | 0/? | Not started | - |
-| 7. Question Queue | 0/? | Not started | - |
-| 8. Budget Control | 0/? | Not started | - |
-| 9. Session Persistence + History | 0/? | Not started | - |
-| 10. Data Maturity Score | 0/? | Not started | - |
+| 2–10. Agente Diagnóstico (remaining) | — | Built (state outdated) | — |
+| 11. Precificador Foundation | 0/? | Not started | - |
+| 12. LLM-Powered Suggestions | 0/? | Not started | - |
+| 13. Embedded Pricing Chatbot | 0/? | Not started | - |

@@ -6,6 +6,72 @@
 
 ---
 
+## Princípios de Arquitetura de Código (OBRIGATÓRIO — aplica-se a TODO o projeto)
+
+Todo código produzido neste projeto — backend Python e frontend TypeScript/React — deve seguir os princípios SOLID e ser bem organizado e modularizado. Este é um requisito não-negociável que se sobrepõe a qualquer decisão de implementação.
+
+### SOLID aplicado a este projeto
+
+| Princípio | Backend (Python/FastAPI) | Frontend (React/TypeScript) |
+|-----------|-------------------------|----------------------------|
+| **S — Single Responsibility** | Cada módulo/classe tem uma única responsabilidade. Routers só roteiam. Services só orquestram lógica de negócio. Repositories só falam com o banco. Nunca misture lógica de negócio com lógica de persistência. | Cada componente faz uma coisa. Hooks encapsulam lógica de estado/efeito. Pages apenas compõem componentes. Nunca ponha lógica de negócio dentro de JSX. |
+| **O — Open/Closed** | Classes e funções extensíveis via herança ou injeção, não por modificação direta. Ex: `PromptBuilder.build()` aceita parâmetros sem reescrever a classe a cada novo tipo de projeto. | Componentes aceitam props sem modificar internos. Novos comportamentos via composição, não por editar o componente existente. |
+| **L — Liskov Substitution** | Subclasses e implementações concretas substituem abstrações sem quebrar comportamento. | Componentes que aceitam `children` ou render props devem funcionar com qualquer elemento válido. |
+| **I — Interface Segregation** | Não force dependências desnecessárias. Separe schemas Pydantic por contexto (create vs update vs response). Não exponha métodos internos em interfaces públicas. | Props minimalistas: componente recebe só o que usa. Evite "god props". |
+| **D — Dependency Inversion** | Módulos de alto nível dependem de abstrações, não de implementações concretas. Ex: services recebem o cliente LLM por injeção, não instanciam `GeminiClient` diretamente. | Hooks e componentes dependem de interfaces/tipos, não de implementações específicas de API. |
+
+### Organização de arquivos
+
+**Backend:**
+```
+backend/app/
+  routers/      # Apenas roteamento HTTP — chama services, nunca acessa DB diretamente
+  services/     # Lógica de negócio — orquestra repositories e clientes externos
+  repositories/ # Acesso ao Supabase — queries isoladas aqui
+  models/       # Schemas Pydantic (separados: create / update / response / internal)
+  core/         # Config, dependências injetáveis, exceções customizadas
+  agents/       # Lógica dos agentes LLM (CoverageClassifier, RedFlagDetector, etc.)
+```
+
+**Frontend:**
+```
+frontend/src/
+  pages/        # Composição de layout — sem lógica de negócio
+  components/   # Componentes reutilizáveis — sem chamadas diretas a API
+  hooks/        # Estado e efeitos — toda lógica stateful aqui
+  lib/          # Clientes de API, utilitários puros, tipos compartilhados
+  types/        # Interfaces TypeScript globais
+```
+
+### Regra de frameworks de IA por módulo
+
+| Módulo | Framework LLM | Razão |
+|--------|--------------|-------|
+| **Agente Diagnóstico** | `google.genai` direto (sem LangChain) | ADR bloqueado — 6 tasks asyncio concorrentes são incompatíveis com o modelo de execução do LangGraph |
+| **Agente Precificador** | **LangChain + LangGraph obrigatório** | Chatbot com tool calls, agent de sugestão, troca de modelo/provider sem reescrever código |
+
+**Para o Agente Precificador, LangChain/LangGraph é obrigatório e não-negociável.** A abstração do LangChain permite trocar o modelo de IA (OpenAI, Anthropic, Gemini, etc.) apenas alterando uma configuração. O LangGraph gerencia o grafo de estados do chatbot e das tool calls.
+
+### Configurabilidade de modelo no Precificador
+
+O Precificador deve ter, em cada projeto, campos configuráveis:
+- **Provider** (openai / anthropic / google)
+- **Model name** (ex: `gpt-4o`, `claude-3-5-sonnet`, `gemini-2.0-flash`)
+- **API Key** (armazenada via Supabase Vault, mascarada na UI)
+
+Isso permite que o usuário troque o modelo de IA a qualquer momento sem tocar no código. A implementação usa `langchain_core.language_models.BaseChatModel` como abstração — o service só conhece a interface, nunca o provider concreto.
+
+### Regras concretas
+
+- **Sem lógica de negócio em routers.** Router valida entrada, chama service, retorna resposta. Nada mais.
+- **Sem queries SQL/Supabase em services.** Services chamam repositories; repositories chamam o banco.
+- **Sem estado global desnecessário.** Prefira estado local e props drilling quando o escopo é pequeno; use contexto React apenas quando o estado é genuinamente global.
+- **Funções puras onde possível.** A engine de cálculo da precificação (`business_days`, `price`, etc.) deve ser uma função pura sem side effects, testável isoladamente.
+- **Um arquivo, uma responsabilidade.** Se um arquivo está ficando grande (>200 linhas), é sinal de que está fazendo coisas demais.
+- **Nomes descritivos e consistentes.** `get_project_by_id` é melhor que `get_project`. `PricingFeatureTable` é melhor que `Table`.
+
+---
+
 ## Índice
 
 1. [Visão Geral](#1-visão-geral)

@@ -52,9 +52,11 @@ Existing codebase in `./diagnostico/`:
 
 ## Constraints
 
-- **Tech stack**: React + Vite + TS + Tailwind (frontend), Python + FastAPI + Uvicorn (backend), Supabase PostgreSQL + Vault (DB), Google Gemini via google.genai (LLM) — fixed by SPEC
-- **Concurrency**: asyncio native; no LangChain/LangGraph (ADR — locked)
-- **Security**: Gemini API key stored in Supabase Vault (pgsodium); never in frontend
+- **Tech stack**: React + Vite + TS + Tailwind (frontend), Python + FastAPI + Uvicorn (backend), Supabase PostgreSQL + Vault (DB) — fixed by SPEC
+- **LLM — Diagnóstico**: `google.genai` direto, sem LangChain/LangGraph (ADR locked — incompatível com 6 tasks asyncio concorrentes)
+- **LLM — Precificador**: LangChain + LangGraph obrigatório (chatbot com tool calls; abstração permite trocar provider/modelo por config)
+- **SOLID + Modularização**: todo código segue princípios SOLID; routers só roteiam, services só orquestram lógica, repositories isolam acesso ao banco — ver seção de Princípios de Arquitetura no CLAUDE.md
+- **Security**: API keys (Gemini, Precificador LLM) armazenadas via Supabase Vault (pgsodium); nunca expostas no frontend
 - **Compatibility**: v1 CLI mode preserved; `main.py --ui web` activates new frontend
 - **Tunnel**: cloudflared preferred over ngrok (free, no account required)
 
@@ -62,7 +64,8 @@ Existing codebase in `./diagnostico/`:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| No LangChain/LangGraph | 6 concurrent async tasks don't fit LangGraph sequential model; asyncio is simpler and sufficient (ADR) | — Pending |
+| No LangChain/LangGraph (Diagnóstico) | 6 concurrent async tasks don't fit LangGraph sequential model; asyncio is simpler and sufficient (ADR — scope: Diagnóstico only) | — Locked |
+| LangChain + LangGraph (Precificador) | Chatbot with tool calls + model provider switching require the abstraction layer; SOLID compliance requires DI-friendly BaseChatModel interface | — Locked |
 | google.genai over google-generativeai | Old SDK deprecated by Google; migration only touches llm/gemini_client.py (ADR) | — Pending |
 | asyncio.to_thread() for all LLM calls | Direct LLM calls block event loop for 1-5s, freezing realtime UI (ADR) | — Pending |
 | cloudflared > ngrok for tunnel | Free, no account required, temporary URLs; ngrok requires account (SPEC) | — Pending |
