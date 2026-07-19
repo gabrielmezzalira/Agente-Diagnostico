@@ -188,7 +188,11 @@ Plans:
   2. "Sugerir funcionalidades" generates at least 3 additional feature suggestions not already in the table, with hour estimates, based on approved history
   3. The LLM prompt correctly includes: diagnosis report text, current feature list, top-3 matching approved pricings from history
   4. History is seeded with at least 7 past approved pricings (from provided examples)
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Backend infrastructure (LangChain deps + llm_factory + repo extensions + seed data)
+- [ ] 12-02-PLAN.md — LLM service + endpoints (import-from-diagnosis, suggest-features)
+- [ ] 12-03-PLAN.md — Frontend UI (api.ts, useLLMSuggestions hook, PricingEditorPage buttons + suggestions panel)
 
 ### Phase 13: Embedded Pricing Chatbot
 **Goal**: An embedded chatbot in the pricing screen allows the commercial team to refine the pricing via natural language — discussing the diagnosis, querying the history, and applying edits to the feature table
