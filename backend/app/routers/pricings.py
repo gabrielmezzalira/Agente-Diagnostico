@@ -2,26 +2,31 @@
 # routers/pricings.py
 #
 # Responsabilidade única: roteamento HTTP para o domínio de precificação.
-# Sem lógica de negócio. Sem chamadas db.table(). Apenas:
+# Sem lógica de negócio. Sem chamadas diretas ao banco. Apenas:
 #   1. Receber a requisição
-#   2. Instanciar repo + service
+#   2. Instanciar repo + service via Depends factories
 #   3. Delegar ao service
 #   4. Retornar a resposta
 # =============================================================================
 
+import asyncio
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import Client
 
+from app.core.llm_factory import create_llm
 from app.database import get_supabase
+from app.models.pricing_features import PricingFeatureResponse
 from app.models.pricings import (
     PricingCreateBody,
     PricingResponse,
     PricingUpdate,
     PricingWithDetails,
+    SuggestedFeature,
 )
 from app.repositories.pricing_repository import PricingRepository
+from app.services.llm_pricing_service import LLMPricingService
 from app.services.pricing_service import PricingService
 
 router = APIRouter(tags=["pricings"])
@@ -92,3 +97,54 @@ async def list_pricing_history(
     service: PricingService = Depends(_get_service),
 ) -> list[dict]:
     return service.list_pricing_history(str(project_id))
+
+
+# ---------------------------------------------------------------------------
+# LLM-powered endpoints — factory wires repo + vault + LLM; endpoints forward
+# ---------------------------------------------------------------------------
+
+
+def _get_llm_pricing_service(
+    pricing_id: UUID,
+    db: Client = Depends(get_supabase),
+) -> LLMPricingService:
+    """FastAPI Depends factory: resolves repo, vault config and creates LLMPricingService.
+
+    Toda lógica de lookup (tabela projects e Supabase Vault) fica nos métodos
+    do repositório — o router não toca o banco diretamente. Isso é infra
+    wiring, não lógica de negócio: o padrão é idêntico ao _get_service
+    existente, mas com LLM adicional. A factory valida existência do pricing
+    antes de criar o service; o service resolve project_id internamente.
+    """
+    repo = PricingRepository(db)
+    pricing = repo.get_pricing(str(pricing_id))
+    if not pricing:
+        raise HTTPException(status_code=404, detail="Pricing not found")
+    project_id = str(pricing["project_id"])
+    llm_config = repo.get_project_llm_config(project_id)
+    api_key = repo.decrypt_pricing_api_key(llm_config["secret_id"])
+    llm = create_llm(llm_config["provider"], llm_config["model"], api_key)
+    return LLMPricingService(repo, llm)
+
+
+@router.post(
+    "/pricings/{pricing_id}/import-from-diagnosis",
+    response_model=list[PricingFeatureResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def import_from_diagnosis(
+    pricing_id: UUID,
+    svc: LLMPricingService = Depends(_get_llm_pricing_service),
+) -> list[PricingFeatureResponse]:
+    return await asyncio.to_thread(svc.import_from_diagnosis, str(pricing_id))
+
+
+@router.post(
+    "/pricings/{pricing_id}/suggest-features",
+    response_model=list[SuggestedFeature],
+)
+async def suggest_features(
+    pricing_id: UUID,
+    svc: LLMPricingService = Depends(_get_llm_pricing_service),
+) -> list[SuggestedFeature]:
+    return await asyncio.to_thread(svc.suggest_features, str(pricing_id))
