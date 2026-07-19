@@ -170,7 +170,12 @@ Plans:
   5. Approving a pricing saves an immutable snapshot to pricing_history; only approved pricings enter the history
   6. Project detail page lists all pricings with status (rascunho/aprovada) and calculated price
   7. Backend pricing service factory instantiates BaseChatModel from project config; swapping provider requires only a config change, zero code change
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 11-01-PLAN.md — Schema migration (4 tables + projects LLM columns) + LangChain packages + PricingCalculator + llm_factory + projects model/router extensions + [BLOCKING] migration apply
+- [ ] 11-02-PLAN.md — Project LLM config UI (collapsible section on ProjectFormPage, Nova Precificação on ProjectDetailPage)
+- [ ] 11-03-PLAN.md — Pricing CRUD backend (models, routers, approve endpoint, pricing-history endpoint)
+- [ ] 11-04-PLAN.md — Pricing editor frontend (pricingCalculator.ts, hooks, PricingListPage, PricingEditorPage, routes)
 
 ### Phase 12: LLM-Powered Suggestions
 **Goal**: The pricing screen can auto-populate features from diagnosis reports and the LLM suggests additional features with hour estimates learned from approved historical pricings
