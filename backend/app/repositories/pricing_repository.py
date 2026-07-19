@@ -2,10 +2,11 @@
 # repositories/pricing_repository.py
 #
 # Responsabilidade única: todas as chamadas db.table() relacionadas ao domínio
-# de precificação. Sem lógica de negócio. Sem HTTPException.
+# de precificação. Sem lógica de negócio.
 # Retorna dicts ou listas de dicts brutos do Supabase.
 # =============================================================================
 
+from fastapi import HTTPException
 from supabase import Client
 
 
@@ -211,3 +212,70 @@ class PricingRepository:
         rows = [{**f, "pricing_id": pricing_id} for f in features]
         result = self._db.table("pricing_features").insert(rows).execute()
         return result.data or []
+
+    # -------------------------------------------------------------------------
+    # LLM config (Vault lookup for Precificador)
+    # -------------------------------------------------------------------------
+
+    def get_project_llm_config(self, project_id: str) -> dict:
+        """Retorna configuração LLM do Precificador para um projeto.
+
+        Lê pricing_llm_provider, pricing_llm_model e pricing_api_key_secret_id
+        da tabela projects. Lança 422 se a chave de API não estiver configurada.
+
+        Args:
+            project_id: UUID do projeto
+
+        Returns:
+            Dict com chaves: provider, model, secret_id
+        """
+        result = (
+            self._db.table("projects")
+            .select("pricing_llm_provider, pricing_llm_model, pricing_api_key_secret_id")
+            .eq("id", project_id)
+            .execute()
+        )
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        row = result.data[0]
+        if not row.get("pricing_api_key_secret_id"):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Chave de API do Precificador não configurada neste projeto. "
+                    "Configure em Configurações do Projeto."
+                ),
+            )
+        return {
+            "provider": row.get("pricing_llm_provider") or "",
+            "model": row.get("pricing_llm_model") or "",
+            "secret_id": str(row["pricing_api_key_secret_id"]),
+        }
+
+    def decrypt_pricing_api_key(self, secret_id: str) -> str:
+        """Descriptografa a chave de API do Precificador via Supabase Vault.
+
+        A chave plaintext fica em memória apenas durante o request e nunca é
+        incluída em logs ou respostas de erro (T-12-03).
+
+        Args:
+            secret_id: UUID do segredo no Supabase Vault
+
+        Returns:
+            Chave de API plaintext
+
+        Raises:
+            HTTPException 500 se o segredo não for encontrado
+        """
+        result = (
+            self._db.table("vault.decrypted_secrets")
+            .select("secret")
+            .eq("id", secret_id)
+            .execute()
+        )
+        if not result.data:
+            raise HTTPException(
+                status_code=500,
+                detail="Falha ao descriptografar chave de API do Precificador.",
+            )
+        return result.data[0]["secret"]
