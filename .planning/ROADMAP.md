@@ -161,27 +161,28 @@ Plans:
 **Goal**: Users can create a pricing for a project, manage a feature list (bloco, funcionalidade, horas), see all calculated outputs in real time, and approve a pricing to save it as a historical snapshot
 **Mode:** mvp
 **Depends on**: Phase 1 (projects table, Supabase)
-**Requirements**: PREC-INF-01, PREC-INF-02, PREC-INF-03, PREC-INF-04, PREC-INF-05, PREC-01, PREC-02, PREC-03, PREC-04, PREC-05, PREC-06, PREC-07
+**Requirements**: PREC-INF-02, PREC-INF-03, PREC-01, PREC-02, PREC-03, PREC-04, PREC-05, PREC-06, PREC-07
+*(PREC-INF-01, PREC-INF-04, PREC-INF-05 deferred to Phase 12 — LangChain/LangGraph not installed until LLM calls begin)*
 **Success Criteria** (what must be TRUE):
-  1. Project configuration screen has new LLM fields: provider (openai/anthropic/google), model name (free text), API key (masked after save); user can update at any time
+  1. Project configuration screen has new LLM config fields: provider (openai/anthropic/google), model name (free text), API key (masked after save); user can update at any time
   2. User can create a pricing from a project page with inputs: data_inicio, num_analistas, horas_por_dia, ticket_preco, dias_corridos_extras
   3. Feature table accepts inline add/edit/remove with columns: Bloco, Funcionalidade, Horas, Dias (calculado), CITI?
   4. All 6 outputs update in real time as features or inputs change: preco_total, data_final, dias_corridos, semanas, meses, sprints
   5. Approving a pricing saves an immutable snapshot to pricing_history; only approved pricings enter the history
-  6. Project detail page lists all pricings with status (rascunho/aprovada) and calculated price
-  7. Backend pricing service factory instantiates BaseChatModel from project config; swapping provider requires only a config change, zero code change
+  6. Project detail page lists all pricings with status (rascunho/aprovada)
 **Plans**: 4 plans
 Plans:
-- [ ] 11-01-PLAN.md — Schema migration (4 tables + projects LLM columns) + LangChain packages + PricingCalculator + llm_factory + projects model/router extensions + [BLOCKING] migration apply
+- [ ] 11-01-PLAN.md — Schema migration (4 tables + projects LLM columns) + PricingCalculator + projects model/router extensions + [BLOCKING] migration apply
 - [ ] 11-02-PLAN.md — Project LLM config UI (collapsible section on ProjectFormPage, Nova Precificação on ProjectDetailPage)
-- [ ] 11-03-PLAN.md — Pricing CRUD backend (models, routers, approve endpoint, pricing-history endpoint)
+- [ ] 11-03-PLAN.md — Pricing CRUD backend (models, service, repository, routers, approve endpoint, pricing-history endpoint)
 - [ ] 11-04-PLAN.md — Pricing editor frontend (pricingCalculator.ts, hooks, PricingListPage, PricingEditorPage, routes)
 
 ### Phase 12: LLM-Powered Suggestions
 **Goal**: The pricing screen can auto-populate features from diagnosis reports and the LLM suggests additional features with hour estimates learned from approved historical pricings
 **Mode:** mvp
 **Depends on**: Phase 11
-**Requirements**: PREC-08, PREC-09, PREC-10, PREC-11
+**Requirements**: PREC-INF-01, PREC-INF-04, PREC-INF-05, PREC-08, PREC-09, PREC-10, PREC-11
+*(PREC-INF-01/04/05 carried from Phase 11 deferral — install LangChain/LangGraph + llm_factory when first LLM call is needed)*
 **Success Criteria** (what must be TRUE):
   1. "Importar do diagnóstico" extracts features from one or more diagnosis reports linked to the project and populates the feature table
   2. "Sugerir funcionalidades" generates at least 3 additional feature suggestions not already in the table, with hour estimates, based on approved history

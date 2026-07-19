@@ -117,7 +117,7 @@ Generated: 2026-05-24 via gsd-ingest-docs
 - [ ] **PREC-02**: Pricing screen displays a feature table with columns: Bloco | Funcionalidade | Horas | Dias (calculated) | CITI?; user can add, edit, and remove features inline
 - [ ] **PREC-03**: Calculation engine computes in real time: business_days = SUM(hours) / (num_analysts × hours_per_day); calendar_days = business_days × 7/5 + extra_calendar_days; price = ticket_price × (calendar_days / 30); sprints = business_days / 5; end_date = start_date + calendar_days
 - [ ] **PREC-04**: Calculated outputs displayed prominently: Preço Total (R$), Data Final, Duração em dias corridos, Duração em semanas, Duração em meses, Nº Sprints, Nº Dias Úteis
-- [ ] **PREC-05**: Project detail page lists all pricings for that project with status badge (rascunho/aprovada) and calculated price
+- [ ] **PREC-05**: Project detail page lists all pricings for that project with status badge (rascunho/aprovada) and creation date; calculated price is visible on the pricing editor page only
 - [ ] **PREC-06**: User can approve a pricing; on approval, a snapshot (inputs + feature list + outputs) is saved to pricing_history; only approved pricings enter the history
 - [ ] **PREC-07**: Approved pricings are read-only snapshots visible on the project page
 
