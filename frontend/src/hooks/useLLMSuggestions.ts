@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { api, type PricingFeature, type SuggestedFeature } from '../lib/api'
+import { api, type PricingFeature, type PricingFeatureCreateBody, type SuggestedFeature } from '../lib/api'
 
 interface SuggestionWithId extends SuggestedFeature {
   _localId: string
@@ -47,7 +47,7 @@ export function useLLMSuggestions(
 
   const acceptSuggestion = useCallback(async (
     localId: string,
-    addFeature: (body: object) => Promise<void>
+    addFeature: (body: PricingFeatureCreateBody) => Promise<unknown>
   ) => {
     const s = suggestions.find(s => s._localId === localId)
     if (!s) return

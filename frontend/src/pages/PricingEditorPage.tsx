@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, ChevronLeft, Trash2 } from 'lucide-react'
-import { api, type PricingFeature } from '../lib/api'
+import { Check, ChevronLeft, Trash2, Download, Lightbulb, X, Plus } from 'lucide-react'
+import { api, type PricingFeature, type SuggestedFeature } from '../lib/api'
 import { usePricing } from '../hooks/usePricing'
 import { usePricingFeatures } from '../hooks/usePricingFeatures'
+import { useLLMSuggestions } from '../hooks/useLLMSuggestions'
 import { featureDias } from '../lib/pricingCalculator'
 
 const inputCls =
@@ -146,15 +147,59 @@ function FeatureRow({
   )
 }
 
+function SuggestionCard({
+  suggestion,
+  onAccept,
+  onReject,
+}: {
+  suggestion: SuggestedFeature & { _localId: string }
+  onAccept: () => void
+  onReject: () => void
+}) {
+  return (
+    <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4 flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs px-2 py-0.5 bg-[var(--color-muted)] rounded-full text-[var(--color-text-secondary)]">
+            {suggestion.bloco}
+          </span>
+          <span className="text-xs text-[var(--color-text-secondary)]">{Number(suggestion.horas).toFixed(1)}h</span>
+        </div>
+        <p className="text-sm text-[var(--color-text-primary)]">{suggestion.funcionalidade}</p>
+        {suggestion.justificativa && (
+          <p className="text-xs text-[var(--color-text-secondary)] mt-1">{suggestion.justificativa}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={onAccept} title="Aceitar" className="p-1.5 text-[var(--color-accent)] hover:bg-[var(--color-muted)] rounded transition-colors">
+          <Plus size={14} />
+        </button>
+        <button onClick={onReject} title="Rejeitar" className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-bg)] rounded transition-colors">
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function PricingEditorPage() {
   const { id: pricingId } = useParams<{ id: string }>()
   const { pricing, features, outputs, loading, error, refresh, setPricing, setFeatures } =
     usePricing(pricingId)
   const { addFeature, updateFeature, deleteFeature } = usePricingFeatures(pricingId, setFeatures)
+  const {
+    importing, importError, suggesting, suggestError,
+    suggestions, showSuggestions,
+    importFromDiagnosis, suggestFeatures, acceptSuggestion, rejectSuggestion, closeSuggestions,
+  } = useLLMSuggestions(pricingId, setFeatures)
   const [approving, setApproving] = useState(false)
   const [addingFeature, setAddingFeature] = useState(false)
 
   const isApproved = pricing?.status === 'approved'
+
+  useEffect(() => {
+    if (showSuggestions && suggestions.length === 0) closeSuggestions()
+  }, [suggestions.length, showSuggestions, closeSuggestions])
 
   async function handleInputBlur(
     field: 'start_date' | 'num_analysts' | 'hours_per_day' | 'ticket_price' | 'extra_calendar_days',
@@ -239,6 +284,26 @@ export default function PricingEditorPage() {
               Precificação
             </h1>
           </div>
+          {!isApproved && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => importFromDiagnosis()}
+                disabled={importing || isApproved}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
+              >
+                <Download size={12} />
+                {importing ? 'Importando...' : 'Importar do diagnóstico'}
+              </button>
+              <button
+                onClick={() => suggestFeatures()}
+                disabled={suggesting || isApproved}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
+              >
+                <Lightbulb size={12} />
+                {suggesting ? 'Sugerindo...' : 'Sugerir funcionalidades'}
+              </button>
+            </div>
+          )}
           <button
             onClick={handleApprove}
             disabled={isApproved || approving}
@@ -261,6 +326,21 @@ export default function PricingEditorPage() {
           </button>
         </div>
       </div>
+
+      {importError && (
+        <div className="max-w-5xl mx-auto px-6 pt-4">
+          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
+            {importError}
+          </div>
+        </div>
+      )}
+      {suggestError && (
+        <div className="max-w-5xl mx-auto px-6 pt-4">
+          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
+            {suggestError}
+          </div>
+        </div>
+      )}
 
       {/* Main layout: two column on large screens */}
       <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col lg:flex-row gap-8">
@@ -457,6 +537,29 @@ export default function PricingEditorPage() {
               </div>
             )}
           </div>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="mt-6 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--color-border-std)] flex items-center justify-between">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+                  Sugestões do LLM ({suggestions.length})
+                </p>
+                <button onClick={closeSuggestions} className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                {suggestions.map(s => (
+                  <SuggestionCard
+                    key={s._localId}
+                    suggestion={s}
+                    onAccept={() => acceptSuggestion(s._localId, addFeature)}
+                    onReject={() => rejectSuggestion(s._localId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
