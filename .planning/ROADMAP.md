@@ -190,8 +190,8 @@ Plans:
   4. History is seeded with at least 7 past approved pricings (from provided examples)
 **Plans**: 3 plans
 Plans:
-- [ ] 12-01-PLAN.md — Backend infrastructure (LangChain deps + llm_factory + repo extensions + seed data)
-- [ ] 12-02-PLAN.md — LLM service + endpoints (import-from-diagnosis, suggest-features)
+- [x] 12-01-PLAN.md — Backend infrastructure (LangChain deps + llm_factory + repo extensions + seed data)
+- [x] 12-02-PLAN.md — LLM service + endpoints (import-from-diagnosis, suggest-features)
 - [ ] 12-03-PLAN.md — Frontend UI (api.ts, useLLMSuggestions hook, PricingEditorPage buttons + suggestions panel)
 
 ### Phase 13: Embedded Pricing Chatbot
@@ -216,5 +216,5 @@ Phases 1–10: Agente Diagnóstico (already built). Phases 11–13: Agente Preci
 | 1. Project Configuration + Supabase Schema | 1/5 | In Progress|  |
 | 2–10. Agente Diagnóstico (remaining) | — | Built (state outdated) | — |
 | 11. Precificador Foundation | 0/? | Not started | - |
-| 12. LLM-Powered Suggestions | 0/? | Not started | - |
+| 12. LLM-Powered Suggestions | 2/3 | In Progress | - |
 | 13. Embedded Pricing Chatbot | 0/? | Not started | - |
