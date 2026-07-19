@@ -131,3 +131,83 @@ class PricingRepository:
 
     def delete_feature(self, feature_id: str) -> None:
         self._db.table("pricing_features").delete().eq("id", feature_id).execute()
+
+    # -------------------------------------------------------------------------
+    # Diagnostic reports (for LLM context)
+    # -------------------------------------------------------------------------
+
+    def get_project_reports(self, project_id: str) -> list[dict]:
+        """Busca relatórios de diagnóstico associados a um projeto via sessions.
+
+        Args:
+            project_id: UUID do projeto
+
+        Returns:
+            Lista de dicts com id, markdown_content e generated_at, ordenados
+            por generated_at desc. Retorna [] se não houver sessões ou relatórios.
+        """
+        sessions = (
+            self._db.table("sessions")
+            .select("id")
+            .eq("project_id", project_id)
+            .execute()
+        )
+        if not sessions.data:
+            return []
+
+        session_ids = [s["id"] for s in sessions.data]
+        result = (
+            self._db.table("reports")
+            .select("id, markdown_content, generated_at")
+            .in_("session_id", session_ids)
+            .order("generated_at", desc=True)
+            .execute()
+        )
+        return result.data or []
+
+    # -------------------------------------------------------------------------
+    # Pricing history lookup (for LLM suggestions context)
+    # -------------------------------------------------------------------------
+
+    def get_top_history_by_type(self, project_type: str, limit: int = 3) -> list[dict]:
+        """Busca os N pricings aprovados mais recentes de um determinado project_type.
+
+        Usa filtro PostgREST sobre campo JSONB para evitar filtragem Python-side.
+
+        Args:
+            project_type: tipo de projeto (ex: "bi", "ml", "data_engineering")
+            limit: número máximo de registros retornados (default: 3)
+
+        Returns:
+            Lista de dicts de pricing_history ordenados por approved_at desc.
+        """
+        result = (
+            self._db.table("pricing_history")
+            .select("*")
+            .filter("snapshot->>project_type", "eq", project_type)
+            .order("approved_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
+    # -------------------------------------------------------------------------
+    # Bulk feature insert (for LLM suggestion application)
+    # -------------------------------------------------------------------------
+
+    def bulk_insert_features(self, pricing_id: str, features: list[dict]) -> list[dict]:
+        """Insere múltiplas features em lote com um único request ao Supabase.
+
+        Args:
+            pricing_id: UUID do pricing ao qual as features pertencem
+            features: lista de dicts com bloco, funcionalidade, horas (e outros campos opcionais)
+
+        Returns:
+            Lista de dicts inseridos com ids gerados. Retorna [] se features vazio.
+        """
+        if not features:
+            return []
+
+        rows = [{**f, "pricing_id": pricing_id} for f in features]
+        result = self._db.table("pricing_features").insert(rows).execute()
+        return result.data or []
