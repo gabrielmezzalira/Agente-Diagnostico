@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { api, type ProjectCreate } from '../lib/api'
 
 const DMS_META: Record<number, { title: string; description: string }> = {
@@ -22,6 +22,9 @@ const DEFAULT_FORM: ProjectCreate & { gemini_api_key: string } = {
   meeting_url: '',
   source: 'extension',
   question_ttl_seconds: 60,
+  pricing_llm_provider: undefined,
+  pricing_llm_model: undefined,
+  pricing_api_key: undefined,
 }
 
 const inputCls =
@@ -54,6 +57,8 @@ export default function ProjectFormPage() {
 
   const [form, setForm] = useState({ ...DEFAULT_FORM })
   const [hasApiKey, setHasApiKey] = useState(false)
+  const [hasPricingApiKey, setHasPricingApiKey] = useState(false)
+  const [showLlmConfig, setShowLlmConfig] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,8 +79,13 @@ export default function ProjectFormPage() {
           meeting_url: p.meeting_url ?? '',
           source: (p.source === 'recall' ? 'recall' : 'extension') as 'extension' | 'recall',
           question_ttl_seconds: p.question_ttl_seconds,
+          pricing_llm_provider: p.pricing_llm_provider ?? undefined,
+          pricing_llm_model: p.pricing_llm_model ?? undefined,
+          pricing_api_key: undefined,
         })
         setHasApiKey(p.has_api_key)
+        setHasPricingApiKey(p.has_pricing_api_key ?? false)
+        if (p.pricing_llm_provider || p.pricing_llm_model) setShowLlmConfig(true)
         setLoading(false)
       })
       .catch((e: Error) => {
@@ -99,6 +109,9 @@ export default function ProjectFormPage() {
       if (!payload.description) delete payload.description
       if (!payload.pre_meeting_context) delete payload.pre_meeting_context
       if (!payload.meeting_url) delete payload.meeting_url
+      if (!payload.pricing_llm_provider) delete payload.pricing_llm_provider
+      if (!payload.pricing_llm_model) delete payload.pricing_llm_model
+      if (!payload.pricing_api_key) delete payload.pricing_api_key
 
       if (id) {
         await api.projects.update(id, payload)
@@ -295,6 +308,61 @@ export default function ProjectFormPage() {
               className={inputCls}
             />
           </Field>
+        </div>
+
+        {/* Collapsible: Configuração IA do Precificador */}
+        <div className="border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowLlmConfig(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-muted)] transition-colors"
+          >
+            Configuração IA do Precificador
+            <ChevronDown
+              size={16}
+              className={`text-[var(--color-text-secondary)] transition-transform duration-200 ${showLlmConfig ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showLlmConfig && (
+            <div className="px-4 pb-4 pt-3 space-y-4 border-t border-[var(--color-border-std)] bg-[var(--color-surface)]">
+              <Field label="Provider">
+                <select
+                  value={form.pricing_llm_provider ?? ''}
+                  onChange={e => set('pricing_llm_provider', e.target.value || undefined)}
+                  className={inputCls}
+                >
+                  <option value="">Selecione</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="google">Google</option>
+                </select>
+              </Field>
+              <Field label="Modelo">
+                <input
+                  type="text"
+                  value={form.pricing_llm_model ?? ''}
+                  onChange={e => set('pricing_llm_model', e.target.value || undefined)}
+                  placeholder="gpt-4o, claude-3-5-sonnet-20241022, gemini-2.0-flash"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="API Key do Precificador">
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.pricing_api_key ?? ''}
+                  onChange={e => set('pricing_api_key', e.target.value || undefined)}
+                  placeholder={hasPricingApiKey ? '••••• (deixe em branco para manter)' : 'sk-...'}
+                  className={inputCls}
+                />
+                {hasPricingApiKey && (
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    Chave salva. Preencha apenas para substituir.
+                  </p>
+                )}
+              </Field>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 pt-2">

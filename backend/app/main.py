@@ -17,7 +17,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import projects_router, question_bank_router, questions_router, sessions_router, webhook_router, ws_router
+from app.routers import (
+    pricing_features_router,
+    pricings_router,
+    projects_router,
+    question_bank_router,
+    questions_router,
+    sessions_router,
+    webhook_router,
+    ws_router,
+)
 
 app = FastAPI(
     title="Agente Diagnóstico v2.0",
@@ -48,6 +57,8 @@ app.include_router(questions_router)
 app.include_router(question_bank_router)
 app.include_router(webhook_router)
 app.include_router(ws_router)
+app.include_router(pricings_router)
+app.include_router(pricing_features_router)
 
 
 @app.get("/health")

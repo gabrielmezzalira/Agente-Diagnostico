@@ -4,6 +4,8 @@ import ProjectFormPage from './pages/ProjectFormPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import SessionSetupPage from './pages/SessionSetupPage'
 import SessionActivePage from './pages/SessionActivePage'
+import PricingListPage from './pages/PricingListPage'
+import PricingEditorPage from './pages/PricingEditorPage'
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
       <Route path="/projects/:id" element={<ProjectDetailPage />} />
       <Route path="/projects/:id/sessions/new" element={<SessionSetupPage />} />
       <Route path="/sessions/:sessionId" element={<SessionActivePage />} />
+      <Route path="/projects/:id/pricings" element={<PricingListPage />} />
+      <Route path="/pricings/:id" element={<PricingEditorPage />} />
     </Routes>
   )
 }

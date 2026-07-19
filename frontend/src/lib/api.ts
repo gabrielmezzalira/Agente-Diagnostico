@@ -16,6 +16,9 @@ export interface Project {
   question_ttl_seconds: number
   has_api_key: boolean
   has_active_session: boolean
+  pricing_llm_provider: string | null
+  pricing_llm_model: string | null
+  has_pricing_api_key: boolean
   created_at: string
   updated_at: string
 }
@@ -53,6 +56,9 @@ export interface ProjectCreate {
   meeting_url?: string
   source: 'extension' | 'recall'
   question_ttl_seconds: number
+  pricing_llm_provider?: string
+  pricing_llm_model?: string
+  pricing_api_key?: string
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -85,6 +91,86 @@ export interface Question {
   status: 'queued' | 'pinned' | 'dismissed' | 'used'
   generated_at: string
   expires_at: string | null
+}
+
+export interface Pricing {
+  id: string
+  project_id: string
+  status: 'draft' | 'approved'
+  start_date: string
+  num_analysts: number
+  hours_per_day: string
+  ticket_price: string
+  extra_calendar_days: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PricingOutputs {
+  total_horas: string
+  dias_uteis: string
+  dias_corridos: string
+  preco_total: string
+  duracao_meses: string
+  duracao_semanas: string
+  num_sprints: string
+  data_final: string
+}
+
+export interface PricingFeature {
+  id: string
+  pricing_id: string
+  bloco: string
+  funcionalidade: string
+  horas: string
+  citi_responsible: boolean
+  ordem: number | null
+  created_at: string
+}
+
+export interface PricingWithDetails extends Pricing {
+  features: PricingFeature[]
+  outputs: PricingOutputs | null
+}
+
+export interface PricingCreateBody {
+  start_date: string
+  num_analysts: number
+  hours_per_day: number
+  ticket_price: number
+  extra_calendar_days?: number
+}
+
+export interface PricingUpdateBody {
+  start_date?: string
+  num_analysts?: number
+  hours_per_day?: number
+  ticket_price?: number
+  extra_calendar_days?: number
+}
+
+export interface PricingFeatureCreateBody {
+  bloco: string
+  funcionalidade: string
+  horas: number
+  citi_responsible?: boolean
+  ordem?: number
+}
+
+export interface PricingFeatureUpdateBody {
+  bloco?: string
+  funcionalidade?: string
+  horas?: number
+  citi_responsible?: boolean
+  ordem?: number
+}
+
+export interface PricingHistory {
+  id: string
+  project_id: string
+  pricing_id: string
+  snapshot: Record<string, unknown>
+  approved_at: string
 }
 
 export const api = {
@@ -132,5 +218,45 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
+  },
+  pricings: {
+    list: (projectId: string) =>
+      request<Pricing[]>(`/projects/${projectId}/pricings`),
+    listByProject: (projectId: string) =>
+      request<Pricing[]>(`/projects/${projectId}/pricings`),
+    create: (projectId: string, body: PricingCreateBody) =>
+      request<Pricing>(`/projects/${projectId}/pricings`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    get: (pricingId: string) =>
+      request<PricingWithDetails>(`/pricings/${pricingId}`),
+    update: (pricingId: string, body: PricingUpdateBody) =>
+      request<Pricing>(`/pricings/${pricingId}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    delete: (pricingId: string) =>
+      request<void>(`/pricings/${pricingId}`, { method: 'DELETE' }),
+    approve: (pricingId: string) =>
+      request<Pricing>(`/pricings/${pricingId}/approve`, { method: 'POST' }),
+    history: (projectId: string) =>
+      request<PricingHistory[]>(`/projects/${projectId}/pricing-history`),
+  },
+  pricingFeatures: {
+    list: (pricingId: string) =>
+      request<PricingFeature[]>(`/pricings/${pricingId}/features`),
+    add: (pricingId: string, body: PricingFeatureCreateBody) =>
+      request<PricingFeature>(`/pricings/${pricingId}/features`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    update: (pricingId: string, featureId: string, body: PricingFeatureUpdateBody) =>
+      request<PricingFeature>(`/pricings/${pricingId}/features/${featureId}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    delete: (pricingId: string, featureId: string) =>
+      request<void>(`/pricings/${pricingId}/features/${featureId}`, { method: 'DELETE' }),
   },
 }

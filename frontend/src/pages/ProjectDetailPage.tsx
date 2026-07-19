@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Activity, ChevronLeft, Clock, Edit2, Play, Trash2 } from 'lucide-react'
-import { api, type Project, type Session } from '../lib/api'
+import { api, type Project, type Session, type Pricing } from '../lib/api'
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   bi: 'BI',
@@ -52,6 +52,7 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate()
   const [project, setProject] = useState<Project | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
+  const [pricings, setPricings] = useState<Pricing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -65,6 +66,7 @@ export default function ProjectDetailPage() {
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
+    api.pricings.listByProject(id).then(setPricings).catch(() => {})
   }, [id])
 
   async function handleDelete() {
@@ -255,6 +257,49 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Precificações */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-[var(--color-text-primary)]">Precificações</h2>
+            <Link
+              to={`/projects/${id}/pricings`}
+              className="px-3 py-1.5 bg-[var(--color-accent)] text-white rounded-md text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+            >
+              Nova Precificação
+            </Link>
+          </div>
+          {pricings.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-secondary)]">Nenhuma precificação ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              {pricings.map(p => (
+                <Link
+                  key={p.id}
+                  to={`/pricings/${p.id}`}
+                  className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-2.5 hover:border-[var(--color-border-hover)] transition-colors"
+                >
+                  <span className="text-xs text-[var(--color-text-secondary)]">
+                    {new Date(p.created_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
+                  </span>
+                  {p.status === 'approved' ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
+                      aprovada
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
+                      rascunho
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -21,6 +21,9 @@ class ProjectCreate(BaseModel):
     meeting_url: Optional[str] = None
     source: TranscriptSource = "extension"
     question_ttl_seconds: int = 30
+    pricing_llm_provider: Optional[str] = None
+    pricing_llm_model: Optional[str] = None
+    pricing_api_key: Optional[str] = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -42,6 +45,9 @@ class ProjectUpdate(BaseModel):
     meeting_url: Optional[str] = None
     source: Optional[TranscriptSource] = None
     question_ttl_seconds: Optional[int] = None
+    pricing_llm_provider: Optional[str] = None
+    pricing_llm_model: Optional[str] = None
+    pricing_api_key: Optional[str] = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -67,3 +73,6 @@ class ProjectResponse(BaseModel):
     has_active_session: bool = False
     created_at: datetime
     updated_at: datetime
+    pricing_llm_provider: Optional[str] = None
+    pricing_llm_model: Optional[str] = None
+    has_pricing_api_key: bool = False
