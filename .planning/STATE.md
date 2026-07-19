@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-07-19"
+status: in_progress
+last_updated: "2026-07-19T23:00:00.000Z"
 last_activity: 2026-07-19
 progress:
-  total_phases: 11
+  total_phases: 13
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 12
+  completed_plans: 5
+  percent: 8
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** Sales team identifies technical risks before contract signing, avoiding costly execution failures
-**Current focus:** Phase 11 complete — Precificador Foundation shipped
+**Current focus:** Phase 12 planned — LLM-Powered Suggestions (3 plans, ready to execute)
 
 ## Current Position
 
-Phase: 11 of 11 (Precificador Foundation)
-Status: Complete — all 4 plans executed, human checkpoints passed
+Phase: 12 of 13 (LLM-Powered Suggestions)
+Status: Ready to execute — 3 plans verified, all 7 requirements covered
 Last activity: 2026-07-19
 
-Progress: [██████████] 100%
+Progress: [█░░░░░░░░░] ~10%
 
 ## Performance Metrics
 
@@ -59,7 +59,8 @@ Progress: [██████████] 100%
 Decisions are logged in PROJECT.md Key Decisions table.
 Key decisions affecting current work:
 
-- **No LangChain/LangGraph** (ADR locked): asyncio.to_thread() for all LLM calls; 6-task pipeline pattern preserved
+- **No LangChain/LangGraph in Agente Diagnóstico** (ADR locked): asyncio.to_thread() for all LLM calls; 6-task pipeline pattern preserved
+- **LangChain + LangGraph obrigatório no Agente Precificador** (ADR locked): BaseChatModel abstraction via llm_factory.py; provider never referenced in service layer
 - **google.genai SDK** (ADR locked): migrate llm/gemini_client.py; rest of codebase unaffected
 - **Supabase Vault** (ADR locked): Gemini API key in pgsodium column; never returned to frontend
 - **v1 prompts as PromptBuilder fallback**: dynamic prompts may degrade quality initially; v1 constants are the safety net
@@ -86,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-28T21:50:42.071Z
-Stopped at: context exhaustion at 75% (2026-06-28)
+Last session: 2026-07-19T22:20:28.508Z
+Stopped at: context exhaustion at 84% (2026-07-19)
 Resume file: None
