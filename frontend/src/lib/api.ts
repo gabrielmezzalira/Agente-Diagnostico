@@ -173,6 +173,13 @@ export interface PricingHistory {
   approved_at: string
 }
 
+export interface SuggestedFeature {
+  bloco: string
+  funcionalidade: string
+  horas: string
+  justificativa?: string | null
+}
+
 export const api = {
   sessions: {
     list: (project_id: string) =>
@@ -242,6 +249,10 @@ export const api = {
       request<Pricing>(`/pricings/${pricingId}/approve`, { method: 'POST' }),
     history: (projectId: string) =>
       request<PricingHistory[]>(`/projects/${projectId}/pricing-history`),
+    importFromDiagnosis: (pricingId: string) =>
+      request<PricingFeature[]>(`/pricings/${pricingId}/import-from-diagnosis`, { method: 'POST' }),
+    suggestFeatures: (pricingId: string) =>
+      request<SuggestedFeature[]>(`/pricings/${pricingId}/suggest-features`, { method: 'POST' }),
   },
   pricingFeatures: {
     list: (pricingId: string) =>
