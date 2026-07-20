@@ -104,13 +104,25 @@ class PricingOutputs(BaseModel):
 
 
 class PricingWithDetails(PricingResponse):
-    features: List[PricingFeatureResponse] = []
+    features: List["PricingFeatureResponse"] = []
     outputs: Optional[PricingOutputs] = None
 
 
-# Required for forward references when TYPE_CHECKING is False at runtime
-from app.models.pricing_features import PricingFeatureResponse  # noqa: E402
-PricingWithDetails.model_rebuild()
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatMessageResponse(BaseModel):
+    id: UUID
+    pricing_id: UUID
+    role: str
+    content: Optional[str] = None
+    created_at: datetime
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    features: List["PricingFeatureResponse"]
 
 
 class SuggestedFeature(BaseModel):
@@ -123,3 +135,9 @@ class SuggestedFeature(BaseModel):
     funcionalidade: str
     horas: Decimal
     justificativa: Optional[str] = None
+
+
+# Required for forward references when TYPE_CHECKING is False at runtime
+from app.models.pricing_features import PricingFeatureResponse  # noqa: E402
+PricingWithDetails.model_rebuild()
+ChatResponse.model_rebuild()

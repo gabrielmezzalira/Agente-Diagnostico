@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, ChevronLeft, Trash2, Download, Lightbulb, X, Plus } from 'lucide-react'
-import { api, type PricingFeature, type SuggestedFeature } from '../lib/api'
+import { Check, ChevronLeft, Download, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
+import { api, type ChatMessage, type PricingFeature, type SuggestedFeature } from '../lib/api'
 import { usePricing } from '../hooks/usePricing'
 import { usePricingFeatures } from '../hooks/usePricingFeatures'
 import { useLLMSuggestions } from '../hooks/useLLMSuggestions'
+import { usePricingChat } from '../hooks/usePricingChat'
 import { featureDias } from '../lib/pricingCalculator'
 
 const inputCls =
@@ -59,7 +60,7 @@ function FeatureRow({
   const [horas, setHoras] = useState(String(feature.horas))
   const [editingField, setEditingField] = useState<'bloco' | 'funcionalidade' | 'horas' | null>(null)
 
-  async function saveField(field: 'bloco' | 'funcionalidade' | 'horas') {
+  async function saveField(_field: 'bloco' | 'funcionalidade' | 'horas') {
     setEditingField(null)
     await onUpdate(feature.id, {
       bloco,
@@ -202,6 +203,106 @@ function SuggestionCard({
   )
 }
 
+function ChatBubble({ msg }: { msg: ChatMessage }) {
+  const isUser = msg.role === 'user'
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+          isUser
+            ? 'bg-[var(--color-accent)] text-white'
+            : 'bg-[var(--color-muted)] text-[var(--color-text-primary)]'
+        }`}
+      >
+        {msg.content || '…'}
+      </div>
+    </div>
+  )
+}
+
+function ChatPanel({
+  messages,
+  sending,
+  chatError,
+  onSend,
+  isApproved,
+}: {
+  messages: ChatMessage[]
+  sending: boolean
+  chatError: string | null
+  onSend: (text: string) => void
+  isApproved: boolean
+}) {
+  const [input, setInput] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length, sending])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text) return
+    setInput('')
+    onSend(text)
+  }
+
+  return (
+    <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden flex flex-col" style={{ height: '420px' }}>
+      <div className="px-4 py-3 border-b border-[var(--color-border-std)] flex items-center gap-2">
+        <MessageSquare size={13} className="text-[var(--color-text-secondary)]" />
+        <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+          Assistente de Precificação
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && !sending && (
+          <p className="text-xs text-[var(--color-text-secondary)] text-center mt-8">
+            Pergunte ao assistente sobre esta precificação ou peça para adicionar, remover ou ajustar funcionalidades.
+          </p>
+        )}
+        {messages.map(msg => (
+          <ChatBubble key={msg.id} msg={msg} />
+        ))}
+        {sending && (
+          <div className="flex justify-start">
+            <div className="bg-[var(--color-muted)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-secondary)]">
+              Pensando…
+            </div>
+          </div>
+        )}
+        {chatError && (
+          <p className="text-xs text-[var(--color-red)] text-center">{chatError}</p>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="px-3 py-3 border-t border-[var(--color-border-std)] flex items-center gap-2"
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          disabled={sending || isApproved}
+          placeholder={isApproved ? 'Precificação aprovada' : 'Escreva uma mensagem…'}
+          className="flex-1 px-3 py-2 text-sm border border-[var(--color-border-std)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <button
+          type="submit"
+          disabled={sending || isApproved || !input.trim()}
+          className="p-2 rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <Send size={14} />
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function PricingEditorPage() {
   const { id: pricingId } = useParams<{ id: string }>()
   const { pricing, features, outputs, loading, error, refresh, setPricing, setFeatures } =
@@ -212,8 +313,11 @@ export default function PricingEditorPage() {
     suggestions, showSuggestions,
     importFromDiagnosis, suggestFeatures, acceptSuggestion, rejectSuggestion, closeSuggestions,
   } = useLLMSuggestions(pricingId, setFeatures)
+  const { messages: chatMessages, sending: chatSending, chatError, sendMessage } =
+    usePricingChat(pricingId, setFeatures)
   const [approving, setApproving] = useState(false)
   const [addingFeature, setAddingFeature] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   const isApproved = pricing?.status === 'approved'
 
@@ -324,6 +428,17 @@ export default function PricingEditorPage() {
               </button>
             </div>
           )}
+          <button
+            onClick={() => setShowChat(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+              showChat
+                ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
+                : 'border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)]'
+            }`}
+          >
+            <MessageSquare size={12} />
+            Assistente
+          </button>
           <button
             onClick={handleApprove}
             disabled={isApproved || approving}
@@ -582,6 +697,19 @@ export default function PricingEditorPage() {
           )}
         </div>
       </div>
+
+      {/* Chat panel — full width below the two-column layout */}
+      {showChat && (
+        <div className="max-w-5xl mx-auto px-6 pb-8">
+          <ChatPanel
+            messages={chatMessages}
+            sending={chatSending}
+            chatError={chatError}
+            onSend={sendMessage}
+            isApproved={isApproved ?? false}
+          />
+        </div>
+      )}
     </div>
   )
 }

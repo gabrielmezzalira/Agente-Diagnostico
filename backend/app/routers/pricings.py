@@ -19,6 +19,9 @@ from app.core.llm_factory import create_llm
 from app.database import get_supabase
 from app.models.pricing_features import PricingFeatureResponse
 from app.models.pricings import (
+    ChatMessageResponse,
+    ChatRequest,
+    ChatResponse,
     PricingCreateBody,
     PricingResponse,
     PricingUpdate,
@@ -27,6 +30,7 @@ from app.models.pricings import (
 )
 from app.repositories.pricing_repository import PricingRepository
 from app.services.llm_pricing_service import LLMPricingService
+from app.services.pricing_chatbot_service import PricingChatbotService
 from app.services.pricing_service import PricingService
 
 router = APIRouter(tags=["pricings"])
@@ -148,3 +152,47 @@ async def suggest_features(
     svc: LLMPricingService = Depends(_get_llm_pricing_service),
 ) -> list[SuggestedFeature]:
     return await asyncio.to_thread(svc.suggest_features, str(pricing_id))
+
+
+# ---------------------------------------------------------------------------
+# Chat endpoints — LangGraph agent with tool calls
+# ---------------------------------------------------------------------------
+
+
+def _get_chatbot_service(
+    pricing_id: UUID,
+    db: Client = Depends(get_supabase),
+) -> PricingChatbotService:
+    """Depends factory: resolve repo, vault e LLM para o chatbot."""
+    repo = PricingRepository(db)
+    pricing = repo.get_pricing(str(pricing_id))
+    if not pricing:
+        raise HTTPException(status_code=404, detail="Pricing not found")
+    project_id = str(pricing["project_id"])
+    llm_config = repo.get_project_llm_config(project_id)
+    api_key = repo.decrypt_pricing_api_key(llm_config["secret_id"])
+    llm = create_llm(llm_config["provider"], llm_config["model"], api_key)
+    return PricingChatbotService(repo, llm)
+
+
+@router.get(
+    "/pricings/{pricing_id}/chat-history",
+    response_model=list[ChatMessageResponse],
+)
+async def get_chat_history(
+    pricing_id: UUID,
+    db: Client = Depends(get_supabase),
+) -> list[ChatMessageResponse]:
+    repo = PricingRepository(db)
+    rows = repo.list_chat_messages(str(pricing_id))
+    return [ChatMessageResponse(**r) for r in rows]
+
+
+@router.post("/pricings/{pricing_id}/chat", response_model=ChatResponse)
+async def chat(
+    pricing_id: UUID,
+    body: ChatRequest,
+    svc: PricingChatbotService = Depends(_get_chatbot_service),
+) -> ChatResponse:
+    result = await asyncio.to_thread(svc.chat, str(pricing_id), body.message)
+    return ChatResponse(**result)

@@ -180,6 +180,19 @@ export interface SuggestedFeature {
   justificativa?: string | null
 }
 
+export interface ChatMessage {
+  id: string
+  pricing_id: string
+  role: 'user' | 'assistant'
+  content: string | null
+  created_at: string
+}
+
+export interface ChatResponse {
+  reply: string
+  features: PricingFeature[]
+}
+
 export const api = {
   sessions: {
     list: (project_id: string) =>
@@ -253,6 +266,13 @@ export const api = {
       request<PricingFeature[]>(`/pricings/${pricingId}/import-from-diagnosis`, { method: 'POST' }),
     suggestFeatures: (pricingId: string) =>
       request<SuggestedFeature[]>(`/pricings/${pricingId}/suggest-features`, { method: 'POST' }),
+    getChatHistory: (pricingId: string) =>
+      request<ChatMessage[]>(`/pricings/${pricingId}/chat-history`),
+    chat: (pricingId: string, message: string) =>
+      request<ChatResponse>(`/pricings/${pricingId}/chat`, {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }),
   },
   pricingFeatures: {
     list: (pricingId: string) =>

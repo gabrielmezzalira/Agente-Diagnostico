@@ -253,6 +253,28 @@ class PricingRepository:
             "secret_id": str(row["pricing_api_key_secret_id"]),
         }
 
+    # -------------------------------------------------------------------------
+    # Chat messages
+    # -------------------------------------------------------------------------
+
+    def list_chat_messages(self, pricing_id: str) -> list[dict]:
+        result = (
+            self._db.table("pricing_chat_messages")
+            .select("*")
+            .eq("pricing_id", pricing_id)
+            .order("created_at")
+            .execute()
+        )
+        return result.data or []
+
+    def insert_chat_message(self, row: dict) -> dict:
+        result = self._db.table("pricing_chat_messages").insert(row).execute()
+        return result.data[0]
+
+    # -------------------------------------------------------------------------
+    # Vault
+    # -------------------------------------------------------------------------
+
     def decrypt_pricing_api_key(self, secret_id: str) -> str:
         """Descriptografa a chave de API do Precificador via Supabase Vault.
 
