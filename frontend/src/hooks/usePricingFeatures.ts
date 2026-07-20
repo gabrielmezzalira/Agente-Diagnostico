@@ -42,5 +42,17 @@ export function usePricingFeatures(
     await api.pricingFeatures.delete(pricingId, featureId)
   }
 
-  return { addFeature, updateFeature, deleteFeature }
+  const reorderFeatures = async (orderedFeatures: PricingFeature[]) => {
+    if (!pricingId) throw new Error('No pricingId')
+    // Optimistic update
+    setFeatures(orderedFeatures)
+    // Persist new ordem for each feature
+    await Promise.all(
+      orderedFeatures.map((f, i) =>
+        api.pricingFeatures.update(pricingId, f.id, { ordem: i + 1 })
+      )
+    )
+  }
+
+  return { addFeature, updateFeature, deleteFeature, reorderFeatures }
 }
