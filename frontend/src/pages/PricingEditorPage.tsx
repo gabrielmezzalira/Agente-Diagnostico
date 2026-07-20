@@ -47,6 +47,10 @@ function FeatureRow({
   isApproved,
   onUpdate,
   onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  isDragOver,
 }: {
   feature: PricingFeature
   numAnalysts: number
@@ -54,6 +58,10 @@ function FeatureRow({
   isApproved: boolean
   onUpdate: (featureId: string, body: { bloco?: string; funcionalidade?: string; horas?: number; citi_responsible?: boolean }) => Promise<void>
   onDelete: (featureId: string) => Promise<void>
+  onDragStart: (id: string) => void
+  onDragOver: (e: React.DragEvent, id: string) => void
+  onDrop: (id: string) => void
+  isDragOver: boolean
 }) {
   const [bloco, setBloco] = useState(feature.bloco)
   const [funcionalidade, setFuncionalidade] = useState(feature.funcionalidade)
@@ -78,7 +86,13 @@ function FeatureRow({
   const cellHover = !isApproved ? 'cursor-pointer hover:bg-[var(--color-muted)] rounded' : ''
 
   return (
-    <tr className="border-t border-[var(--color-border-std)] group">
+    <tr
+      className={`border-t border-[var(--color-border-std)] group transition-colors ${isDragOver ? 'bg-[var(--color-muted)]' : ''}`}
+      draggable={!isApproved}
+      onDragStart={() => onDragStart(feature.id)}
+      onDragOver={e => onDragOver(e, feature.id)}
+      onDrop={() => onDrop(feature.id)}
+    >
       <td className={tdCls + ' min-w-[120px]'}>
         {editingField === 'bloco' ? (
           <input
@@ -307,7 +321,24 @@ export default function PricingEditorPage() {
   const { id: pricingId } = useParams<{ id: string }>()
   const { pricing, features, outputs, loading, error, refresh, setPricing, setFeatures } =
     usePricing(pricingId)
-  const { addFeature, updateFeature, deleteFeature } = usePricingFeatures(pricingId, setFeatures)
+  const { addFeature, updateFeature, deleteFeature, reorderFeatures } = usePricingFeatures(pricingId, setFeatures)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+
+  function handleDragStart(id: string) { setDraggedId(id) }
+  function handleDragOver(e: React.DragEvent, id: string) { e.preventDefault(); setDragOverId(id) }
+  function handleDrop(targetId: string) {
+    if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOverId(null); return }
+    const from = features.findIndex(f => f.id === draggedId)
+    const to = features.findIndex(f => f.id === targetId)
+    if (from === -1 || to === -1) return
+    const reordered = [...features]
+    const [item] = reordered.splice(from, 1)
+    reordered.splice(to, 0, item)
+    reorderFeatures(reordered)
+    setDraggedId(null)
+    setDragOverId(null)
+  }
   const {
     importing, importError, suggesting, suggestError,
     suggestions, showSuggestions,
@@ -653,6 +684,10 @@ export default function PricingEditorPage() {
                         isApproved={isApproved ?? false}
                         onUpdate={updateFeature}
                         onDelete={deleteFeature}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        isDragOver={dragOverId === f.id}
                       />
                     ))
                   )}

@@ -109,7 +109,20 @@ def make_pricing_tools(pricing_id: str, repo: PricingRepository) -> list:
         repo.update_pricing(pricing_id, updates)
         return f"Parâmetros atualizados: {list(updates.keys())}"
 
-    return [add_feature, remove_feature, update_feature, update_inputs]
+    @tool
+    def reorder_features(feature_ids_in_order: list[str]) -> str:
+        """Reordena as funcionalidades na tabela de precificação seguindo uma sequência lógica.
+        Recebe a lista COMPLETA de IDs de funcionalidades na nova ordem desejada (do primeiro ao último).
+        Use quando o usuário pedir para organizar, reordenar ou sequenciar as funcionalidades em ordem lógica de execução."""
+        updated = 0
+        for i, fid in enumerate(feature_ids_in_order):
+            existing = repo.get_feature(fid, pricing_id)
+            if existing:
+                repo.update_feature(fid, {"ordem": i + 1})
+                updated += 1
+        return f"{updated} funcionalidades reordenadas em sequência lógica."
+
+    return [add_feature, remove_feature, update_feature, update_inputs, reorder_features]
 
 
 class PricingChatbotService:
@@ -160,13 +173,30 @@ class PricingChatbotService:
 
         result = graph.invoke({"messages": [("user", user_message)]}, config=config)
 
-        # Último AIMessage contém a resposta final do agente
+        # Último AIMessage com texto puro contém a resposta final do agente.
+        # msg.content pode ser str ou list[dict] (blocos de conteúdo com tool_use).
+        # Só aceitamos mensagens cujo conteúdo é texto — ignoramos AIMessages
+        # que só contêm tool_calls (content é lista sem bloco 'text').
         from langchain_core.messages import AIMessage  # lazy import
         reply = ""
         for msg in reversed(result["messages"]):
-            if isinstance(msg, AIMessage) and msg.content:
-                reply = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if not isinstance(msg, AIMessage):
+                continue
+            content = msg.content
+            if isinstance(content, str) and content.strip():
+                reply = content
                 break
+            if isinstance(content, list):
+                # Extrai texto dos blocos de conteúdo (Anthropic/OpenAI format)
+                texts = [
+                    block.get("text", "") if isinstance(block, dict) else str(block)
+                    for block in content
+                    if not isinstance(block, dict) or block.get("type") in ("text", None)
+                ]
+                text = " ".join(t for t in texts if t.strip())
+                if text.strip():
+                    reply = text
+                    break
 
         # Persiste resposta do assistente
         self._repo.insert_chat_message({
@@ -209,10 +239,10 @@ class PricingChatbotService:
         reports = self._repo.get_project_reports(project_id)
         history = self._repo.get_recent_history(limit=3)
 
-        # A) Funcionalidades com IDs (essencial para remove/update)
+        # A) Funcionalidades com IDs e ordem atual (essencial para remove/update/reorder)
         features_text = "\n".join(
-            f"- ID: {f['id']} | [{f.get('bloco', '')}] {f.get('funcionalidade', '')} — {f.get('horas', '?')}h"
-            for f in features
+            f"- Ordem {i+1} | ID: {f['id']} | [{f.get('bloco', '')}] {f.get('funcionalidade', '')} — {f.get('horas', '?')}h"
+            for i, f in enumerate(features)
         ) or "Nenhuma funcionalidade cadastrada ainda."
 
         # B) Parâmetros
@@ -240,12 +270,32 @@ class PricingChatbotService:
                 )
         history_text = "\n".join(history_lines) or "Sem histórico disponível."
 
+        num_analysts = pricing.get("num_analysts") or 1
+        hours_per_day = float(pricing.get("hours_per_day") or 0)
+        daily_capacity = num_analysts * hours_per_day
+        hours_per_sprint = daily_capacity * 5
+
+        calc_section = (
+            "## Fórmulas de Cálculo (use sempre que o usuário mencionar sprints, dias ou horas)\n"
+            f"- Capacidade diária do time: {num_analysts} analistas × {hours_per_day}h/dia = **{daily_capacity}h/dia**\n"
+            f"- 1 dia útil = {daily_capacity}h de esforço total do time\n"
+            f"- 1 sprint = 5 dias úteis = **{hours_per_sprint}h de esforço total**\n"
+            "- Dias úteis de uma feature: horas_da_feature / capacidade_diária\n"
+            "- Sprints totais da precificação: soma_de_todas_as_horas / capacidade_diária / 5\n\n"
+            "Exemplos de uso:\n"
+            f"  → 'adiciona 1 sprint de trabalho em uma nova feature' = adiciona feature com {hours_per_sprint}h\n"
+            f"  → 'preciso que essa fase dure 2 sprints' = essa fase deve ter {hours_per_sprint * 2}h no total\n"
+            f"  → 'distribui 3 sprints entre as fases de mapeamento' = as features de mapeamento devem somar {hours_per_sprint * 3}h\n"
+            "Sempre faça a conta explicitamente antes de chamar as ferramentas e confirme com o usuário o total de horas calculado."
+        )
+
         return (
             "Você é um assistente de precificação técnica da CITi. "
             "Ajude o comercial a refinar a precificação conversando em português. "
             "Quando solicitado a adicionar, remover ou editar funcionalidades, use as ferramentas disponíveis. "
             "Ao usar remove_feature ou update_feature, use os IDs listados em 'Funcionalidades Atuais'. "
             "Responda de forma concisa e direta. Não use markdown desnecessário.\n\n"
+            f"{calc_section}\n\n"
             f"## Funcionalidades Atuais (IDs para editar/remover)\n{features_text}\n\n"
             f"## Parâmetros da Precificação\n{inputs_text}\n\n"
             f"## Relatório de Diagnóstico\n{reports_text}\n\n"
