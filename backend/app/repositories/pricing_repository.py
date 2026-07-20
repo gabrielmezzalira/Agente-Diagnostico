@@ -171,21 +171,22 @@ class PricingRepository:
     # -------------------------------------------------------------------------
 
     def get_top_history_by_type(self, project_type: str, limit: int = 3) -> list[dict]:
-        """Busca os N pricings aprovados mais recentes de um determinado project_type.
-
-        Usa filtro PostgREST sobre campo JSONB para evitar filtragem Python-side.
-
-        Args:
-            project_type: tipo de projeto (ex: "bi", "ml", "data_engineering")
-            limit: número máximo de registros retornados (default: 3)
-
-        Returns:
-            Lista de dicts de pricing_history ordenados por approved_at desc.
-        """
+        """Busca os N pricings aprovados mais recentes de um determinado project_type."""
         result = (
             self._db.table("pricing_history")
             .select("*")
             .filter("snapshot->>project_type", "eq", project_type)
+            .order("approved_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
+    def get_recent_history(self, limit: int = 7) -> list[dict]:
+        """Busca os N pricings aprovados mais recentes, sem filtro de tipo."""
+        result = (
+            self._db.table("pricing_history")
+            .select("*")
             .order("approved_at", desc=True)
             .limit(limit)
             .execute()
@@ -267,15 +268,10 @@ class PricingRepository:
         Raises:
             HTTPException 500 se o segredo não for encontrado
         """
-        result = (
-            self._db.table("vault.decrypted_secrets")
-            .select("secret")
-            .eq("id", secret_id)
-            .execute()
-        )
+        result = self._db.rpc("vault_get_secret", {"p_secret_id": secret_id}).execute()
         if not result.data:
             raise HTTPException(
                 status_code=500,
                 detail="Falha ao descriptografar chave de API do Precificador.",
             )
-        return result.data[0]["secret"]
+        return result.data

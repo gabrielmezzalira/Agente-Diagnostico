@@ -57,19 +57,15 @@ function FeatureRow({
   const [bloco, setBloco] = useState(feature.bloco)
   const [funcionalidade, setFuncionalidade] = useState(feature.funcionalidade)
   const [horas, setHoras] = useState(String(feature.horas))
-  const [saving, setSaving] = useState(false)
+  const [editingField, setEditingField] = useState<'bloco' | 'funcionalidade' | 'horas' | null>(null)
 
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await onUpdate(feature.id, {
-        bloco,
-        funcionalidade,
-        horas: Number(horas),
-      })
-    } finally {
-      setSaving(false)
-    }
+  async function saveField(field: 'bloco' | 'funcionalidade' | 'horas') {
+    setEditingField(null)
+    await onUpdate(feature.id, {
+      bloco,
+      funcionalidade,
+      horas: Number(horas),
+    })
   }
 
   async function handleDelete() {
@@ -78,39 +74,73 @@ function FeatureRow({
   }
 
   const dias = featureDias(Number(horas), numAnalysts, hoursPerDay).toFixed(1)
+  const cellHover = !isApproved ? 'cursor-pointer hover:bg-[var(--color-muted)] rounded' : ''
 
   return (
-    <tr className="border-t border-[var(--color-border-std)]">
-      <td className={tdCls}>
-        <input
-          type="text"
-          value={bloco}
-          onChange={e => setBloco(e.target.value)}
-          disabled={isApproved}
-          className={inputCls}
-        />
+    <tr className="border-t border-[var(--color-border-std)] group">
+      <td className={tdCls + ' min-w-[120px]'}>
+        {editingField === 'bloco' ? (
+          <input
+            type="text"
+            value={bloco}
+            autoFocus
+            onChange={e => setBloco(e.target.value)}
+            onBlur={() => saveField('bloco')}
+            onKeyDown={e => e.key === 'Enter' && saveField('bloco')}
+            className={inputCls}
+          />
+        ) : (
+          <span
+            onClick={() => !isApproved && setEditingField('bloco')}
+            className={`block text-xs leading-snug ${cellHover} px-1 py-0.5`}
+          >
+            {bloco || <span className="text-[var(--color-text-secondary)] italic">—</span>}
+          </span>
+        )}
       </td>
-      <td className={tdCls}>
-        <input
-          type="text"
-          value={funcionalidade}
-          onChange={e => setFuncionalidade(e.target.value)}
-          disabled={isApproved}
-          className={inputCls}
-        />
+      <td className={tdCls + ' min-w-[200px]'}>
+        {editingField === 'funcionalidade' ? (
+          <input
+            type="text"
+            value={funcionalidade}
+            autoFocus
+            onChange={e => setFuncionalidade(e.target.value)}
+            onBlur={() => saveField('funcionalidade')}
+            onKeyDown={e => e.key === 'Enter' && saveField('funcionalidade')}
+            className={inputCls}
+          />
+        ) : (
+          <span
+            onClick={() => !isApproved && setEditingField('funcionalidade')}
+            className={`block text-xs leading-snug break-words ${cellHover} px-1 py-0.5`}
+          >
+            {funcionalidade || <span className="text-[var(--color-text-secondary)] italic">—</span>}
+          </span>
+        )}
       </td>
       <td className={tdCls + ' w-20'}>
-        <input
-          type="number"
-          min={0}
-          step={0.5}
-          value={horas}
-          onChange={e => setHoras(e.target.value)}
-          disabled={isApproved}
-          className={inputCls}
-        />
+        {editingField === 'horas' ? (
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={horas}
+            autoFocus
+            onChange={e => setHoras(e.target.value)}
+            onBlur={() => saveField('horas')}
+            onKeyDown={e => e.key === 'Enter' && saveField('horas')}
+            className={inputCls}
+          />
+        ) : (
+          <span
+            onClick={() => !isApproved && setEditingField('horas')}
+            className={`block text-xs text-center ${cellHover} px-1 py-0.5`}
+          >
+            {horas}
+          </span>
+        )}
       </td>
-      <td className={tdCls + ' w-16 text-center text-[var(--color-text-secondary)]'}>
+      <td className={tdCls + ' w-16 text-center text-xs text-[var(--color-text-secondary)]'}>
         {dias}
       </td>
       <td className={tdCls + ' w-16 text-center'}>
@@ -123,24 +153,14 @@ function FeatureRow({
         />
       </td>
       {!isApproved && (
-        <td className={tdCls + ' w-20'}>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              title="Salvar"
-              className="p-1.5 text-[var(--color-accent)] hover:bg-[var(--color-muted)] rounded transition-colors disabled:opacity-50"
-            >
-              <Check size={13} />
-            </button>
-            <button
-              onClick={handleDelete}
-              title="Excluir"
-              className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-bg)] rounded transition-colors"
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
+        <td className={tdCls + ' w-16'}>
+          <button
+            onClick={handleDelete}
+            title="Excluir"
+            className="p-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] hover:bg-[var(--color-red-bg)] rounded transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <Trash2 size={13} />
+          </button>
         </td>
       )}
     </tr>
@@ -476,10 +496,10 @@ export default function PricingEditorPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-[var(--color-muted)]">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)]">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)] min-w-[120px]">
                       Bloco
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)]">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)] min-w-[200px]">
                       Funcionalidade
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-[var(--color-text-secondary)] w-20">

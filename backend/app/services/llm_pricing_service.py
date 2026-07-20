@@ -103,13 +103,35 @@ class LLMPricingService:
             r["markdown_content"] for r in reports if r.get("markdown_content")
         )
 
+        history = self._repo.get_recent_history(limit=7)
+
+        history_lines = []
+        for h in history:
+            snapshot = h.get("snapshot", {})
+            for f in snapshot.get("features", []):
+                history_lines.append(
+                    f"  - [{f.get('bloco', '')}] {f.get('funcionalidade', '')} → {f.get('horas', '?')}h"
+                )
+        history_context = (
+            "Histórico de funcionalidades aprovadas pela CITi (use como referência de horas):\n"
+            + "\n".join(history_lines)
+            if history_lines
+            else ""
+        )
+
         system_prompt = (
-            "Você é um assistente de precificação técnica. Analise o relatório de diagnóstico "
-            "a seguir e extraia uma lista de funcionalidades técnicas que precisarão ser desenvolvidas. "
-            "Para cada funcionalidade, identifique: o bloco temático (ex: Engenharia de Dados, "
-            "Visualização, Ciência de Dados, Automação, Integração, Consumo/Interface, Geral), "
-            "o nome da funcionalidade em português, e uma estimativa de horas (valor entre 4 e 80). "
-            "Retorne apenas funcionalidades concretas e implementáveis."
+            "Você é um assistente de precificação técnica de projetos de dados da empresa CITi. "
+            "Analise o relatório de diagnóstico e extraia funcionalidades técnicas concretas e implementáveis. "
+            "Para cada funcionalidade, identifique:\n"
+            "- bloco temático (Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, Consumo/Interface, Geral)\n"
+            "- nome da funcionalidade em português (conciso, máximo 10 palavras)\n"
+            "- estimativa de horas de desenvolvimento\n\n"
+            "REGRAS CRÍTICAS para estimativa de horas:\n"
+            "- Horas representam esforço de desenvolvimento técnico de um analista, NÃO tempo de projeto total\n"
+            "- NUNCA ultrapasse 80h por funcionalidade — divida em duas se necessário\n"
+            "- Use o histórico abaixo como âncora principal: encontre funcionalidades similares e baseie a estimativa no que foi aprovado antes\n"
+            "- Se não houver similar no histórico, use: 4-12h (tarefa simples), 12-30h (módulo médio), 30-60h (módulo complexo)\n\n"
+            + (f"{history_context}\n" if history_context else "")
         )
 
         from langchain_core.messages import HumanMessage, SystemMessage  # lazy import
@@ -130,7 +152,7 @@ class LLMPricingService:
             {
                 "bloco": f.bloco,
                 "funcionalidade": f.funcionalidade,
-                "horas": str(f.horas),
+                "horas": str(min(f.horas, 80.0)),
             }
             for f in result.features
         ]
@@ -165,10 +187,8 @@ class LLMPricingService:
         project_id = str(pricing["project_id"])
 
         current_features = self._repo.get_pricing_features(pricing_id)
-        project = self._repo.get_project(project_id)
-        project_type = (project or {}).get("project_type") or ""
         reports = self._repo.get_project_reports(project_id)
-        history = self._repo.get_top_history_by_type(project_type, limit=3)
+        history = self._repo.get_recent_history(limit=7)
 
         # Part A: diagnosis reports
         reports_text = (
@@ -189,43 +209,37 @@ class LLMPricingService:
             else "Nenhuma funcionalidade cadastrada ainda."
         )
 
-        # Part C: approved history of similar projects
-        history_parts = []
+        # Part C: all recent approved history (all types — calibrate by feature similarity)
+        history_lines = []
         for h in history:
             snapshot = h.get("snapshot", {})
-            feats = snapshot.get("features", [])
-            feats_text = "\n".join(
-                f"  - [{f.get('bloco', '')}] {f.get('funcionalidade', '')} ({f.get('horas', '?')}h)"
-                for f in feats
-            )
-            history_parts.append(
-                f"Projeto aprovado ({snapshot.get('project_type', '')}):\n{feats_text}"
-            )
+            for f in snapshot.get("features", []):
+                history_lines.append(
+                    f"  - [{f.get('bloco', '')}] {f.get('funcionalidade', '')} → {f.get('horas', '?')}h"
+                )
         history_text = (
-            "\n\n".join(history_parts)
+            "\n".join(history_lines)
             if history_parts
             else "Nenhum histórico de precificações aprovadas disponível."
         )
 
-        # Part D: explicit anti-repetition instruction embedded in human message
         human_message = (
             f"## Relatórios de Diagnóstico\n{reports_text}\n\n"
             f"## Funcionalidades Atuais na Precificação\n{current_text}\n\n"
-            f"## Histórico de Projetos Similares Aprovados\n{history_text}\n\n"
+            f"## Histórico de Funcionalidades Aprovadas pela CITi\n{history_text}\n\n"
             f"## Instrução\n"
-            f"Sugira funcionalidades adicionais para este projeto do tipo '{project_type}'. "
-            f"NÃO sugira funcionalidades já presentes na lista atual. "
-            f"Baseie-se nos relatórios de diagnóstico e no histórico aprovado. "
+            f"Sugira funcionalidades adicionais que provavelmente são necessárias mas ainda não estão na lista atual. "
+            f"NÃO repita funcionalidades já presentes. "
+            f"Use o histórico acima como âncora para as horas: encontre funcionalidades similares e baseie a estimativa no que foi aprovado. "
             f"Para cada sugestão, forneça uma justificativa clara."
         )
 
         system_prompt = (
-            "Você é um consultor técnico de precificação de projetos de dados. "
-            "Analise o contexto fornecido e sugira funcionalidades adicionais relevantes "
-            "que provavelmente são necessárias mas ainda não estão na lista atual. "
-            "Use blocos temáticos como: Engenharia de Dados, Visualização, Ciência de Dados, "
-            "Automação, Integração, Consumo/Interface, Geral. "
-            "Estime horas realistas entre 4 e 80 por funcionalidade."
+            "Você é um consultor técnico de precificação de projetos de dados da CITi. "
+            "Sugira funcionalidades adicionais relevantes baseando-se no diagnóstico e no histórico aprovado. "
+            "Use blocos: Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, Consumo/Interface, Geral. "
+            "Para horas: use o histórico como referência principal — funcionalidades similares devem ter horas similares. "
+            "Máximo 80h por funcionalidade."
         )
 
         from langchain_core.messages import HumanMessage, SystemMessage  # lazy import
