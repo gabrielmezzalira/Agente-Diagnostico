@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Check, ChevronLeft, Download, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { api, type ChatMessage, type PricingFeature, type SuggestedFeature } from '../lib/api'
 import { usePricing } from '../hooks/usePricing'
 import { usePricingFeatures } from '../hooks/usePricingFeatures'
@@ -228,7 +230,26 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
             : 'bg-[var(--color-muted)] text-[var(--color-text-primary)]'
         }`}
       >
-        {msg.content || '…'}
+        {isUser ? (
+          msg.content || '…'
+        ) : (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              em: ({ children }) => <em className="italic">{children}</em>,
+              ul: ({ children }) => <ul className="list-disc pl-4 mb-1 space-y-0.5">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal pl-4 mb-1 space-y-0.5">{children}</ol>,
+              li: ({ children }) => <li>{children}</li>,
+              code: ({ children }) => (
+                <code className="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+              ),
+            }}
+          >
+            {msg.content || '…'}
+          </ReactMarkdown>
+        )}
       </div>
     </div>
   )

@@ -219,7 +219,7 @@ class LLMPricingService:
                 )
         history_text = (
             "\n".join(history_lines)
-            if history_parts
+            if history_lines
             else "Nenhum histórico de precificações aprovadas disponível."
         )
 
