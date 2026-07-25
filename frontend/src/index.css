@@ -2,26 +2,26 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- Color Palette — CITi Brand (dark) ---- */
-  --color-bg-page:        #0d0d0d;
-  --color-surface:        #161616;
-  --color-surface-2:      #1e1e1e;
-  --color-border-std:     #2a2a2a;
-  --color-border-hover:   #444444;
+  /* ---- Color Palette — CITi Brand (dark + green atmosphere) ---- */
+  --color-bg-page:        transparent;
+  --color-surface:        #131a10;
+  --color-surface-2:      #182012;
+  --color-border-std:     #243020;
+  --color-border-hover:   #3a4e32;
   --color-text-primary:   #f0f0f0;
-  --color-text-secondary: #888888;
+  --color-text-secondary: #7a9070;
   --color-accent:         #50d826;
   --color-accent-hover:   #3fac1c;
-  --color-green-bg-light: #0b1f06;
-  --color-green-bg-tag:   #0b1f06;
-  --color-border-green:   #1e4a0e;
+  --color-green-bg-light: #0d2008;
+  --color-green-bg-tag:   #0d2008;
+  --color-border-green:   #2a5a18;
   --color-red:            #ff6b6b;
   --color-yellow:         #f0b030;
-  --color-red-bg:         #1c0808;
-  --color-yellow-bg:      #1a1000;
-  --color-border-red:     #4a1515;
-  --color-border-yellow:  #3d2800;
-  --color-muted:          #1e1e1e;
+  --color-red-bg:         #1c0a0a;
+  --color-yellow-bg:      #1a1100;
+  --color-border-red:     #4a1818;
+  --color-border-yellow:  #3d2c00;
+  --color-muted:          #182012;
 
   /* ---- Typography ---- */
   --font-family-sans: 'Barlow', sans-serif;
@@ -51,7 +51,12 @@
 body {
   margin: 0;
   font-family: var(--font-family-sans);
-  background-color: #0d0d0d;
+  background-color: #0a0f09;
+  background-image:
+    radial-gradient(ellipse 110% 55% at 50% -5%, rgba(80, 216, 38, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 45% at 5% 60%,  rgba(80, 216, 38, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 95% 90%, rgba(80, 216, 38, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
   color: #f0f0f0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
