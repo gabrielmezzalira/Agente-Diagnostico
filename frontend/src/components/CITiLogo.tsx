@@ -6,7 +6,7 @@ export default function CITiLogo({ height = 22 }: { height?: number }) {
       src={citiLogo}
       alt="CITi"
       height={height}
-      style={{ height, width: 'auto', filter: 'brightness(0) invert(1)' }}
+      style={{ height, width: 'auto', filter: 'brightness(0)' }}
     />
   )
 }
