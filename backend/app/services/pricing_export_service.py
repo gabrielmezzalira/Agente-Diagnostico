@@ -177,7 +177,7 @@ def _render_pdf(
     desc = project.get("description", "")
     if desc:
         pdf.ln(2)
-        pdf.set_font(FONT, "I", 9)
+        pdf.set_font(FONT, "", 9)
         pdf.multi_cell(CONTENT_W, 5, desc)
 
     pdf.ln(8)
@@ -337,7 +337,7 @@ def _render_pdf(
 
     # ── footer ───────────────────────────────────────────────────
     pdf.set_y(-18)
-    pdf.set_font(FONT, "I", 7)
+    pdf.set_font(FONT, "", 7)
     pdf.set_text_color(*C_MUTED)
     pdf.cell(CONTENT_W * 0.7, 5, "CITi - Centro de Informatica e Tecnologia - UFPE", ln=0)
     pdf.cell(CONTENT_W * 0.3, 5, "Documento gerado automaticamente", align="R")
