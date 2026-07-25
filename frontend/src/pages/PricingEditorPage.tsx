@@ -371,6 +371,7 @@ export default function PricingEditorPage() {
   const [addingFeature, setAddingFeature] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const isApproved = pricing?.status === 'approved'
 
@@ -398,10 +399,11 @@ export default function PricingEditorPage() {
   async function handleExportPdf() {
     if (!pricingId) return
     setExportingPdf(true)
+    setExportError(null)
     try {
       await api.pricings.exportPdf(pricingId)
-    } catch {
-      // silently ignore — browser still shows network error if it fails
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Erro ao gerar PDF')
     } finally {
       setExportingPdf(false)
     }
@@ -504,14 +506,21 @@ export default function PricingEditorPage() {
             <MessageSquare size={12} />
             Assistente
           </button>
-          <button
-            onClick={handleExportPdf}
-            disabled={exportingPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
-          >
-            <FileDown size={12} />
-            {exportingPdf ? 'Gerando...' : 'Exportar PDF'}
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
+            >
+              <FileDown size={12} />
+              {exportingPdf ? 'Gerando...' : 'Exportar PDF'}
+            </button>
+            {exportError && (
+              <span className="text-[10px] text-[var(--color-red)] max-w-[180px] text-right leading-tight">
+                {exportError}
+              </span>
+            )}
+          </div>
           <button
             onClick={handleApprove}
             disabled={isApproved || approving}

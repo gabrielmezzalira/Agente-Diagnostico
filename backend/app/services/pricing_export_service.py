@@ -132,7 +132,7 @@ def _render_pdf(
         pdf.add_font("Barlow", "B", str(font_b))
         FONT = "Barlow"
     else:
-        FONT = FONT
+        FONT = "Helvetica"
 
     pdf.add_page()
 
