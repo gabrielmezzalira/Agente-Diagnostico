@@ -2,26 +2,26 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- Color Palette — CITi Brand (dark + green atmosphere) ---- */
-  --color-bg-page:        transparent;
-  --color-surface:        #131a10;
-  --color-surface-2:      #182012;
-  --color-border-std:     #243020;
-  --color-border-hover:   #3a4e32;
-  --color-text-primary:   #f0f0f0;
-  --color-text-secondary: #7a9070;
-  --color-accent:         #50d826;
-  --color-accent-hover:   #3fac1c;
-  --color-green-bg-light: #0d2008;
-  --color-green-bg-tag:   #0d2008;
-  --color-border-green:   #2a5a18;
-  --color-red:            #ff6b6b;
-  --color-yellow:         #f0b030;
-  --color-red-bg:         #1c0a0a;
-  --color-yellow-bg:      #1a1100;
-  --color-border-red:     #4a1818;
-  --color-border-yellow:  #3d2c00;
-  --color-muted:          #182012;
+  /* ---- Color Palette — CITi Brand (light + green tint) ---- */
+  --color-bg-page:        #f0f2ed;
+  --color-surface:        #ffffff;
+  --color-surface-2:      #f7f8f5;
+  --color-border-std:     #e2e5de;
+  --color-border-hover:   #b8c0b0;
+  --color-text-primary:   #111111;
+  --color-text-secondary: #888888;
+  --color-accent:         #44c41e;
+  --color-accent-hover:   #35a016;
+  --color-green-bg-light: #e8f5e2;
+  --color-green-bg-tag:   #e8f5e2;
+  --color-border-green:   #a8d890;
+  --color-red:            #cc3333;
+  --color-yellow:         #d4880a;
+  --color-red-bg:         #fff2f2;
+  --color-yellow-bg:      #fff8ee;
+  --color-border-red:     #f0b8b8;
+  --color-border-yellow:  #f0d8a0;
+  --color-muted:          #f0f2ed;
 
   /* ---- Typography ---- */
   --font-family-sans: 'Barlow', sans-serif;
@@ -51,27 +51,16 @@
 body {
   margin: 0;
   font-family: var(--font-family-sans);
-  background-color: #0a0f09;
+  /* off-white com esfumaçado verde muito sutil no topo */
+  background-color: #f0f2ed;
   background-image:
-    radial-gradient(ellipse 110% 55% at 50% -5%, rgba(80, 216, 38, 0.18) 0%, transparent 65%),
-    radial-gradient(ellipse 70% 45% at 5% 60%,  rgba(80, 216, 38, 0.07) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 95% 90%, rgba(80, 216, 38, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse 120% 40% at 50% -10%, rgba(68, 196, 30, 0.10) 0%, transparent 70%);
   background-attachment: fixed;
-  color: #f0f0f0;
+  color: #111111;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100vh;
-}
-
-/* ---- Form inputs — dark mode tweaks ---- */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-}
-
-select option {
-  background-color: #1e1e1e;
-  color: #f0f0f0;
 }
