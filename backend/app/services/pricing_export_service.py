@@ -108,8 +108,8 @@ def _render_pdf(
         by_bloco[f["bloco"]].append(f)
 
     # ── paleta CITi ─────────────────────────────────────────────
-    C_GREEN      = (76, 200, 104)   # verde CITi #4CC868
-    C_GREEN_SOFT = (218, 242, 226)  # verde clarinho para subheaders
+    C_GREEN      = (80, 208, 96)    # verde CITi #50D060
+    C_GREEN_SOFT = (215, 245, 224)  # verde clarinho para subheaders
     C_DARK       = (16, 16, 16)     # cinza escuro CITi #101010
     C_WHITE      = (255, 255, 255)
     C_GRAY       = (240, 240, 240)  # branco cinzento CITi #F0F0F0
@@ -137,32 +137,33 @@ def _render_pdf(
     pdf.add_page()
 
     # ── header verde ──────────────────────────────────────────────
-    HEADER_H = 32
+    HEADER_H = 38
     pdf.set_fill_color(*C_GREEN)
     pdf.rect(0, 0, W_PAGE, HEADER_H, "F")
 
-    # logo CITi (branca em fundo verde)
+    # logo CITi (branca em fundo verde) — linha superior
     if _LOGO_PATH.exists():
-        pdf.image(str(_LOGO_PATH), x=MARGIN, y=7, h=16)
+        pdf.image(str(_LOGO_PATH), x=MARGIN, y=7, h=14)
     else:
-        pdf.set_xy(MARGIN, 9)
+        pdf.set_xy(MARGIN, 8)
         pdf.set_font(FONT, "B", 16)
         pdf.set_text_color(*C_WHITE)
         pdf.cell(40, 8, "CITi")
 
-    # data no canto direito
-    pdf.set_xy(MARGIN, 9)
-    pdf.set_font(FONT, "", 8)
-    pdf.set_text_color(20, 80, 0)
-    pdf.cell(CONTENT_W, 6, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
+    # data no canto direito — alinhada com logo
+    pdf.set_xy(MARGIN, 10)
+    pdf.set_font(FONT, "", 7)
+    pdf.set_text_color(10, 60, 10)
+    pdf.cell(CONTENT_W, 5, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
 
-    pdf.set_xy(MARGIN, 20)
-    pdf.set_font(FONT, "B", 8)
-    pdf.set_text_color(20, 80, 0)
-    pdf.cell(CONTENT_W, 6, "PROPOSTA TECNICA - PRECIFICACAO DE PROJETO")
+    # subtítulo abaixo da logo — nunca sobrepõe
+    pdf.set_xy(MARGIN, 25)
+    pdf.set_font(FONT, "B", 7)
+    pdf.set_text_color(10, 60, 10)
+    pdf.cell(CONTENT_W, 5, "PROPOSTA TECNICA - PRECIFICACAO DE PROJETO")
 
     # ── titulo do projeto ────────────────────────────────────────
-    pdf.set_y(HEADER_H + 10)
+    pdf.set_y(HEADER_H + 8)
     pdf.set_font(FONT, "B", 20)
     pdf.set_text_color(*C_DARK)
     pdf.cell(0, 10, project.get("name", "Sem nome"), ln=True)
