@@ -3,19 +3,21 @@
 #
 # Responsabilidade única: geração do PDF de exportação de uma precificação.
 # Orquestra o PricingRepository e o PricingCalculator para montar o documento.
-# Sem chamadas diretas a db.table(). Levanta HTTPException quando necessário.
 # =============================================================================
 
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
-from math import ceil
+from pathlib import Path
 
 from fastapi import HTTPException
 
 from app.core.pricing_calculator import PricingCalculator, PricingInputs, PricingOutputs
 from app.repositories.pricing_repository import PricingRepository
+
+_ASSETS_DIR = Path(__file__).parent.parent / "assets"
+_LOGO_PATH = _ASSETS_DIR / "citi-logo.png"
 
 _BLOCO_LABELS: dict[str, str] = {
     "engenharia_dados": "Engenharia de Dados",
@@ -105,17 +107,17 @@ def _render_pdf(
     for f in features:
         by_bloco[f["bloco"]].append(f)
 
-    # ── cores ────────────────────────────────────────────────────
-    C_DARK = (28, 30, 38)
-    C_BLUE = (37, 99, 235)
-    C_BLUE_LIGHT = (239, 246, 255)
-    C_WHITE = (255, 255, 255)
-    C_GRAY = (248, 249, 251)
-    C_TEXT = (30, 30, 40)
-    C_MUTED = (107, 114, 128)
+    # ── paleta CITi ─────────────────────────────────────────────
+    C_PURPLE      = (125, 26, 215)   # roxo CITi #7D1AD7
+    C_PURPLE_SOFT = (243, 238, 255)  # roxo clarinho para subheaders
+    C_DARK        = (16, 16, 16)     # cinza escuro CITi #101010
+    C_WHITE       = (255, 255, 255)
+    C_GRAY        = (240, 240, 240)  # branco cinzento CITi #F0F0F0
+    C_TEXT        = (16, 16, 16)
+    C_MUTED       = (153, 153, 153)  # cinza CITi #999999
 
-    MARGIN = 20
-    W_PAGE = 210  # A4
+    MARGIN    = 20
+    W_PAGE    = 210  # A4
     CONTENT_W = W_PAGE - 2 * MARGIN
 
     pdf = FPDF(format="A4")
@@ -123,28 +125,34 @@ def _render_pdf(
     pdf.set_margins(MARGIN, MARGIN, MARGIN)
     pdf.add_page()
 
-    # ── header ───────────────────────────────────────────────────
-    pdf.set_fill_color(*C_DARK)
-    pdf.rect(0, 0, W_PAGE, 30, "F")
+    # ── header roxo ──────────────────────────────────────────────
+    HEADER_H = 32
+    pdf.set_fill_color(*C_PURPLE)
+    pdf.rect(0, 0, W_PAGE, HEADER_H, "F")
 
-    pdf.set_xy(MARGIN, 8)
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.set_text_color(*C_WHITE)
-    pdf.cell(CONTENT_W * 0.5, 8, "CITi", ln=0)
+    # logo CITi (branca em fundo roxo)
+    if _LOGO_PATH.exists():
+        pdf.image(str(_LOGO_PATH), x=MARGIN, y=7, h=16)
+    else:
+        pdf.set_xy(MARGIN, 9)
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.set_text_color(*C_WHITE)
+        pdf.cell(40, 8, "CITi")
 
-    pdf.set_x(MARGIN + CONTENT_W * 0.5)
+    # data no canto direito
+    pdf.set_xy(MARGIN, 9)
     pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(180, 190, 210)
-    pdf.cell(CONTENT_W * 0.5, 8, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
+    pdf.set_text_color(210, 185, 255)
+    pdf.cell(CONTENT_W, 6, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
 
-    pdf.set_xy(MARGIN, 19)
+    pdf.set_xy(MARGIN, 20)
     pdf.set_font("Helvetica", "B", 8)
-    pdf.set_text_color(140, 160, 200)
+    pdf.set_text_color(210, 185, 255)
     pdf.cell(CONTENT_W, 6, "PROPOSTA TECNICA - PRECIFICACAO DE PROJETO")
 
     # ── titulo do projeto ────────────────────────────────────────
-    pdf.set_y(38)
-    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_y(HEADER_H + 10)
+    pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(*C_DARK)
     pdf.cell(0, 10, project.get("name", "Sem nome"), ln=True)
 
@@ -166,10 +174,10 @@ def _render_pdf(
     # ── helpers ──────────────────────────────────────────────────
     def section_title(title: str) -> None:
         pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(*C_BLUE)
+        pdf.set_text_color(*C_PURPLE)
         pdf.cell(CONTENT_W, 5, title, ln=True)
-        pdf.set_draw_color(*C_BLUE)
-        pdf.set_line_width(0.4)
+        pdf.set_draw_color(*C_PURPLE)
+        pdf.set_line_width(0.5)
         pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
         pdf.ln(4)
         pdf.set_text_color(*C_TEXT)
@@ -181,16 +189,16 @@ def _render_pdf(
             for j, (label, val) in enumerate(items[i : i + cols]):
                 x = MARGIN + j * (col_w + 3)
                 pdf.set_fill_color(*C_GRAY)
-                pdf.rect(x, y, col_w, 12, "F")
-                pdf.set_xy(x + 3, y + 1)
+                pdf.rect(x, y, col_w, 13, "F")
+                pdf.set_xy(x + 3, y + 1.5)
                 pdf.set_font("Helvetica", "", 7)
                 pdf.set_text_color(*C_MUTED)
                 pdf.cell(col_w - 6, 4, label)
-                pdf.set_xy(x + 3, y + 5)
+                pdf.set_xy(x + 3, y + 6)
                 pdf.set_font("Helvetica", "B", 10)
                 pdf.set_text_color(*C_DARK)
                 pdf.cell(col_w - 6, 6, val)
-            pdf.set_y(y + 14)
+            pdf.set_y(y + 15)
 
     # ── parametros ───────────────────────────────────────────────
     section_title("PARAMETROS")
@@ -208,9 +216,10 @@ def _render_pdf(
     # ── tabela de funcionalidades ────────────────────────────────
     section_title("ESCOPO DE FUNCIONALIDADES")
 
-    COL_H = 30
+    COL_H = 28  # largura coluna horas
     COL_F = CONTENT_W - COL_H
 
+    # cabeçalho da tabela
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
     pdf.set_font("Helvetica", "B", 9)
@@ -222,20 +231,27 @@ def _render_pdf(
         bloco_label = _BLOCO_LABELS.get(bloco, bloco.replace("_", " ").title())
         bloco_horas = sum(float(f.get("horas", 0)) for f in items)
 
-        pdf.set_fill_color(*C_BLUE_LIGHT)
-        pdf.set_text_color(*C_BLUE)
+        # subheader do bloco — roxo suave
+        pdf.set_fill_color(*C_PURPLE_SOFT)
+        pdf.set_text_color(*C_PURPLE)
         pdf.set_font("Helvetica", "B", 8)
         pdf.cell(COL_F, 6, f"  {bloco_label}", fill=True, ln=0)
         pdf.cell(COL_H, 6, f"{bloco_horas:.0f}h", align="R", fill=True, ln=True)
 
         for f in items:
-            bg = C_GRAY if row_alt else C_WHITE
             nome = f.get("funcionalidade", "—")
             horas_val = float(f.get("horas", 0))
 
-            y = pdf.get_y()
+            # calcula altura da linha sem mover cursor
             lines = pdf.multi_cell(COL_F, 5, f"  {nome}", split_only=True)
-            row_h = max(6, len(lines) * 5 + 2)
+            row_h = max(7, len(lines) * 5 + 3)
+
+            # garante que a linha cabe na página antes de desenhar o fundo
+            if pdf.get_y() + row_h > pdf.page_break_trigger:
+                pdf.add_page()
+
+            y = pdf.get_y()
+            bg = C_GRAY if row_alt else C_WHITE
 
             pdf.set_fill_color(*bg)
             pdf.rect(MARGIN, y, COL_F, row_h, "F")
@@ -256,6 +272,7 @@ def _render_pdf(
 
         row_alt = False
 
+    # linha de total
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
     pdf.set_font("Helvetica", "B", 9)
@@ -278,30 +295,34 @@ def _render_pdf(
     pdf.ln(8)
 
     # ── destaque do preco ────────────────────────────────────────
-    y = pdf.get_y()
-    pdf.set_fill_color(*C_BLUE)
-    pdf.rect(MARGIN, y, CONTENT_W, 22, "F")
+    BOX_H = 24
+    if pdf.get_y() + BOX_H > pdf.page_break_trigger:
+        pdf.add_page()
 
-    pdf.set_xy(MARGIN + 6, y + 3)
+    y = pdf.get_y()
+    pdf.set_fill_color(*C_PURPLE)
+    pdf.rect(MARGIN, y, CONTENT_W, BOX_H, "F")
+
+    pdf.set_xy(MARGIN + 6, y + 4)
     pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(180, 210, 255)
+    pdf.set_text_color(210, 185, 255)
     pdf.cell(CONTENT_W * 0.6, 5, "PRECO TOTAL ESTIMADO", ln=0)
 
     pdf.set_x(MARGIN + CONTENT_W * 0.6)
     pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(180, 210, 255)
+    pdf.set_text_color(210, 185, 255)
     ticket = pricing.get("ticket_price", "—")
     pdf.cell(CONTENT_W * 0.35, 5, f"Ticket: R$ {ticket}/mes", align="R")
 
-    pdf.set_xy(MARGIN + 6, y + 10)
-    pdf.set_font("Helvetica", "B", 17)
+    pdf.set_xy(MARGIN + 6, y + 11)
+    pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(*C_WHITE)
-    pdf.cell(CONTENT_W * 0.6, 9, f"R$ {float(outputs.preco_total):,.2f}", ln=0)
+    pdf.cell(CONTENT_W * 0.6, 10, f"R$ {float(outputs.preco_total):,.2f}", ln=0)
 
     pdf.set_x(MARGIN + CONTENT_W * 0.6)
     pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(200, 220, 255)
-    pdf.cell(CONTENT_W * 0.35, 9, f"Duracao: {float(outputs.duracao_meses):.1f} meses", align="R")
+    pdf.set_text_color(210, 185, 255)
+    pdf.cell(CONTENT_W * 0.35, 10, f"Duracao: {float(outputs.duracao_meses):.1f} meses", align="R")
 
     # ── footer ───────────────────────────────────────────────────
     pdf.set_y(-18)

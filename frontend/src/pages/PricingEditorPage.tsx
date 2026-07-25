@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, ChevronLeft, Download, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
+import { Check, ChevronLeft, Download, FileDown, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, type ChatMessage, type PricingFeature, type SuggestedFeature } from '../lib/api'
@@ -509,7 +509,7 @@ export default function PricingEditorPage() {
             disabled={exportingPdf}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
           >
-            <Download size={12} />
+            <FileDown size={12} />
             {exportingPdf ? 'Gerando...' : 'Exportar PDF'}
           </button>
           <button

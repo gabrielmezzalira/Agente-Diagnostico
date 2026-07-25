@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Activity, Database, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
+import { Plus, Activity, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
 import { api, type Project } from '../lib/api'
+import CITiLogo from '../components/CITiLogo'
 
 const EXTENSION_URL =
   'https://github.com/gabrielmezzalira/Agente-Diagnostico/releases/download/v1.0.0/agente-diagnostico-extension-v1.0.0.zip'
@@ -124,9 +125,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-[var(--color-bg-page)]">
       <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database size={18} className="text-[var(--color-accent)]" />
-            <span className="font-semibold text-[var(--color-text-primary)] text-sm">
+          <div className="flex items-center gap-3">
+            <CITiLogo height={22} />
+            <span className="text-xs text-[var(--color-text-secondary)] border-l border-[var(--color-border-std)] pl-3">
               Agente Diagnóstico
             </span>
           </div>

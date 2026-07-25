@@ -2,25 +2,25 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- Color Palette ---- */
-  --color-bg-page:        #f5f4f0;
+  /* ---- Color Palette — CITi Brand ---- */
+  --color-bg-page:        #ffffff;
   --color-surface:        #ffffff;
-  --color-border-std:     #e8e6e0;
-  --color-border-hover:   #cccccc;
-  --color-text-primary:   #1a1a1a;
-  --color-text-secondary: #888888;
-  --color-accent:         #22a267;
-  --color-accent-hover:   #1a8a56;
-  --color-green-bg-light: #f0faf5;
-  --color-green-bg-tag:   #edfaf3;
-  --color-border-green:   #a8dfc2;
+  --color-border-std:     #d9d9d9;
+  --color-border-hover:   #999999;
+  --color-text-primary:   #101010;
+  --color-text-secondary: #999999;
+  --color-accent:         #7d1ad7;
+  --color-accent-hover:   #6614b8;
+  --color-green-bg-light: #f3eeff;
+  --color-green-bg-tag:   #f3eeff;
+  --color-border-green:   #c9a0f0;
   --color-red:            #d43a3a;
   --color-yellow:         #e8a020;
   --color-red-bg:         #fff5f5;
   --color-yellow-bg:      #fff8f0;
   --color-border-red:     #f0b8b8;
   --color-border-yellow:  #f0d8b0;
-  --color-muted:          #f0ede6;
+  --color-muted:          #f0f0f0;
 
   /* ---- Typography ---- */
   --font-family-sans: 'DM Sans', sans-serif;
@@ -50,7 +50,7 @@
 body {
   margin: 0;
   font-family: var(--font-family-sans);
-  background-color: #f5f4f0;
+  background-color: #ffffff;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
