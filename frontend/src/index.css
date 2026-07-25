@@ -3,25 +3,25 @@
 
 @theme {
   /* ---- Color Palette — CITi Brand (light + green tint) ---- */
-  --color-bg-page:        #f0f2ed;
+  --color-bg-page:        #eeeeea;
   --color-surface:        #ffffff;
-  --color-surface-2:      #f7f8f5;
-  --color-border-std:     #e2e5de;
-  --color-border-hover:   #b8c0b0;
+  --color-surface-2:      #f5f5f2;
+  --color-border-std:     #e0e0dc;
+  --color-border-hover:   #b0b8a8;
   --color-text-primary:   #111111;
   --color-text-secondary: #888888;
-  --color-accent:         #44c41e;
-  --color-accent-hover:   #35a016;
-  --color-green-bg-light: #e8f5e2;
-  --color-green-bg-tag:   #e8f5e2;
-  --color-border-green:   #a8d890;
+  --color-accent:         #2e8c12;
+  --color-accent-hover:   #236a0d;
+  --color-green-bg-light: #e0edd8;
+  --color-green-bg-tag:   #e0edd8;
+  --color-border-green:   #88c070;
   --color-red:            #cc3333;
   --color-yellow:         #d4880a;
   --color-red-bg:         #fff2f2;
   --color-yellow-bg:      #fff8ee;
   --color-border-red:     #f0b8b8;
   --color-border-yellow:  #f0d8a0;
-  --color-muted:          #f0f2ed;
+  --color-muted:          #eeeeea;
 
   /* ---- Typography ---- */
   --font-family-sans: 'Barlow', sans-serif;
@@ -51,10 +51,10 @@
 body {
   margin: 0;
   font-family: var(--font-family-sans);
-  /* off-white com esfumaçado verde muito sutil no topo */
-  background-color: #f0f2ed;
+  background-color: #eeeeea;
   background-image:
-    radial-gradient(ellipse 120% 40% at 50% -10%, rgba(68, 196, 30, 0.10) 0%, transparent 70%);
+    radial-gradient(ellipse 150% 55% at 50% -8%, rgba(46, 140, 18, 0.22) 0%, rgba(46, 140, 18, 0.06) 45%, transparent 70%),
+    radial-gradient(ellipse 80% 35% at 10% 90%, rgba(46, 140, 18, 0.07) 0%, transparent 60%);
   background-attachment: fixed;
   color: #111111;
   -webkit-font-smoothing: antialiased;
