@@ -108,13 +108,13 @@ def _render_pdf(
         by_bloco[f["bloco"]].append(f)
 
     # ── paleta CITi ─────────────────────────────────────────────
-    C_PURPLE      = (125, 26, 215)   # roxo CITi #7D1AD7
-    C_PURPLE_SOFT = (243, 238, 255)  # roxo clarinho para subheaders
-    C_DARK        = (16, 16, 16)     # cinza escuro CITi #101010
-    C_WHITE       = (255, 255, 255)
-    C_GRAY        = (240, 240, 240)  # branco cinzento CITi #F0F0F0
-    C_TEXT        = (16, 16, 16)
-    C_MUTED       = (153, 153, 153)  # cinza CITi #999999
+    C_GREEN      = (80, 216, 38)    # verde CITi #50D826
+    C_GREEN_SOFT = (234, 251, 226)  # verde clarinho para subheaders
+    C_DARK       = (16, 16, 16)     # cinza escuro CITi #101010
+    C_WHITE      = (255, 255, 255)
+    C_GRAY       = (240, 240, 240)  # branco cinzento CITi #F0F0F0
+    C_TEXT       = (16, 16, 16)
+    C_MUTED      = (153, 153, 153)  # cinza CITi #999999
 
     MARGIN    = 20
     W_PAGE    = 210  # A4
@@ -123,40 +123,51 @@ def _render_pdf(
     pdf = FPDF(format="A4")
     pdf.set_auto_page_break(auto=True, margin=25)
     pdf.set_margins(MARGIN, MARGIN, MARGIN)
+
+    # registra Barlow (Unicode TTF)
+    font_r = _ASSETS_DIR / "Barlow-Regular.ttf"
+    font_b = _ASSETS_DIR / "Barlow-Bold.ttf"
+    if font_r.exists() and font_b.exists():
+        pdf.add_font("Barlow", "", str(font_r))
+        pdf.add_font("Barlow", "B", str(font_b))
+        FONT = "Barlow"
+    else:
+        FONT = FONT
+
     pdf.add_page()
 
-    # ── header roxo ──────────────────────────────────────────────
+    # ── header verde ──────────────────────────────────────────────
     HEADER_H = 32
-    pdf.set_fill_color(*C_PURPLE)
+    pdf.set_fill_color(*C_GREEN)
     pdf.rect(0, 0, W_PAGE, HEADER_H, "F")
 
-    # logo CITi (branca em fundo roxo)
+    # logo CITi (branca em fundo verde)
     if _LOGO_PATH.exists():
         pdf.image(str(_LOGO_PATH), x=MARGIN, y=7, h=16)
     else:
         pdf.set_xy(MARGIN, 9)
-        pdf.set_font("Helvetica", "B", 16)
+        pdf.set_font(FONT, "B", 16)
         pdf.set_text_color(*C_WHITE)
         pdf.cell(40, 8, "CITi")
 
     # data no canto direito
     pdf.set_xy(MARGIN, 9)
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(210, 185, 255)
+    pdf.set_font(FONT, "", 8)
+    pdf.set_text_color(20, 80, 0)
     pdf.cell(CONTENT_W, 6, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
 
     pdf.set_xy(MARGIN, 20)
-    pdf.set_font("Helvetica", "B", 8)
-    pdf.set_text_color(210, 185, 255)
+    pdf.set_font(FONT, "B", 8)
+    pdf.set_text_color(20, 80, 0)
     pdf.cell(CONTENT_W, 6, "PROPOSTA TECNICA - PRECIFICACAO DE PROJETO")
 
     # ── titulo do projeto ────────────────────────────────────────
     pdf.set_y(HEADER_H + 10)
-    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_font(FONT, "B", 20)
     pdf.set_text_color(*C_DARK)
     pdf.cell(0, 10, project.get("name", "Sem nome"), ln=True)
 
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font(FONT, "", 10)
     pdf.set_text_color(*C_MUTED)
     cliente = project.get("client", "—")
     tipo = _TIPO_LABELS.get(project.get("project_type", ""), project.get("project_type", "—"))
@@ -166,17 +177,17 @@ def _render_pdf(
     desc = project.get("description", "")
     if desc:
         pdf.ln(2)
-        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_font(FONT, "I", 9)
         pdf.multi_cell(CONTENT_W, 5, desc)
 
     pdf.ln(8)
 
     # ── helpers ──────────────────────────────────────────────────
     def section_title(title: str) -> None:
-        pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(*C_PURPLE)
+        pdf.set_font(FONT, "B", 9)
+        pdf.set_text_color(*C_GREEN)
         pdf.cell(CONTENT_W, 5, title, ln=True)
-        pdf.set_draw_color(*C_PURPLE)
+        pdf.set_draw_color(*C_GREEN)
         pdf.set_line_width(0.5)
         pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
         pdf.ln(4)
@@ -191,11 +202,11 @@ def _render_pdf(
                 pdf.set_fill_color(*C_GRAY)
                 pdf.rect(x, y, col_w, 13, "F")
                 pdf.set_xy(x + 3, y + 1.5)
-                pdf.set_font("Helvetica", "", 7)
+                pdf.set_font(FONT, "", 7)
                 pdf.set_text_color(*C_MUTED)
                 pdf.cell(col_w - 6, 4, label)
                 pdf.set_xy(x + 3, y + 6)
-                pdf.set_font("Helvetica", "B", 10)
+                pdf.set_font(FONT, "B", 10)
                 pdf.set_text_color(*C_DARK)
                 pdf.cell(col_w - 6, 6, val)
             pdf.set_y(y + 15)
@@ -222,7 +233,7 @@ def _render_pdf(
     # cabeçalho da tabela
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font(FONT, "B", 9)
     pdf.cell(COL_F, 7, "  Funcionalidade", fill=True, ln=0)
     pdf.cell(COL_H, 7, "Horas", align="R", fill=True, ln=True)
 
@@ -232,9 +243,9 @@ def _render_pdf(
         bloco_horas = sum(float(f.get("horas", 0)) for f in items)
 
         # subheader do bloco — roxo suave
-        pdf.set_fill_color(*C_PURPLE_SOFT)
-        pdf.set_text_color(*C_PURPLE)
-        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(*C_GREEN_SOFT)
+        pdf.set_text_color(*C_GREEN)
+        pdf.set_font(FONT, "B", 8)
         pdf.cell(COL_F, 6, f"  {bloco_label}", fill=True, ln=0)
         pdf.cell(COL_H, 6, f"{bloco_horas:.0f}h", align="R", fill=True, ln=True)
 
@@ -258,12 +269,12 @@ def _render_pdf(
             pdf.rect(MARGIN + COL_F, y, COL_H, row_h, "F")
 
             pdf.set_text_color(*C_TEXT)
-            pdf.set_font("Helvetica", "", 8)
+            pdf.set_font(FONT, "", 8)
             pdf.set_xy(MARGIN, y)
             pdf.multi_cell(COL_F, 5, f"  {nome}")
 
             pdf.set_xy(MARGIN + COL_F, y)
-            pdf.set_font("Helvetica", "B", 8)
+            pdf.set_font(FONT, "B", 8)
             pdf.set_text_color(*C_DARK)
             pdf.cell(COL_H, row_h, f"{horas_val:.0f}h", align="R")
 
@@ -275,7 +286,7 @@ def _render_pdf(
     # linha de total
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
-    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_font(FONT, "B", 9)
     pdf.cell(COL_F, 8, "  TOTAL", fill=True, ln=0)
     pdf.cell(COL_H, 8, f"{float(outputs.total_horas):.0f}h", align="R", fill=True, ln=True)
 
@@ -300,33 +311,33 @@ def _render_pdf(
         pdf.add_page()
 
     y = pdf.get_y()
-    pdf.set_fill_color(*C_PURPLE)
+    pdf.set_fill_color(*C_GREEN)
     pdf.rect(MARGIN, y, CONTENT_W, BOX_H, "F")
 
     pdf.set_xy(MARGIN + 6, y + 4)
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(210, 185, 255)
+    pdf.set_font(FONT, "", 8)
+    pdf.set_text_color(20, 80, 0)
     pdf.cell(CONTENT_W * 0.6, 5, "PRECO TOTAL ESTIMADO", ln=0)
 
     pdf.set_x(MARGIN + CONTENT_W * 0.6)
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(210, 185, 255)
+    pdf.set_font(FONT, "", 8)
+    pdf.set_text_color(20, 80, 0)
     ticket = pricing.get("ticket_price", "—")
     pdf.cell(CONTENT_W * 0.35, 5, f"Ticket: R$ {ticket}/mes", align="R")
 
     pdf.set_xy(MARGIN + 6, y + 11)
-    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_font(FONT, "B", 18)
     pdf.set_text_color(*C_WHITE)
     pdf.cell(CONTENT_W * 0.6, 10, f"R$ {float(outputs.preco_total):,.2f}", ln=0)
 
     pdf.set_x(MARGIN + CONTENT_W * 0.6)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(210, 185, 255)
+    pdf.set_font(FONT, "", 9)
+    pdf.set_text_color(20, 80, 0)
     pdf.cell(CONTENT_W * 0.35, 10, f"Duracao: {float(outputs.duracao_meses):.1f} meses", align="R")
 
     # ── footer ───────────────────────────────────────────────────
     pdf.set_y(-18)
-    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_font(FONT, "I", 7)
     pdf.set_text_color(*C_MUTED)
     pdf.cell(CONTENT_W * 0.7, 5, "CITi - Centro de Informatica e Tecnologia - UFPE", ln=0)
     pdf.cell(CONTENT_W * 0.3, 5, "Documento gerado automaticamente", align="R")

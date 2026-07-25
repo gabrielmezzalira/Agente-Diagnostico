@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -9,11 +9,11 @@
   --color-border-hover:   #999999;
   --color-text-primary:   #101010;
   --color-text-secondary: #999999;
-  --color-accent:         #7d1ad7;
-  --color-accent-hover:   #6614b8;
-  --color-green-bg-light: #f3eeff;
-  --color-green-bg-tag:   #f3eeff;
-  --color-border-green:   #c9a0f0;
+  --color-accent:         #50d826;
+  --color-accent-hover:   #3fac1c;
+  --color-green-bg-light: #eafbe2;
+  --color-green-bg-tag:   #eafbe2;
+  --color-border-green:   #a0e87a;
   --color-red:            #d43a3a;
   --color-yellow:         #e8a020;
   --color-red-bg:         #fff5f5;
@@ -23,7 +23,7 @@
   --color-muted:          #f0f0f0;
 
   /* ---- Typography ---- */
-  --font-family-sans: 'DM Sans', sans-serif;
+  --font-family-sans: 'Barlow', sans-serif;
   --font-family-mono: 'DM Mono', monospace;
 
   /* ---- Structural Heights ---- */
