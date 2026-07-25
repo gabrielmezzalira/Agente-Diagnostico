@@ -108,8 +108,8 @@ def _render_pdf(
         by_bloco[f["bloco"]].append(f)
 
     # ── paleta CITi ─────────────────────────────────────────────
-    C_GREEN      = (80, 216, 38)    # verde CITi #50D826
-    C_GREEN_SOFT = (234, 251, 226)  # verde clarinho para subheaders
+    C_GREEN      = (82, 201, 106)   # verde CITi #52C96A
+    C_GREEN_SOFT = (221, 240, 228)  # verde clarinho para subheaders
     C_DARK       = (16, 16, 16)     # cinza escuro CITi #101010
     C_WHITE      = (255, 255, 255)
     C_GRAY       = (240, 240, 240)  # branco cinzento CITi #F0F0F0
@@ -336,6 +336,9 @@ def _render_pdf(
     pdf.cell(CONTENT_W * 0.35, 10, f"Duracao: {float(outputs.duracao_meses):.1f} meses", align="R")
 
     # ── footer ───────────────────────────────────────────────────
+    # Disable auto page break so set_y(-18) não dispara nova página
+    # (page_break_trigger=272mm, set_y(-18)=279mm — sem isso gera pág em branco)
+    pdf.set_auto_page_break(auto=False)
     pdf.set_y(-18)
     pdf.set_font(FONT, "", 7)
     pdf.set_text_color(*C_MUTED)
