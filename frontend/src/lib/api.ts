@@ -273,6 +273,24 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ message }),
       }),
+    exportPdf: async (pricingId: string): Promise<void> => {
+      const res = await fetch(`${API_BASE}/pricings/${pricingId}/export/pdf`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { detail?: string }
+        throw new Error(err.detail ?? `HTTP ${res.status}`)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = disposition.match(/filename="?([^"]+)"?/)
+      a.download = match?.[1] ?? `precificacao_${pricingId}.pdf`
+      a.href = url
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
   },
   pricingFeatures: {
     list: (pricingId: string) =>

@@ -27,6 +27,15 @@ class PricingRepository:
         )
         return result.data[0] if result.data else None
 
+    def get_project_details(self, project_id: str) -> dict | None:
+        result = (
+            self._db.table("projects")
+            .select("id, name, client, project_type, description")
+            .eq("id", project_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
     # -------------------------------------------------------------------------
     # Pricings
     # -------------------------------------------------------------------------

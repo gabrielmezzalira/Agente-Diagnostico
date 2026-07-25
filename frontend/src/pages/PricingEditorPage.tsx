@@ -370,6 +370,7 @@ export default function PricingEditorPage() {
   const [approving, setApproving] = useState(false)
   const [addingFeature, setAddingFeature] = useState(false)
   const [showChat, setShowChat] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   const isApproved = pricing?.status === 'approved'
 
@@ -391,6 +392,18 @@ export default function PricingEditorPage() {
       setPricing(updated)
     } catch {
       // silently ignore blur errors; user will see stale value
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!pricingId) return
+    setExportingPdf(true)
+    try {
+      await api.pricings.exportPdf(pricingId)
+    } catch {
+      // silently ignore — browser still shows network error if it fails
+    } finally {
+      setExportingPdf(false)
     }
   }
 
@@ -490,6 +503,14 @@ export default function PricingEditorPage() {
           >
             <MessageSquare size={12} />
             Assistente
+          </button>
+          <button
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
+          >
+            <Download size={12} />
+            {exportingPdf ? 'Gerando...' : 'Exportar PDF'}
           </button>
           <button
             onClick={handleApprove}

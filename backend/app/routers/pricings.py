@@ -13,6 +13,7 @@ import asyncio
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from supabase import Client
 
 from app.core.llm_factory import create_llm
@@ -31,6 +32,7 @@ from app.models.pricings import (
 from app.repositories.pricing_repository import PricingRepository
 from app.services.llm_pricing_service import LLMPricingService
 from app.services.pricing_chatbot_service import PricingChatbotService
+from app.services.pricing_export_service import PricingExportService
 from app.services.pricing_service import PricingService
 
 router = APIRouter(tags=["pricings"])
@@ -93,6 +95,21 @@ async def approve_pricing(
     service: PricingService = Depends(_get_service),
 ) -> PricingResponse:
     return service.approve_pricing(str(pricing_id))
+
+
+@router.get("/pricings/{pricing_id}/export/pdf")
+async def export_pricing_pdf(
+    pricing_id: UUID,
+    db: Client = Depends(get_supabase),
+) -> Response:
+    repo = PricingRepository(db)
+    svc = PricingExportService(repo)
+    pdf_bytes, filename = svc.generate_pdf(str(pricing_id))
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/projects/{project_id}/pricing-history")
