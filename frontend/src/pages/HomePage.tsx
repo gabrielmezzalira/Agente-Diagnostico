@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Activity, Database, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
+import { Plus, Activity, Database, Puzzle, ChevronDown, Download, CheckCircle, ArrowRight } from 'lucide-react'
 import { api, type Project } from '../lib/api'
 import CITiLogo from '../components/CITiLogo'
 
@@ -20,15 +20,15 @@ function ExtensionBanner() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="mb-6 rounded-lg border border-[var(--color-border-green)] bg-[var(--color-green-bg-light)] overflow-hidden">
+    <div className="mb-8 rounded-xl border border-[var(--color-border-green)] bg-[var(--color-green-bg-light)] overflow-hidden">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--color-green-bg-tag)] transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[var(--color-green-bg-tag)] transition-colors"
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Puzzle size={15} className="text-[var(--color-accent)] shrink-0" />
           <div>
-            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+            <span className="text-sm font-semibold text-[var(--color-text-primary)]">
               Extensão Chrome disponível
             </span>
             <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
@@ -43,23 +43,23 @@ function ExtensionBanner() {
       </button>
 
       {open && (
-        <div className="px-4 pb-4 border-t border-[var(--color-border-green)]">
-          <p className="text-xs text-[var(--color-text-secondary)] mt-3 mb-3">
+        <div className="px-5 pb-5 border-t border-[var(--color-border-green)]">
+          <p className="text-xs text-[var(--color-text-secondary)] mt-4 mb-4">
             Instale a extensão no Chrome para que o Agente consiga capturar as transcrições
             da reunião em tempo real.
           </p>
 
-          <ol className="space-y-2 mb-4">
+          <ol className="space-y-2.5 mb-5">
             {INSTALL_STEPS.map((step, i) => (
-              <li key={i} className="flex items-start gap-2.5">
-                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-bold shrink-0 mt-0.5">
+              <li key={i} className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-accent)] text-white text-[10px] font-bold shrink-0 mt-0.5">
                   {i + 1}
                 </div>
                 <span className="text-xs text-[var(--color-text-primary)] leading-relaxed">
                   {i === 2 ? (
                     <>
                       No Chrome, acesse{' '}
-                      <code className="font-mono bg-[var(--color-muted)] px-1 py-0.5 rounded text-[11px]">
+                      <code className="font-mono bg-[var(--color-muted)] px-1.5 py-0.5 rounded text-[11px] text-[var(--color-accent)]">
                         chrome://extensions
                       </code>{' '}
                       na barra de endereço.
@@ -75,14 +75,14 @@ function ExtensionBanner() {
           <a
             href={EXTENSION_URL}
             download
-            className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-accent)] text-white text-xs font-medium rounded-md hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--color-accent)] text-white text-xs font-semibold rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             <Download size={13} />
             Baixar extensão v1.0.0
           </a>
 
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
-            <CheckCircle size={12} className="text-[var(--color-accent)]" />
+          <p className="mt-4 flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+            <CheckCircle size={12} className="text-[var(--color-accent)] shrink-0" />
             Após instalar, basta abrir o Meet e a extensão começa a capturar automaticamente.
           </p>
         </div>
@@ -123,17 +123,18 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-page)]">
+      {/* Topbar */}
       <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CITiLogo height={22} />
-            <span className="text-xs text-[var(--color-text-secondary)] border-l border-[var(--color-border-std)] pl-3">
+            <CITiLogo height={20} />
+            <span className="text-xs text-[var(--color-text-secondary)] border-l border-[var(--color-border-std)] pl-3 font-medium tracking-wide">
               Agente Diagnóstico
             </span>
           </div>
           <Link
             to="/projects/new"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg text-sm font-semibold hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             <Plus size={14} />
             Novo projeto
@@ -141,30 +142,52 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-10">
         <ExtensionBanner />
 
-        <h1 className="text-lg font-semibold text-[var(--color-text-primary)] mb-5">Projetos</h1>
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">
+              Projetos
+            </h1>
+            {!loading && !error && (
+              <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
+                {projects.length === 0
+                  ? 'Nenhum projeto ainda'
+                  : `${projects.length} ${projects.length === 1 ? 'projeto' : 'projetos'}`}
+              </p>
+            )}
+          </div>
+        </div>
 
         {loading && (
           <p className="text-sm text-[var(--color-text-secondary)]">Carregando...</p>
         )}
 
         {error && (
-          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
+          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-lg px-4 py-3">
             {error}
           </div>
         )}
 
         {!loading && !error && projects.length === 0 && (
-          <div className="text-center py-16 text-[var(--color-text-secondary)]">
-            <Database size={28} className="mx-auto mb-3 opacity-25" />
-            <p className="text-sm">Nenhum projeto ainda.</p>
+          <div className="text-center py-20">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border-std)] flex items-center justify-center mx-auto mb-4">
+              <Database size={22} className="text-[var(--color-text-secondary)] opacity-50" />
+            </div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
+              Nenhum projeto ainda
+            </p>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-5">
+              Crie um projeto para começar a diagnosticar clientes
+            </p>
             <Link
               to="/projects/new"
-              className="text-sm text-[var(--color-accent)] hover:underline mt-1 inline-block"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--color-accent)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
             >
-              Criar o primeiro projeto
+              Criar primeiro projeto
+              <ArrowRight size={14} />
             </Link>
           </div>
         )}
@@ -174,26 +197,26 @@ export default function HomePage() {
             <Link
               key={project.id}
               to={`/projects/${project.id}`}
-              className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-5 py-4 hover:border-[var(--color-border-hover)] transition-colors"
+              className="group flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-xl px-5 py-4 hover:border-[var(--color-border-hover)] hover:bg-[var(--color-surface-2)] transition-all"
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm text-[var(--color-text-primary)] truncate">
+                <div className="flex items-center gap-2.5 mb-0.5">
+                  <span className="font-semibold text-sm text-[var(--color-text-primary)] truncate">
                     {project.name}
                   </span>
                   {project.has_active_session && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] shrink-0">
                       <Activity size={9} />
                       ao vivo
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{project.client}</p>
+                <p className="text-xs text-[var(--color-text-secondary)]">{project.client}</p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 {project.project_type && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-muted)] text-[var(--color-text-secondary)] font-medium">
                     {PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type}
                   </span>
                 )}
@@ -202,6 +225,10 @@ export default function HomePage() {
                     DMS {project.data_maturity_score} · {DMS_LABELS[project.data_maturity_score]}
                   </span>
                 )}
+                <ArrowRight
+                  size={14}
+                  className="text-[var(--color-text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity -ml-1"
+                />
               </div>
             </Link>
           ))}
