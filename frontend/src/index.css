@@ -10,11 +10,11 @@
   --color-border-hover:   #b0b8a8;
   --color-text-primary:   #111111;
   --color-text-secondary: #888888;
-  --color-accent:         #2e8c12;
-  --color-accent-hover:   #236a0d;
-  --color-green-bg-light: #e0edd8;
-  --color-green-bg-tag:   #e0edd8;
-  --color-border-green:   #88c070;
+  --color-accent:         #3dcc5e;
+  --color-accent-hover:   #2eaa4a;
+  --color-green-bg-light: #daf0e0;
+  --color-green-bg-tag:   #daf0e0;
+  --color-border-green:   #80d098;
   --color-red:            #cc3333;
   --color-yellow:         #d4880a;
   --color-red-bg:         #fff2f2;
@@ -53,8 +53,8 @@ body {
   font-family: var(--font-family-sans);
   background-color: #eeeeea;
   background-image:
-    radial-gradient(ellipse 150% 55% at 50% -8%, rgba(46, 140, 18, 0.22) 0%, rgba(46, 140, 18, 0.06) 45%, transparent 70%),
-    radial-gradient(ellipse 80% 35% at 10% 90%, rgba(46, 140, 18, 0.07) 0%, transparent 60%);
+    radial-gradient(ellipse 160% 65% at 50% -5%, rgba(61, 204, 94, 0.32) 0%, rgba(61, 204, 94, 0.10) 45%, transparent 70%),
+    radial-gradient(ellipse 90% 40% at 8% 85%,  rgba(61, 204, 94, 0.10) 0%, transparent 60%);
   background-attachment: fixed;
   color: #111111;
   -webkit-font-smoothing: antialiased;
