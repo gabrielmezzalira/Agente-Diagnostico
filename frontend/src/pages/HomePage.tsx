@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Activity, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
+import { Plus, Activity, Database, Puzzle, ChevronDown, Download, CheckCircle } from 'lucide-react'
 import { api, type Project } from '../lib/api'
 import CITiLogo from '../components/CITiLogo'
 
