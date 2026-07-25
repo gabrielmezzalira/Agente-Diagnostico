@@ -136,31 +136,35 @@ def _render_pdf(
 
     pdf.add_page()
 
-    # ── header verde ──────────────────────────────────────────────
-    HEADER_H = 38
+    # ── header verde — duas colunas: logo esq | texto dir ────────
+    HEADER_H = 36
     pdf.set_fill_color(*C_GREEN)
     pdf.rect(0, 0, W_PAGE, HEADER_H, "F")
 
-    # logo CITi (branca em fundo verde) — linha superior
+    LOGO_W = 70  # largura reservada para a logo (col esquerda)
+
+    # logo CITi — coluna esquerda, verticalmente centralizada
     if _LOGO_PATH.exists():
-        pdf.image(str(_LOGO_PATH), x=MARGIN, y=7, h=14)
+        pdf.image(str(_LOGO_PATH), x=MARGIN, y=9, h=16)
     else:
-        pdf.set_xy(MARGIN, 8)
-        pdf.set_font(FONT, "B", 16)
+        pdf.set_xy(MARGIN, 12)
+        pdf.set_font(FONT, "B", 18)
         pdf.set_text_color(*C_WHITE)
-        pdf.cell(40, 8, "CITi")
+        pdf.cell(LOGO_W, 10, "CITi")
 
-    # data no canto direito — alinhada com logo
-    pdf.set_xy(MARGIN, 10)
+    # coluna direita: subtítulo + data, nunca toca na logo
+    RIGHT_X = MARGIN + LOGO_W
+    RIGHT_W = CONTENT_W - LOGO_W
+
+    pdf.set_xy(RIGHT_X, 11)
+    pdf.set_font(FONT, "B", 9)
+    pdf.set_text_color(*C_WHITE)
+    pdf.cell(RIGHT_W, 6, "PROPOSTA TECNICA", align="R")
+
+    pdf.set_xy(RIGHT_X, 19)
     pdf.set_font(FONT, "", 7)
-    pdf.set_text_color(10, 60, 10)
-    pdf.cell(CONTENT_W, 5, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
-
-    # subtítulo abaixo da logo — nunca sobrepõe
-    pdf.set_xy(MARGIN, 25)
-    pdf.set_font(FONT, "B", 7)
-    pdf.set_text_color(10, 60, 10)
-    pdf.cell(CONTENT_W, 5, "PROPOSTA TECNICA - PRECIFICACAO DE PROJETO")
+    pdf.set_text_color(10, 80, 10)
+    pdf.cell(RIGHT_W, 5, f"Gerado em {date.today().strftime('%d/%m/%Y')}", align="R")
 
     # ── titulo do projeto ────────────────────────────────────────
     pdf.set_y(HEADER_H + 8)
@@ -185,32 +189,32 @@ def _render_pdf(
 
     # ── helpers ──────────────────────────────────────────────────
     def section_title(title: str) -> None:
-        pdf.set_font(FONT, "B", 9)
+        pdf.set_font(FONT, "B", 10)
         pdf.set_text_color(*C_GREEN)
-        pdf.cell(CONTENT_W, 5, title, ln=True)
+        pdf.cell(CONTENT_W, 6, title, ln=True)
         pdf.set_draw_color(*C_GREEN)
-        pdf.set_line_width(0.5)
+        pdf.set_line_width(0.6)
         pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
-        pdf.ln(4)
+        pdf.ln(5)
         pdf.set_text_color(*C_TEXT)
 
     def param_cards(items: list[tuple[str, str]], cols: int = 2) -> None:
-        col_w = (CONTENT_W - (cols - 1) * 3) / cols
+        col_w = (CONTENT_W - (cols - 1) * 4) / cols
         for i in range(0, len(items), cols):
             y = pdf.get_y()
             for j, (label, val) in enumerate(items[i : i + cols]):
-                x = MARGIN + j * (col_w + 3)
+                x = MARGIN + j * (col_w + 4)
                 pdf.set_fill_color(*C_GRAY)
-                pdf.rect(x, y, col_w, 13, "F")
-                pdf.set_xy(x + 3, y + 1.5)
+                pdf.rect(x, y, col_w, 16, "F")
+                pdf.set_xy(x + 4, y + 2)
                 pdf.set_font(FONT, "", 7)
                 pdf.set_text_color(*C_MUTED)
-                pdf.cell(col_w - 6, 4, label)
-                pdf.set_xy(x + 3, y + 6)
-                pdf.set_font(FONT, "B", 10)
+                pdf.cell(col_w - 8, 4, label)
+                pdf.set_xy(x + 4, y + 7)
+                pdf.set_font(FONT, "B", 11)
                 pdf.set_text_color(*C_DARK)
-                pdf.cell(col_w - 6, 6, val)
-            pdf.set_y(y + 15)
+                pdf.cell(col_w - 8, 7, val)
+            pdf.set_y(y + 19)
 
     # ── parametros ───────────────────────────────────────────────
     section_title("PARAMETROS")
@@ -234,31 +238,29 @@ def _render_pdf(
     # cabeçalho da tabela
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
-    pdf.set_font(FONT, "B", 9)
-    pdf.cell(COL_F, 7, "  Funcionalidade", fill=True, ln=0)
-    pdf.cell(COL_H, 7, "Horas", align="R", fill=True, ln=True)
+    pdf.set_font(FONT, "B", 10)
+    pdf.cell(COL_F, 9, "  Funcionalidade", fill=True, ln=0)
+    pdf.cell(COL_H, 9, "Horas", align="R", fill=True, ln=True)
 
     row_alt = False
     for bloco, items in by_bloco.items():
         bloco_label = _BLOCO_LABELS.get(bloco, bloco.replace("_", " ").title())
         bloco_horas = sum(float(f.get("horas", 0)) for f in items)
 
-        # subheader do bloco — roxo suave
+        # subheader do bloco
         pdf.set_fill_color(*C_GREEN_SOFT)
         pdf.set_text_color(*C_GREEN)
-        pdf.set_font(FONT, "B", 8)
-        pdf.cell(COL_F, 6, f"  {bloco_label}", fill=True, ln=0)
-        pdf.cell(COL_H, 6, f"{bloco_horas:.0f}h", align="R", fill=True, ln=True)
+        pdf.set_font(FONT, "B", 9)
+        pdf.cell(COL_F, 8, f"  {bloco_label}", fill=True, ln=0)
+        pdf.cell(COL_H, 8, f"{bloco_horas:.0f}h", align="R", fill=True, ln=True)
 
         for f in items:
             nome = f.get("funcionalidade", "—")
             horas_val = float(f.get("horas", 0))
 
-            # calcula altura da linha sem mover cursor
-            lines = pdf.multi_cell(COL_F, 5, f"  {nome}", split_only=True)
-            row_h = max(7, len(lines) * 5 + 3)
+            lines = pdf.multi_cell(COL_F, 6, f"  {nome}", split_only=True)
+            row_h = max(9, len(lines) * 6 + 4)
 
-            # garante que a linha cabe na página antes de desenhar o fundo
             if pdf.get_y() + row_h > pdf.page_break_trigger:
                 pdf.add_page()
 
@@ -270,12 +272,12 @@ def _render_pdf(
             pdf.rect(MARGIN + COL_F, y, COL_H, row_h, "F")
 
             pdf.set_text_color(*C_TEXT)
-            pdf.set_font(FONT, "", 8)
+            pdf.set_font(FONT, "", 9)
             pdf.set_xy(MARGIN, y)
-            pdf.multi_cell(COL_F, 5, f"  {nome}")
+            pdf.multi_cell(COL_F, 6, f"  {nome}")
 
             pdf.set_xy(MARGIN + COL_F, y)
-            pdf.set_font(FONT, "B", 8)
+            pdf.set_font(FONT, "B", 9)
             pdf.set_text_color(*C_DARK)
             pdf.cell(COL_H, row_h, f"{horas_val:.0f}h", align="R")
 
@@ -287,9 +289,9 @@ def _render_pdf(
     # linha de total
     pdf.set_fill_color(*C_DARK)
     pdf.set_text_color(*C_WHITE)
-    pdf.set_font(FONT, "B", 9)
-    pdf.cell(COL_F, 8, "  TOTAL", fill=True, ln=0)
-    pdf.cell(COL_H, 8, f"{float(outputs.total_horas):.0f}h", align="R", fill=True, ln=True)
+    pdf.set_font(FONT, "B", 10)
+    pdf.cell(COL_F, 9, "  TOTAL", fill=True, ln=0)
+    pdf.cell(COL_H, 9, f"{float(outputs.total_horas):.0f}h", align="R", fill=True, ln=True)
 
     pdf.ln(10)
 
