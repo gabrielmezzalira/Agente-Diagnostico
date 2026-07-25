@@ -108,8 +108,8 @@ def _render_pdf(
         by_bloco[f["bloco"]].append(f)
 
     # ── paleta CITi ─────────────────────────────────────────────
-    C_GREEN      = (82, 201, 106)   # verde CITi #52C96A
-    C_GREEN_SOFT = (221, 240, 228)  # verde clarinho para subheaders
+    C_GREEN      = (76, 200, 104)   # verde CITi #4CC868
+    C_GREEN_SOFT = (218, 242, 226)  # verde clarinho para subheaders
     C_DARK       = (16, 16, 16)     # cinza escuro CITi #101010
     C_WHITE      = (255, 255, 255)
     C_GRAY       = (240, 240, 240)  # branco cinzento CITi #F0F0F0
