@@ -1,11 +1,14 @@
 import asyncio
 import io
+import logging
 import os
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID
 
 import pdfplumber
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from pydantic import BaseModel
 from supabase import Client, create_client
 
 from app.database import get_supabase
@@ -16,6 +19,72 @@ from app.services.tunnel import tunnel_manager
 from app.services.recall import RecallService
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+_log = logging.getLogger(__name__)
+
+
+class DiagnosticStartPayload(BaseModel):
+    name: str
+    client: str
+    source: str = "extension"
+    runId: Optional[str] = None
+
+
+@router.post("/start", status_code=status.HTTP_201_CREATED)
+async def start_diagnostic_session(
+    payload: DiagnosticStartPayload, db: Client = Depends(get_supabase)
+):
+    """Cria projeto + sessão em um único passo para a integração CITi Flow → Agente Diagnóstico."""
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    secret_id = None
+    if gemini_key:
+        try:
+            secret_id = db.rpc(
+                "vault_create_secret",
+                {"p_secret": gemini_key, "p_name": f"gemini-citiflow-{payload.client}"},
+            ).execute().data
+        except Exception as exc:
+            _log.warning("vault não disponível, projeto sem chave: %s", exc)
+
+    project_row: dict = {
+        "name": payload.name,
+        "client": payload.client,
+        "source": payload.source,
+        "question_ttl_seconds": 30,
+    }
+    if secret_id:
+        project_row["gemini_api_key_secret_id"] = secret_id
+    if payload.runId:
+        project_row["citi_flow_run_id"] = payload.runId
+
+    project_result = db.table("projects").insert(project_row).execute()
+    if not project_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create project")
+    project_id = project_result.data[0]["id"]
+
+    session_result = db.table("sessions").insert({
+        "project_id": project_id,
+        "source": payload.source,
+        "status": "active",
+    }).execute()
+    if not session_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create session")
+    session_id = session_result.data[0]["id"]
+
+    # Injetar contexto pré-reunião do CITi Flow (best-effort)
+    try:
+        from app.services.citiflow_client import fetch_briefings_as_context
+        company_name = payload.client or payload.name
+        if company_name:
+            context_md = await fetch_briefings_as_context(company_name)
+            if context_md:
+                db.table("projects").update(
+                    {"pre_meeting_context": context_md}
+                ).eq("id", project_id).execute()
+    except Exception as exc:
+        _log.warning("falha ao buscar contexto pré-reunião do CITi Flow: %s", exc)
+
+    return {"session_id": session_id, "id": session_id, "project_id": project_id}
 
 
 def _get_recall() -> RecallService | None:

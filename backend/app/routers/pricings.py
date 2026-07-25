@@ -10,6 +10,7 @@
 # =============================================================================
 
 import asyncio
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -36,6 +37,39 @@ from app.services.pricing_export_service import PricingExportService
 from app.services.pricing_service import PricingService
 
 router = APIRouter(tags=["pricings"])
+_log = logging.getLogger(__name__)
+
+
+def _build_area_pricing(pricing: PricingWithDetails) -> dict:
+    outputs = pricing.outputs
+    if outputs is None:
+        return {}
+    scope = [
+        {"item": f.bloco, "description": f.funcionalidade, "hours": float(f.horas)}
+        for f in (pricing.features or [])
+    ]
+    team = []
+    if pricing.num_analysts and pricing.ticket_price:
+        team = [
+            {
+                "role": "Analista de Dados",
+                "hours": float(outputs.total_horas),
+                "hourlyRate": float(pricing.ticket_price),
+            }
+        ]
+    return {
+        "area": "dados",
+        "summary": "Precificação gerada pelo Agente Diagnóstico.",
+        "scope": scope,
+        "team": team,
+        "totalHours": float(outputs.total_horas),
+        "totalValue": float(outputs.preco_total),
+        "timelineWeeks": float(outputs.num_sprints) * 2,
+        "assumptions": [],
+        "risks": [],
+        "confidence": 0.8,
+        "pdfUrl": None,
+    }
 
 
 def _get_service(db: Client = Depends(get_supabase)) -> PricingService:
@@ -92,9 +126,28 @@ async def delete_pricing(
 @router.post("/pricings/{pricing_id}/approve", response_model=PricingResponse)
 async def approve_pricing(
     pricing_id: UUID,
+    db: Client = Depends(get_supabase),
     service: PricingService = Depends(_get_service),
 ) -> PricingResponse:
-    return service.approve_pricing(str(pricing_id))
+    result = service.approve_pricing(str(pricing_id))
+    try:
+        from app.services.citiflow_client import post_diagnostic_pricing
+        full_pricing: PricingWithDetails = service.get_pricing(str(pricing_id))
+        pricing_payload = _build_area_pricing(full_pricing)
+        project_res = (
+            db.table("projects")
+            .select("citi_flow_run_id")
+            .eq("id", str(full_pricing.project_id))
+            .execute()
+        )
+        citi_run_id: str | None = (
+            project_res.data[0].get("citi_flow_run_id") if project_res.data else None
+        )
+        if citi_run_id and pricing_payload:
+            asyncio.create_task(post_diagnostic_pricing(citi_run_id, pricing_payload))
+    except Exception as exc:
+        _log.warning("handoff diagnóstico falhou: %s", exc)
+    return result
 
 
 @router.get("/pricings/{pricing_id}/export/pdf")

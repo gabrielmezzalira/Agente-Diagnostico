@@ -24,6 +24,7 @@ class ProjectCreate(BaseModel):
     pricing_llm_provider: Optional[str] = None
     pricing_llm_model: Optional[str] = None
     pricing_api_key: Optional[str] = None
+    citi_flow_run_id: Optional[str] = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -48,6 +49,7 @@ class ProjectUpdate(BaseModel):
     pricing_llm_provider: Optional[str] = None
     pricing_llm_model: Optional[str] = None
     pricing_api_key: Optional[str] = None
+    citi_flow_run_id: Optional[str] = None
 
     @field_validator("data_maturity_score")
     @classmethod
