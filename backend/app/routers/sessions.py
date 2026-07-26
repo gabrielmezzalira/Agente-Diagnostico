@@ -23,11 +23,21 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 _log = logging.getLogger(__name__)
 
 
+class TriagemContext(BaseModel):
+    rationale: Optional[str] = None
+    areas: Optional[list[str]] = None
+    openTechnical: Optional[list[str]] = None
+    openCommercial: Optional[list[str]] = None
+    premises: Optional[list[str]] = None
+    agenda: Optional[list[str]] = None
+
+
 class DiagnosticStartPayload(BaseModel):
     name: str
     client: str
     source: str = "extension"
     runId: Optional[str] = None
+    triagemContext: Optional[TriagemContext] = None
 
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
@@ -75,12 +85,42 @@ async def start_diagnostic_session(
     try:
         from app.services.citiflow_client import fetch_briefings_as_context
         company_name = payload.client or payload.name
+        context_parts: list[str] = []
+
         if company_name:
-            context_md = await fetch_briefings_as_context(company_name)
-            if context_md:
-                db.table("projects").update(
-                    {"pre_meeting_context": context_md}
-                ).eq("id", project_id).execute()
+            briefings_md = await fetch_briefings_as_context(company_name)
+            if briefings_md:
+                context_parts.append(briefings_md)
+
+        if payload.triagemContext:
+            tc = payload.triagemContext
+            lines = ["## Triagem CITi Flow\n"]
+            if tc.rationale:
+                lines.append(f"**Diagnóstico do comercial:** {tc.rationale}\n")
+            if tc.areas:
+                lines.append(f"**Áreas no escopo:** {', '.join(tc.areas)}\n")
+            if tc.openTechnical:
+                lines.append("**Lacunas técnicas em aberto:**")
+                lines.extend(f"- {q}" for q in tc.openTechnical)
+                lines.append("")
+            if tc.openCommercial:
+                lines.append("**Lacunas comerciais em aberto:**")
+                lines.extend(f"- {q}" for q in tc.openCommercial)
+                lines.append("")
+            if tc.premises:
+                lines.append("**Premissas assumidas na triagem:**")
+                lines.extend(f"- {p}" for p in tc.premises)
+                lines.append("")
+            if tc.agenda:
+                lines.append("**Pauta acordada:**")
+                lines.extend(f"- {item}" for item in tc.agenda)
+                lines.append("")
+            context_parts.append("\n".join(lines))
+
+        if context_parts:
+            db.table("projects").update(
+                {"pre_meeting_context": "\n\n---\n\n".join(context_parts)}
+            ).eq("id", project_id).execute()
     except Exception as exc:
         _log.warning("falha ao buscar contexto pré-reunião do CITi Flow: %s", exc)
 
