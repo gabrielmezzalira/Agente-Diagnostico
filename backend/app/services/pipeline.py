@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
@@ -16,6 +17,32 @@ class SessionPipeline:
         self.state = state
         self._tasks: list[asyncio.Task] = []
         self._running = False
+
+    def _resolve_gemini_key(self) -> str:
+        """Retorna a chave Gemini, re-buscando do banco se ainda não está em memória."""
+        if self.state.gemini_api_key:
+            return self.state.gemini_api_key
+
+        db = get_supabase()
+        project_res = (
+            db.table("projects")
+            .select("gemini_api_key_secret_id")
+            .eq("id", self.state.project_id)
+            .execute()
+        )
+        if project_res.data:
+            secret_id = project_res.data[0].get("gemini_api_key_secret_id")
+            if secret_id:
+                try:
+                    key_res = db.rpc("vault_get_secret", {"p_secret_id": secret_id}).execute()
+                    self.state.gemini_api_key = key_res.data or ""
+                except Exception:
+                    pass
+
+        if not self.state.gemini_api_key:
+            self.state.gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+
+        return self.state.gemini_api_key
 
     async def start(self) -> None:
         if self._running:
@@ -80,7 +107,7 @@ class SessionPipeline:
     async def _coverage_task(self) -> None:
         while self._running:
             await asyncio.sleep(30)
-            if not self.state.transcript_chunks or not self.state.gemini_api_key:
+            if not self.state.transcript_chunks or not self._resolve_gemini_key():
                 continue
             if not self._budget_ok():
                 continue
@@ -93,7 +120,7 @@ class SessionPipeline:
         await asyncio.sleep(15)
         while self._running:
             await asyncio.sleep(15)
-            if not self.state.transcript_chunks or not self.state.gemini_api_key:
+            if not self.state.transcript_chunks or not self._resolve_gemini_key():
                 continue
             if not self._budget_ok():
                 continue
@@ -139,7 +166,7 @@ class SessionPipeline:
     async def _run_coverage_classifier(self) -> None:
         transcript = self.state.get_transcript_text(last_n=100)
         data, inp, out = await llm_service.classify_coverage(
-            self.state.gemini_api_key,
+            self._resolve_gemini_key(),
             transcript,
             self.state.project_type,
             self.state.data_maturity_score,
@@ -186,7 +213,7 @@ class SessionPipeline:
     async def _run_red_flag_detector(self) -> None:
         transcript = self.state.get_transcript_text(last_n=50)
         flags, inp, out = await llm_service.detect_red_flags(
-            self.state.gemini_api_key,
+            self._resolve_gemini_key(),
             transcript,
             self.state.pre_meeting_context,
             self.state.data_maturity_score,
@@ -222,7 +249,8 @@ class SessionPipeline:
             )
 
     async def _run_question_planner(self) -> None:
-        if not self.state.gemini_api_key:
+        key = self._resolve_gemini_key()
+        if not key:
             await ws_manager.broadcast(
                 self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
             )
@@ -242,7 +270,7 @@ class SessionPipeline:
             if q.status in ("queued", "pinned", "used")
         })
         questions, inp, out = await llm_service.generate_questions(
-            self.state.gemini_api_key,
+            key,
             transcript,
             self.state.coverage_to_dict(),
             recent,
@@ -285,7 +313,8 @@ class SessionPipeline:
             )
 
     async def _run_report_generator(self) -> Optional[str]:
-        if not self.state.gemini_api_key:
+        key = self._resolve_gemini_key()
+        if not key:
             return None
         transcript = self.state.get_transcript_text()
         questions_used = [
@@ -296,7 +325,7 @@ class SessionPipeline:
             for rf in self.state.red_flags
         ]
         markdown, inp, out = await llm_service.generate_report(
-            api_key=self.state.gemini_api_key,
+            api_key=key,
             transcript=transcript,
             coverage=self.state.coverage_to_dict(),
             red_flags=red_flags_raw,
@@ -491,7 +520,6 @@ class PipelineManager:
         session = session_res.data[0]
         project = session.get("projects") or {}
 
-        import os
         gemini_key = ""
         secret_id = project.get("gemini_api_key_secret_id")
         if secret_id:
