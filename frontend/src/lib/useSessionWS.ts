@@ -48,6 +48,7 @@ export interface SessionWSState {
   transcript: TranscriptChunk[]
   budget: BudgetState
   reportMarkdown: string | null
+  wsError: string | null
 }
 
 const COVERAGE_AREAS = [
@@ -70,6 +71,7 @@ export function useSessionWS(sessionId: string | undefined) {
     transcript: [],
     budget: { used_usd: 0, limit_usd: null, estimated_report_cost: 0, status: 'ok' },
     reportMarkdown: null,
+    wsError: null,
   })
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -150,6 +152,8 @@ export function useSessionWS(sessionId: string | undefined) {
               return { ...s, budget: data as BudgetState }
             case 'report_ready':
               return { ...s, reportMarkdown: (data as { markdown_content: string }).markdown_content }
+            case 'error':
+              return { ...s, wsError: (data as { message: string }).message }
             default:
               return s
           }

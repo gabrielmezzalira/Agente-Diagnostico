@@ -223,6 +223,9 @@ class SessionPipeline:
 
     async def _run_question_planner(self) -> None:
         if not self.state.gemini_api_key:
+            await ws_manager.broadcast(
+                self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
+            )
             return
         # Max 5 queued
         queued_count = sum(1 for q in self.state.questions if q.status == "queued")
@@ -488,6 +491,7 @@ class PipelineManager:
         session = session_res.data[0]
         project = session.get("projects") or {}
 
+        import os
         gemini_key = ""
         secret_id = project.get("gemini_api_key_secret_id")
         if secret_id:
@@ -496,6 +500,8 @@ class PipelineManager:
                 gemini_key = key_res.data or ""
             except Exception:
                 pass
+        if not gemini_key:
+            gemini_key = os.environ.get("GEMINI_API_KEY", "")
 
         raw_budget = project.get("budget_usd")
         budget_usd = float(raw_budget) if raw_budget else None

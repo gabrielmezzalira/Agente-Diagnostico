@@ -963,9 +963,9 @@ export default function SessionActivePage() {
       />
 
       {/* Error banner */}
-      {error && (
+      {(error || ws.wsError) && (
         <div className="shrink-0 text-xs text-[var(--color-red)] bg-[var(--color-red-bg)] border-b border-[var(--color-border-red)] px-4 py-2">
-          {error}
+          {error || ws.wsError}
         </div>
       )}
 
