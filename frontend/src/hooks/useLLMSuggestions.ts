@@ -16,12 +16,12 @@ export function useLLMSuggestions(
   const [suggestions, setSuggestions] = useState<SuggestionWithId[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  const importFromDiagnosis = useCallback(async () => {
+  const importFromDiagnosis = useCallback(async (sessionId?: string) => {
     if (!pricingId) return
     setImporting(true)
     setImportError(null)
     try {
-      const newFeatures = await api.pricings.importFromDiagnosis(pricingId)
+      const newFeatures = await api.pricings.importFromDiagnosis(pricingId, sessionId)
       setFeatures(fs => [...fs, ...newFeatures])
     } catch (e: unknown) {
       setImportError(e instanceof Error ? e.message : 'Erro ao importar do diagnóstico')

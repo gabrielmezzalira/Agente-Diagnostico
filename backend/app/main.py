@@ -11,11 +11,15 @@
 # verificar conectividade com o frontend.
 # =============================================================================
 
+import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+_log = logging.getLogger(__name__)
 
 from app.routers import (
     pricing_features_router,
@@ -46,6 +50,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Handler global de exceções não tratadas.
+#
+# Sem isto, uma exceção não capturada num router escapa do ExceptionMiddleware
+# (que fica DENTRO do CORSMiddleware) e é tratada pelo ServerErrorMiddleware
+# do Starlette, que fica FORA do CORSMiddleware — a resposta 500 resultante
+# não tem headers de CORS. O navegador então reporta erro de CORS (em vez do
+# 500 real), escondendo a causa raiz. Registrar o handler aqui garante que
+# toda exceção — tratada ou não — responde de dentro do ExceptionMiddleware,
+# preservando os headers de CORS mesmo quando algo dá errado.
+# ---------------------------------------------------------------------------
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    _log.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # ---------------------------------------------------------------------------

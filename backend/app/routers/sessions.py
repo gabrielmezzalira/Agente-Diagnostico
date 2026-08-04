@@ -158,7 +158,8 @@ async def create_session(payload: SessionCreate, db: Client = Depends(get_supaba
 
     project_data = project.data[0]
     source = payload.source or project_data.get("source", "recall")
-    meeting_url = payload.meeting_url or project_data.get("meeting_url")
+    is_import = source == "import"
+    meeting_url = None if is_import else (payload.meeting_url or project_data.get("meeting_url"))
 
     row = {
         "project_id": str(payload.project_id),
@@ -166,6 +167,12 @@ async def create_session(payload: SessionCreate, db: Client = Depends(get_supaba
         "source": source,
         "status": "active",
     }
+    if is_import:
+        # Sessão artificial — não há reunião ao vivo, então já nasce encerrada;
+        # o relatório é gerado via upload de PDF logo em seguida.
+        row["status"] = "finished"
+        row["finished_at"] = datetime.now(timezone.utc).isoformat()
+
     result = db.table("sessions").insert(row).execute()
     session = result.data[0]
     session_id = session["id"]
@@ -186,6 +193,9 @@ async def create_session(payload: SessionCreate, db: Client = Depends(get_supaba
 
     elif source == "extension":
         pass  # extensão Chrome faz POST direto para localhost — sem tunnel necessário
+
+    elif is_import:
+        pass  # sessão artificial — sem tunnel, sem bot; upload de PDF vem em seguida
 
     return session
 

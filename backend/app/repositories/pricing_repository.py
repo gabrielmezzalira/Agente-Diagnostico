@@ -175,6 +175,73 @@ class PricingRepository:
         )
         return result.data or []
 
+    def get_session_report(self, session_id: str) -> dict | None:
+        """Busca o relatório mais recente de uma sessão específica.
+
+        Usado quando a precificação está vinculada a um diagnóstico
+        (session_id) específico, em vez de todos os relatórios do projeto.
+        """
+        result = (
+            self._db.table("reports")
+            .select("id, markdown_content, generated_at")
+            .eq("session_id", session_id)
+            .order("generated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    def get_session(self, session_id: str) -> dict | None:
+        result = (
+            self._db.table("sessions")
+            .select("id, project_id, started_at, source")
+            .eq("id", session_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    def list_project_diagnostics(self, project_id: str) -> list[dict]:
+        """Lista sessões do projeto que têm ao menos um relatório gerado.
+
+        Usado para popular o seletor de diagnóstico no Precificador — cada
+        entrada representa uma sessão + seu relatório mais recente.
+        """
+        sessions = (
+            self._db.table("sessions")
+            .select("id, started_at, source")
+            .eq("project_id", project_id)
+            .order("started_at", desc=True)
+            .execute()
+        )
+        if not sessions.data:
+            return []
+
+        session_by_id = {s["id"]: s for s in sessions.data}
+        reports = (
+            self._db.table("reports")
+            .select("id, session_id, generated_at")
+            .in_("session_id", list(session_by_id.keys()))
+            .order("generated_at", desc=True)
+            .execute()
+        )
+
+        seen: set[str] = set()
+        diagnostics: list[dict] = []
+        for r in reports.data or []:
+            session_id = r["session_id"]
+            if session_id in seen:
+                continue  # já pegamos o relatório mais recente desta sessão
+            seen.add(session_id)
+            session = session_by_id[session_id]
+            diagnostics.append({
+                "session_id": session_id,
+                "session_started_at": session["started_at"],
+                "session_source": session["source"],
+                "report_id": r["id"],
+                "report_generated_at": r["generated_at"],
+            })
+        return diagnostics
+
     # -------------------------------------------------------------------------
     # Pricing history lookup (for LLM suggestions context)
     # -------------------------------------------------------------------------

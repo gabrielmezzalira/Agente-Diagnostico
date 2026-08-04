@@ -123,10 +123,10 @@ async def generate_report(
     }
     status_labels = {"covered": "Coberto", "partial": "Parcial", "uncovered": "Não coberto"}
     coverage_rows = [
-        (area_labels.get(area, area), status_labels.get(info["status"], info["status"]),
+        (area_labels.get(area, area), status_labels.get(info.get("status", ""), info.get("status", "")),
          info.get("score", 0), info.get("notes", ""))
         for area, info in coverage.items()
-        if info.get("status") != "not_applicable"
+        if isinstance(info, dict) and info.get("status") != "not_applicable"
     ]
     if coverage_rows:
         coverage_table = (
@@ -262,8 +262,9 @@ async def generate_questions(
     pre_meeting_context: str = "",
 ) -> tuple[list, int, int]:
     coverage_text = "\n".join(
-        f"- {area}: {info['status']} ({info['score']}%)"
+        f"- {area}: {info.get('status', '?')} ({info.get('score', 0)}%)"
         for area, info in coverage.items()
+        if isinstance(info, dict)
     )
     recent_text = "\n".join(f"- {q}" for q in recent_questions) or "none"
 

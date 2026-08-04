@@ -95,6 +95,8 @@ class PricingService:
             updates["hours_per_day"] = str(updates["hours_per_day"])
         if "ticket_price" in updates:
             updates["ticket_price"] = str(updates["ticket_price"])
+        if "session_id" in updates:
+            updates["session_id"] = str(updates["session_id"])
 
         updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Play } from 'lucide-react'
+import { ChevronLeft, Play, Upload } from 'lucide-react'
 import { api, type Project, type SessionCreate } from '../lib/api'
 
 const inputCls =
@@ -24,10 +24,13 @@ export default function SessionSetupPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [mode, setMode] = useState<'live' | 'import'>('live')
   const [meetingUrl, setMeetingUrl] = useState('')
   const [source, setSource] = useState<'extension' | 'recall'>('extension')
   const [additionalContext, setAdditionalContext] = useState('')
   const [budgetUsd, setBudgetUsd] = useState<number | undefined>(undefined)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const importFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!projectId) return
@@ -49,6 +52,29 @@ export default function SessionSetupPage() {
   async function handleStart(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!projectId) return
+
+    if (mode === 'import') {
+      if (!importFile) {
+        setError('Selecione um PDF para importar')
+        return
+      }
+      setSubmitting(true)
+      setError(null)
+      try {
+        const session = await api.sessions.create({
+          project_id: projectId,
+          source: 'import',
+          ...(additionalContext ? { additional_context: additionalContext } : {}),
+        })
+        await api.sessions.uploadTranscript(session.id, importFile)
+        navigate(`/sessions/${session.id}`)
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Erro ao importar diagnóstico')
+        setSubmitting(false)
+      }
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -105,38 +131,75 @@ export default function SessionSetupPage() {
           </div>
         )}
 
-        <Field label="URL da reunião">
-          <input
-            type="url"
-            value={meetingUrl}
-            onChange={e => setMeetingUrl(e.target.value)}
-            placeholder="https://meet.google.com/..."
-            className={inputCls}
-          />
-        </Field>
+        <div className="flex gap-2 p-1 bg-[var(--color-muted)] rounded-md w-fit">
+          {([
+            { value: 'live', label: 'Iniciar sessão' },
+            { value: 'import', label: 'Importar sessão' },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                mode === value
+                  ? 'bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm'
+                  : 'text-[var(--color-text-secondary)]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        <Field label="Fonte de transcrição">
-          <div className="flex gap-5 mt-0.5">
-            {([
-              { value: 'extension', label: 'Extensão Chrome (gratuito)' },
-              { value: 'recall', label: 'Recall.ai (bot automático)' },
-            ] as const).map(({ value, label }) => (
-              <label key={value} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="source"
-                  value={value}
-                  checked={source === value}
-                  onChange={() => setSource(value)}
-                  className="accent-[var(--color-accent)]"
-                />
-                <span className="text-sm">{label}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
+        {mode === 'live' ? (
+          <>
+            <Field label="URL da reunião">
+              <input
+                type="url"
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className={inputCls}
+              />
+            </Field>
 
-        <Field label="Contexto adicional desta reunião">
+            <Field label="Fonte de transcrição">
+              <div className="flex gap-5 mt-0.5">
+                {([
+                  { value: 'extension', label: 'Extensão Chrome (gratuito)' },
+                  { value: 'recall', label: 'Recall.ai (bot automático)' },
+                ] as const).map(({ value, label }) => (
+                  <label key={value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="source"
+                      value={value}
+                      checked={source === value}
+                      onChange={() => setSource(value)}
+                      className="accent-[var(--color-accent)]"
+                    />
+                    <span className="text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+          </>
+        ) : (
+          <Field label="Transcrição em PDF">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept="application/pdf"
+              onChange={e => setImportFile(e.target.files?.[0] ?? null)}
+              className={`${inputCls} file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-[var(--color-muted)] file:text-[var(--color-text-primary)]`}
+            />
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Cria uma sessão sem reunião ao vivo e gera o relatório diretamente a partir do PDF.
+            </p>
+          </Field>
+        )}
+
+        <Field label={mode === 'live' ? 'Contexto adicional desta reunião' : 'Contexto adicional deste diagnóstico'}>
           <textarea
             rows={3}
             value={additionalContext}
@@ -151,21 +214,23 @@ export default function SessionSetupPage() {
           )}
         </Field>
 
-        <Field label="Budget desta sessão (USD)">
-          <input
-            type="number"
-            min={0}
-            step={0.01}
-            value={budgetUsd ?? ''}
-            onChange={e => setBudgetUsd(e.target.value ? Number(e.target.value) : undefined)}
-            placeholder={
-              project?.budget_usd
-                ? `Herda do projeto ($${project.budget_usd})`
-                : 'Sem limite'
-            }
-            className={inputCls}
-          />
-        </Field>
+        {mode === 'live' && (
+          <Field label="Budget desta sessão (USD)">
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={budgetUsd ?? ''}
+              onChange={e => setBudgetUsd(e.target.value ? Number(e.target.value) : undefined)}
+              placeholder={
+                project?.budget_usd
+                  ? `Herda do projeto ($${project.budget_usd})`
+                  : 'Sem limite'
+              }
+              className={inputCls}
+            />
+          </Field>
+        )}
 
         <div className="flex items-center gap-3 pt-2">
           <button
@@ -173,8 +238,10 @@ export default function SessionSetupPage() {
             disabled={submitting}
             className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
           >
-            <Play size={14} />
-            {submitting ? 'Iniciando...' : 'Iniciar sessão'}
+            {mode === 'live' ? <Play size={14} /> : <Upload size={14} />}
+            {submitting
+              ? (mode === 'live' ? 'Iniciando...' : 'Importando...')
+              : (mode === 'live' ? 'Iniciar sessão' : 'Importar sessão')}
           </button>
           <Link
             to={`/projects/${projectId}`}

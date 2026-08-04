@@ -56,6 +56,7 @@ class PricingUpdate(BaseModel):
     hours_per_day: Optional[Decimal] = None
     ticket_price: Optional[Decimal] = None
     extra_calendar_days: Optional[int] = None
+    session_id: Optional[UUID] = None
 
     @field_validator("num_analysts")
     @classmethod
@@ -82,6 +83,7 @@ class PricingUpdate(BaseModel):
 class PricingResponse(BaseModel):
     id: UUID
     project_id: UUID
+    session_id: Optional[UUID] = None
     status: str
     start_date: Optional[date] = None
     num_analysts: Optional[int] = None
@@ -123,6 +125,27 @@ class ChatMessageResponse(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     features: List["PricingFeatureResponse"]
+
+
+class DiagnosticSummary(BaseModel):
+    """Um diagnóstico (sessão + relatório) disponível para vincular a uma precificação."""
+
+    session_id: UUID
+    session_started_at: datetime
+    session_source: str
+    report_id: UUID
+    report_generated_at: datetime
+
+
+class ImportFromDiagnosisBody(BaseModel):
+    """Body opcional de POST /pricings/:id/import-from-diagnosis.
+
+    session_id ausente/None preserva o comportamento legado (todos os
+    relatórios do projeto). Quando informado, vincula a precificação a esse
+    diagnóstico específico e usa apenas o relatório dessa sessão.
+    """
+
+    session_id: Optional[UUID] = None
 
 
 class SuggestedFeature(BaseModel):

@@ -68,7 +68,9 @@ class LLMPricingService:
     # import_from_diagnosis
     # -------------------------------------------------------------------------
 
-    def import_from_diagnosis(self, pricing_id: str) -> list[PricingFeatureResponse]:
+    def import_from_diagnosis(
+        self, pricing_id: str, session_id: str | None = None
+    ) -> list[PricingFeatureResponse]:
         """Extrai funcionalidades dos relatórios de diagnóstico via LLM e as insere.
 
         Resolve project_id internamente a partir de pricing_id — o chamador
@@ -76,12 +78,16 @@ class LLMPricingService:
 
         Args:
             pricing_id: UUID do pricing de destino
+            session_id: se informado, vincula a precificação a esse diagnóstico
+                específico (persiste em pricings.session_id) e usa apenas o
+                relatório dessa sessão. Se None, mantém o comportamento legado
+                de usar todos os relatórios do projeto.
 
         Returns:
             Lista de PricingFeatureResponse inseridas
 
         Raises:
-            HTTPException 404 se o pricing não existir
+            HTTPException 404 se o pricing (ou a sessão informada) não existir
             HTTPException 422 se não houver relatórios ou se o LLM não extrair features
         """
         pricing = self._repo.get_pricing(pricing_id)
@@ -89,7 +95,17 @@ class LLMPricingService:
             raise HTTPException(status_code=404, detail="Pricing not found")
         project_id = str(pricing["project_id"])
 
-        reports = self._repo.get_project_reports(project_id)
+        if session_id:
+            session = self._repo.get_session(session_id)
+            if not session or str(session["project_id"]) != project_id:
+                raise HTTPException(
+                    status_code=404, detail="Sessão não encontrada neste projeto"
+                )
+            report = self._repo.get_session_report(session_id)
+            reports = [report] if report else []
+        else:
+            reports = self._repo.get_project_reports(project_id)
+
         if not reports:
             raise HTTPException(
                 status_code=422,
@@ -98,6 +114,9 @@ class LLMPricingService:
                     "Gere um relatório de sessão primeiro."
                 ),
             )
+
+        if session_id:
+            self._repo.update_pricing(pricing_id, {"session_id": session_id})
 
         combined_md = "\n\n---\n\n".join(
             r["markdown_content"] for r in reports if r.get("markdown_content")

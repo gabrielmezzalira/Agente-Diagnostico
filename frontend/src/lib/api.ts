@@ -96,6 +96,7 @@ export interface Question {
 export interface Pricing {
   id: string
   project_id: string
+  session_id: string | null
   status: 'draft' | 'approved'
   start_date: string
   num_analysts: number
@@ -193,6 +194,14 @@ export interface ChatResponse {
   features: PricingFeature[]
 }
 
+export interface DiagnosticSummary {
+  session_id: string
+  session_started_at: string
+  session_source: string
+  report_id: string
+  report_generated_at: string
+}
+
 export const api = {
   sessions: {
     list: (project_id: string) =>
@@ -262,8 +271,13 @@ export const api = {
       request<Pricing>(`/pricings/${pricingId}/approve`, { method: 'POST' }),
     history: (projectId: string) =>
       request<PricingHistory[]>(`/projects/${projectId}/pricing-history`),
-    importFromDiagnosis: (pricingId: string) =>
-      request<PricingFeature[]>(`/pricings/${pricingId}/import-from-diagnosis`, { method: 'POST' }),
+    listDiagnostics: (projectId: string) =>
+      request<DiagnosticSummary[]>(`/projects/${projectId}/diagnostics`),
+    importFromDiagnosis: (pricingId: string, sessionId?: string) =>
+      request<PricingFeature[]>(`/pricings/${pricingId}/import-from-diagnosis`, {
+        method: 'POST',
+        body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
+      }),
     suggestFeatures: (pricingId: string) =>
       request<SuggestedFeature[]>(`/pricings/${pricingId}/suggest-features`, { method: 'POST' }),
     getChatHistory: (pricingId: string) =>

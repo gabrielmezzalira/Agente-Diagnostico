@@ -24,6 +24,8 @@ from app.models.pricings import (
     ChatMessageResponse,
     ChatRequest,
     ChatResponse,
+    DiagnosticSummary,
+    ImportFromDiagnosisBody,
     PricingCreateBody,
     PricingResponse,
     PricingUpdate,
@@ -208,9 +210,23 @@ def _get_llm_pricing_service(
 )
 async def import_from_diagnosis(
     pricing_id: UUID,
+    body: ImportFromDiagnosisBody | None = None,
     svc: LLMPricingService = Depends(_get_llm_pricing_service),
 ) -> list[PricingFeatureResponse]:
-    return await asyncio.to_thread(svc.import_from_diagnosis, str(pricing_id))
+    session_id = str(body.session_id) if body and body.session_id else None
+    return await asyncio.to_thread(svc.import_from_diagnosis, str(pricing_id), session_id)
+
+
+@router.get(
+    "/projects/{project_id}/diagnostics",
+    response_model=list[DiagnosticSummary],
+)
+async def list_project_diagnostics(
+    project_id: UUID,
+    db: Client = Depends(get_supabase),
+) -> list[DiagnosticSummary]:
+    repo = PricingRepository(db)
+    return repo.list_project_diagnostics(str(project_id))
 
 
 @router.post(

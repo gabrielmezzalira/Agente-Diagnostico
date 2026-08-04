@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, ChevronLeft, Download, FileDown, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, Download, FileDown, Lightbulb, MessageSquare, Plus, Send, Trash2, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { api, type ChatMessage, type PricingFeature, type SuggestedFeature } from '../lib/api'
+import { api, type ChatMessage, type DiagnosticSummary, type PricingFeature, type SuggestedFeature } from '../lib/api'
 import { usePricing } from '../hooks/usePricing'
 import { usePricingFeatures } from '../hooks/usePricingFeatures'
 import { useLLMSuggestions } from '../hooks/useLLMSuggestions'
@@ -14,6 +14,14 @@ const inputCls =
   'w-full px-3 py-2 text-sm border border-[var(--color-border-std)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
 
 const tdCls = 'px-3 py-2 text-sm text-[var(--color-text-primary)]'
+
+function formatDiagnosticDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
 
 function Field({
   label,
@@ -372,8 +380,22 @@ export default function PricingEditorPage() {
   const [showChat, setShowChat] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [diagnostics, setDiagnostics] = useState<DiagnosticSummary[]>([])
+  const [showDiagnosticPicker, setShowDiagnosticPicker] = useState(false)
 
   const isApproved = pricing?.status === 'approved'
+  const linkedDiagnostic = diagnostics.find(d => d.session_id === pricing?.session_id)
+
+  useEffect(() => {
+    if (!pricing?.project_id) return
+    api.pricings.listDiagnostics(pricing.project_id).then(setDiagnostics).catch(() => null)
+  }, [pricing?.project_id])
+
+  async function handleImportFromDiagnosis(sessionId?: string) {
+    setShowDiagnosticPicker(false)
+    await importFromDiagnosis(sessionId)
+    if (sessionId) setPricing(p => (p ? { ...p, session_id: sessionId } : p))
+  }
 
   useEffect(() => {
     if (showSuggestions && suggestions.length === 0) closeSuggestions()
@@ -477,14 +499,51 @@ export default function PricingEditorPage() {
           </div>
           {!isApproved && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => importFromDiagnosis()}
-                disabled={importing || isApproved}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
-              >
-                <Download size={12} />
-                {importing ? 'Importando...' : 'Importar do diagnóstico'}
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowDiagnosticPicker(v => !v)}
+                  disabled={importing || isApproved}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)] transition-colors disabled:opacity-50"
+                >
+                  <Download size={12} />
+                  {importing ? 'Importando...' : 'Importar do diagnóstico'}
+                  <ChevronDown size={11} />
+                </button>
+                {linkedDiagnostic && (
+                  <p className="absolute top-full mt-1 left-0 text-[10px] text-[var(--color-text-secondary)] whitespace-nowrap">
+                    vinculado: {formatDiagnosticDate(linkedDiagnostic.session_started_at)}
+                  </p>
+                )}
+                {showDiagnosticPicker && (
+                  <div className="absolute top-full mt-1 right-0 z-10 w-64 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-md shadow-lg py-1">
+                    <button
+                      onClick={() => handleImportFromDiagnosis(undefined)}
+                      className="w-full text-left px-3 py-2 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-muted)] transition-colors"
+                    >
+                      Todos os relatórios do projeto
+                    </button>
+                    {diagnostics.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                        Nenhum diagnóstico com relatório neste projeto.
+                      </p>
+                    ) : (
+                      diagnostics.map(d => (
+                        <button
+                          key={d.session_id}
+                          onClick={() => handleImportFromDiagnosis(d.session_id)}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors ${
+                            d.session_id === pricing?.session_id
+                              ? 'text-[var(--color-accent)] font-medium'
+                              : 'text-[var(--color-text-primary)]'
+                          }`}
+                        >
+                          {formatDiagnosticDate(d.session_started_at)} · {d.session_source}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => suggestFeatures()}
                 disabled={suggesting || isApproved}

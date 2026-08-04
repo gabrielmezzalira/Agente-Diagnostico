@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Plus } from 'lucide-react'
-import { api, type Pricing } from '../lib/api'
+import { api, type DiagnosticSummary, type Pricing } from '../lib/api'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
@@ -17,6 +17,7 @@ export default function PricingListPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [pricings, setPricings] = useState<Pricing[]>([])
+  const [diagnostics, setDiagnostics] = useState<DiagnosticSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -28,6 +29,7 @@ export default function PricingListPage() {
       .then(setPricings)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
+    api.pricings.listDiagnostics(id).then(setDiagnostics).catch(() => null)
   }, [id])
 
   async function handleCreate() {
@@ -94,26 +96,36 @@ export default function PricingListPage() {
         {pricings.length === 0 ? (
           <p className="text-sm text-[var(--color-text-secondary)]">Nenhuma precificação ainda.</p>
         ) : (
-          pricings.map(p => (
-            <Link
-              key={p.id}
-              to={`/pricings/${p.id}`}
-              className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
-            >
-              <span className="text-sm text-[var(--color-text-secondary)]">
-                {formatDate(p.created_at)}
-              </span>
-              {p.status === 'approved' ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-                  aprovada
-                </span>
-              ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
-                  rascunho
-                </span>
-              )}
-            </Link>
-          ))
+          pricings.map(p => {
+            const linked = diagnostics.find(d => d.session_id === p.session_id)
+            return (
+              <Link
+                key={p.id}
+                to={`/pricings/${p.id}`}
+                className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm text-[var(--color-text-secondary)]">
+                    {formatDate(p.created_at)}
+                  </span>
+                  {linked && (
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      diagnóstico: {formatDate(linked.session_started_at)}
+                    </span>
+                  )}
+                </div>
+                {p.status === 'approved' ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
+                    aprovada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
+                    rascunho
+                  </span>
+                )}
+              </Link>
+            )
+          })
         )}
       </div>
     </div>
