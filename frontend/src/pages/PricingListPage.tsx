@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, Plus, Trash2 } from 'lucide-react'
 import { api, type DiagnosticSummary, type Pricing } from '../lib/api'
 
 function formatDate(iso: string): string {
@@ -21,6 +21,19 @@ export default function PricingListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function handleDelete(pricingId: string, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm('Excluir esta precificação?')) return
+    try {
+      await api.pricings.delete(pricingId)
+      setPricings(prev => prev.filter(p => p.id !== pricingId))
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Erro ao excluir')
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -87,9 +100,9 @@ export default function PricingListPage() {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-6 py-8 space-y-3">
-        {error && (
+        {(error || deleteError) && (
           <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
-            {error}
+            {error ?? deleteError}
           </div>
         )}
 
@@ -102,27 +115,37 @@ export default function PricingListPage() {
               <Link
                 key={p.id}
                 to={`/pricings/${p.id}`}
-                className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
+                className="flex items-center justify-between gap-3 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
               >
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm text-[var(--color-text-secondary)]">
-                    {formatDate(p.created_at)}
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-medium text-[var(--color-text-primary)] block truncate">
+                    {p.name ?? formatDate(p.created_at)}
                   </span>
-                  {linked && (
-                    <span className="text-xs text-[var(--color-text-secondary)]">
-                      diagnóstico: {formatDate(linked.session_started_at)}
+                  <span className="text-xs text-[var(--color-text-secondary)]">
+                    {formatDate(p.created_at)}
+                    {linked && <> · diagnóstico: {formatDate(linked.session_started_at)}</>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {p.status === 'approved' ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
+                      aprovada
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
+                      rascunho
                     </span>
                   )}
+                  {p.status !== 'approved' && (
+                    <button
+                      onClick={e => handleDelete(p.id, e)}
+                      className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] rounded transition-colors"
+                      title="Excluir"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
-                {p.status === 'approved' ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-                    aprovada
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
-                    rascunho
-                  </span>
-                )}
               </Link>
             )
           })

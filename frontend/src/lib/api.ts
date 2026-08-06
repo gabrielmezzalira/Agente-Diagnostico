@@ -26,6 +26,7 @@ export interface Project {
 export interface Session {
   id: string
   project_id: string
+  name: string | null
   meeting_url: string | null
   source: string
   status: 'active' | 'finished' | 'cancelled'
@@ -38,6 +39,7 @@ export interface Session {
 
 export interface SessionCreate {
   project_id: string
+  name?: string
   meeting_url?: string
   source?: string
   additional_context?: string
@@ -97,6 +99,7 @@ export interface Pricing {
   id: string
   project_id: string
   session_id: string | null
+  name: string | null
   status: 'draft' | 'approved'
   start_date: string
   num_analysts: number
@@ -143,6 +146,7 @@ export interface PricingCreateBody {
 }
 
 export interface PricingUpdateBody {
+  name?: string
   start_date?: string
   num_analysts?: number
   hours_per_day?: number
@@ -211,6 +215,10 @@ export const api = {
       request<Session>('/sessions/', { method: 'POST', body: JSON.stringify(data) }),
     finish: (id: string) =>
       request<Session>(`/sessions/${id}/finish`, { method: 'POST' }),
+    delete: (id: string) =>
+      request<void>(`/sessions/${id}`, { method: 'DELETE' }),
+    rename: (id: string, name: string) =>
+      request<Session>(`/sessions/${id}/rename`, { method: 'PATCH', body: JSON.stringify({ name }) }),
     generateQuestions: (id: string) =>
       request<{ triggered: boolean }>(`/sessions/${id}/questions/generate`, { method: 'POST' }),
     generateReport: (id: string) =>

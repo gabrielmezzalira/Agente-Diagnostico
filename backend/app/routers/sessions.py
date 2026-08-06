@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from supabase import Client, create_client
 
 from app.database import get_supabase
-from app.models.sessions import ReportResponse, SessionCreate, SessionResponse
+from app.models.sessions import ReportResponse, SessionCreate, SessionRename, SessionResponse
 from app.services import llm as llm_service
 from app.services.llm import tokens_to_usd
 from app.services.tunnel import tunnel_manager
@@ -161,8 +161,18 @@ async def create_session(payload: SessionCreate, db: Client = Depends(get_supaba
     is_import = source == "import"
     meeting_url = None if is_import else (payload.meeting_url or project_data.get("meeting_url"))
 
+    existing_count = (
+        db.table("sessions")
+        .select("id", count="exact")
+        .eq("project_id", str(payload.project_id))
+        .execute()
+        .count or 0
+    )
+    default_name = f"Sessão {existing_count + 1:02d}"
+
     row = {
         "project_id": str(payload.project_id),
+        "name": payload.name or default_name,
         "meeting_url": meeting_url,
         "source": source,
         "status": "active",
@@ -241,6 +251,36 @@ async def finish_session(session_id: UUID, db: Client = Depends(get_supabase)):
         .eq("id", str(session_id))
         .execute()
     )
+    return result.data[0]
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(session_id: UUID, db: Client = Depends(get_supabase)):
+    existing = (
+        db.table("sessions")
+        .select("id, status")
+        .eq("id", str(session_id))
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if existing.data[0]["status"] == "active":
+        raise HTTPException(status_code=409, detail="Encerre a sessão antes de excluí-la")
+    db.table("sessions").delete().eq("id", str(session_id)).execute()
+
+
+@router.patch("/{session_id}/rename", response_model=SessionResponse)
+async def rename_session(
+    session_id: UUID, payload: SessionRename, db: Client = Depends(get_supabase)
+):
+    result = (
+        db.table("sessions")
+        .update({"name": payload.name.strip()})
+        .eq("id", str(session_id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Session not found")
     return result.data[0]
 
 
@@ -336,6 +376,13 @@ async def upload_pdf_transcript(
 
     if not transcript.strip():
         raise HTTPException(status_code=422, detail="Não foi possível extrair texto do PDF")
+
+    # Persiste a transcrição extraída para que o MCP e outros consumidores possam acessá-la
+    db.table("transcript_chunks").insert({
+        "session_id": str(session_id),
+        "speaker": "transcript_upload",
+        "text": transcript,
+    }).execute()
 
     last_snapshot = (
         db.table("coverage_snapshots")

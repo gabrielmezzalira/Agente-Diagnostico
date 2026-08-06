@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Activity, ChevronLeft, Clock, Edit2, Play, Trash2 } from 'lucide-react'
+import { Activity, ChevronLeft, Clock, Edit2, Pencil, Play, Trash2 } from 'lucide-react'
 import { api, type Project, type Session, type Pricing } from '../lib/api'
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
@@ -56,6 +56,8 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -68,6 +70,34 @@ export default function ProjectDetailPage() {
       .finally(() => setLoading(false))
     api.pricings.listByProject(id).then(setPricings).catch(() => {})
   }, [id])
+
+  async function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm('Excluir esta sessão? A transcrição e relatório serão perdidos.')) return
+    try {
+      await api.sessions.delete(sessionId)
+      setSessions(prev => prev.filter(s => s.id !== sessionId))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao excluir sessão')
+    }
+  }
+
+  function startRenameSession(s: Session, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setRenamingSessionId(s.id)
+    setRenameValue(s.name ?? '')
+  }
+
+  async function commitRenameSession(sessionId: string) {
+    if (!renameValue.trim()) { setRenamingSessionId(null); return }
+    try {
+      const updated = await api.sessions.rename(sessionId, renameValue.trim())
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, name: updated.name } : s))
+    } catch { /* ignore */ }
+    setRenamingSessionId(null)
+  }
 
   async function handleDelete() {
     if (!id || !confirm('Excluir este projeto?')) return
@@ -225,32 +255,61 @@ export default function ProjectDetailPage() {
                 <Link
                   key={s.id}
                   to={`/sessions/${s.id}`}
-                  className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
+                  className="flex items-center justify-between gap-3 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     {s.status === 'active' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] shrink-0">
                         <Activity size={9} />
                         ativa
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)] shrink-0">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)] shrink-0">
                         encerrada
                       </span>
                     )}
-                    <span className="text-xs text-[var(--color-text-secondary)] truncate">
-                      {formatDate(s.started_at)}
-                    </span>
+                    <div className="min-w-0">
+                      {renamingSessionId === s.id ? (
+                        <input
+                          autoFocus
+                          value={renameValue}
+                          onChange={e => setRenameValue(e.target.value)}
+                          onBlur={() => commitRenameSession(s.id)}
+                          onKeyDown={e => { if (e.key === 'Enter') commitRenameSession(s.id); if (e.key === 'Escape') setRenamingSessionId(null) }}
+                          onClick={e => e.preventDefault()}
+                          className="text-xs font-medium text-[var(--color-text-primary)] border-b border-[var(--color-accent)] bg-transparent outline-none w-40"
+                        />
+                      ) : (
+                        <span className="text-xs font-medium text-[var(--color-text-primary)] truncate block">
+                          {s.name ?? formatDate(s.started_at)}
+                        </span>
+                      )}
+                      <span className="text-xs text-[var(--color-text-secondary)]">{formatDate(s.started_at)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0 text-xs text-[var(--color-text-secondary)]">
-                    <span className="flex items-center gap-1">
-                      <Clock size={11} />
-                      {sessionDuration(s)}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
+                      <Clock size={11} />{sessionDuration(s)}
                     </span>
                     {parseFloat(s.cost_usd) > 0 && (
-                      <span>${parseFloat(s.cost_usd).toFixed(4)}</span>
+                      <span className="text-xs text-[var(--color-text-secondary)]">${parseFloat(s.cost_usd).toFixed(4)}</span>
                     )}
-                    <span className="capitalize">{s.source}</span>
+                    <button
+                      onClick={e => startRenameSession(s, e)}
+                      className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded transition-colors"
+                      title="Renomear"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    {s.status !== 'active' && (
+                      <button
+                        onClick={e => handleDeleteSession(s.id, e)}
+                        className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] rounded transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
                   </div>
                 </Link>
               ))}

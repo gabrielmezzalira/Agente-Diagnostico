@@ -36,8 +36,10 @@ TOOLS DISPONÍVEIS
 ──────────────────────────────────────────────────────────────────────
 Leitura:
 - listar_projetos()                                       → todos os projetos
+- listar_sessoes(project_id)                              → sessões de um projeto (com IDs)
 - listar_precificacoes(project_id)                        → precificações de um projeto
-- obter_contexto_precificacao(pricing_id)                 → contexto completo com IDs
+- obter_contexto_sessao(session_id)                       → transcrição + relatório + red flags
+- obter_contexto_precificacao(pricing_id, session_id?)    → precificação + relatório (filtrado por sessão se informado)
 
 Escrita:
 - adicionar_funcionalidade(pricing_id, bloco, funcionalidade, horas)
@@ -148,7 +150,7 @@ def listar_precificacoes(project_id: str) -> str:
     db = _get_db()
     rows = (
         db.table("pricings")
-        .select("id, status, start_date, ticket_price, created_at")
+        .select("id, name, status, start_date, ticket_price, created_at")
         .eq("project_id", project_id)
         .order("created_at", desc=True)
         .execute()
@@ -157,21 +159,239 @@ def listar_precificacoes(project_id: str) -> str:
     if not rows:
         return "Nenhuma precificação encontrada para este projeto."
 
-    lines = [f"# Precificações\n"]
+    lines = ["# Precificações\n"]
     for p in rows:
         status = "✅ Aprovada" if p["status"] == "approved" else "📝 Rascunho"
         criada = str(p.get("created_at", ""))[:10]
         ticket = p.get("ticket_price", "?")
-        lines.append(f"- {status} | Ticket R${ticket}/mês | Criada: {criada} | `{p['id']}`")
+        nome = p.get("name") or f"Precificação ({criada})"
+        lines.append(f"- **{nome}** | {status} | Ticket R${ticket}/mês | Criada: {criada} | `{p['id']}`")
     return "\n".join(lines)
 
 
 @mcp.tool()
-def obter_contexto_precificacao(pricing_id: str) -> str:
+def excluir_sessao(session_id: str) -> str:
+    """Exclui uma sessão encerrada e todos os seus dados (transcrição, relatório, red flags).
+
+    Apenas sessões com status 'finished' ou 'cancelled' podem ser excluídas.
+    Use listar_sessoes para obter o ID correto antes de excluir.
+    """
+    db = _get_db()
+    rows = db.table("sessions").select("id, status, name").eq("id", session_id).execute().data
+    if not rows:
+        return f"Sessão `{session_id}` não encontrada."
+    session = rows[0]
+    if session.get("status") == "active":
+        return "Não é possível excluir uma sessão ativa. Encerre-a primeiro."
+    nome = session.get("name") or session_id[:8]
+    db.table("sessions").delete().eq("id", session_id).execute()
+    return f'Sessão "{nome}" excluída com sucesso.'
+
+
+@mcp.tool()
+def excluir_precificacao(pricing_id: str) -> str:
+    """Exclui uma precificação em rascunho e todas as suas funcionalidades.
+
+    Precificações aprovadas não podem ser excluídas.
+    Use listar_precificacoes para obter o ID correto antes de excluir.
+    """
+    db = _get_db()
+    rows = db.table("pricings").select("id, status, name").eq("id", pricing_id).execute().data
+    if not rows:
+        return f"Precificação `{pricing_id}` não encontrada."
+    pricing = rows[0]
+    if pricing.get("status") == "approved":
+        return "Não é possível excluir uma precificação aprovada."
+    nome = pricing.get("name") or pricing_id[:8]
+    db.table("pricings").delete().eq("id", pricing_id).execute()
+    return f'Precificação "{nome}" excluída com sucesso.'
+
+
+@mcp.tool()
+def listar_sessoes(project_id: str) -> str:
+    """Lista as sessões de diagnóstico de um projeto com IDs, datas e status.
+
+    Use o ID retornado para chamar obter_contexto_sessao e acessar a transcrição
+    e o relatório de uma sessão específica.
+    """
+    db = _get_db()
+    rows = (
+        db.table("sessions")
+        .select("id, status, started_at, finished_at, cost_usd, tokens_used, source")
+        .eq("project_id", project_id)
+        .order("started_at", desc=True)
+        .execute()
+        .data or []
+    )
+    if not rows:
+        return "Nenhuma sessão encontrada para este projeto."
+
+    lines = ["# Sessões de Diagnóstico\n"]
+    for s in rows:
+        started = str(s.get("started_at", ""))[:16].replace("T", " ")
+        finished = str(s.get("finished_at", ""))[:16].replace("T", " ") if s.get("finished_at") else "em andamento"
+        status_label = {"active": "🟢 ativa", "finished": "✅ encerrada", "cancelled": "❌ cancelada"}.get(
+            s.get("status", ""), s.get("status", "?")
+        )
+        cost = s.get("cost_usd") or 0
+        lines.append(
+            f"- {status_label} | Início: {started} | Fim: {finished} | "
+            f"Custo: ${float(cost):.4f} | `{s['id']}`"
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def obter_contexto_sessao(session_id: str) -> str:
+    """Retorna o contexto completo de uma sessão de diagnóstico.
+
+    Inclui: transcrição da reunião (chunks), relatório de diagnóstico gerado,
+    red flags detectados e snapshot de cobertura final.
+
+    Use este tool para entender o que foi discutido na reunião antes de
+    precificar ou sugerir funcionalidades.
+    """
+    db = _get_db()
+
+    session_rows = db.table("sessions").select("*").eq("id", session_id).execute().data
+    if not session_rows:
+        return f"Sessão `{session_id}` não encontrada."
+    session = session_rows[0]
+
+    project_rows = (
+        db.table("projects")
+        .select("name, client, project_type, description, data_maturity_score")
+        .eq("id", session["project_id"])
+        .execute()
+        .data
+    )
+    project = project_rows[0] if project_rows else {}
+
+    # Transcrição
+    chunks = (
+        db.table("transcript_chunks")
+        .select("speaker, text, timestamp")
+        .eq("session_id", session_id)
+        .order("timestamp")
+        .execute()
+        .data or []
+    )
+    if chunks:
+        transcript_lines = []
+        for c in chunks:
+            speaker = c.get("speaker") or "?"
+            transcript_lines.append(f"**{speaker}:** {c.get('text', '')}")
+        transcript_block = "\n\n".join(transcript_lines)
+    else:
+        transcript_block = "_Nenhum chunk de transcrição registrado para esta sessão._"
+
+    # Relatório de diagnóstico
+    reports = (
+        db.table("reports")
+        .select("markdown_content, generated_at, cost_usd")
+        .eq("session_id", session_id)
+        .order("generated_at", desc=True)
+        .execute()
+        .data or []
+    )
+    if reports:
+        report_parts = []
+        for r in reports:
+            gen_at = str(r.get("generated_at", ""))[:16].replace("T", " ")
+            report_parts.append(f"_Gerado em {gen_at}_\n\n{r.get('markdown_content', '')}")
+        report_block = "\n\n---\n\n".join(report_parts)
+    else:
+        report_block = "_Nenhum relatório gerado para esta sessão._"
+
+    # Red flags
+    flags = (
+        db.table("red_flags")
+        .select("text, severity, evidence, detected_at")
+        .eq("session_id", session_id)
+        .order("detected_at")
+        .execute()
+        .data or []
+    )
+    if flags:
+        flag_lines = []
+        for f in flags:
+            sev = "🔴 CRÍTICO" if f.get("severity") == "critical" else "⚠️ ALERTA"
+            flag_lines.append(f"- {sev}: {f.get('text', '')}")
+            if f.get("evidence"):
+                flag_lines.append(f"  > Evidência: _{f['evidence']}_")
+        flags_block = "\n".join(flag_lines)
+    else:
+        flags_block = "_Nenhum red flag detectado._"
+
+    # Cobertura final
+    snapshots = (
+        db.table("coverage_snapshots")
+        .select("coverage_json, snapshot_at")
+        .eq("session_id", session_id)
+        .order("snapshot_at", desc=True)
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    coverage_block = "_Sem snapshot de cobertura._"
+    if snapshots:
+        cov = snapshots[0].get("coverage_json", {})
+        cov_lines = []
+        for area, info in (cov.items() if isinstance(cov, dict) else []):
+            status = info.get("status", "?") if isinstance(info, dict) else str(info)
+            score = info.get("score", "") if isinstance(info, dict) else ""
+            score_str = f" ({score}%)" if score else ""
+            cov_lines.append(f"  - {area}: {status}{score_str}")
+        if cov_lines:
+            coverage_block = "\n".join(cov_lines)
+
+    started = str(session.get("started_at", ""))[:16].replace("T", " ")
+    finished = str(session.get("finished_at", ""))[:16].replace("T", " ") if session.get("finished_at") else "em andamento"
+    cost = float(session.get("cost_usd") or 0)
+    tokens = session.get("tokens_used") or 0
+
+    return f"""# Sessão de Diagnóstico — {project.get('name', '?')} ({project.get('client', '?')})
+
+**ID da sessão:** `{session_id}`
+**Projeto:** {project.get('name', '?')} | Cliente: {project.get('client', '?')} | Tipo: {project.get('project_type', '?')}
+**Início:** {started} | **Fim:** {finished}
+**Custo:** ${cost:.4f} | **Tokens:** {tokens:,}
+
+---
+
+## Transcrição da Reunião
+
+{transcript_block}
+
+---
+
+## Relatório de Diagnóstico
+
+{report_block}
+
+---
+
+## Red Flags Detectados
+
+{flags_block}
+
+---
+
+## Cobertura de Áreas (snapshot final)
+
+{coverage_block}"""
+
+
+@mcp.tool()
+def obter_contexto_precificacao(pricing_id: str, session_id: str | None = None) -> str:
     """
     Retorna o contexto completo de uma precificação: parâmetros, lista de
     funcionalidades com horas, resultados calculados (preço total, data de
-    entrega, sprints) e relatórios de diagnóstico da sessão.
+    entrega, sprints) e relatório de diagnóstico.
+
+    session_id (opcional): se informado, inclui apenas o relatório da sessão
+    específica em vez dos últimos 2 relatórios do projeto. Use quando quiser
+    relacionar a precificação com uma reunião específica.
 
     Use este tool para analisar a precificação, comparar com histórico,
     sugerir ajustes ou preparar uma proposta comercial.
@@ -203,31 +423,45 @@ def obter_contexto_precificacao(pricing_id: str) -> str:
 
     outputs = _calculate_outputs(features, pricing)
 
-    # Relatórios de diagnóstico (últimos 2)
+    # Relatórios de diagnóstico: sessão específica ou últimas 2 do projeto
     reports_section = ""
-    sessions = (
-        db.table("sessions")
-        .select("id")
-        .eq("project_id", pricing["project_id"])
-        .execute()
-        .data or []
-    )
-    if sessions:
-        session_ids = [s["id"] for s in sessions]
+    if session_id:
         reports = (
             db.table("reports")
             .select("markdown_content, generated_at")
-            .in_("session_id", session_ids)
+            .eq("session_id", session_id)
             .order("generated_at", desc=True)
-            .limit(2)
             .execute()
             .data or []
         )
-        if reports:
-            combined = "\n\n---\n\n".join(
-                r["markdown_content"] for r in reports if r.get("markdown_content")
+        section_title = f"Relatório de Diagnóstico (sessão `{session_id[:8]}...`)"
+    else:
+        sessions = (
+            db.table("sessions")
+            .select("id")
+            .eq("project_id", pricing["project_id"])
+            .execute()
+            .data or []
+        )
+        reports = []
+        if sessions:
+            session_ids = [s["id"] for s in sessions]
+            reports = (
+                db.table("reports")
+                .select("markdown_content, generated_at")
+                .in_("session_id", session_ids)
+                .order("generated_at", desc=True)
+                .limit(2)
+                .execute()
+                .data or []
             )
-            reports_section = f"\n\n## Relatórios de Diagnóstico\n\n{combined}"
+        section_title = "Relatórios de Diagnóstico"
+
+    if reports:
+        combined = "\n\n---\n\n".join(
+            r["markdown_content"] for r in reports if r.get("markdown_content")
+        )
+        reports_section = f"\n\n## {section_title}\n\n{combined}"
 
     # Monta o contexto
     status_label = "Aprovada ✅" if pricing["status"] == "approved" else "Rascunho 📝"

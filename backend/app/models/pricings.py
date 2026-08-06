@@ -16,6 +16,7 @@ PricingStatus = Literal["draft", "approved"]
 class PricingCreateBody(BaseModel):
     """Request body for POST /projects/:id/pricings — does NOT include project_id."""
 
+    name: Optional[str] = None
     start_date: date
     num_analysts: int
     hours_per_day: Decimal
@@ -51,6 +52,7 @@ class PricingCreate(PricingCreateBody):
 
 
 class PricingUpdate(BaseModel):
+    name: Optional[str] = None
     start_date: Optional[date] = None
     num_analysts: Optional[int] = None
     hours_per_day: Optional[Decimal] = None
@@ -84,6 +86,7 @@ class PricingResponse(BaseModel):
     id: UUID
     project_id: UUID
     session_id: Optional[UUID] = None
+    name: Optional[str] = None
     status: str
     start_date: Optional[date] = None
     num_analysts: Optional[int] = None

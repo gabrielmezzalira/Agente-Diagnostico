@@ -8,10 +8,15 @@ from pydantic import BaseModel
 
 class SessionCreate(BaseModel):
     project_id: UUID
+    name: Optional[str] = None
     meeting_url: Optional[str] = None
     source: Optional[str] = None
     additional_context: Optional[str] = None
     budget_usd: Optional[Decimal] = None
+
+
+class SessionRename(BaseModel):
+    name: str
 
 
 class ReportResponse(BaseModel):
@@ -25,6 +30,7 @@ class ReportResponse(BaseModel):
 class SessionResponse(BaseModel):
     id: UUID
     project_id: UUID
+    name: Optional[str] = None
     meeting_url: Optional[str] = None
     source: str
     status: str

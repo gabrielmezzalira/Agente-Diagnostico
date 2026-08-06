@@ -382,6 +382,15 @@ export default function PricingEditorPage() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [diagnostics, setDiagnostics] = useState<DiagnosticSummary[]>([])
   const [showDiagnosticPicker, setShowDiagnosticPicker] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+
+  async function commitRename() {
+    setEditingName(false)
+    if (!pricingId || !nameValue.trim()) return
+    await api.pricings.update(pricingId, { name: nameValue.trim() })
+    refresh()
+  }
 
   const isApproved = pricing?.status === 'approved'
   const linkedDiagnostic = diagnostics.find(d => d.session_id === pricing?.session_id)
@@ -493,9 +502,24 @@ export default function PricingEditorPage() {
             >
               <ChevronLeft size={18} />
             </Link>
-            <h1 className="font-semibold text-sm text-[var(--color-text-primary)]">
-              Precificação
-            </h1>
+            {editingName ? (
+              <input
+                autoFocus
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setEditingName(false) }}
+                className="font-semibold text-sm text-[var(--color-text-primary)] border-b border-[var(--color-accent)] bg-transparent outline-none w-48"
+              />
+            ) : (
+              <h1
+                className="font-semibold text-sm text-[var(--color-text-primary)] cursor-pointer hover:text-[var(--color-accent)] transition-colors"
+                title="Clique para renomear"
+                onClick={() => { setNameValue(pricing.name ?? 'Precificação'); setEditingName(true) }}
+              >
+                {pricing.name ?? 'Precificação'}
+              </h1>
+            )}
           </div>
           {!isApproved && (
             <div className="flex items-center gap-2">

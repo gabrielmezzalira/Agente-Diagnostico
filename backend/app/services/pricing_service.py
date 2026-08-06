@@ -44,8 +44,12 @@ class PricingService:
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
+        existing = self._repo.list_pricings(project_id)
+        default_name = f"Precificação {len(existing) + 1:02d}"
+
         row = {
             "project_id": project_id,
+            "name": body.name or default_name,
             "status": "draft",
             "start_date": body.start_date.isoformat(),
             "num_analysts": body.num_analysts,

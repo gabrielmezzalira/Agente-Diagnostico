@@ -25,6 +25,7 @@ export default function SessionSetupPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [mode, setMode] = useState<'live' | 'import'>('live')
+  const [sessionName, setSessionName] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
   const [source, setSource] = useState<'extension' | 'recall'>('extension')
   const [additionalContext, setAdditionalContext] = useState('')
@@ -80,6 +81,7 @@ export default function SessionSetupPage() {
 
     const payload: SessionCreate = {
       project_id: projectId,
+      ...(sessionName.trim() ? { name: sessionName.trim() } : {}),
       source,
       ...(meetingUrl ? { meeting_url: meetingUrl } : {}),
       ...(additionalContext ? { additional_context: additionalContext } : {}),
@@ -150,6 +152,18 @@ export default function SessionSetupPage() {
             </button>
           ))}
         </div>
+
+        {mode === 'live' && (
+          <Field label="Nome da sessão (opcional)">
+            <input
+              type="text"
+              value={sessionName}
+              onChange={e => setSessionName(e.target.value)}
+              placeholder="Ex: Reunião ACE — 05/08 (deixe em branco para gerar automático)"
+              className={inputCls}
+            />
+          </Field>
+        )}
 
         {mode === 'live' ? (
           <>
