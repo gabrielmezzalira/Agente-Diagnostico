@@ -15,7 +15,7 @@ from google.genai import types as genai_types
 from pydantic import BaseModel
 
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
-_MODEL = "gemini-2.5-flash"
+_MODEL = "gemini-flash-latest"
 
 
 class StackItem(BaseModel):
