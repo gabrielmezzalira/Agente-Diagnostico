@@ -12,6 +12,12 @@ _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 INPUT_COST_PER_1K  = 0.00015   # $0.15 / 1M
 OUTPUT_COST_PER_1K = 0.00060   # $0.60 / 1M
 
+# Teto de tokens de saída do relatório. Fonte única de verdade: usada tanto no
+# max_output_tokens de generate_report quanto na estimativa de custo em
+# session_state.estimated_report_cost — mantê-las alinhadas evita subestimar o
+# custo e cortar a sessão sem saldo (F7). Ver PLANO_AJUSTES.md, Task 4b.
+REPORT_MAX_OUTPUT_TOKENS = 16384
+
 
 def tokens_to_usd(input_tokens: int, output_tokens: int) -> float:
     return (input_tokens / 1000) * INPUT_COST_PER_1K + (output_tokens / 1000) * OUTPUT_COST_PER_1K
@@ -189,7 +195,7 @@ async def generate_report(
         f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
         f"## Transcrição completa\n{transcript}"
     )
-    text, inp, out = await _call(api_key, system, user, max_output_tokens=16384)
+    text, inp, out = await _call(api_key, system, user, max_output_tokens=REPORT_MAX_OUTPUT_TOKENS)
     return text, inp, out
 
 

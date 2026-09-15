@@ -600,4 +600,48 @@ O `TokenCounter` acompanha tokens enviados e recebidos por chamada. O custo é a
 | `agent.py` | Estender | Recebe `prompt_builder` por injeção. Usa prompt dinâmico se `project_config` disponível; fallback para `SYSTEM_PROMPT` constante. |
 | `main.py` | Estender | Adicionar `--ui web` que sobe FastAPI + WebSocket. Modo CLI permanece intacto. |
 | `requirements.txt` | Atualizar | Adicionar `fastapi`, `uvicorn`, `supabase-py`, `google-genai`. Remover `google-generativeai`. |
+
+> **Nota (2026-09-15):** a migração planejada nesta Seção 9 **não** aconteceu na prática. A v2 web
+> foi **reescrita do zero** em `backend/app/` + `frontend/`, e a v1 (`diagnostico/`) permanece intacta
+> como app CLI à parte. Ver a seção "Modo CLI legado (v1)" abaixo.
+
+---
+
+## 10. Modo CLI legado (v1) — pasta `diagnostico/`
+
+**Status: LEGADO. Código órfão, mantido intencionalmente como modo de linha de comando offline.**
+
+A pasta `diagnostico/` é a **versão 1 completa e autossuficiente** do produto — um aplicativo de
+terminal (~3000 linhas, 31 arquivos), anterior à reescrita web. Foi confirmado por revisão de código
+(2026-09-15, Task 5 do `PLANO_AJUSTES.md`) que ela **não está ligada ao sistema web (v2) nem à
+extensão Chrome**:
+
+- **A extensão (`extension/`) fala apenas com o backend v2** (`backend/`, FastAPI no Railway) via
+  `POST /webhook/extension` e WebSocket `/ws/{sessionId}`. Nunca com `diagnostico/`.
+- **Nenhum arquivo de `backend/`, `frontend/` ou `extension/` importa `diagnostico/`** — as únicas
+  menções são comentários ("segue o mesmo padrão do diagnostico/config.py").
+- A v1 tem seu **próprio** caminho de transcrição (`diagnostico/transcription/webhook_server.py`,
+  aiohttp em loopback, recebe Taqtic/Recall/stdin/arquivo) e seu **próprio** painel
+  (`diagnostico/ui/web_renderer.py`, browser standalone). Nada disso se conecta à v2.
+- Usa **imports de topo** (`from config import ...`) — só roda com `diagnostico/` como raiz,
+  confirmando que é um app independente, não um módulo do `backend/`.
+
+**Como rodar (uso offline no terminal):**
+```bash
+cd diagnostico/
+export GEMINI_API_KEY=sua-chave
+pip install -r requirements.txt
+python main.py                                   # entrevista interativa no terminal
+python main.py --mode realtime --source stdin    # painel de cobertura ao vivo
+```
+
+**Regras ao trabalhar no repo:**
+- **Não confundir** a v1 (`diagnostico/`) com a v2 (`backend/` + `frontend/` + `extension/`). Prompts,
+  classificador e planner existem em **duas versões divergentes**; ao editar o produto atual, mexa
+  **sempre** na v2.
+- A v1 tem seu próprio `config.py`/`.env`/webhook — tratar como superfície separada em auditorias de
+  segurança.
+- Se no futuro o time confirmar que ninguém mais usa o modo terminal, a saída é remover
+  (`git rm -r diagnostico/`) — recuperável pelo histórico do git.
+
 *Agente Diagnóstico · SDD v2.0 · CITi Subárea de Dados · Maio 2026*

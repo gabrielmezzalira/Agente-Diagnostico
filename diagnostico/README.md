@@ -1,5 +1,25 @@
 # Agente de Diagnóstico Técnico — CITi
 
+> ## ⚠️ MODO CLI LEGADO (v1) — não faz parte do sistema web (v2)
+>
+> Esta pasta (`diagnostico/`) é a **versão 1 completa e autossuficiente** do produto: um
+> aplicativo de **linha de comando**, anterior à reescrita web. Ela **não é importada nem
+> chamada por nenhum outro componente** do repositório:
+>
+> - A extensão Chrome (`extension/`) fala **apenas** com o backend v2 (`backend/`, FastAPI no
+>   Railway) via `POST /webhook/extension` e WebSocket `/ws/{sessionId}`. **Nunca** com esta pasta.
+> - O frontend React (`frontend/`) e o Supabase são exclusivos da v2.
+> - Esta v1 tem seu **próprio** caminho de transcrição (`transcription/webhook_server.py`, aiohttp
+>   em loopback, recebendo do Taqtic/Recall/stdin/arquivo) e seu próprio painel
+>   (`ui/web_renderer.py`, browser standalone). Nada disso se conecta à v2.
+> - Usa **imports de topo** (`from config import ...`): só roda com `diagnostico/` como raiz —
+>   confirma que é um app à parte, não um módulo do `backend/`.
+>
+> **Quando usar:** apenas para rodar o diagnóstico offline no terminal, sem subir
+> web/FastAPI/Supabase. Para o produto atual (extensão + web), use `backend/` + `frontend/`.
+>
+> Ver `PLANO_AJUSTES.md` → **Task 5** e `CLAUDE.md` → seção "Modo CLI legado (v1)".
+
 Um agente inteligente que conduz entrevistas técnicas profundas para diagnosticar riscos e complexidade de projetos antes de fechá-los com clientes.
 
 ## Motivação

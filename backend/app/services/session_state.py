@@ -2,8 +2,15 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from app.services.llm import INPUT_COST_PER_1K, OUTPUT_COST_PER_1K
+from app.services.llm import (
+    INPUT_COST_PER_1K,
+    OUTPUT_COST_PER_1K,
+    REPORT_MAX_OUTPUT_TOKENS,
+)
 from app.services.prompt_builder import AREAS_BY_PROJECT_TYPE
+
+# Margem de segurança sobre o custo estimado do relatório (F7 do SDD): 20%.
+REPORT_COST_MARGIN = 1.2
 
 COVERAGE_AREAS = [
     "negocio", "eng_dados", "visualizacao", "ciencia_dados",
@@ -107,8 +114,16 @@ class SessionState:
         self.cost_usd += cost
 
     def estimated_report_cost(self) -> float:
+        # Saída estimada = teto real de tokens do relatório (mesma constante que
+        # generate_report usa), não um chute fixo. Sem isto o custo era
+        # subestimado em ~6× e a parada automática por budget (F7) ficava
+        # cega. Aplica margem de 20% conforme o SDD.
         transcript_tokens = len(self.get_transcript_text()) // 4 + 2000
-        return (transcript_tokens / 1000) * INPUT_COST_PER_1K + (2500 / 1000) * OUTPUT_COST_PER_1K
+        raw = (
+            (transcript_tokens / 1000) * INPUT_COST_PER_1K
+            + (REPORT_MAX_OUTPUT_TOKENS / 1000) * OUTPUT_COST_PER_1K
+        )
+        return raw * REPORT_COST_MARGIN
 
     def budget_remaining(self) -> Optional[float]:
         if self.budget_usd is None:

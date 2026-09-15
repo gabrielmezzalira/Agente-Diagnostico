@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,8 @@ from app.services.llm import tokens_to_usd
 from app.services.prompt_builder import PromptBuilder
 from app.services.session_state import CoverageArea, Question, RedFlag, SessionState
 from app.services.ws_manager import ws_manager
+
+_log = logging.getLogger(__name__)
 
 
 class SessionPipeline:
@@ -139,21 +142,48 @@ class SessionPipeline:
             except Exception:
                 pass
 
+    def _expire_due_questions(self, now: datetime) -> list[str]:
+        """Marca perguntas vencidas como 'dismissed' (memória + banco) e retorna seus ids.
+
+        Extraído do loop para ser testável isoladamente. Persiste em lote no banco
+        para o estado sobreviver a reload/reinício — sem isto a pergunta ressuscita
+        como 'queued'. Só afeta perguntas ainda em 'queued' (o filtro .eq no update
+        evita sobrescrever pinned/used). Falha de persistência é logada, não
+        propagada — a fila não pode parar de expirar. Ver PLANO_AJUSTES.md, Task 4a.
+        """
+        expired_ids: list[str] = []
+        for q in self.state.questions:
+            if q.status != "queued" or not q.expires_at:
+                continue
+            try:
+                exp = datetime.fromisoformat(q.expires_at.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if now > exp:
+                q.status = "dismissed"
+                expired_ids.append(q.id)
+
+        if expired_ids:
+            try:
+                db = get_supabase()
+                (
+                    db.table("questions")
+                    .update({"status": "dismissed"})
+                    .in_("id", expired_ids)
+                    .eq("status", "queued")
+                    .execute()
+                )
+            except Exception:
+                _log.exception(
+                    "falha ao persistir expiração de perguntas na sessão %s",
+                    self.state.session_id,
+                )
+        return expired_ids
+
     async def _expire_task(self) -> None:
         while self._running:
             await asyncio.sleep(1)
-            now = datetime.now(timezone.utc)
-            expired_ids = []
-            for q in self.state.questions:
-                if q.status != "queued" or not q.expires_at:
-                    continue
-                try:
-                    exp = datetime.fromisoformat(q.expires_at.replace("Z", "+00:00"))
-                    if now > exp:
-                        q.status = "dismissed"
-                        expired_ids.append(q.id)
-                except ValueError:
-                    pass
+            expired_ids = self._expire_due_questions(datetime.now(timezone.utc))
             for qid in expired_ids:
                 await ws_manager.broadcast(
                     self.state.session_id, "question_expired", {"id": qid}

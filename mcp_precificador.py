@@ -20,10 +20,8 @@ SETUP (uma vez só)
          "command": "python",
          "args": ["/caminho/absoluto/para/mcp_precificador.py"],
          "env": {
-           "SUPABASE_URL": "https://fzvwtkipzxdnubprvfct.supabase.co",
-           "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6dnd0a2lwenhkbnVicHJ2ZmN0Iiwicm9sZ
-  SI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTY1Nzk4NiwiZXhwIjoyMDk1MjMzOTg2fQ.y8mijx9rqm93xXs8bqNkEFFtFUhn1CuRCFGu
-  wuaVAzA"
+           "SUPABASE_URL": "https://<SEU_PROJETO>.supabase.co",
+           "SUPABASE_KEY": "<SUA_SERVICE_ROLE_KEY>"
          }
        }
      }
