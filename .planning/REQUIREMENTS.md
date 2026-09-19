@@ -1,175 +1,103 @@
-# Requirements — Agente Diagnóstico v2.0
+# Requirements: Agente Diagnóstico — v3.0 Pivot Discovery
 
-Source: CLAUDE.md SDD v2.0, TECNOLOGIAS.md ADR
-Generated: 2026-05-24 via gsd-ingest-docs
+**Defined:** 2026-09-19
+**Core Value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly.
 
----
+## v3.0 Requirements
 
-## v1 Requirements (Active — building now)
+Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadmap phase.
 
-### F1 — Project Configuration
+### Discovery Mode (DISC)
 
-- [ ] **PROJ-01**: User can create a project with: name, client, description, project type (bi/ml/data_engineering/automation/integration/science), Gemini API key, budget USD, DMS 1-5, pre-meeting context, meeting URL, transcription source (taqtic/recall), question TTL seconds
-- [ ] **PROJ-02**: User can edit a project at any time; edits do not affect sessions already closed
-- [ ] **PROJ-03**: Project list displays active-session green badge for projects with live sessions
-- [ ] **PROJ-04**: Gemini API key stored via Supabase Vault (pgsodium); masked in UI after save; re-entry required to update
-- [x] **PROJ-05**: Supabase schema initialized: tables projects, sessions, questions, red_flags, coverage_snapshots, reports, question_bank, session_prompts, transcript_chunks
+- [ ] **DISC-01**: A project can be configured in "discovery" mode (vs "sales") without affecting existing sales projects.
+- [ ] **DISC-02**: In discovery mode, the agent classifies coverage over the discovery areas (Produto + Dados lenses) instead of the 8 sales areas.
+- [ ] **DISC-03**: Discovery prompts drop the sales framing (CITI_PORTFOLIO) while keeping the DMS (Data Maturity Score) calibration.
+- [ ] **DISC-04**: Coverage areas live in a single registry — no hardcoded area lists duplicated across backend and frontend.
 
-### F2 — Session Setup
+### Two Lenses / Two Agents (LENS)
 
-- [ ] **SESS-01**: User can create a session from a project; fields pre-filled from project, all editable (meeting URL, source, additional context, session-specific budget)
-- [ ] **SESS-02**: Backend creates session record in Supabase with status='active' on confirmation
-- [ ] **SESS-03**: When source=taqtic: backend starts tunnel and shows public URL in setup screen
-- [ ] **SESS-04**: When source=recall: backend POSTs to Recall.ai API with meeting_url; bot joins the call
-- [ ] **SESS-05**: Setup confirmation redirects to monitoring screen (F5)
+- [ ] **LENS-01**: A "Produto" agent (primary) generates discovery questions covering the bottleneck, frente de atuação, user impact, process mapping, and delivery viability.
+- [ ] **LENS-02**: A "Dados" agent (auxiliary) generates data-focused questions (sources, quality, metrics, LGPD/security, solution approach, quick wins), triggered less often / on demand.
+- [ ] **LENS-03**: Questions from both agents appear in one shared queue, each tagged with its lens (produto/dados).
+- [ ] **LENS-04**: Coverage areas and red flags carry a lens tag.
+- [ ] **LENS-05**: No duplicate questions across the two agents (shared anti-repetition).
 
-### F9 — Tunnel (URL Exposure)
+### Report + Pricing (REP)
 
-- [ ] **TUNNEL-01**: Backend detects cloudflared or ngrok on PATH at session start; cloudflared is preferred
-- [ ] **TUNNEL-02**: Tunnel started pointing at localhost:8765; public URL displayed in setup screen and monitoring topbar
-- [ ] **TUNNEL-03**: Tunnel terminated when session finishes (Q action or API /sessions/:id/finish)
+- [ ] **REP-01**: A discovery session produces a single report with Produto + Dados sections and a "Métricas para Precificação" section.
+- [ ] **REP-02**: The discovery report feeds the Precificador via `import-from-diagnosis` (≥1 feature extracted; session linked in `pricings.session_id`).
+- [ ] **REP-03**: Sales report generation continues to work unchanged.
 
-### F4 — Question Bank
+### Frontend (UI)
 
-- [ ] **QBANK-01**: question_bank table seeded with questions per thematic block: negocio, eng_dados, visualizacao, ciencia_dados, automacao, integracao, consumo, parceria
-- [ ] **QBANK-02**: Each question maps to one or more project_types array; priority field (1=high, 2=medium, 3=low)
-- [ ] **QBANK-03**: GET /question-bank?project_type=&block= returns filtered questions
-- [ ] **QBANK-04**: QuestionPlanner receives filtered bank questions as context (not fixed script)
+- [ ] **UI-01**: The monitoring screen groups coverage by lens (Produto/Dados) in discovery mode, and shows a flat list in sales mode.
+- [ ] **UI-02**: Question cards and red-flag rows show a lens badge.
+- [ ] **UI-03**: The monitoring screen renders any coverage-area set server-driven (no hardcoded area list in the frontend).
 
-### F3 — Dynamic Prompt Generation
+### Taqciti Transcription (TAQ)
 
-- [ ] **PROMPT-01**: PromptBuilder class replaces static prompts.py constants; method `build(agent, project_config) -> str`
-- [ ] **PROMPT-02**: v1 SYSTEM_PROMPT and CLASSIFIER_SYSTEM_PROMPT kept as internal PromptBuilder fallback
-- [ ] **PROMPT-03**: At session start, PromptBuilder generates prompts for: CoverageClassifier, RedFlagDetector, QuestionPlanner, DiagnosticAgent
-- [ ] **PROMPT-04**: Generated prompts stored in session_prompts table (for reproducibility and debugging)
-- [ ] **PROMPT-05**: CoverageClassifier prompt: activates areas relevant to project type, adjusts criticality by DMS
-- [ ] **PROMPT-06**: RedFlagDetector prompt: includes red flags specific to known pre-meeting context, calibrates sensitivity by DMS
-- [ ] **PROMPT-07**: QuestionPlanner prompt: prioritizes questions from bank by project type, adapts vocabulary to DMS
-- [ ] **PROMPT-08**: DiagnosticAgent prompt: focuses interview on highest-risk areas for the given project type
+- [ ] **TAQ-01**: Taqciti streams live captions (merged segments) to the backend during the call.
+- [ ] **TAQ-02**: A Taqciti stream binds to the correct backend discovery session (auto-detect from the web app + manual fallback).
+- [ ] **TAQ-03**: The transcription webhook is protected by an opt-in shared-secret header (does not break current production when unset).
+- [ ] **TAQ-04**: The old custom extension is retired after Taqciti is validated (cutover).
 
-### F5 — Monitoring Screen
+## Future Requirements
 
-- [ ] **MON-01**: 3-column layout: Coverage panel (220px fixed) | Live feed (flex) | Questions panel (280px fixed)
-- [ ] **MON-02**: Topbar: project name + client name, animated green status dot + "ao vivo" text, session timer HH:MM:SS
-- [ ] **MON-03**: Budget bar below topbar: colored progress bar (green <60%, yellow 60-80%, red >80%), "consumed / limit" values, report cost estimate text, sufficiency indicator
-- [ ] **MON-04**: Coverage column: list of risk areas with status color (red/yellow/green/gray) and per-area progress bar
-- [ ] **MON-05**: Live column: scrolling transcript chunks + red flag alerts with severity badge
-- [ ] **MON-06**: Questions column: queued question cards with TTL bar + pinned questions section + "Generate Now" button
-- [ ] **MON-07**: Action — Generate questions: triggers QuestionPlanner immediately (P key / green primary button)
-- [ ] **MON-08**: Action — Generate report: checks budget sufficiency, generates report via ReportGenerator, shows modal (R key / secondary button)
-- [ ] **MON-09**: Action — Force classify: triggers _coverage_task immediately (S key / Sync button)
-- [ ] **MON-10**: Action — Finish session: confirms, marks session 'finished', redirects to history (Q key / red button)
-- [ ] **MON-11**: WebSocket connection to ws://localhost:8000/ws/{session_id}; handles all backend event types
+Deferred to a later milestone. Tracked but not in this roadmap.
 
-### F6 — Question Queue
+### Discovery depth (DISCF)
 
-- [ ] **QUEUE-01**: Question card states: queued (TTL countdown bar), pinned (no TTL, separate section), dismissed (fade+slide out), used (marked done, excluded from anti-repeat only)
-- [ ] **QUEUE-02**: TTL bar color: green >60% remaining, orange 30-60%, red <30%; expires with fade+slide animation
-- [ ] **QUEUE-03**: Maximum 5 queued cards simultaneously; when 6th arrives, oldest queued card auto-dismissed
-- [ ] **QUEUE-04**: QuestionPlanner receives last 3 (queued + pinned + used) questions as anti-repeat context; dismissed excluded
-- [ ] **QUEUE-05**: User can pin a question (📌) → moves to pinned section, no TTL
-- [ ] **QUEUE-06**: User can dismiss a question (✕) → immediate removal with animation
-- [ ] **QUEUE-07**: User can mark question as used (✓) → status='used', registered for anti-repeat
+- **DISCF-01**: Report template refined against a real discovery document sample (section names/order, exact Produto metrics feeding pricing).
+- **DISCF-02**: Dynamic / AI-generated discovery areas per client context (wire up the dormant `generate_custom_areas`).
 
-### F7 — Budget Control
+### Transcription (TAQF)
 
-- [ ] **BUDGET-01**: TokenCounter tracks tokens_in and tokens_out per LLM call and accumulates to sessions.cost_usd
-- [ ] **BUDGET-02**: Pricing table (Gemini 2.0 Flash: $0.0001/1k input, $0.0004/1k output) applied per call
-- [ ] **BUDGET-03**: Every _coverage_task tick: check budget_remaining >= estimated_report_cost; if not, pause _coverage_task and _red_flag_task
-- [ ] **BUDGET-04**: Report cost estimated as: current_transcript_tokens × output_factor × 1.20 margin
-- [ ] **BUDGET-05**: Budget bar updated every 250ms (every _render_task tick)
-- [ ] **BUDGET-06**: When budget insufficient: alert shown in budget bar, report button remains active
-- [ ] **BUDGET-07**: session.budget_usd=null means no limit (unlimited mode)
-
-### F8 — Session Persistence & History
-
-- [ ] **HIST-01**: Transcript chunks saved to transcript_chunks table in real-time as they arrive
-- [ ] **HIST-02**: coverage_snapshots saved after each _coverage_task completion
-- [ ] **HIST-03**: red_flags saved immediately on detection with severity + evidence text
-- [ ] **HIST-04**: questions saved with generated_at and expires_at; status updated on pin/dismiss/use
-- [ ] **HIST-05**: Generated reports saved to reports table with markdown_content and cost_usd
-- [ ] **HIST-06**: session.tokens_used and session.cost_usd updated in real-time
-- [ ] **HIST-07**: History screen: list of sessions per project, ordered newest-first
-- [ ] **HIST-08**: Session card shows: date, duration, cost, final coverage status, red flag count badge
-- [ ] **HIST-09**: Session detail view: full report markdown rendered, alert timeline, coverage area evolution chart
-
-### F10 — Data Maturity Score
-
-- [ ] **DMS-01**: DMS slider 1-5 on project configuration screen; definitions visible as tooltip (Inicial/Gerenciado/Definido/Quantificado/Otimizado)
-- [ ] **DMS-02**: DMS value fed into PromptBuilder for all 4 agents; calibration rules per agent as defined in SDD Section 4.10
-- [ ] **DMS-03**: ReportGenerator includes "maturidade atual vs maturidade necessária para o projeto" section
-
----
-
-## Agente Precificador Requirements
-
-### P0 — LLM Infrastructure (transversal a todas as fases do Precificador)
-
-- [ ] **PREC-INF-01**: Agente Precificador usa LangChain + LangGraph obrigatoriamente para toda integração com LLM — permite troca de provider/modelo sem reescrever lógica de negócio
-- [ ] **PREC-INF-02**: Cada projeto tem campos de configuração de IA do Precificador: `pricing_llm_provider` (openai/anthropic/google), `pricing_llm_model` (ex: gpt-4o, claude-3-5-sonnet, gemini-2.0-flash), `pricing_api_key` (armazenada via Supabase Vault, nunca exposta no frontend)
-- [ ] **PREC-INF-03**: UI do projeto expõe campos editáveis para provider, model name e API key (password input, mascarado após save); usuário pode alterar a qualquer momento
-- [ ] **PREC-INF-04**: O service de LLM do Precificador instancia `BaseChatModel` do LangChain a partir da configuração do projeto — o restante do código só conhece a abstração, nunca o provider concreto
-- [ ] **PREC-INF-05**: Dependências adicionadas ao `backend/requirements.txt`: `langchain`, `langchain-openai`, `langchain-anthropic`, `langchain-google-genai`, `langgraph`
-
-### P1 — Pricing Foundation
-
-- [ ] **PREC-01**: User can create a pricing linked to a project; pricing stores: start_date, num_analysts, hours_per_day, ticket_price (BRL), extra_calendar_days, status (draft/approved); multiple pricings per project are allowed
-- [ ] **PREC-02**: Pricing screen displays a feature table with columns: Bloco | Funcionalidade | Horas | Dias (calculated) | CITI?; user can add, edit, and remove features inline
-- [ ] **PREC-03**: Calculation engine computes in real time: business_days = SUM(hours) / (num_analysts × hours_per_day); calendar_days = business_days × 7/5 + extra_calendar_days; price = ticket_price × (calendar_days / 30); sprints = business_days / 5; end_date = start_date + calendar_days
-- [ ] **PREC-04**: Calculated outputs displayed prominently: Preço Total (R$), Data Final, Duração em dias corridos, Duração em semanas, Duração em meses, Nº Sprints, Nº Dias Úteis
-- [ ] **PREC-05**: Project detail page lists all pricings for that project with status badge (rascunho/aprovada) and creation date; calculated price is visible on the pricing editor page only
-- [ ] **PREC-06**: User can approve a pricing; on approval, a snapshot (inputs + feature list + outputs) is saved to pricing_history; only approved pricings enter the history
-- [ ] **PREC-07**: Approved pricings are read-only snapshots visible on the project page
-
-### P2 — LLM-Powered Suggestions
-
-- [ ] **PREC-08**: "Importar do diagnóstico" button parses one or more diagnosis reports from the project and extracts features (bloco, funcionalidade, horas estimadas) as the initial feature list
-- [ ] **PREC-09**: "Sugerir funcionalidades" button calls LLM which, given the current feature list and diagnosis report, suggests additional features not yet included, based on patterns from approved historical pricings of similar projects
-- [ ] **PREC-10**: LLM suggests initial hour estimates for each feature based on similar features found in approved historical pricings
-- [ ] **PREC-11**: LLM prompt context includes: (a) diagnosis report markdown(s), (b) current feature list, (c) top-3 approved pricings from history matching the project type, (d) instruction not to repeat existing features
-
-### P3 — Embedded Chatbot
-
-- [ ] **PREC-12**: Embedded chat panel on the pricing screen; LLM context includes: diagnosis report content + approved pricing history + current feature list + current inputs
-- [ ] **PREC-13**: User can instruct the chatbot to add, remove, or modify features and hours via natural language; chatbot applies changes to the feature table in real time
-- [ ] **PREC-14**: Chatbot can discuss the content of the diagnosis report and explain why certain features or hour estimates were suggested
-- [ ] **PREC-15**: Chatbot uses structured tool calls: add_feature(bloco, funcionalidade, horas), remove_feature(feature_id), update_feature(feature_id, fields), update_inputs(fields); results reflected immediately in the feature table
-
----
-
-## v2 Requirements (Deferred)
-
-- Dynamic report cost estimation (data-driven, after 10 sessions per project type)
-- A/B test framework for comparing dynamic vs v1 prompts
-- Multi-user / team access (current scope: single-user, local deployment)
-- Data contracts / lakehouse features (DMS level 5 advanced projects)
-
----
+- **TAQF-01**: Multi-provider capture (Zoom/Teams) beyond Google Meet.
+- **TAQF-02**: Real per-user authentication (JWT/RLS) for the transcription webhook.
 
 ## Out of Scope
 
-- LangChain/LangGraph — incompatible with 6-task async pipeline, disproportionate dependency (ADR locked)
-- Removing v1 terminal CLI mode — preserved for local/dev use
-- --resolve interactive in ingest-docs — reserved for future release
-- Real-time cost learning in v2.0 — static estimation only in this version
+Explicitly excluded from this milestone. Documented to prevent scope creep.
 
----
+| Feature | Reason |
+|---------|--------|
+| Deleting sales mode / CITI_PORTFOLIO | Irreversible; kept behind the `mode` flag until discovery is validated |
+| Real per-user auth on the webhook | MVP uses an opt-in shared secret; full auth is a separate backlog decision (PLANO_AJUSTES Task 2) |
+| Multi-provider transcription (Zoom/Teams) | Recall.ai remains the optional fallback; not in this milestone |
+| Dynamic report cost learning | Static estimation first |
+| Two full pipelines (2× coverage + red-flags) | Two agents only at the question stage; coverage/red-flags stay 1× to bound cost |
 
 ## Traceability
 
-| REQ-ID Group | Phase | ROADMAP Phase |
-|------|-------|---------------|
-| PROJ-01 to PROJ-05 | F1 Project Config | Phase 1 |
-| SESS-01 to SESS-05 | F2 Session Setup | Phase 2 |
-| TUNNEL-01 to TUNNEL-03 | F9 Tunnel | Phase 3 |
-| QBANK-01 to QBANK-04 | F4 Question Bank | Phase 4 |
-| PROMPT-01 to PROMPT-08 | F3 Dynamic Prompts | Phase 5 |
-| MON-01 to MON-11 | F5 Monitoring | Phase 6 |
-| QUEUE-01 to QUEUE-07 | F6 Question Queue | Phase 7 |
-| BUDGET-01 to BUDGET-07 | F7 Budget Control | Phase 8 |
-| HIST-01 to HIST-09 | F8 Persistence + History | Phase 9 |
-| DMS-01 to DMS-03 | F10 Data Maturity Score | Phase 10 |
-| PREC-INF-01 to PREC-INF-05 | P0 LLM Infrastructure | Phase 11 (bundled) |
-| PREC-01 to PREC-07 | P1 Pricing Foundation | Phase 11 |
-| PREC-08 to PREC-11 | P2 LLM Suggestions | Phase 12 |
-| PREC-12 to PREC-15 | P3 Embedded Chatbot | Phase 13 |
+Which phases cover which requirements. Filled during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DISC-04 | Phase 1 | Pending |
+| DISC-01 | Phase 2 | Pending |
+| DISC-02 | Phase 2 | Pending |
+| DISC-03 | Phase 2 | Pending |
+| LENS-01 | Phase 3 | Pending |
+| LENS-02 | Phase 3 | Pending |
+| LENS-03 | Phase 3 | Pending |
+| LENS-04 | Phase 3 | Pending |
+| LENS-05 | Phase 3 | Pending |
+| REP-01 | Phase 4 | Pending |
+| REP-02 | Phase 4 | Pending |
+| REP-03 | Phase 4 | Pending |
+| UI-01 | Phase 5 | Pending |
+| UI-02 | Phase 5 | Pending |
+| UI-03 | Phase 5 | Pending |
+| TAQ-03 | Phase 6 | Pending |
+| TAQ-01 | Phase 7 | Pending |
+| TAQ-02 | Phase 8 | Pending |
+| TAQ-04 | Phase 9 | Pending |
+
+**Coverage:**
+- v3.0 requirements: 19 total
+- Mapped to phases: 19
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-09-19*
+*Last updated: 2026-09-19 after milestone v3.0 initiation*
