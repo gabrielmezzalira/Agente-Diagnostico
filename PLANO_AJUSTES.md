@@ -309,67 +309,155 @@ que qualquer dev novo confunde com parte do sistema web):
 
 ## Task 6 — Refatorar `SessionActivePage.tsx` + upload de PDF 🟡 dívida SOLID · ⬜ NÃO INICIADO
 
-### O que é o refactor SOLID (em linguagem simples)
+> Este plano segue o template obrigatório do `CLAUDE.md` ("Regras de Planejamento de Tasks"): as sete
+> seções — linguagem comum, como, riscos, prevenção, conserto, decisões do time, verificação.
 
-O `CLAUDE.md` exige que **cada arquivo tenha uma responsabilidade só** (o **S** de SOLID — *Single
-Responsibility*) e que **routers não contenham lógica de negócio** (o **D** — *Dependency Inversion*:
-o alto nível depende de abstrações, não da implementação). Hoje dois pontos violam isso de forma clara.
-"Refatorar" aqui = **reorganizar o código sem mudar o que ele faz** — mesma tela, mesmo endpoint, só que
-partido em peças com papéis únicos.
+---
 
-**Analogia:** hoje o `SessionActivePage.tsx` é uma cozinha onde uma pessoa só corta, frita, emprata e
-lava — 1010 linhas fazendo tudo. O refactor dá a cada estação um responsável (componentes), e a página
-vira o *maître* que só coordena. Nada muda no prato final; muda quem faz o quê.
+### 1. O que muda (em linguagem comum)
 
-### Problema 1 — Frontend: `SessionActivePage.tsx` faz coisas demais
+Existem **dois problemas de organização** (não de funcionamento — o sistema hoje funciona). A task
+**reorganiza o código sem mudar o que ele faz** para o usuário. Mesma tela, mesmo botão, mesmo resultado.
 
-- **1010 linhas** concentram: painel de cobertura, transcrição ao vivo, lista de alertas, fila de
-  perguntas, barra de budget e modal de relatório. O `CLAUDE.md` diz: *"um arquivo, uma responsabilidade
-  (>200 linhas = sinal de excesso)"*.
-- **Por que dói:** difícil de ler, difícil de testar (não dá pra testar a fila sem montar a tela inteira),
-  e qualquer mudança arrisca quebrar áreas não relacionadas.
-- **O refactor:** extrair um componente por coluna/bloco — `CoveragePanel`, `LiveTranscript`,
-  `RedFlagList`, `QuestionQueue`, `BudgetBar`, `ReportModal` — cada um recebendo só as props que usa
-  (o **I** de SOLID — *Interface Segregation*: sem "god props"). A página vira **composição** desses
-  componentes. **A lógica com estado continua no hook `useSessionWS.ts`** — os componentes só exibem.
+**Analogia:** hoje o arquivo da tela de sessão é uma cozinha onde **uma pessoa só** corta, frita, emprata
+e lava — mais de mil linhas fazendo tudo. A task dá a cada estação um responsável (componentes menores),
+e a tela vira o *maître* que só coordena. O prato final é idêntico; muda **quem faz o quê** por dentro.
 
-### Problema 2 — Backend: lógica de negócio dentro do router
+**Problema A — Frontend (a tela).** O arquivo `SessionActivePage.tsx` tem **1010 linhas** e concentra
+tudo: o painel de cobertura à esquerda, a transcrição ao vivo no centro, os alertas, a fila de perguntas
+à direita, a barra de custo e o modal de relatório. A regra do projeto diz "um arquivo, uma
+responsabilidade". **Boa notícia descoberta ao ler o código:** essas peças **já estão escritas como
+funções separadas dentro do mesmo arquivo**, com as entradas (props) bem definidas. Ou seja, a maior
+parte do trabalho é **recortar cada função para o seu próprio arquivo** — é mecânico, não é reescrever.
 
-- `upload_pdf_transcript` (`routers/sessions.py`, ~150 linhas) faz **extração de PDF + classificação via
-  LLM + geração de relatório + atualização de custo** — tudo dentro do endpoint. O `CLAUDE.md` diz:
-  *"router valida entrada, chama service, retorna resposta. Nada mais."*
-- **Por que dói:** não dá pra testar a ingestão sem subir o FastAPI; e essa lógica **diverge** do caminho
-  ao vivo (`pipeline.py`), gerando o bug do `structured_context` (abaixo).
-- **O refactor:** criar `services/report_ingestion.py` que orquestra extração → classificação → relatório
-  → persistência. O router só valida o arquivo e delega. É o padrão **router → service → repository** que
-  **só o Precificador respeita hoje**.
+**Problema B — Backend (o upload de PDF).** Quando o usuário importa um PDF de transcrição para gerar um
+relatório, o endpoint `upload_pdf_transcript` faz **tudo sozinho dentro dele**: lê o PDF, classifica as
+áreas com a IA, gera o relatório, calcula o custo e grava no banco (~150 linhas). A regra diz "o endpoint
+valida a entrada, chama o service e responde — nada mais". A task **move essa lógica para um arquivo de
+service** e deixa o endpoint só recebendo o arquivo e delegando.
 
-**O que muda e por quê:** aproximar do padrão router → service → repository, melhorando testabilidade e
-manutenção — **sem alterar o comportamento visível** (mesma tela, mesmo endpoint, mesmos resultados).
+**Por quê fazer:** ficar mais fácil de ler, de testar cada pedaço isoladamente, e de mexer numa parte sem
+arriscar quebrar outra. Além disso, corrige um **bug real** de brinde (ver seção do backend abaixo).
 
-**Arquivos modificados (padrão, não exaustivo):**
-- **Front:** extrair de `SessionActivePage.tsx` componentes por coluna — ex.:
-  `components/session/CoveragePanel.tsx`, `LiveTranscript.tsx`, `RedFlagList.tsx`, `QuestionQueue.tsx`,
-  `BudgetBar.tsx`, `ReportModal.tsx`. A página vira **composição** (F5, layout de 3 colunas). Lógica
-  stateful continua no hook `lib/useSessionWS.ts`.
-- **Back:** mover a lógica do upload para um service (ex.: `services/report_ingestion.py`) que orquestra
-  extração (pdfplumber) + `llm_service.classify_coverage` + `llm_service.generate_report` + persistência
-  via repositório. O router só valida o arquivo e chama o service.
+---
 
-**Arquivos afetados:** imports em `App.tsx`; `pipeline.py` (compartilha `generate_report`); testes.
+### 2. Decisões que são SUAS (parar e perguntar antes)
 
-**Pontos de atenção:**
-- **Bug relacionado (Item 13 da análise):** o upload de PDF **não passa `structured_context`** ao
-  `generate_report`, então relatórios importados perdem a seção "Diagnóstico Pré-Reunião vs Realidade".
-  A refatoração é a hora de **unificar** os dois caminhos de geração (pipeline ao vivo × upload) num só
-  service, corrigindo essa divergência.
-- Refator grande e visual — fazer **incrementalmente**, extraindo um componente por vez e validando a
-  UI a cada passo. Não misturar com as correções críticas no mesmo commit.
+Estas escolhas **não** devem ser feitas pelo executor sozinho — são suas:
 
-**Plano de ação em caso de erro:** cada extração é um commit atômico e reversível; se a UI quebrar,
-reverter só aquele componente. Comparar comportamento antes/depois com a sessão real rodando.
+| Decisão | Opções | Recomendação |
+|---------|--------|--------------|
+| **Nomes dos componentes** | Manter os nomes atuais das funções (`CoveragePanel`, `TranscriptPanel`, `QuestionsPanel`…) ou renomear para os do SDD (`LiveTranscript`, `RedFlagList`, `QuestionQueue`) | **Manter os nomes atuais** — renomear é risco extra sem ganho. |
+| **Até onde quebrar a página** | (a) só extrair os 8 componentes que já existem; (b) também separar as duas telas grandes (`ActiveSessionView` / `FinishedSessionView`) | (a) primeiro; (b) só se sobrar fôlego. |
+| **Unificar os dois caminhos de relatório** | Corrigir só o bug do upload; **ou** fundir upload + pipeline ao vivo numa função única de relatório | Corrigir o bug agora; **fusão total** fica como decisão à parte (mais arriscada). |
+| **Criar repositório de sessão** | Isolar as queries num `SessionRepository` agora, ou manter `db.table(...)` no service por ora | **Manter por ora** — criar repositório completo é outra task; só registrar a dívida. |
 
-**Prevenção:** rodar a UI (F5) após cada extração; snapshot/observação visual das 3 colunas + budget bar.
+**Enquanto essas decisões não saírem, o executor para na escolha e pergunta.**
+
+---
+
+### 3. Parte A — Frontend: como vai ser alterado
+
+Trabalho **mecânico e incremental**: **um componente por commit**, validando a tela a cada passo.
+As funções já existem em `SessionActivePage.tsx`; só mudam de arquivo.
+
+**Passo 0 —** criar a pasta `frontend/src/components/session/`.
+
+**Passos 1–9 —** mover, nesta ordem (dependências primeiro):
+
+| Ordem | Função (linhas atuais) | Novo arquivo | Observação |
+|:---:|-----------------------|--------------|-----------|
+| 1 | `SessionTimer` (42–62) | `components/session/SessionTimer.tsx` | Sem dependências. |
+| 2 | `TTLBar` (285–317) | `components/session/TTLBar.tsx` | Usada pelo `QuestionCard`. |
+| 3 | `QuestionCard` (323–384) | `components/session/QuestionCard.tsx` | Importa `TTLBar`; leva junto `blockLabel`. |
+| 4 | `CoveragePanel` (68–147) | `components/session/CoveragePanel.tsx` | Leva junto `AREA_LABELS`. |
+| 5 | `BudgetBar` (153–198) | `components/session/BudgetBar.tsx` | — |
+| 6 | `TranscriptPanel` (204–279) | `components/session/TranscriptPanel.tsx` | — |
+| 7 | `QuestionsPanel` (390–490) | `components/session/QuestionsPanel.tsx` | Importa `QuestionCard`. |
+| 8 | `ReportModal` (496–565) | `components/session/ReportModal.tsx` | — |
+| 9 | `useCopy` (571–579) | `hooks/useCopy.ts` | Hook utilitário. |
+
+**Receita de cada extração:** recortar a função + suas constantes locais → colar no arquivo novo →
+adicionar os `import` que ela usa (ícones `lucide-react`, `ReactMarkdown`/`remarkGfm`, o tipo `WSQuestion`
+de `lib/useSessionWS`) → trocar `function X` por `export function X` → no `SessionActivePage.tsx`, apagar a
+definição antiga e adicionar `import { X } from '../components/session/X'`. **Nada da lógica com estado sai
+do hook `lib/useSessionWS.ts`** — os componentes continuam só exibindo.
+
+**Passo 10 (opcional, decisão b):** extrair `FinishedSessionView` (bloco `if (!isActive)`, ~743–881) e
+`ActiveSessionView` (layout de 3 colunas, ~884–1009). A página raiz fica só com load + handlers +
+`return isActive ? <ActiveSessionView/> : <FinishedSessionView/>`.
+
+#### Riscos → Prevenção → Conserto (Frontend)
+
+| Ação | Risco concreto | Como prevenir | Como consertar |
+|------|----------------|---------------|----------------|
+| Mover uma função | Esquecer um `import` (ícone, tipo, constante) → tela quebra em branco / erro de build | Rodar `npm run build` **ou** deixar o Vite (`npm run dev`) aberto e olhar o console a cada extração | Reverter **só aquele commit** (`git revert <hash>`) — a extração anterior continua de pé |
+| Mover `QuestionCard`/`QuestionsPanel` | Ordem errada de import (card antes do TTLBar) → referência indefinida | Seguir a ordem da tabela (dependência primeiro) | Reverter o commit e refazer na ordem |
+| Apagar a definição antiga no arquivo original | Sobrar referência à função antiga → erro de compilação | O TypeScript acusa na hora; não commitar com build vermelho | `git checkout -- SessionActivePage.tsx` antes de commitar |
+| Extrair as views grandes (passo 10) | Passar props demais/de menos → coluna some ou fica sem dados | Comparar a tela lado a lado (antes/depois) com uma sessão real rodando | Reverter o commit da view; os 9 componentes menores permanecem |
+
+**Regra de ouro:** cada commit é atômico e reversível sozinho. Se algo quebrar, some **um** commit, não a task inteira.
+
+---
+
+### 4. Parte B — Backend: como vai ser alterado
+
+**O bug que entra de brinde (Item 13 — confirmado no código):**
+- Caminho **ao vivo**: `pipeline.py:357` chama `generate_report(..., structured_context=...)`.
+- Caminho do **upload**: `sessions.py:469` chama `generate_report(...)` **sem** `structured_context`.
+- `llm.py:178-180` só monta a seção **"Diagnóstico Pré-Reunião vs Realidade"** quando recebe
+  `structured_context`. Resultado: **todo relatório importado por PDF perde essa seção.** Unificar num
+  service corrige isso.
+
+**Passos:**
+
+1. **Criar** `backend/app/services/report_ingestion.py` com
+   `async def ingest_pdf_and_generate_report(session_id: str, pdf_bytes: bytes, db: Client) -> dict`.
+2. **Mover para dentro dela**, na mesma ordem de hoje, os blocos de `sessions.py:359–497`: buscar sessão
+   + projeto, obter chave Gemini do Vault, extrair texto do PDF (pdfplumber), gravar `transcript_chunks`,
+   classificar cobertura se faltar snapshot, coletar red flags + perguntas usadas, gerar relatório,
+   calcular custo e gravar em `reports` + atualizar `sessions`.
+3. **Corrigir o bug na mudança:** dentro do novo service, **extrair e passar `structured_context`** igual
+   ao pipeline (reusar `extract_structured_context`, como em `pipeline.py:586–592`), com fallback `None`
+   se vazio ou se der erro.
+4. **Enxugar o router** `upload_pdf_transcript`: manter só a validação de extensão `.pdf`, ler os bytes
+   e chamar o service. As `HTTPException` de regra de negócio sobem de dentro do service (FastAPI propaga).
+
+#### Riscos → Prevenção → Conserto (Backend)
+
+| Ação | Risco concreto | Como prevenir | Como consertar |
+|------|----------------|---------------|----------------|
+| Mover a lógica para o service | Trocar a **ordem** das operações (ex.: gerar relatório antes de gravar o chunk) → dado inconsistente | Copiar bloco por bloco na ordem original; revisar o diff lado a lado | `git revert` do commit; o endpoint antigo volta idêntico |
+| Passar `structured_context` novo | `extract_structured_context` faz **mais uma chamada à IA** → custo/tempo extra no upload | Envolver em try/except com fallback `None`; só chamar se há `pre_meeting_context` e chave | Se pesar, condicionar a um parâmetro; comportamento sem contexto = igual ao de hoje |
+| Enxugar o router | Uma `HTTPException` que era 422/404/503 virar 500 se o service não relançar certo | Manter os mesmos `status_code` ao mover cada validação; testar cada caminho de erro | Reverter o commit do router; a lógica no service continua |
+| Import novo no router | `pipeline_manager`/service import circular | Import local dentro da função, como já se faz em `generate_session_questions` (`sessions.py:302`) | Mover o import para dentro da função |
+
+**Regra:** a extração do backend é **um commit**; a correção do `structured_context` pode ser **outro
+commit** (assim dá pra reverter o bugfix sem perder a reorganização).
+
+---
+
+### 5. Verificação (ponta a ponta)
+
+1. **Front:** subir a UI (`npm run dev`) e abrir uma sessão ativa (F5). Conferir **visualmente** que as 3
+   colunas (cobertura / transcrição+alertas / perguntas), a budget bar, o timer e o modal de relatório
+   estão **idênticos** ao comportamento anterior. Fila de perguntas: pin/dismiss/use e a barra de TTL
+   continuam funcionando. `npm run build` sem erros.
+2. **Back:** fazer **upload de um PDF** numa sessão que tenha `pre_meeting_context` preenchido. O relatório
+   gerado **agora deve incluir** a seção "Diagnóstico Pré-Reunião vs Realidade" (antes não incluía).
+3. **Back (regressão):** upload numa sessão **sem** `pre_meeting_context` → relatório sai normal, sem a
+   seção, e **sem erro** (fallback `None`).
+4. **Testes:** `cd backend && python -m pytest` continua verde. **Semente obrigatória:** ao menos 1 teste
+   real do novo `report_ingestion` com um PDF conhecido (texto extraído esperado + relatório contém a seção
+   quando há contexto).
+
+---
+
+### 6. Ordem recomendada de execução
+
+`Front passos 1→9 (um commit cada)` → `[decisão b? passo 10]` → `Back passo 1–2 (extração, 1 commit)` →
+`Back passo 3 (bugfix structured_context, 1 commit)` → `Back passo 4 (enxugar router, 1 commit)` →
+`Verificação 1–4`. **Nunca** juntar refator com as correções críticas (Tasks 1–4) no mesmo commit.
 
 ---
 

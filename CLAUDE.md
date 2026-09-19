@@ -72,6 +72,38 @@ Isso permite que o usuário troque o modelo de IA a qualquer momento sem tocar n
 
 ---
 
+## Regras de Planejamento de Tasks (OBRIGATÓRIO — aplica-se a TODO plano de task)
+
+Sempre que alguém — pessoa ou agente — planejar uma task neste projeto (seja no `PLANO_AJUSTES.md`,
+seja em qualquer outro documento de planejamento), o plano daquela task **DEVE conter, sem exceção, as
+sete seções abaixo, nesta ordem**. Um plano de task sem essas seções é considerado incompleto e não deve
+ser executado. Este requisito é não-negociável e se sobrepõe a qualquer pressa de implementação.
+
+O objetivo é que **qualquer pessoa do time — inclusive quem não é técnico — entenda o que vai acontecer,
+quais os perigos, e como voltar atrás se der errado**, antes de uma única linha ser alterada.
+
+| # | Seção obrigatória | O que precisa ter |
+|---|-------------------|-------------------|
+| 1 | **O que muda (em linguagem comum)** | Explicação em português simples, sem jargão, do que a task altera e **por quê**. Use uma analogia quando ajudar. Um leitor não-técnico tem que entender o resultado. Nada de "refatorar o service" sem explicar o que isso significa na prática. |
+| 2 | **Como vai ser alterado** | O concreto: **quais arquivos**, quais funções, em **que ordem**. Trabalho grande = **commits atômicos** (uma mudança por commit, reversível sozinha). Diga o que é mecânico (recortar/colar) e o que muda comportamento. |
+| 3 | **Riscos de cada ação** | Para **cada** ação do passo 2, o que pode dar errado (quebrar a UI, quebrar a extensão/MCP/webhook, perder dado, estourar custo, regredir comportamento). Sem risco genérico — risco concreto ligado àquela ação. |
+| 4 | **Como prevenir** | A medida preventiva de **cada** risco do passo 3 (teste antes, validar cliente afetado, feature flag, rodar a UI, comparar antes/depois). |
+| 5 | **Como consertar (plano de rollback)** | Se aquela ação quebrar, **como voltar atrás**: qual commit reverter, qual valor restaurar, o que reiniciar. Todo passo tem que ter uma saída de emergência conhecida. |
+| 6 | **Decisões que são do usuário/time** | O que **NÃO** pode ser decidido sozinho pelo executor: estratégia, remoção de código, troca de dependência, mudança de contrato de API, qualquer coisa irreversível ou de fora do repo. Marcar como **DECISÃO EM ABERTO** e **parar** até o time decidir. |
+| 7 | **Verificação (ponta a ponta)** | Como **provar que funcionou** depois de pronto: o passo manual/automático que exercita o fluxo real e o resultado esperado. Onde houver teste, deixar ao menos 1 teste real como semente. |
+
+**Regras de conduta que acompanham o template:**
+
+- **Nunca misture correção crítica com refator no mesmo commit.** Segurança/bug num commit; reorganização
+  de código em outro. Facilita reverter só o que quebrou.
+- **Não decida o que é do time.** Ao encontrar uma decisão de estratégia, remoção, ou algo irreversível,
+  **pare e pergunte** — registre como DECISÃO EM ABERTO no plano; não escolha por conta própria.
+- **Refator ≠ mudança de comportamento.** "Refatorar" significa reorganizar sem mudar o que o sistema faz.
+  Se o comportamento mudar, isso é uma mudança à parte, planejada e sinalizada como tal.
+- **Prefira estender testes existentes a criar do zero;** cada task deixa pelo menos um teste real.
+
+---
+
 ## Índice
 
 1. [Visão Geral](#1-visão-geral)
