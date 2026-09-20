@@ -99,6 +99,14 @@ def _read_fixture(name: str) -> str:
         return f.read()
 
 
+def test_build_coverage_classifier_golden():
+    """build_coverage_classifier() (agora via SALES_AREA_SET.schema_json(True))
+    == a fixture congelada pre-refactor (dms=None, project_type='bi')."""
+    pb = PromptBuilder(dms=None, project_type="bi", pre_meeting_context="", custom_areas=[])
+
+    assert pb.build_coverage_classifier() == _read_fixture("coverage_classifier_bi_dms_none.txt")
+
+
 def test_prompt_builder_golden_snapshot():
     """PromptBuilder(dms=None, project_type='bi') gera o mesmo texto congelado hoje."""
     pb = PromptBuilder(dms=None, project_type="bi", pre_meeting_context="", custom_areas=[])
