@@ -52,14 +52,14 @@ streaming → session binding → cutover), so discovery correctness is proven b
   3. `prompt_builder.py`, `llm.py`, and `session_state.py` all read the area list from the registry instead of embedding their own copy
   4. Adding a new area set (used starting Phase 2) requires editing only the registry file, not the consuming modules
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Freeze golden fixture + create coverage_areas.py registry (leaf) + tracer rewire of llm.classify_coverage schema
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Rewire remaining llm.py (labels + block enum) + prompt_builder.py (relocate AREAS_BY_PROJECT_TYPE, schema not_applicable toggle, block enum)
+- [x] 01-02-PLAN.md — Rewire remaining llm.py (labels + block enum) + prompt_builder.py (relocate AREAS_BY_PROJECT_TYPE, schema not_applicable toggle, block enum)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -180,7 +180,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Area-Set Registry | 1/3 | In Progress|  |
+| 1. Area-Set Registry | 2/3 | In Progress|  |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 0/? | Not started | - |
 | 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
