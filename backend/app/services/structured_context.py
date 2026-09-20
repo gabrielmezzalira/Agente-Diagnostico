@@ -14,6 +14,8 @@ import google.genai as genai
 from google.genai import types as genai_types
 from pydantic import BaseModel
 
+from app.services.coverage_areas import SALES_AREA_SET
+
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 _MODEL = "gemini-2.5-flash"
 
@@ -203,7 +205,11 @@ class StructuredContext(BaseModel):
 # Extrator LLM
 # -------------------------------------------------------------------------
 
-_EXTRACTOR_SYSTEM = """\
+# Nao converter em f-string: as chaves JSON literais abaixo ({ }) sao texto de
+# prompt, nao um JSON real (RESEARCH.md) — interpolar com f-string exigiria
+# escapa-las e arrisca alterar bytes silenciosamente. A linha do enum de
+# blocos e a UNICA parte dinamica; e emendada por concatenacao de string.
+_EXTRACTOR_SYSTEM_PREFIX = """\
 Você extrai informações estruturadas de documentos de contexto pré-reunião comercial.
 
 REGRA ABSOLUTA: se a informação NÃO estiver explicitamente escrita no documento,
@@ -218,8 +224,9 @@ Para "lgpd_addressed":
   - false → não foi mencionada ou o documento identifica como gap não endereçado
 
 Para "recommended_questions", use apenas os blocos:
-  negocio | eng_dados | visualizacao | ciencia_dados | automacao | integracao | consumo | parceria
+"""
 
+_EXTRACTOR_SYSTEM_SUFFIX = """
 Retorne APENAS JSON válido, sem markdown fences:
 {
   "main_pain": "string | null",
@@ -239,6 +246,12 @@ Retorne APENAS JSON válido, sem markdown fences:
   }
 }\
 """
+
+_EXTRACTOR_SYSTEM = (
+    _EXTRACTOR_SYSTEM_PREFIX
+    + "  " + " | ".join(SALES_AREA_SET.keys()) + "\n"
+    + _EXTRACTOR_SYSTEM_SUFFIX
+)
 
 
 async def extract_structured_context(

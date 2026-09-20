@@ -157,6 +157,17 @@ async def test_question_block_enum_frozen(monkeypatch):
     assert _BLOCK_ENUM in captured["system"]
 
 
+def test_structured_context_block_line_unchanged():
+    """A linha do enum de blocos em structured_context._EXTRACTOR_SYSTEM continua
+    exatamente '  negocio | eng_dados | ... | parceria' (indent de 2 espacos,
+    montada por concatenacao via SALES_AREA_SET.keys(), nao f-string)."""
+    from app.services import structured_context
+
+    expected_line = "  " + " | ".join(SALES_AREA_SET.keys())
+    assert expected_line == "  negocio | eng_dados | visualizacao | ciencia_dados | automacao | integracao | consumo | parceria"
+    assert expected_line in structured_context._EXTRACTOR_SYSTEM
+
+
 def test_generate_report_area_labels_unchanged():
     """SALES_AREA_SET.labels() reproduz exatamente o dict area_labels que
     generate_report usava (llm.py:120-124, pre-refactor)."""
