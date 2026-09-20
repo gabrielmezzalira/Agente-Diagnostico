@@ -2,20 +2,15 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from app.services.coverage_areas import AREAS_BY_PROJECT_TYPE, SALES_AREA_SET
 from app.services.llm import (
     INPUT_COST_PER_1K,
     OUTPUT_COST_PER_1K,
     REPORT_MAX_OUTPUT_TOKENS,
 )
-from app.services.prompt_builder import AREAS_BY_PROJECT_TYPE
 
 # Margem de segurança sobre o custo estimado do relatório (F7 do SDD): 20%.
 REPORT_COST_MARGIN = 1.2
-
-COVERAGE_AREAS = [
-    "negocio", "eng_dados", "visualizacao", "ciencia_dados",
-    "automacao", "integracao", "consumo", "parceria",
-]
 
 
 def _init_coverage(
@@ -24,7 +19,7 @@ def _init_coverage(
     inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
     coverage = {
         a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
-        for a in COVERAGE_AREAS
+        for a in SALES_AREA_SET.keys()
     }
     for area in custom_areas or []:
         key = area.get("key")
