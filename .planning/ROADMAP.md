@@ -29,7 +29,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - Decimal phases (e.g. 1.1): urgent insertions only, via `/gsd-phase --insert`.
 
 - [x] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode (completed 2026-09-20)
-- [ ] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 11 discovery areas with discovery framing
+- [ ] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing
 - [ ] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag
 - [ ] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis
 - [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
@@ -67,17 +67,30 @@ streaming → session binding → cutover), so discovery correctness is proven b
 
 ### Phase 2: Discovery Mode + DiscoveryPromptBuilder
 
-**Goal**: A project configured with `mode=discovery` runs the full pipeline over the 11 discovery areas (Produto + Dados lenses) with discovery framing, while sales projects behave exactly as before
+**Goal**: A project configured with `mode=discovery` runs the full pipeline over the 18 discovery areas (Produto + Dados lenses) with discovery framing, while sales projects behave exactly as before
 **Depends on**: Phase 1
 **Requirements**: DISC-01, DISC-02, DISC-03
 **Success Criteria** (what must be TRUE):
 
   1. A project can be created or edited with `mode=discovery` (vs `mode=sales`); existing sales projects keep working with `mode=sales` unaffected by the new column
-  2. A discovery-mode session's `coverage_update` events show the 11 discovery areas (Produto + Dados lenses) instead of the 8 sales areas
+  2. A discovery-mode session's `coverage_update` events show the 18 discovery areas (Produto + Dados lenses) instead of the 8 sales areas
   3. Discovery-mode prompts sent to the LLM omit the CITI_PORTFOLIO sales framing while still calibrating tone and depth by the project's Data Maturity Score
   4. Re-running a sales-mode session after this change still produces the 8 sales areas and CITI_PORTFOLIO-aware prompts, with no regression
 
-**Plans**: TBD
+> **D-12:** a lista de discovery é de **18 áreas** (não 11) — o usuário, autoridade de domínio,
+> somou as 11 iniciais com novas disciplinas e fundiu duplicatas (D-06/D-06a). Os SCs acima foram
+> atualizados de "11" para "18" (ajuste de texto, não de escopo).
+
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — TRACER: `DISCOVERY_AREA_SET` (18 áreas) + `DiscoveryPromptBuilder` (irmão, D-09) + `SessionState.mode`/`_init_coverage` + seleção de builder no pipeline (DISC-02, DISC-03)
+
+**Wave 2** *(bloqueado na conclusão da Wave 1)*
+
+- [ ] 02-02-PLAN.md — Relatório discovery: gate do portfólio comercial por `mode` em `generate_report` (Pitfall 1) (DISC-03)
+- [ ] 02-03-PLAN.md — Configurar/persistir `mode`: migration one-way (checkpoint) + `mode` nos schemas Pydantic + toggle no formulário (DISC-01)
 
 ### Phase 3: Two-Agent Questions + Lens Tagging
 
@@ -181,7 +194,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
-| 2. Discovery Mode + DiscoveryPromptBuilder | 0/? | Not started | - |
+| 2. Discovery Mode + DiscoveryPromptBuilder | 0/3 | Planned | - |
 | 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
