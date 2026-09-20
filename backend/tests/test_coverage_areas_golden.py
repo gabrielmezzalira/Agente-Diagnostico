@@ -14,6 +14,7 @@
 import pytest
 
 from app.services import llm
+from app.services.coverage_areas import AREAS_BY_PROJECT_TYPE, SALES_AREA_SET
 from app.services.prompt_builder import PromptBuilder
 
 # Literal exato de llm.py:70-77 (schema da classify_coverage, SEM not_applicable).
@@ -28,8 +29,69 @@ _CLASSIFY_COVERAGE_SCHEMA = (
     '"parceria":{"status":"covered|partial|uncovered","score":0-100,"notes":""}}}'
 )
 
+# Literal exato de prompt_builder.py:367-374 (schema COM not_applicable).
+_BUILD_COVERAGE_CLASSIFIER_SCHEMA = (
+    '{"areas":{"negocio":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"eng_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"visualizacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"ciencia_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"automacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"integracao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"consumo":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
+    '"parceria":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""}}}'
+)
+
+# Literal exato de llm.py:125-129 (area_labels).
+_AREA_LABELS = {
+    "negocio": "Negócio", "eng_dados": "Eng. de Dados", "visualizacao": "Visualização",
+    "ciencia_dados": "Ciência de Dados", "automacao": "Automação", "integracao": "Integração",
+    "consumo": "Consumo", "parceria": "Parceria",
+}
+
 # Literal exato de llm.py:304 / prompt_builder.py:493 (block enum, identico nos dois).
 _BLOCK_ENUM = "negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"
+
+_SALES_KEYS_ORDER = [
+    "negocio", "eng_dados", "visualizacao", "ciencia_dados",
+    "automacao", "integracao", "consumo", "parceria",
+]
+
+
+def test_keys_order():
+    """SALES_AREA_SET.keys() preserva a ordem exata das 8 areas atuais."""
+    assert SALES_AREA_SET.keys() == _SALES_KEYS_ORDER
+
+
+def test_labels_match():
+    """SALES_AREA_SET.labels() reproduz o dict area_labels de llm.py:125-129."""
+    assert SALES_AREA_SET.labels() == _AREA_LABELS
+
+
+def test_schema_json_false_matches_classify_literal():
+    """schema_json(include_not_applicable=False) == literal de llm.py:70-77."""
+    assert SALES_AREA_SET.schema_json(include_not_applicable=False) == _CLASSIFY_COVERAGE_SCHEMA
+
+
+def test_schema_json_true_matches_builder_literal():
+    """schema_json(include_not_applicable=True) == literal de prompt_builder.py:367-374."""
+    assert SALES_AREA_SET.schema_json(include_not_applicable=True) == _BUILD_COVERAGE_CLASSIFIER_SCHEMA
+
+
+def test_block_enum_match():
+    """block_enum() == literal de llm.py:304 / prompt_builder.py:493."""
+    assert SALES_AREA_SET.block_enum() == _BLOCK_ENUM
+
+
+def test_areas_by_project_type_keys_are_valid():
+    """Nenhuma chave em AREAS_BY_PROJECT_TYPE referencia uma area fora do registro
+    (RESEARCH.md Open Question 2 — guarda contra typo silencioso)."""
+    referenced = {
+        key
+        for cfg in AREAS_BY_PROJECT_TYPE.values()
+        for keys in cfg.values()
+        for key in keys
+    }
+    assert referenced <= set(SALES_AREA_SET.keys())
 
 
 def _read_fixture(name: str) -> str:

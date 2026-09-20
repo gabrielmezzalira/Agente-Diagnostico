@@ -5,6 +5,8 @@ from typing import Any, Optional
 import google.genai as genai
 from google.genai import types as genai_types
 
+from app.services.coverage_areas import SALES_AREA_SET
+
 MODEL = "gemini-2.5-flash"
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 
@@ -67,14 +69,7 @@ async def classify_coverage(
         f"Project type: {project_type or 'unknown'}, Data Maturity Score: {dms_str}.\n"
         "Analyze the transcript and classify coverage for each area.\n"
         "Return ONLY valid JSON (no markdown fences, no extra text):\n"
-        '{"areas":{"negocio":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"eng_dados":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"visualizacao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"ciencia_dados":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"automacao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"integracao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"consumo":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"parceria":{"status":"covered|partial|uncovered","score":0-100,"notes":""}}}'
+        + SALES_AREA_SET.schema_json(include_not_applicable=False)
     )
     text, inp, out = await _call(api_key, system, f"Transcrição:\n{transcript}")
     try:
