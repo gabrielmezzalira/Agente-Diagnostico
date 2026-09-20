@@ -48,7 +48,10 @@ streaming → session binding → cutover), so discovery correctness is proven b
   2. The 8 sales coverage areas are defined in exactly one file (`coverage_areas.py`); no other file in backend or frontend hardcodes the area list
   3. `prompt_builder.py`, `llm.py`, and `session_state.py` all read the area list from the registry instead of embedding their own copy
   4. Adding a new area set (used starting Phase 2) requires editing only the registry file, not the consuming modules
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 01-01-PLAN.md — Freeze golden fixture + create coverage_areas.py registry (leaf) + tracer rewire of llm.classify_coverage schema
+- [ ] 01-02-PLAN.md — Rewire remaining llm.py (labels + block enum) + prompt_builder.py (relocate AREAS_BY_PROJECT_TYPE, schema not_applicable toggle, block enum)
+- [ ] 01-03-PLAN.md — Rewire session_state (keys + D-04 custom_areas guard) + structured_context block enum + single-source grep gates
 
 ### Phase 2: Discovery Mode + DiscoveryPromptBuilder
 **Goal**: A project configured with `mode=discovery` runs the full pipeline over the 11 discovery areas (Produto + Dados lenses) with discovery framing, while sales projects behave exactly as before
