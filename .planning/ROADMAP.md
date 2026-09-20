@@ -28,7 +28,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - Integer phases (1-9): planned v3.0 milestone work.
 - Decimal phases (e.g. 1.1): urgent insertions only, via `/gsd-phase --insert`.
 
-- [ ] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode
+- [x] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode (completed 2026-09-20)
 - [ ] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 11 discovery areas with discovery framing
 - [ ] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag
 - [ ] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis
@@ -180,7 +180,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Area-Set Registry | 3/3 | In Progress|  |
+| 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 0/? | Not started | - |
 | 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
