@@ -73,14 +73,14 @@ comportamento atual.
   | 16 | `sistemas_nuvem` | Sistemas em Nuvem |
   | 17 | `automacoes` | Automações |
 
-- **D-06a (proveniência das fusões — para o planner não "recriar" áreas):** a lista foi
+- **D-06a [informational] (proveniência das fusões — para o planner não "recriar" áreas):** a lista foi
   derivada assim, a partir das 11 originais + adições do usuário: `mapeamento_processo` +
   `mapeamento_processos` → `mapeamento_processos`; `viabilidade_entrega` +
   `fit_solucao_cliente` → `viabilidade_solucao`; `desenho_solucao` + `abordagem_solucao` →
   `desenho_solucao`; `fontes_dados` + `qualidade_dados` → `qualidade_fontes`. `metricas`,
   `lgpd_seguranca` e `quick_wins` foram **mantidas de propósito** (métricas importa para a
   Fase 4; LGPD é preocupação Dados no PROJECT.md).
-- **D-06b (agrupamento Produto/Dados):** a divisão Produto/Dados existe conceitualmente e é
+- **D-06b [informational] (agrupamento Produto/Dados):** a divisão Produto/Dados existe conceitualmente e é
   codificada **pela ordem** (0-7 Produto, 8-17 Dados) nesta fase. O **campo `lens`
   explícito** em `AreaDefinition` é decisão da Fase 3 — não adicionar agora, mas manter a
   ordem agrupada para a Fase 3 aproveitar. (Se o planner quiser já reservar um campo `lens`
@@ -132,7 +132,7 @@ comportamento atual.
   de duas lentes no monitoramento (Fase 5). O toggle só grava/edita o campo `mode`.
 
 ### Roadmap/Requirements a atualizar (consequência de D-06)
-- **D-12:** Como a lista virou 18 (não 11), o texto de `ROADMAP.md` (§Phase 2, SC#2) e de
+- **D-12 [informational]:** Como a lista virou 18 (não 11), o texto de `ROADMAP.md` (§Phase 2, SC#2) e de
   `REQUIREMENTS.md` (DISC-02) que diz "11 discovery areas" deve ser atualizado para "18" na
   execução, para os documentos não mentirem. Isto é ajuste de texto de planejamento, não
   mudança de escopo. — **Reversibility:** reversible.
