@@ -117,11 +117,7 @@ async def generate_report(
     dms_label = dms_levels.get(dms, "Não mapeado") if dms is not None else "Não mapeado"
     dms_str = f"{dms}/5 ({dms_label})" if dms is not None else "Não mapeado"
 
-    area_labels = {
-        "negocio": "Negócio", "eng_dados": "Eng. de Dados", "visualizacao": "Visualização",
-        "ciencia_dados": "Ciência de Dados", "automacao": "Automação", "integracao": "Integração",
-        "consumo": "Consumo", "parceria": "Parceria",
-    }
+    area_labels = SALES_AREA_SET.labels()
     status_labels = {"covered": "Coberto", "partial": "Parcial", "uncovered": "Não coberto"}
     coverage_rows = [
         (area_labels.get(area, area), status_labels.get(info.get("status", ""), info.get("status", "")),
@@ -296,7 +292,7 @@ async def generate_questions(
         "Adapte, combine, reformule ou ignore completamente — use o que fizer sentido para a conversa atual.\n"
         "4. Não repita perguntas recentes.\n\n"
         "Retorne APENAS JSON válido:\n"
-        '{"questions":[{"text":"...","block":"negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"}]}'
+        '{"questions":[{"text":"...","block":"' + SALES_AREA_SET.block_enum() + '"}]}'
     )
     user = (
         (f"Contexto pré-reunião: {pre_meeting_context}\n\n" if pre_meeting_context else "")

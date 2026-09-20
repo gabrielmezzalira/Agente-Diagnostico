@@ -147,3 +147,36 @@ async def test_question_block_enum_frozen(monkeypatch):
     )
 
     assert _BLOCK_ENUM in captured["system"]
+
+
+def test_generate_report_area_labels_unchanged():
+    """SALES_AREA_SET.labels() reproduz exatamente o dict area_labels que
+    generate_report usava (llm.py:120-124, pre-refactor)."""
+    assert SALES_AREA_SET.labels() == _AREA_LABELS
+
+
+@pytest.mark.asyncio
+async def test_generate_questions_block_enum_unchanged(monkeypatch):
+    """generate_questions interpola SALES_AREA_SET.block_enum() no mesmo formato
+    JSON-shape de antes (llm.py:304, pre-refactor)."""
+    captured: dict = {}
+
+    async def _fake_call(api_key, system, user, max_output_tokens=None):
+        captured["system"] = system
+        return "{}", 0, 0
+
+    monkeypatch.setattr(llm, "_call", _fake_call)
+
+    await llm.generate_questions(
+        api_key="x",
+        transcript="t",
+        coverage={},
+        recent_questions=[],
+        project_type="bi",
+        dms=None,
+    )
+
+    assert (
+        '{"questions":[{"text":"...","block":"' + SALES_AREA_SET.block_enum() + '"}]}'
+        in captured["system"]
+    )
