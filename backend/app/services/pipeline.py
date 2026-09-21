@@ -8,6 +8,7 @@ from typing import Dict, Optional
 from app.database import get_supabase
 from app.services import llm as llm_service
 from app.services.llm import tokens_to_usd
+from app.services.discovery_prompt_builder import DiscoveryPromptBuilder
 from app.services.prompt_builder import PromptBuilder
 from app.services.session_state import CoverageArea, Question, RedFlag, SessionState
 from app.services.ws_manager import ws_manager
@@ -593,12 +594,20 @@ class PipelineManager:
             except Exception:
                 pass
 
-        builder = PromptBuilder(
-            dms=project.get("data_maturity_score"),
-            pre_meeting_context=pre_meeting_context,
-            project_type=project_type,
-            structured_context=structured_ctx,
-        )
+        mode = project.get("mode") or "sales"
+        if mode == "discovery":
+            builder = DiscoveryPromptBuilder(
+                dms=project.get("data_maturity_score"),
+                pre_meeting_context=pre_meeting_context,
+                structured_context=structured_ctx,
+            )
+        else:
+            builder = PromptBuilder(
+                dms=project.get("data_maturity_score"),
+                pre_meeting_context=pre_meeting_context,
+                project_type=project_type,
+                structured_context=structured_ctx,
+            )
         prompts = builder.build_all()
 
         try:
@@ -614,6 +623,7 @@ class PipelineManager:
             session_id=session_id,
             project_id=str(project.get("id", "")),
             project_type=project_type,
+            mode=mode,
             data_maturity_score=project.get("data_maturity_score"),
             pre_meeting_context=pre_meeting_context,
             budget_usd=budget_usd,
