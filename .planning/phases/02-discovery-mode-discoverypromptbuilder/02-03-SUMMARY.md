@@ -13,13 +13,15 @@ provides:
   - "ProjectMode = Literal['sales', 'discovery'] em backend/app/models/projects.py"
   - "mode em ProjectCreate (default 'sales'), ProjectUpdate (Optional, default None), ProjectResponse (sempre presente pós-migration)"
   - "Teste test_project_mode_default_and_validation cobrindo default/aceitação/rejeição do enum mode"
+  - "Toggle sales|discovery em ProjectFormPage.tsx + tipo mode em Project/ProjectCreate (frontend/src/lib/api.ts) — Task 4 concluída e build (tsc+vite) verde"
 affects: [02-03-project-mode-column-and-ui]
 
-# Actuals (#2632) — parcial: só Task 1 (decisão) e Task 2 (migration+schemas+teste) executadas nesta rodada.
+# Actuals — Task 1 (decisão), Task 2 (migration+schemas+teste) e Task 4 (toggle frontend) executadas.
+# Task 3 (aplicar migration ao Supabase, blocking-human) permanece pendente.
 actuals:
   tokens: 882
-  tasks: 2
-  commits: 1
+  tasks: 3
+  commits: 2
 plan_head_before: "2d1c6f7418c609b9efb5881d7ea57fc2561a6516"
 
 tech-stack:
@@ -33,6 +35,8 @@ key-files:
   modified:
     - backend/app/models/projects.py
     - backend/tests/test_projects.py
+    - frontend/src/lib/api.ts
+    - frontend/src/pages/ProjectFormPage.tsx
 
 key-decisions:
   - "Task 1 (checkpoint:decision, blocking-human, one-way): aprovado pelo time — coluna projects.mode criada como text DEFAULT 'sales' SEM CHECK/enum nativo, seguindo o padrão já usado por project_type/source/status no repo. Validação de enum fica só no Pydantic Literal."
@@ -61,11 +65,22 @@ coverage:
         ref: "python -c \"ProjectCreate(...).mode == 'sales'; ProjectCreate(..., mode='foo') -> ValidationError\""
         status: pass
     human_judgment: false
+  - id: D3
+    description: "Toggle sales|discovery no formulário de projeto (Task 4) + tipo mode em Project/ProjectCreate (api.ts); grava/edita mode com carga defensiva no useEffect"
+    requirement: "DISC-01"
+    verification:
+      - kind: other
+        ref: "cd frontend && npm run build (tsc + vite)"
+        status: pass
+      - kind: other
+        ref: "grep name=\"mode\" src/pages/ProjectFormPage.tsx && grep \"mode: 'sales' | 'discovery'\" src/lib/api.ts -> TOGGLE_OK"
+        status: pass
+    human_judgment: false
 
 # Metrics
 duration: 12min
-completed: 2026-09-20
-status: halted
+completed: 2026-09-21
+status: halted  # código completo (Tasks 1,2,4); aguarda apenas Task 3 (aplicar migration ao Supabase) para fechar DISC-01
 ---
 
 # Phase 2 Plan 3: Configurar/persistir mode (parcial — pausado no checkpoint da Task 3) Summary
@@ -92,10 +107,11 @@ Cada task executada foi commitada atomicamente:
 
 1. **Task 1: checkpoint de decisão (one-way) — sem commit de código** — decisão registrada (aprovação humana), nenhuma alteração de arquivo nesta task
 2. **Task 2: migration + schemas Pydantic + teste de validação** - `6b6f55a` (feat)
+3. **Task 4: toggle sales|discovery no frontend + tipo mode em api.ts** - `dacc146` (feat) — build `tsc + vite` verde
 
-**Plano ainda não fechado — sem commit de metadados de plano completo.** Este SUMMARY será commitado separadamente para refletir o estado pausado.
+**Plano quase fechado — falta apenas a Task 3 (aplicar a migration ao Supabase, checkpoint blocking-human).** DISC-01 fecha ponta a ponta assim que a coluna existir no banco vivo.
 
-_Nota: Task 3 (checkpoint:human-action, blocking-human) e Task 4 (auto) NÃO foram executadas nesta rodada — ver "Next Phase Readiness"._
+_Nota: Task 3 (checkpoint:human-action, blocking-human) permanece pendente — ver "Next Phase Readiness"._
 
 ## Files Created/Modified
 - `supabase/migrations/20260921000000_add_mode_to_projects.sql` - Migration aditiva idempotente da coluna `mode` (criada, ainda não aplicada ao Supabase vivo)
@@ -126,9 +142,9 @@ None - as verificações automáticas da Task 2 (pytest + checagem inline do Pyd
    - Fornecer `SUPABASE_ACCESS_TOKEN` (Supabase Dashboard → Account → Access Tokens) para rodar `supabase db push` de forma não-interativa; OU
    - Colar o conteúdo da migration no Supabase Dashboard → SQL Editor e executar.
    - **Verificação (SQL Editor):** `SELECT column_name, column_default FROM information_schema.columns WHERE table_name='projects' AND column_name='mode';` deve retornar uma linha com default `'sales'::text`; e `SELECT count(*) FROM projects WHERE mode IS NULL;` deve retornar `0`.
-2. **Task 4 (auto, ainda não iniciada)** — toggle mínimo sales/discovery no `ProjectFormPage.tsx` + tipo `mode` em `frontend/src/lib/api.ts` (`Project`/`ProjectCreate`). Depende apenas de código (sem acesso externo) — pode ser executada assim que a Task 3 for confirmada, mas tecnicamente não depende do banco estar migrado para compilar (só para funcionar ponta a ponta).
+2. **Task 4 (auto) — CONCLUÍDA (`dacc146`)** — toggle sales/discovery em `ProjectFormPage.tsx` + tipo `mode` em `frontend/src/lib/api.ts` (`Project`/`ProjectCreate`). Build `tsc + vite` verde; greps de sanidade `TOGGLE_OK`.
 
-**DISC-01 permanece incompleto** até as duas tasks acima serem concluídas — por isso `requirements-completed: []` neste SUMMARY (não `[DISC-01]`).
+**DISC-01 permanece incompleto** apenas até a Task 3 (aplicar a migration ao Supabase vivo) ser confirmada — por isso `requirements-completed: []` neste SUMMARY (não `[DISC-01]`). Todo o código está pronto e verificado.
 
 ---
 *Phase: 02-discovery-mode-discoverypromptbuilder*
