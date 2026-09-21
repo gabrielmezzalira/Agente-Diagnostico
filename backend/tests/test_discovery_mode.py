@@ -62,3 +62,69 @@ def test_session_state_sales_mode_default_unchanged():
     state = SessionState(session_id="t", project_type="bi")
 
     assert set(state.coverage.keys()) == set(SALES_AREA_SET.keys())
+
+
+# =============================================================================
+# Task 2 — DiscoveryPromptBuilder (D-09/D-10/DISC-03)
+# =============================================================================
+
+import inspect
+
+from app.services.discovery_prompt_builder import DiscoveryPromptBuilder
+
+_CITI_LITERALS = ("CITI_PORTFOLIO", "CITI_SERVICE_CATALOG", "CITI_TECH_REFERENCE")
+
+
+def test_discovery_module_does_not_import_citi_constants():
+    """discovery_prompt_builder.py nunca importa as constantes comerciais de
+    prompt_builder.py — e o que garante SC#3 por construcao para os 3 agentes
+    realtime (coverage_classifier/red_flag_detector/question_planner)."""
+    import app.services.discovery_prompt_builder as mod
+
+    source = inspect.getsource(mod)
+    for literal in _CITI_LITERALS:
+        assert literal not in source
+
+
+def test_build_coverage_classifier_has_dms_no_citi():
+    b = DiscoveryPromptBuilder(dms=3, pre_meeting_context="x")
+    prompt = b.build_coverage_classifier()
+
+    assert b._dms_str() in prompt
+    assert "CITI_PORTFOLIO" not in prompt
+    assert "CITI_SERVICE_CATALOG" not in prompt
+    assert DISCOVERY_AREA_SET.schema_json(include_not_applicable=False) in prompt
+
+
+def test_build_red_flag_detector_has_dms_no_citi():
+    b = DiscoveryPromptBuilder(dms=3, pre_meeting_context="x")
+    prompt = b.build_red_flag_detector()
+
+    assert b._dms_str() in prompt
+    assert "CITI_PORTFOLIO" not in prompt
+
+
+def test_build_question_planner_has_dms_no_citi_and_block_enum():
+    b = DiscoveryPromptBuilder(dms=3, pre_meeting_context="x")
+    prompt = b.build_question_planner()
+
+    assert b._dms_str() in prompt
+    assert "CITI_PORTFOLIO" not in prompt
+    assert DISCOVERY_AREA_SET.block_enum() in prompt
+
+
+def test_build_all_returns_four_agent_keys():
+    b = DiscoveryPromptBuilder(dms=None)
+    prompts = b.build_all()
+
+    assert set(prompts.keys()) == {
+        "coverage_classifier", "red_flag_detector", "question_planner", "report_generator",
+    }
+
+
+def test_dms_boundary_values_do_not_raise():
+    for dms in (1, 5, None):
+        b = DiscoveryPromptBuilder(dms=dms)
+        prompts = b.build_all()
+        assert len(prompts) == 4
+    assert DiscoveryPromptBuilder(dms=None)._dms_str().startswith("Não mapeado")
