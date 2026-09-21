@@ -43,17 +43,20 @@ key-decisions:
   - "ProjectResponse.mode não tem default Python (sempre presente pós-migration, pois a coluna tem DEFAULT no banco) — segue o padrão de campos ProjectResponse existentes como source."
   - "Nenhum ProjectRepository foi criado (Pitfall 5) — o router já persiste via payload.model_dump(mode='json'), mode flui automaticamente sem camada nova."
 
-requirements-completed: []  # DISC-01 permanece INCOMPLETO — falta Task 3 (aplicar migration ao Supabase vivo) e Task 4 (toggle no frontend)
+requirements-completed: [DISC-01]  # fechado ponta a ponta: coluna projects.mode aplicada e confirmada no Supabase (Task 3), schemas Pydantic (Task 2) e toggle no frontend (Task 4)
 
 coverage:
   - id: D1
-    description: "Migration aditiva idempotente escrita (ADD COLUMN IF NOT EXISTS mode text DEFAULT 'sales', sem CHECK) — arquivo pronto, ainda NÃO aplicada ao Supabase de produção"
+    description: "Migration aditiva idempotente aplicada e confirmada no Supabase (ADD COLUMN IF NOT EXISTS mode text DEFAULT 'sales', sem CHECK)"
     verification:
       - kind: other
         ref: "test -f supabase/migrations/20260921000000_add_mode_to_projects.sql && grep -q \"ADD COLUMN IF NOT EXISTS mode text DEFAULT 'sales'\" ..."
         status: pass
+      - kind: other
+        ref: "SQL Editor: SELECT column_name, column_default ... WHERE column_name='mode' -> 1 linha, default 'sales'::text (confirmado pelo humano em 2026-09-21)"
+        status: pass
     human_judgment: true
-    rationale: "A verificação automática só prova que o arquivo SQL existe com a sintaxe correta — provar que a coluna existe no Supabase vivo exige acesso humano ao dashboard/token (Task 3, ainda pendente)"
+    rationale: "Confirmado no Supabase vivo pelo humano (Task 3): a coluna projects.mode existe com default 'sales'::text; o ALTER idempotente re-executado retornou no-op"
   - id: D2
     description: "ProjectMode + campo mode em ProjectCreate/Update/Response com validação de enum na borda (Pydantic Literal)"
     requirement: "DISC-01"
@@ -80,7 +83,7 @@ coverage:
 # Metrics
 duration: 12min
 completed: 2026-09-21
-status: halted  # código completo (Tasks 1,2,4); aguarda apenas Task 3 (aplicar migration ao Supabase) para fechar DISC-01
+status: complete  # Tasks 1,2,4 (código) + Task 3 (migration aplicada e confirmada no Supabase) — DISC-01 fechado
 ---
 
 # Phase 2 Plan 3: Configurar/persistir mode (parcial — pausado no checkpoint da Task 3) Summary
@@ -132,19 +135,16 @@ None - as verificações automáticas da Task 2 (pytest + checagem inline do Pyd
 
 ## User Setup Required
 
-**Sim — Task 3 deste plano é exatamente um passo de setup manual/humano, ainda pendente.** Ver "Next Phase Readiness" abaixo para os dois caminhos possíveis (token do Supabase ou SQL Editor do dashboard).
+**Concluído — a Task 3 (setup manual/humano) foi executada em 2026-09-21:** a migration foi aplicada via Supabase Dashboard → SQL Editor e confirmada (`projects.mode` existe com default `'sales'::text`). Nenhum setup pendente.
 
 ## Next Phase Readiness
 
-**Este plano está PAUSADO no checkpoint da Task 3 — não é possível avançar para o Plano seguinte nem fechar a Fase 2 até:**
+**Plano 02-03 CONCLUÍDO — todas as 4 tasks fechadas. Fase 02 pronta para verificação/avanço.**
 
-1. **Task 3 (checkpoint:human-action, `gate="blocking-human"`)** — aplicar `supabase/migrations/20260921000000_add_mode_to_projects.sql` ao Supabase de produção. Duas formas equivalentes:
-   - Fornecer `SUPABASE_ACCESS_TOKEN` (Supabase Dashboard → Account → Access Tokens) para rodar `supabase db push` de forma não-interativa; OU
-   - Colar o conteúdo da migration no Supabase Dashboard → SQL Editor e executar.
-   - **Verificação (SQL Editor):** `SELECT column_name, column_default FROM information_schema.columns WHERE table_name='projects' AND column_name='mode';` deve retornar uma linha com default `'sales'::text`; e `SELECT count(*) FROM projects WHERE mode IS NULL;` deve retornar `0`.
+1. **Task 3 (checkpoint:human-action, `gate="blocking-human"`) — CONCLUÍDA (2026-09-21)** — a migration `20260921000000_add_mode_to_projects.sql` foi aplicada ao Supabase de produção (via SQL Editor). Verificação confirmada pelo humano: `SELECT column_name, column_default ... WHERE column_name='mode'` retornou 1 linha com default `'sales'::text`; o `ALTER ... IF NOT EXISTS` re-executado retornou no-op idempotente.
 2. **Task 4 (auto) — CONCLUÍDA (`dacc146`)** — toggle sales/discovery em `ProjectFormPage.tsx` + tipo `mode` em `frontend/src/lib/api.ts` (`Project`/`ProjectCreate`). Build `tsc + vite` verde; greps de sanidade `TOGGLE_OK`.
 
-**DISC-01 permanece incompleto** apenas até a Task 3 (aplicar a migration ao Supabase vivo) ser confirmada — por isso `requirements-completed: []` neste SUMMARY (não `[DISC-01]`). Todo o código está pronto e verificado.
+**DISC-01 fechado ponta a ponta** (DB → API → UI). Próximo: teste manual em `/gsd-verify-work 02` e avanço para a Fase 03.
 
 ---
 *Phase: 02-discovery-mode-discoverypromptbuilder*

@@ -4,17 +4,17 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 02
 current_phase_name: Discovery Mode + DiscoveryPromptBuilder
-status: executing
-stopped_at: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (aplicar migration mode ao Supabase) — Task 1 decidida, Task 2 concluida (6b6f55a), Task 4 pendente
-last_updated: "2026-09-21T01:18:42.231Z"
-last_activity: 2026-09-20
-last_activity_desc: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (Task 1-2 concluidas, Task 3-4 pendentes)
-state_head: 5aaab5424db1ca0d2b8033accf9f4fee4988fe08
+status: complete
+stopped_at: Fase 02 concluida — plano 02-03 fechado (Task 3 migration aplicada e confirmada no Supabase; Task 4 toggle frontend em dacc146). DISC-01 fechado ponta a ponta
+last_updated: "2026-09-21T14:00:00.000Z"
+last_activity: 2026-09-21
+last_activity_desc: Fase 02 concluida — Task 4 (toggle frontend, dacc146) + Task 3 (migration mode aplicada e confirmada no Supabase). DISC-01 fechado
+state_head: 39b05a2
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 ## Current Position
 
-Phase: 02 (Discovery Mode + DiscoveryPromptBuilder) — EXECUTING
-Plan: 3 of 3
-Status: PAUSADO — checkpoint blocking-human na Task 3 do plano 02-03 (aplicar migration mode ao Supabase). Task 1 decidida, Task 2 concluida (6b6f55a). Task 4 (toggle frontend) ainda não iniciada.
-Last activity: 2026-09-20 — 02-03-PLAN.md pausado no checkpoint da Task 3
+Phase: 02 (Discovery Mode + DiscoveryPromptBuilder) — COMPLETE
+Plan: 3 of 3 (todos concluidos)
+Status: CONCLUIDA — plano 02-03 fechado. Task 1 decidida, Task 2 (6b6f55a), Task 4 toggle frontend (dacc146, build verde), Task 3 migration mode aplicada e confirmada no Supabase (2026-09-21). DISC-01 fechado ponta a ponta.
+Last activity: 2026-09-21 — Fase 02 concluida; proximo: verificar (/gsd-verify-work 02) e planejar Fase 03
 
-Progress: [█░░░░░░░░░] 11%
+Progress: [██░░░░░░░░] 22%
 
 ## Performance Metrics
 
@@ -96,7 +96,7 @@ None yet.
 - Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
 - Phases 7-8 live in the separate Taqciti repo — coordinate access/branch strategy before starting Phase 7
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
-- [Phase 02-03] Task 3 (checkpoint:human-action, blocking-human) pendente: aplicar migration 20260921000000_add_mode_to_projects.sql ao Supabase vivo — precisa de SUPABASE_ACCESS_TOKEN ou execucao manual no SQL Editor. Task 4 (toggle frontend) tambem nao iniciada.
+- [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 
 ## Deferred Items
 
@@ -114,6 +114,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T01:18:42.196Z
-Stopped at: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (aplicar migration mode ao Supabase) — Task 1 decidida, Task 2 concluida (6b6f55a), Task 4 pendente
-Resume file: RETOMAR_FASE_02.md (raiz do projeto) — passos para aplicar a migration e concluir a Task 4
+Last session: 2026-09-21T14:00:00.000Z
+Stopped at: Fase 02 CONCLUIDA — plano 02-03 fechado (Task 3 migration aplicada + Task 4 toggle frontend dacc146). DISC-01 fechado. Proximo: /gsd-verify-work 02 e planejar Fase 03.
+Resume file: (nenhum — RETOMAR_FASE_02.md removido apos conclusao da fase)

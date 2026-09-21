@@ -1,0 +1,58 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v3.0 — Pivot Discovery",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Area-Set Registry",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Discovery Mode + DiscoveryPromptBuilder",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Two-Agent Questions + Lens Tagging",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Discovery Report + Pricing Handoff",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Two-Lens Monitoring (Frontend)",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Opt-In Webhook Auth",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Taqciti Config + Background Streamer",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Taqciti Session Association",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Cutover + Retire Custom Extension",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 02 complete · Phase 03 pending"
+  },
+  "updated_at": "2026-09-21T14:00:00.000Z"
+}
