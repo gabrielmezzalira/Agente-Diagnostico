@@ -90,7 +90,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 **Wave 2** *(bloqueado na conclusão da Wave 1)*
 
 - [x] 02-02-PLAN.md — Relatório discovery: gate do portfólio comercial por `mode` em `generate_report` (Pitfall 1) (DISC-03)
-- [ ] 02-03-PLAN.md — Configurar/persistir `mode`: migration one-way (checkpoint) + `mode` nos schemas Pydantic + toggle no formulário (DISC-01)
+- [ ] 02-03-PLAN.md — Configurar/persistir `mode`: migration one-way (checkpoint) + `mode` nos schemas Pydantic + toggle no formulário (DISC-01) — **PAUSADO**: Task 1 decidida, Task 2 concluída (`6b6f55a`); Task 3 (checkpoint:human-action, blocking-human — aplicar migration ao Supabase) aguardando o time; Task 4 (toggle frontend) não iniciada
 
 ### Phase 3: Two-Agent Questions + Lens Tagging
 

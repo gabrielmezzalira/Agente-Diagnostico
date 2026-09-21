@@ -133,3 +133,8 @@ None - as verificações automáticas da Task 2 (pytest + checagem inline do Pyd
 ---
 *Phase: 02-discovery-mode-discoverypromptbuilder*
 *Completed (parcial): 2026-09-20 — pausado no checkpoint da Task 3*
+
+## Self-Check: PASSED
+
+- Arquivos criados/modificados encontrados em disco: migration, `models/projects.py`, `test_projects.py`, este SUMMARY.md
+- Commits encontrados no histórico: `6b6f55a` (Task 2), `5aaab54` (SUMMARY parcial)

@@ -5,11 +5,11 @@ milestone_name: Pivot Discovery
 current_phase: 02
 current_phase_name: Discovery Mode + DiscoveryPromptBuilder
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-09-21T01:04:36.316Z"
+stopped_at: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (aplicar migration mode ao Supabase) — Task 1 decidida, Task 2 concluida (6b6f55a), Task 4 pendente
+last_updated: "2026-09-21T01:18:42.231Z"
 last_activity: 2026-09-20
-last_activity_desc: Phase 02 execution started
-state_head: b83647eda12273a2166a57c9d21e9048f96f74ed
+last_activity_desc: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (Task 1-2 concluidas, Task 3-4 pendentes)
+state_head: 5aaab5424db1ca0d2b8033accf9f4fee4988fe08
 progress:
   total_phases: 9
   completed_phases: 1
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 Phase: 02 (Discovery Mode + DiscoveryPromptBuilder) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-09-20 — Phase 02 execution started
+Status: PAUSADO — checkpoint blocking-human na Task 3 do plano 02-03 (aplicar migration mode ao Supabase). Task 1 decidida, Task 2 concluida (6b6f55a). Task 4 (toggle frontend) ainda não iniciada.
+Last activity: 2026-09-20 — 02-03-PLAN.md pausado no checkpoint da Task 3
 
 Progress: [█░░░░░░░░░] 11%
 
@@ -83,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-01]: DiscoveryPromptBuilder e classe irma (nao subclasse) de PromptBuilder; nunca importa CITI_PORTFOLIO/CATALOG/TECH_REFERENCE — garante DISC-03 por construcao para os 3 agentes realtime
 - [Phase 02]: [Phase 02-01]: _init_coverage ganha mode como kwarg novo com default 'sales' (project_type continua 1o posicional) para nao quebrar test_session_state_custom_areas.py
 - [Phase 02]: citi_block interpolado na mesma posicao textual (entre Alertas detectados e Transcricao completa) — gate por mode nunca reescreve o caminho sales — Garante SC#4 (sales byte-identico) e evita mover o bloco para o system_prompt, o que mudaria user->system no payload do Gemini
+- [Phase 02]: [Phase 02-03] Task 1 (checkpoint:decision, blocking-human, aprovado): coluna projects.mode criada como text DEFAULT 'sales' sem CHECK/enum nativo — Segue o padrao ja usado por project_type/source/status no repo -- validacao de enum 100% no Pydantic Literal, sem ALTER TYPE a cada modo futuro
+- [Phase 02]: [Phase 02-03] Task 2 concluida: migration aditiva + ProjectMode nos 3 schemas Pydantic + teste de validacao (commit 6b6f55a) — ProjectResponse.mode sem default Python (sempre presente pos-migration); nenhum ProjectRepository criado (Pitfall 5)
 
 ### Pending Todos
 
@@ -94,6 +96,7 @@ None yet.
 - Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
 - Phases 7-8 live in the separate Taqciti repo — coordinate access/branch strategy before starting Phase 7
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
+- [Phase 02-03] Task 3 (checkpoint:human-action, blocking-human) pendente: aplicar migration 20260921000000_add_mode_to_projects.sql ao Supabase vivo — precisa de SUPABASE_ACCESS_TOKEN ou execucao manual no SQL Editor. Task 4 (toggle frontend) tambem nao iniciada.
 
 ## Deferred Items
 
@@ -111,6 +114,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T01:04:36.277Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-09-21T01:18:42.196Z
+Stopped at: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (aplicar migration mode ao Supabase) — Task 1 decidida, Task 2 concluida (6b6f55a), Task 4 pendente
 Resume file: None
