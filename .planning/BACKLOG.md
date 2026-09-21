@@ -90,7 +90,7 @@ select relrowsecurity, relforcerowsecurity from pg_class where relname = 'projec
 select * from pg_policies where tablename = 'projects';
 ```
 
-**Status:** aberto — bloqueia a retomada da UAT da Fase 2 (Testes 2–4).
+**Status:** ✅ RESOLVIDO (2026-09-21) — `SUPABASE_KEY` ajustada para a chave `service_role` + restart do backend. Criação de projeto voltou a funcionar (config de ambiente; não exigiu mudança de código).
 
 ---
 
@@ -147,7 +147,7 @@ Após editar, **reiniciar o backend**.
 **Obs:** a Seção 7 do CLAUDE.md (tabela de preços de budget) cita Gemini 1.5/2.0 — desatualizada;
 revisar os preços de referência ao fixar o novo modelo (o controle de budget usa esses fatores).
 
-**Status:** aberto — bloqueia o Teste 3 da Fase 2 e o uso real.
+**Status:** ✅ RESOLVIDO (2026-09-21) — commit `21fb4e7`: modelo trocado para `gemini-flash-latest` em `llm.py` e `structured_context.py`. Relatório/perguntas/cobertura voltaram a funcionar.
 
 ---
 
@@ -162,5 +162,4 @@ a sessão já está `finished` → `get_or_create` retorna `None` → o backend 
 fica preso em "reconectando" em vez de navegar para o histórico. A confirmar no `useSessionWS`
 (lógica de reconexão) + `SessionActivePage` (navegação pós-finish).
 
-**Status:** aberto — reavaliar depois do fix do B-005 (parte do sintoma pode sumir quando o LLM
-voltar a responder).
+**Status:** ✅ RESOLVIDO (2026-09-21) — commit `be2741e`: `handleFinish` passa a encerrar só via REST (removida a corrida WS+HTTP). Encerrar confirmado funcionando pelo humano.
