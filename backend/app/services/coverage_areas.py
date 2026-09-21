@@ -68,6 +68,37 @@ SALES_AREA_SET = AreaSet(
     ),
 )
 
+# Fase 2 (Discovery Mode) / D-06: as 18 areas do modo discovery — Produto
+# (order 0-7) seguido de Dados (order 8-17). Instancia independente de
+# SALES_AREA_SET: coexistem no mesmo modulo sem colisao de namespace mesmo
+# com a chave "ciencia_dados" presente nos dois AreaSets (D-08: exclusivos
+# por `mode`, nunca misturados no mesmo dict de cobertura).
+DISCOVERY_AREA_SET = AreaSet(
+    name="discovery",
+    areas=(
+        # Produto (0-7) — D-06
+        AreaDefinition("gargalo", "Gargalo", 0),
+        AreaDefinition("frente_atuacao", "Frente de Atuação", 1),
+        AreaDefinition("impacto_usuario", "Impacto no Usuário", 2),
+        AreaDefinition("mapeamento_processos", "Mapeamento do Fluxo de Processos", 3),
+        AreaDefinition("fluxo_dados", "Fluxo dos Dados", 4),
+        AreaDefinition("desenho_solucao", "Desenho da Solução", 5),
+        AreaDefinition("expectativa_solucao", "Expectativa de Solução", 6),
+        AreaDefinition("viabilidade_solucao", "Viabilidade da Solução", 7),
+        # Dados (8-17) — D-06
+        AreaDefinition("qualidade_fontes", "Fontes e Qualidade dos Dados", 8),
+        AreaDefinition("metricas", "Métricas", 9),
+        AreaDefinition("lgpd_seguranca", "LGPD/Segurança", 10),
+        AreaDefinition("quick_wins", "Quick Wins", 11),
+        AreaDefinition("ciencia_dados", "Ciência de Dados", 12),
+        AreaDefinition("analise_dados", "Análise de Dados", 13),
+        AreaDefinition("engenharia_dados", "Engenharia de Dados", 14),
+        AreaDefinition("machine_learning", "Machine Learning", 15),
+        AreaDefinition("sistemas_nuvem", "Sistemas em Nuvem", 16),
+        AreaDefinition("automacoes", "Automações", 17),
+    ),
+)
+
 # D-02: relocado verbatim de prompt_builder.py:36-67 — semantica inalterada.
 #   critical  — avaliar com rigor, cobertura fraca e gap real
 #   optional  — avaliar se o cliente mencionar

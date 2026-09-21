@@ -2,7 +2,11 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from app.services.coverage_areas import AREAS_BY_PROJECT_TYPE, SALES_AREA_SET
+from app.services.coverage_areas import (
+    AREAS_BY_PROJECT_TYPE,
+    DISCOVERY_AREA_SET,
+    SALES_AREA_SET,
+)
 from app.services.llm import (
     INPUT_COST_PER_1K,
     OUTPUT_COST_PER_1K,
@@ -14,13 +18,23 @@ REPORT_COST_MARGIN = 1.2
 
 
 def _init_coverage(
-    project_type: str, custom_areas: "Optional[List[dict]]" = None
+    project_type: str,
+    mode: str = "sales",
+    custom_areas: "Optional[List[dict]]" = None,
 ) -> "Dict[str, CoverageArea]":
-    inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
-    coverage = {
-        a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
-        for a in SALES_AREA_SET.keys()
-    }
+    # Fase 2 (Discovery Mode) / D-08: no discovery as 18 areas ficam SEMPRE
+    # ativas — sem o esquema critical/optional/inactive por project_type que
+    # o sales usa. `mode` fica como kwarg novo com default "sales" (NAO
+    # promover a 1o parametro posicional — quebraria test_session_state_custom_areas.py,
+    # que chama _init_coverage("bi") posicionalmente. Pitfall 2 do RESEARCH.md).
+    if mode == "discovery":
+        coverage = {a: CoverageArea() for a in DISCOVERY_AREA_SET.keys()}
+    else:
+        inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
+        coverage = {
+            a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
+            for a in SALES_AREA_SET.keys()
+        }
     for area in custom_areas or []:
         key = area.get("key")
         if key:
@@ -61,6 +75,7 @@ class SessionState:
     session_id: str
     project_id: str = ""
     project_type: str = ""
+    mode: str = "sales"
     data_maturity_score: Optional[int] = None
     pre_meeting_context: str = ""
     budget_usd: Optional[float] = None
@@ -83,7 +98,7 @@ class SessionState:
 
     def __post_init__(self) -> None:
         if not self.coverage:
-            self.coverage = _init_coverage(self.project_type, self.custom_areas)
+            self.coverage = _init_coverage(self.project_type, mode=self.mode, custom_areas=self.custom_areas)
 
     def get_transcript_text(self, last_n: int = 0) -> str:
         chunks = self.transcript_chunks[-last_n:] if last_n else self.transcript_chunks
