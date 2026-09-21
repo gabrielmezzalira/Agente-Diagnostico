@@ -11,7 +11,7 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 
 - [ ] **DISC-01**: A project can be configured in "discovery" mode (vs "sales") without affecting existing sales projects.
 - [x] **DISC-02**: In discovery mode, the agent classifies coverage over the discovery areas (Produto + Dados lenses) instead of the 8 sales areas.
-- [ ] **DISC-03**: Discovery prompts drop the sales framing (CITI_PORTFOLIO) while keeping the DMS (Data Maturity Score) calibration.
+- [x] **DISC-03**: Discovery prompts drop the sales framing (CITI_PORTFOLIO) while keeping the DMS (Data Maturity Score) calibration.
 - [x] **DISC-04**: Coverage areas live in a single registry — no hardcoded area lists duplicated across backend and frontend.
 
 ### Two Lenses / Two Agents (LENS)
@@ -76,7 +76,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | DISC-04 | Phase 1 | Complete |
 | DISC-01 | Phase 2 | Pending |
 | DISC-02 | Phase 2 | Complete |
-| DISC-03 | Phase 2 | Pending |
+| DISC-03 | Phase 2 | Complete |
 | LENS-01 | Phase 3 | Pending |
 | LENS-02 | Phase 3 | Pending |
 | LENS-03 | Phase 3 | Pending |

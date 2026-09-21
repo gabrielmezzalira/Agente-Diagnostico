@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 02
 current_phase_name: Discovery Mode + DiscoveryPromptBuilder
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-09-21T00:57:51.704Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-09-21T01:04:36.316Z"
 last_activity: 2026-09-20
 last_activity_desc: Phase 02 execution started
-state_head: 5796e65d3a70e31d9de8abe174b54c08fe2d4c4c
+state_head: b83647eda12273a2166a57c9d21e9048f96f74ed
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 02 (Discovery Mode + DiscoveryPromptBuilder) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-20 — Phase 02 execution started
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 11%
 | Phase 01 P02 | 8min | 2 tasks | 3 files |
 | Phase 01 P03 | 9min | 2 tasks | 4 files |
 | Phase 02 P01 | 21min | 3 tasks | 6 files |
+| Phase 02 P02 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01-03]: session_state.py re-pointed directly to coverage_areas (import no longer via prompt_builder re-export); structured_context.py's _EXTRACTOR_SYSTEM split into static PREFIX/SUFFIX plus a registry-sourced middle line (concatenation, not f-string) to avoid escaping literal JSON braces
 - [Phase 02]: [Phase 02-01]: DiscoveryPromptBuilder e classe irma (nao subclasse) de PromptBuilder; nunca importa CITI_PORTFOLIO/CATALOG/TECH_REFERENCE — garante DISC-03 por construcao para os 3 agentes realtime
 - [Phase 02]: [Phase 02-01]: _init_coverage ganha mode como kwarg novo com default 'sales' (project_type continua 1o posicional) para nao quebrar test_session_state_custom_areas.py
+- [Phase 02]: citi_block interpolado na mesma posicao textual (entre Alertas detectados e Transcricao completa) — gate por mode nunca reescreve o caminho sales — Garante SC#4 (sales byte-identico) e evita mover o bloco para o system_prompt, o que mudaria user->system no payload do Gemini
 
 ### Pending Todos
 
@@ -109,6 +111,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T00:57:51.668Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-09-21T01:04:36.277Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

@@ -81,7 +81,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 > somou as 11 iniciais com novas disciplinas e fundiu duplicatas (D-06/D-06a). Os SCs acima foram
 > atualizados de "11" para "18" (ajuste de texto, não de escopo).
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 **Wave 1**
 
@@ -89,7 +89,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 
 **Wave 2** *(bloqueado na conclusão da Wave 1)*
 
-- [ ] 02-02-PLAN.md — Relatório discovery: gate do portfólio comercial por `mode` em `generate_report` (Pitfall 1) (DISC-03)
+- [x] 02-02-PLAN.md — Relatório discovery: gate do portfólio comercial por `mode` em `generate_report` (Pitfall 1) (DISC-03)
 - [ ] 02-03-PLAN.md — Configurar/persistir `mode`: migration one-way (checkpoint) + `mode` nos schemas Pydantic + toggle no formulário (DISC-01)
 
 ### Phase 3: Two-Agent Questions + Lens Tagging
@@ -194,7 +194,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
-| 2. Discovery Mode + DiscoveryPromptBuilder | 1/3 | In Progress|  |
+| 2. Discovery Mode + DiscoveryPromptBuilder | 2/3 | In Progress|  |
 | 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
