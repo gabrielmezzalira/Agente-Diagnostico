@@ -68,8 +68,6 @@ def test_session_state_sales_mode_default_unchanged():
 # Task 2 — DiscoveryPromptBuilder (D-09/D-10/DISC-03)
 # =============================================================================
 
-import inspect
-
 from app.services.discovery_prompt_builder import DiscoveryPromptBuilder
 
 _CITI_LITERALS = ("CITI_PORTFOLIO", "CITI_SERVICE_CATALOG", "CITI_TECH_REFERENCE")
@@ -77,13 +75,15 @@ _CITI_LITERALS = ("CITI_PORTFOLIO", "CITI_SERVICE_CATALOG", "CITI_TECH_REFERENCE
 
 def test_discovery_module_does_not_import_citi_constants():
     """discovery_prompt_builder.py nunca importa as constantes comerciais de
-    prompt_builder.py — e o que garante SC#3 por construcao para os 3 agentes
-    realtime (coverage_classifier/red_flag_detector/question_planner)."""
+    prompt_builder.py como nomes do modulo — e o que garante SC#3 por
+    construcao para os 3 agentes realtime (coverage_classifier/
+    red_flag_detector/question_planner). Verifica os NOMES vinculados no
+    namespace do modulo (nao a docstring/comentarios, que podem citar os
+    nomes em prosa explicando a ausencia)."""
     import app.services.discovery_prompt_builder as mod
 
-    source = inspect.getsource(mod)
     for literal in _CITI_LITERALS:
-        assert literal not in source
+        assert not hasattr(mod, literal)
 
 
 def test_build_coverage_classifier_has_dms_no_citi():
