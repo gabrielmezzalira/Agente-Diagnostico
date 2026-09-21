@@ -6,6 +6,16 @@
 
 ---
 
+## Idioma das Respostas (OBRIGATÓRIO — aplica-se a TODA interação)
+
+**Toda resposta deve ser em português e com linguagem natural.** Escreva como se estivesse
+conversando com uma pessoa do time: frases claras e diretas, sem jargão desnecessário. Termos
+técnicos consagrados (nomes de funções, arquivos, comandos, trechos de código, caminhos) permanecem
+como estão — não traduza identificadores nem código. O que muda é a prosa ao redor: explicações,
+resumos, status, perguntas e conclusões são sempre em português, de forma acessível.
+
+---
+
 ## Princípios de Arquitetura de Código (OBRIGATÓRIO — aplica-se a TODO o projeto)
 
 Todo código produzido neste projeto — backend Python e frontend TypeScript/React — deve seguir os princípios SOLID e ser bem organizado e modularizado. Este é um requisito não-negociável que se sobrepõe a qualquer decisão de implementação.
