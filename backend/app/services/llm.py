@@ -110,6 +110,7 @@ async def generate_report(
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
     structured_context: Any = None,
+    mode: str = "sales",
 ) -> tuple[str, int, int]:
     from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
@@ -175,15 +176,19 @@ async def generate_report(
     else:
         context_block = f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
 
+    citi_block = (
+        f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
+        f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
+        f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
+    ) if mode == "sales" else ""
+
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
         f"Data Maturity Score: {dms_str}\n"
         f"{context_block}"
         f"## Cobertura final\n{coverage_table}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
-        f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
-        f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
-        f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
+        f"{citi_block}"
         f"## Transcrição completa\n{transcript}"
     )
     text, inp, out = await _call(api_key, system, user, max_output_tokens=REPORT_MAX_OUTPUT_TOKENS)

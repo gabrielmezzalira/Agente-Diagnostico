@@ -366,6 +366,7 @@ class SessionPipeline:
             pre_meeting_context=self.state.pre_meeting_context,
             system_prompt=self.state.prompts.get("report_generator"),
             structured_context=self.state.structured_context,
+            mode=self.state.mode,
         )
         self.state.add_token_cost(inp, out)
         db = get_supabase()
