@@ -21,6 +21,7 @@ const DEFAULT_FORM: ProjectCreate & { gemini_api_key: string } = {
   pre_meeting_context: '',
   meeting_url: '',
   source: 'extension',
+  mode: 'sales',
   question_ttl_seconds: 60,
   pricing_llm_provider: undefined,
   pricing_llm_model: undefined,
@@ -78,6 +79,7 @@ export default function ProjectFormPage() {
           pre_meeting_context: p.pre_meeting_context ?? '',
           meeting_url: p.meeting_url ?? '',
           source: (p.source === 'recall' ? 'recall' : 'extension') as 'extension' | 'recall',
+          mode: (p.mode === 'discovery' ? 'discovery' : 'sales') as 'sales' | 'discovery',
           question_ttl_seconds: p.question_ttl_seconds,
           pricing_llm_provider: p.pricing_llm_provider ?? undefined,
           pricing_llm_model: p.pricing_llm_model ?? undefined,
@@ -247,6 +249,27 @@ export default function ProjectFormPage() {
             placeholder="https://meet.google.com/..."
             className={inputCls}
           />
+        </Field>
+
+        <Field label="Modo do projeto" required>
+          <div className="flex gap-5 mt-0.5">
+            {([
+              { value: 'sales', label: 'Vendas' },
+              { value: 'discovery', label: 'Discovery' },
+            ] as const).map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="mode"
+                  value={value}
+                  checked={form.mode === value}
+                  onChange={() => set('mode', value)}
+                  className="accent-[var(--color-accent)]"
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
         </Field>
 
         <Field label="Fonte de transcrição" required>
