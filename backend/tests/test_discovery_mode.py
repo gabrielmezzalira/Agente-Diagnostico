@@ -213,3 +213,36 @@ async def test_generate_report_default_mode_matches_sales_mode(monkeypatch):
 
     assert user_default == user_sales
     assert _expected_citi_block() in user_default
+
+
+# =============================================================================
+# Plano 02-02 / Task 2 — Precisao DISC-03: CITI_PORTFOLIO ausente das 4
+# superficies de discovery (3 prompts realtime + mensagem 'user' do relatorio).
+# Rede unica que pega o caso "esqueci de gatear uma das quatro superficies".
+# =============================================================================
+
+@pytest.mark.asyncio
+async def test_disc03_citi_portfolio_absent_from_all_four_discovery_surfaces(monkeypatch):
+    """Consolida DISC-03: os 3 prompts realtime do DiscoveryPromptBuilder e a
+    mensagem 'user' de generate_report(mode='discovery') nunca contem o literal
+    CITI_PORTFOLIO — e os 3 prompts realtime carregam a calibracao por DMS."""
+    builder = DiscoveryPromptBuilder(dms=3, pre_meeting_context="contexto de teste")
+    coverage_classifier = builder.build_coverage_classifier()
+    red_flag_detector = builder.build_red_flag_detector()
+    question_planner = builder.build_question_planner()
+
+    report_user = await _capture_report_user(monkeypatch, mode="discovery")
+
+    surfaces = {
+        "coverage_classifier": coverage_classifier,
+        "red_flag_detector": red_flag_detector,
+        "question_planner": question_planner,
+        "report_generator_user": report_user,
+    }
+
+    for name, text in surfaces.items():
+        assert "CITI_PORTFOLIO" not in text, f"{name} vaza CITI_PORTFOLIO"
+
+    dms_str = builder._dms_str()
+    for name in ("coverage_classifier", "red_flag_detector", "question_planner"):
+        assert dms_str in surfaces[name], f"{name} nao contem calibracao DMS"
