@@ -104,7 +104,16 @@ streaming → session binding → cutover), so discovery correctness is proven b
   3. Across a live session, the Dados planner triggers on a visibly slower cadence than the Produto planner (not on every question-generation cycle)
   4. No two questions in the queue — regardless of which agent produced them — are duplicates of each other; anti-repetition context is shared across both agents
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — TRACER: split de dois agentes (Produto/Dados) na fila única com `lens` por pergunta, contador de cadência, dedup normalizado e regressão sales (LENS-01/02/03/05, D-13/14/16/17/20/21/24)
+- [ ] 03-02-PLAN.md — Migration aditiva one-way (`questions.lens`, `red_flags.lens`, COMMENT em `session_prompts.agent`) + `lens` em `QuestionResponse` (LENS-03/04, D-18/23) — **autonomous:false** (checkpoint:decision + apply manual no Supabase)
+
+**Wave 2** *(bloqueado na conclusão da Wave 1)*
+
+- [ ] 03-03-PLAN.md — Lente nos red flags (contrato JSON + fallback produto validado) e nas coverage areas (`coverage_to_dict` derivado do registro) (LENS-04, D-15/19/22)
 
 ### Phase 4: Discovery Report + Pricing Handoff
 
@@ -195,7 +204,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 |-------|----------------|--------|-----------|
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
-| 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
+| 3. Two-Agent Questions + Lens Tagging | 0/3 | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
