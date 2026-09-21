@@ -116,4 +116,4 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 Last session: 2026-09-21T01:18:42.196Z
 Stopped at: 02-03-PLAN.md pausado no checkpoint blocking-human da Task 3 (aplicar migration mode ao Supabase) — Task 1 decidida, Task 2 concluida (6b6f55a), Task 4 pendente
-Resume file: None
+Resume file: RETOMAR_FASE_02.md (raiz do projeto) — passos para aplicar a migration e concluir a Task 4
