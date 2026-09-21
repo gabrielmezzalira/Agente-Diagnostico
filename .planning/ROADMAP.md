@@ -81,11 +81,11 @@ streaming → session binding → cutover), so discovery correctness is proven b
 > somou as 11 iniciais com novas disciplinas e fundiu duplicatas (D-06/D-06a). Os SCs acima foram
 > atualizados de "11" para "18" (ajuste de texto, não de escopo).
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — TRACER: `DISCOVERY_AREA_SET` (18 áreas) + `DiscoveryPromptBuilder` (irmão, D-09) + `SessionState.mode`/`_init_coverage` + seleção de builder no pipeline (DISC-02, DISC-03)
+- [x] 02-01-PLAN.md — TRACER: `DISCOVERY_AREA_SET` (18 áreas) + `DiscoveryPromptBuilder` (irmão, D-09) + `SessionState.mode`/`_init_coverage` + seleção de builder no pipeline (DISC-02, DISC-03)
 
 **Wave 2** *(bloqueado na conclusão da Wave 1)*
 
@@ -194,7 +194,7 @@ Phases 1-5 (domain reframe) then Phases 6-9 (Taqciti transcription swap): 1 → 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
-| 2. Discovery Mode + DiscoveryPromptBuilder | 0/3 | Planned | - |
+| 2. Discovery Mode + DiscoveryPromptBuilder | 1/3 | In Progress|  |
 | 3. Two-Agent Questions + Lens Tagging | 0/? | Not started | - |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |

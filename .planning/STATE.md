@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 02
-current_phase_name: discovery-mode-discoverypromptbuilder
+current_phase_name: Discovery Mode + DiscoveryPromptBuilder
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-09-20T23:21:59.494Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-09-21T00:57:51.704Z"
 last_activity: 2026-09-20
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
-state_head: e047ddb962335519d382ff54fd02aff25ba61f71
+last_activity_desc: Phase 02 execution started
+state_head: 5796e65d3a70e31d9de8abe174b54c08fe2d4c4c
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 01 — Area-Set Registry
+**Current focus:** Phase 02 — Discovery Mode + DiscoveryPromptBuilder
 
 ## Current Position
 
-Phase: 02 (discovery-mode-discoverypromptbuilder) — READY TO EXECUTE
-Plan: Not started
+Phase: 02 (Discovery Mode + DiscoveryPromptBuilder) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-20 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-09-20 — Phase 02 execution started
 
 Progress: [█░░░░░░░░░] 11%
 
@@ -62,6 +62,7 @@ Progress: [█░░░░░░░░░] 11%
 | Phase 01 P01 | 25min | 2 tasks | 5 files |
 | Phase 01 P02 | 8min | 2 tasks | 3 files |
 | Phase 01 P03 | 9min | 2 tasks | 4 files |
+| Phase 02 P01 | 21min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Only llm.classify_coverage rewired to the registry in plan 01-01; area_labels and block-enum call sites deferred to later plans — Plan 01-01 scope is the tracer slice (one consumer, proven end-to-end); remaining consumers are plan 02/03 work
 - [Phase 01]: [Phase 01-02]: AREAS_BY_PROJECT_TYPE re-exported through prompt_builder.py's top-level import rather than repointing session_state.py directly, keeping this plan's diff scoped to its two named files — plan 03 is the one that repoints session_state's import directly to the registry
 - [Phase 01]: [Phase 01-03]: session_state.py re-pointed directly to coverage_areas (import no longer via prompt_builder re-export); structured_context.py's _EXTRACTOR_SYSTEM split into static PREFIX/SUFFIX plus a registry-sourced middle line (concatenation, not f-string) to avoid escaping literal JSON braces
+- [Phase 02]: [Phase 02-01]: DiscoveryPromptBuilder e classe irma (nao subclasse) de PromptBuilder; nunca importa CITI_PORTFOLIO/CATALOG/TECH_REFERENCE — garante DISC-03 por construcao para os 3 agentes realtime
+- [Phase 02]: [Phase 02-01]: _init_coverage ganha mode como kwarg novo com default 'sales' (project_type continua 1o posicional) para nao quebrar test_session_state_custom_areas.py
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-20T20:09:04.740Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-discovery-mode-discoverypromptbuilder/02-CONTEXT.md
+Last session: 2026-09-21T00:57:51.668Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
