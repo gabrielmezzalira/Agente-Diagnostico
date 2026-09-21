@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from app.services.coverage_areas import SALES_AREA_SET
 
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
-_MODEL = "gemini-2.5-flash"
+_MODEL = "gemini-flash-latest"
 
 
 class StackItem(BaseModel):

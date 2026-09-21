@@ -7,7 +7,7 @@ from google.genai import types as genai_types
 
 from app.services.coverage_areas import SALES_AREA_SET
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-flash-latest"
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 
 # Gemini 2.5 Flash pricing (USD per 1 000 tokens)
