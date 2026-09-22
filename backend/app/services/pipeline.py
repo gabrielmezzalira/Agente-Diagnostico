@@ -350,8 +350,17 @@ class SessionPipeline:
         # quando o laço do Dados executa — não precisa recalcular fora do
         # helper. No sales (lens is None) a trava não roda, preservando o
         # comportamento byte-idêntico de hoje (D-24).
+        # WR-02 (03-REVIEW.md): exclui status "dismissed" do conjunto —
+        # perguntas que só expiraram por TTL (_expire_due_questions também
+        # usa "dismissed") não podem ficar banidas para o resto da sessão;
+        # sem status distinto para "rejeitada manualmente" vs "expirou sem
+        # interação", a opção segura é não travar em nenhum dos dois casos.
         existing_normalized = (
-            {_normalize_question_text(q.text) for q in self.state.questions}
+            {
+                _normalize_question_text(q.text)
+                for q in self.state.questions
+                if q.status != "dismissed"
+            }
             if lens is not None
             else None
         )
