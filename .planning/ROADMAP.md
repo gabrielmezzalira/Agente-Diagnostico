@@ -30,7 +30,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 
 - [x] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode (completed 2026-09-20)
 - [x] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing (completed 2026-09-21)
-- [ ] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag
+- [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
 - [ ] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis
 - [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
 - [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
@@ -105,7 +105,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
   3. Across a live session, the Dados planner triggers on a visibly slower cadence than the Produto planner (not on every question-generation cycle)
   4. No two questions in the queue — regardless of which agent produced them — are duplicates of each other; anti-repetition context is shared across both agents
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -221,7 +221,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 |-------|----------------|--------|-----------|
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
-| 3. Two-Agent Questions + Lens Tagging | 3/3 | In Progress|  |
+| 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete   | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
