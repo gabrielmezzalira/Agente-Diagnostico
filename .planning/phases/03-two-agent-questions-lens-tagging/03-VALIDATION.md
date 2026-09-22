@@ -42,7 +42,7 @@ created: "2026-09-21"
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 3-01-01 | 01 | 1 | LENS-01, LENS-03 | — | N/A | unit | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | ❌ W0 | ⬜ pending |
 | 3-01-02 | 01 | 1 | LENS-05 | — | N/A | unit | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | ❌ W0 | ⬜ pending |
-| 3-02-01 | 02 | 2 | LENS-02 | — | N/A | unit | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | ❌ W0 | ⬜ pending |
+| 3-02-01 | 02 | 1 | LENS-03, LENS-04 | — | N/A | unit | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | ❌ W0 | ⬜ pending |
 | 3-03-01 | 03 | 2 | LENS-04 | — | N/A | unit | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | ❌ W0 | ⬜ pending |
 | 3-xx-99 | — | — | (regressão sales D-24) | — | saída sales byte-idêntica | golden | `cd backend && python -m pytest tests/test_coverage_areas_golden.py -q` | ✅ | ⬜ pending |
 
