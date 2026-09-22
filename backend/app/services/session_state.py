@@ -57,6 +57,11 @@ class RedFlag:
     severity: str  # warning | critical
     evidence: str
     detected_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-22: lente do red flag
+    # ("produto" | "dados"), classificada pelo LLM no discovery com fallback
+    # "produto" via allowlist quando ausente/vazia/inválida. ÚLTIMO campo,
+    # default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass

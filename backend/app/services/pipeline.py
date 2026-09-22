@@ -266,12 +266,22 @@ class SessionPipeline:
                 continue
             flag_id = str(uuid.uuid4())
             now = datetime.now(timezone.utc).isoformat()
+            # Fase 3 / D-22: lente do red flag SOMENTE no discovery — allowlist
+            # fechada {"produto","dados"} com fallback "produto"; valor bruto
+            # do LLM (influenciável pela transcrição) nunca é persistido sem
+            # passar pela allowlist. `.get("lens","")` (nunca indexação
+            # direta) porque o sales não devolve o campo.
+            lens = None
+            if self.state.mode == "discovery":
+                raw_lens = str(flag.get("lens", "")).strip().lower()
+                lens = raw_lens if raw_lens in ("produto", "dados") else "produto"
             rf = RedFlag(
                 id=flag_id,
                 text=text,
                 severity=flag.get("severity", "warning"),
                 evidence=flag.get("evidence", ""),
                 detected_at=now,
+                lens=lens,
             )
             self.state.red_flags.append(rf)
             existing_texts.add(text[:60])
@@ -281,6 +291,7 @@ class SessionPipeline:
                 "text": rf.text,
                 "severity": rf.severity,
                 "evidence": rf.evidence,
+                "lens": rf.lens,
             }).execute()
             await ws_manager.broadcast(
                 self.state.session_id, "red_flag", rf.__dict__

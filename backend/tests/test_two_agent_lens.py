@@ -350,6 +350,111 @@ async def test_sales_mode_single_planner_no_lens_no_counter(monkeypatch):
     assert inserted.get("lens") is None
 
 
+# =============================================================================
+# Plano 03-03 / Task 1: lente nos red flags — contrato JSON + allowlist/
+# fallback produto (D-22), gateado por mode (LENS-04, SC#2)
+# =============================================================================
+
+
+def _install_fake_detect_red_flags(monkeypatch, flags: list[dict]):
+    """Substitui llm_service.detect_red_flags por um fake que sempre devolve
+    `flags` na primeira chamada e conta quantas vezes foi chamado."""
+    calls: dict = {"n": 0}
+
+    async def _fake(api_key, transcript, context, dms, system_prompt=None):
+        calls["n"] += 1
+        return flags, 0, 0
+
+    monkeypatch.setattr(pipeline_mod.llm_service, "detect_red_flags", _fake)
+    return calls
+
+
+async def test_red_flag_discovery_lens_from_llm_is_persisted(monkeypatch):
+    """Discovery: LLM devolve lens='dados' válida → RedFlag.lens == 'dados' e
+    o insert de red_flags leva 'lens':'dados' (D-15/D-22)."""
+    calls = _install_fake_db(monkeypatch)
+    det_calls = _install_fake_detect_red_flags(
+        monkeypatch,
+        [{"text": "Sem qualidade de fonte mapeada", "severity": "warning", "evidence": "trecho", "lens": "dados"}],
+    )
+    state = SessionState(session_id="s", mode="discovery", data_maturity_score=3)
+    pipe = SessionPipeline(state)
+    pipe._resolve_gemini_key = lambda: "fake-key"
+
+    await pipe._run_red_flag_detector()
+
+    assert det_calls["n"] == 1
+    assert len(state.red_flags) == 1
+    assert state.red_flags[0].lens == "dados"
+    inserted = calls["inserts"][-1]
+    assert inserted.get("lens") == "dados"
+
+
+async def test_red_flag_discovery_lens_fallback_to_produto_when_missing_or_invalid(monkeypatch):
+    """Discovery: lens ausente/vazia/inválida → fallback 'produto' via
+    allowlist fechada (D-22) — o valor bruto do LLM nunca entra sem passar
+    pela allowlist."""
+    calls = _install_fake_db(monkeypatch)
+    _install_fake_detect_red_flags(
+        monkeypatch,
+        [{"text": "Prazo incompatível com o escopo", "severity": "critical", "evidence": "trecho"}],  # lens ausente
+    )
+    state = SessionState(session_id="s", mode="discovery", data_maturity_score=3)
+    pipe = SessionPipeline(state)
+    pipe._resolve_gemini_key = lambda: "fake-key"
+
+    await pipe._run_red_flag_detector()
+
+    assert state.red_flags[0].lens == "produto"
+    inserted = calls["inserts"][-1]
+    assert inserted.get("lens") == "produto"
+
+
+async def test_red_flag_discovery_lens_invalid_value_falls_back_to_produto(monkeypatch):
+    calls = _install_fake_db(monkeypatch)
+    _install_fake_detect_red_flags(
+        monkeypatch,
+        [{"text": "Risco genérico", "severity": "warning", "evidence": "trecho", "lens": "xyz"}],
+    )
+    state = SessionState(session_id="s", mode="discovery", data_maturity_score=3)
+    pipe = SessionPipeline(state)
+    pipe._resolve_gemini_key = lambda: "fake-key"
+
+    await pipe._run_red_flag_detector()
+
+    assert state.red_flags[0].lens == "produto"
+    inserted = calls["inserts"][-1]
+    assert inserted.get("lens") == "produto"
+
+
+async def test_red_flag_sales_lens_is_none_and_detector_called_once(monkeypatch):
+    """Sales (mode != discovery): RedFlag.lens is None sempre; o insert NÃO
+    grava lens não-nula; o detector continua sendo chamado UMA única vez
+    (não cria 2º detector)."""
+    calls = _install_fake_db(monkeypatch)
+    det_calls = _install_fake_detect_red_flags(
+        monkeypatch,
+        [{"text": "Cliente quer ML sem dados organizados", "severity": "critical", "evidence": "trecho", "lens": "dados"}],
+    )
+    state = SessionState(session_id="s", project_type="bi")
+    pipe = SessionPipeline(state)
+    pipe._resolve_gemini_key = lambda: "fake-key"
+
+    await pipe._run_red_flag_detector()
+
+    assert det_calls["n"] == 1
+    assert state.red_flags[0].lens is None
+    inserted = calls["inserts"][-1]
+    assert inserted.get("lens") is None
+
+
+def test_build_red_flag_detector_discovery_has_lens_contract_no_citi_portfolio():
+    prompt = DiscoveryPromptBuilder(dms=3).build_red_flag_detector()
+    assert "lens" in prompt
+    assert "produto|dados" in prompt
+    assert "CITI_PORTFOLIO" not in prompt
+
+
 def test_discovery_area_golden_unchanged():
     """Confirma que adicionar o campo `lens` (Task 1) não mudou a saída do
     registro sales: SALES_AREA_SET.keys()/labels()/block_enum() continuam

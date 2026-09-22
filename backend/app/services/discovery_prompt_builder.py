@@ -153,8 +153,11 @@ class DiscoveryPromptBuilder:
             f"{calibration}\n\n"
             "Identifique até 2 riscos críticos na transcrição. Se não houver riscos "
             "reais, retorne lista vazia.\n"
+            "Para cada risco, classifique também a lente ('lens'): 'produto' para "
+            "riscos de gargalo, processo ou viabilidade da solução; 'dados' para "
+            "riscos de fontes, qualidade, LGPD/segurança ou métricas dos dados.\n"
             "Retorne APENAS JSON válido:\n"
-            '{"red_flags":[{"text":"...","severity":"warning|critical","evidence":"trecho exato da transcrição"}]}'
+            '{"red_flags":[{"text":"...","severity":"warning|critical","evidence":"trecho exato da transcrição","lens":"produto|dados"}]}'
         )
 
     # -------------------------------------------------------------------------
