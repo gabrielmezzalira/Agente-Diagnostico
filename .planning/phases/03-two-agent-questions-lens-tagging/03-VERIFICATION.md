@@ -1,12 +1,19 @@
 ---
 phase: 03-two-agent-questions-lens-tagging
-verified: 2026-09-22T00:00:00Z
+verified: 2026-09-22T11:36:57Z
 status: passed
 score: 6/6 must-haves verified
 covered_files: [".planning/REQUIREMENTS.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-01-PLAN.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-01-SUMMARY.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-02-PLAN.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-02-SUMMARY.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-03-PLAN.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-03-SUMMARY.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-CONTEXT.md", ".planning/phases/03-two-agent-questions-lens-tagging/03-VALIDATION.md", "backend/app/models/questions.py", "backend/app/services/coverage_areas.py", "backend/app/services/discovery_prompt_builder.py", "backend/app/services/pipeline.py", "backend/app/services/session_state.py", "backend/tests/test_discovery_mode.py", "backend/tests/test_two_agent_lens.py", "supabase/migrations/20260922000000_add_lens_tagging.sql"]
-covered_digest: "v1:sha256:4891578b966aedece0f395c1c176c2820139e4f8cefbde6b396af6ad1a163c3d"
+covered_digest: "v1:sha256:7e6cd85ed8b45ba692c1731e0b56e4dda4e7268150aee7d8c915314ebfce26f9"
 behavior_unverified: 0
 overrides_applied: 0
+re_verification:
+  previous_status: passed
+  previous_score: 6/6
+  reason: "covered_digest ficou stale: .planning/REQUIREMENTS.md foi editado após a verificação inicial (LENS-01..05 marcados [x]/Complete + TAQ-05 adicionado). Nenhum arquivo de código coberto mudou (git diff d52a85e..HEAD restrito a backend/, supabase/ e planos/summaries da fase = vazio)."
+  gaps_closed: []
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 3: Two-Agent Questions + Lens Tagging — Verification Report
@@ -15,9 +22,15 @@ overrides_applied: 0
 queue, and every coverage area, red flag, and question carries a lens tag, with no duplicate
 questions across the two agents.
 
-**Verified:** 2026-09-22
+**Verified:** 2026-09-22 (re-verificação — recarimbo de digest)
 **Status:** passed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — o `covered_digest` da verificação anterior (`4891578b...`) ficou stale porque
+`.planning/REQUIREMENTS.md` foi editado depois da verificação (LENS-01..05 passaram de `[ ]`/"Pending" para
+`[x]`/"Complete" na tabela de rastreamento, e TAQ-05 foi adicionado). Confirmado por
+`git diff d52a85e..HEAD -- backend/ supabase/ <planos/summaries da fase>` = **vazio**: nenhum arquivo de
+código coberto por esta fase mudou desde a verificação inicial. As evidências de código abaixo foram
+reconfirmadas nesta rodada (não apenas reaproveitadas), e a suíte de testes foi executada novamente de
+forma independente.
 
 ## Goal Achievement
 
@@ -44,7 +57,7 @@ questions across the two agents.
 | `backend/app/services/pipeline.py` | `_normalize_question_text`, `_run_single_planner`, `_run_question_planner` reescrito, `_run_red_flag_detector` com allowlist | ✓ VERIFIED | Linhas 19-23, 300-423, 251-298 |
 | `backend/app/models/questions.py` | `QuestionResponse.lens: Optional[str] = None` | ✓ VERIFIED | Linha 17, mesmo padrão de `block` |
 | `supabase/migrations/20260922000000_add_lens_tagging.sql` | Migration aditiva única: `questions.lens`, `red_flags.lens`, COMMENT em `session_prompts.agent` | ✓ VERIFIED | Arquivo existe, 2× `ADD COLUMN IF NOT EXISTS lens text` (nullable, sem DEFAULT), 3× `COMMENT ON COLUMN`, zero `ALTER TYPE`/`CHECK` |
-| `backend/tests/test_two_agent_lens.py` | Testes SC#1/#2/#3/#5 + regressão sales | ✓ VERIFIED | 22 testes, todos passam (`pytest tests/test_two_agent_lens.py -q` → 22 passed) |
+| `backend/tests/test_two_agent_lens.py` | Testes SC#1/#2/#3/#5 + regressão sales | ✓ VERIFIED | 22 testes, todos passam (`pytest tests/test_two_agent_lens.py -q` → 22 passed, reconfirmado nesta rodada) |
 
 ### Key Link Verification
 
@@ -69,8 +82,8 @@ questions across the two agents.
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Suíte completa do backend | `cd backend && python -m pytest -q` | `1 failed, 67 passed, 4 skipped` — a única falha é `tests/test_schema.py::test_tables_exist`, que exige `SUPABASE_URL`/`SUPABASE_KEY` reais (erro `Could not find the table 'public.information_schema.tables'` por falta de config de ambiente) — pré-existente, fora do escopo desta fase, conforme instruído em `<what_to_check>` | ✓ PASS (exclusão esperada) |
-| Testes da fase | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | `22 passed` | ✓ PASS |
+| Suíte completa do backend (rodada de novo nesta re-verificação) | `cd backend && python -m pytest -q` | `1 failed, 67 passed, 4 skipped` — a única falha é `tests/test_schema.py::test_tables_exist`, que exige `SUPABASE_URL`/`SUPABASE_KEY` reais (erro `Could not find the table 'public.information_schema.tables'` por falta de config de ambiente) — pré-existente, fora do escopo desta fase, resultado idêntico ao da verificação inicial | ✓ PASS (exclusão esperada) |
+| Testes da fase (rodada de novo) | `cd backend && python -m pytest tests/test_two_agent_lens.py -q` | `22 passed` | ✓ PASS |
 | Regressão Fases 1-2 | `cd backend && python -m pytest tests/test_discovery_mode.py tests/test_coverage_areas_golden.py -q` | Incluído na suíte completa acima — todos verdes | ✓ PASS |
 
 ### Requirements Coverage
@@ -83,11 +96,12 @@ questions across the two agents.
 | LENS-04 | 03-03 | Coverage areas e red flags carregam tag de lente | ✓ SATISFIED | `coverage_to_dict` + `RedFlag.lens` + contrato JSON do red flag detector |
 | LENS-05 | 03-01 | Sem duplicata entre os dois agentes (anti-repetição compartilhada) | ✓ SATISFIED | Trava de texto normalizado + testes SC#5 |
 
-**Nota (não-bloqueante):** `.planning/REQUIREMENTS.md` (linhas 19-23, 81-85) ainda lista LENS-01..05 como
-checkbox `[ ]` e status "Pending" na tabela de rastreamento — desatualizado em relação ao código e aos
-SUMMARYs, que corretamente reportam `requirements-completed: [LENS-01..05]`. Isso é responsabilidade do
-orquestrador/fechamento de fase (fora do escopo desta verificação, que não deve tocar STATE/ROADMAP), mas
-fica registrado para o time atualizar o documento de rastreamento.
+**Nota (resolvida nesta re-verificação):** a verificação inicial havia registrado como observação
+não-bloqueante que `.planning/REQUIREMENTS.md` ainda listava LENS-01..05 como `[ ]`/"Pending". Isso foi
+corrigido entre a verificação inicial e esta rodada — o arquivo agora marca LENS-01..05 como `[x]` e
+"Complete" na tabela de rastreamento (linhas 19-23, 81-85), e adicionou TAQ-05 (fora do escopo desta
+fase). Essa foi justamente a mudança que tornou o `covered_digest` anterior stale, motivando esta
+re-verificação — sem qualquer alteração em código-fonte.
 
 ### Anti-Patterns Found
 
@@ -110,14 +124,16 @@ exige teste comportamental ao vivo para ser considerado verificado.
 
 Nenhum gap bloqueador. A fase entrega integralmente o que o ROADMAP promete: dois planejadores de
 perguntas por lente numa fila única, lens em áreas/red flags/perguntas, dedup entre agentes, e
-regressão sales byte-idêntica provada por teste real — tudo confirmado no código integrado (não apenas
-nos SUMMARYs) e pela suíte de testes rodada de forma independente por este verificador (67 passed, 4
-skipped, 1 falha esperada e fora de escopo).
+regressão sales byte-idêntica provada por teste real — tudo reconfirmado no código integrado (não apenas
+nos SUMMARYs) e pela suíte de testes rodada novamente, de forma independente, por esta re-verificação
+(67 passed, 4 skipped, 1 falha esperada e fora de escopo — resultado idêntico ao da verificação inicial).
 
-Único item não-bloqueante: a tabela de rastreamento em `.planning/REQUIREMENTS.md` não foi atualizada
-para refletir LENS-01..05 como concluídos (ver nota acima).
+Esta rodada foi motivada exclusivamente pelo gate de staleness do `covered_digest`: `.planning/REQUIREMENTS.md`
+mudou (LENS-01..05 marcados como concluídos + TAQ-05 adicionado) depois da verificação inicial, sem
+qualquer alteração no código coberto pela fase. `covered_digest` foi recomputado sobre a mesma lista de
+`covered_files` no HEAD atual (`2ed4f52`).
 
 ---
 
-_Verified: 2026-09-22_
+_Verified: 2026-09-22T11:36:57Z (re-verificação de staleness — veredito original mantido: GOAL ACHIEVED)_
 _Verifier: Claude (gsd-verifier)_
