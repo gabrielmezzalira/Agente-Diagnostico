@@ -16,6 +16,13 @@ from app.services.ws_manager import ws_manager
 _log = logging.getLogger(__name__)
 
 
+def _normalize_question_text(text: str) -> str:
+    """Fase 3 (Two-Agent Questions + Lens Tagging) / D-17: função pura, sem
+    side effects — normaliza texto de pergunta (trim + minúsculas + colapso
+    de espaços) para a trava de dedup entre os agentes Produto/Dados."""
+    return " ".join(text.strip().lower().split())
+
+
 class SessionPipeline:
     def __init__(self, state: SessionState):
         self.state = state
@@ -326,10 +333,27 @@ class SessionPipeline:
         db = get_supabase()
         now = datetime.now(timezone.utc)
         expires_at = (now + timedelta(seconds=self.state.question_ttl_seconds)).isoformat()
+        # D-17: trava de dedup por texto normalizado — SOMENTE no discovery
+        # (lens is not None). Como o Dados roda DEPOIS do Produto inserir
+        # (await sequencial, D-16), este set já contém os textos do Produto
+        # quando o laço do Dados executa — não precisa recalcular fora do
+        # helper. No sales (lens is None) a trava não roda, preservando o
+        # comportamento byte-idêntico de hoje (D-24).
+        existing_normalized = (
+            {_normalize_question_text(q.text) for q in self.state.questions}
+            if lens is not None
+            else None
+        )
         for q_data in questions:
             queued_count = sum(1 for q in self.state.questions if q.status == "queued")
             if queued_count >= 5:
                 break
+            text = q_data.get("text", "")
+            if existing_normalized is not None:
+                norm = _normalize_question_text(text)
+                if not text or norm in existing_normalized:
+                    continue
+                existing_normalized.add(norm)
             q_id = str(uuid.uuid4())
             q = Question(
                 id=q_id,
