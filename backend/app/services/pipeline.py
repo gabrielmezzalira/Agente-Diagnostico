@@ -440,7 +440,12 @@ class SessionPipeline:
             q.text for q in self.state.questions if q.status in ("used", "pinned")
         ]
         red_flags_raw = [
-            {"text": rf.text, "severity": rf.severity, "evidence": rf.evidence}
+            {
+                "text": rf.text,
+                "severity": rf.severity,
+                "evidence": rf.evidence,
+                "lens": rf.lens,
+            }
             for rf in self.state.red_flags
         ]
         markdown, inp, out = await llm_service.generate_report(
