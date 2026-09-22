@@ -321,3 +321,61 @@ async def test_sc3_dados_runs_only_on_even_triggers_across_n_cycles(monkeypatch)
     assert gen_calls["system_prompt_per_call"] == [
         produto_prompt, produto_prompt, dados_prompt, produto_prompt, produto_prompt, dados_prompt,
     ]
+
+
+# =============================================================================
+# Task 3 (EXPANSÃO): teste-semente de regressão sales (D-24) — 1 planner,
+# lens None, sem contador
+# =============================================================================
+
+
+async def test_sales_mode_single_planner_no_lens_no_counter(monkeypatch):
+    """D-24: sessão sales usa um único planner (sem sufixo de lente), nunca
+    incrementa question_trigger_count, e toda pergunta gerada tem lens=None
+    — tanto em memória quanto no payload inserido no banco (nullable)."""
+    calls = _install_fake_db(monkeypatch)
+    gen_calls = _install_fake_generate_questions(
+        monkeypatch, texts_by_call=[[" Quantas fontes existem?"]],
+    )
+    state = SessionState(session_id="s", mode="sales")
+    pipe = SessionPipeline(state)
+    pipe._resolve_gemini_key = lambda: "fake-key"
+
+    await pipe._run_question_planner()
+
+    assert state.question_trigger_count == 0
+    assert gen_calls["n"] == 1
+    assert all(q.lens is None for q in state.questions)
+    inserted = calls["inserts"][-1]
+    assert inserted.get("lens") is None
+
+
+def test_discovery_area_golden_unchanged():
+    """Confirma que adicionar o campo `lens` (Task 1) não mudou a saída do
+    registro sales: SALES_AREA_SET.keys()/labels()/block_enum() continuam
+    idênticos ao golden congelado em test_coverage_areas_golden.py — rede de
+    proteção adicional para este arquivo, sem duplicar as asserções lá."""
+    from app.services.coverage_areas import AREAS_BY_PROJECT_TYPE
+
+    _SALES_KEYS_ORDER = [
+        "negocio", "eng_dados", "visualizacao", "ciencia_dados",
+        "automacao", "integracao", "consumo", "parceria",
+    ]
+    _AREA_LABELS = {
+        "negocio": "Negócio", "eng_dados": "Eng. de Dados", "visualizacao": "Visualização",
+        "ciencia_dados": "Ciência de Dados", "automacao": "Automação", "integracao": "Integração",
+        "consumo": "Consumo", "parceria": "Parceria",
+    }
+    _BLOCK_ENUM = "negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"
+
+    assert SALES_AREA_SET.keys() == _SALES_KEYS_ORDER
+    assert SALES_AREA_SET.labels() == _AREA_LABELS
+    assert SALES_AREA_SET.block_enum() == _BLOCK_ENUM
+    assert all(a.lens is None for a in SALES_AREA_SET.areas)
+    referenced = {
+        key
+        for cfg in AREAS_BY_PROJECT_TYPE.values()
+        for keys in cfg.values()
+        for key in keys
+    }
+    assert referenced <= set(SALES_AREA_SET.keys())
