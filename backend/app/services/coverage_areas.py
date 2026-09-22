@@ -25,6 +25,12 @@ class AreaDefinition:
     key: str
     label: str
     order: int
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-19: lente autoritária da
+    # área ("produto" | "dados"), lida do REGISTRO estático — nunca do estado
+    # runtime. ÚLTIMO campo (dataclass frozen, precisa vir depois dos campos
+    # sem default). Default None satisfaz SALES_AREA_SET (D-19: sales fica
+    # sem lente).
+    lens: "str | None" = None
 
 
 @dataclass(frozen=True)
@@ -52,6 +58,15 @@ class AreaSet:
     def block_enum(self) -> str:
         return "|".join(self.keys())
 
+    def by_lens(self, lens: str) -> "AreaSet":
+        """Fase 3 / D-19: subconjunto de áreas cuja lente é `lens`. Método
+        derivado, no mesmo estilo de keys()/labels()/block_enum() — nenhum
+        método existente muda."""
+        return AreaSet(
+            name=f"{self.name}_{lens}",
+            areas=tuple(a for a in self._ordered() if a.lens == lens),
+        )
+
 
 # As 8 areas do modo vendas, na ordem atual (llm.py / prompt_builder.py / session_state.py).
 SALES_AREA_SET = AreaSet(
@@ -76,26 +91,26 @@ SALES_AREA_SET = AreaSet(
 DISCOVERY_AREA_SET = AreaSet(
     name="discovery",
     areas=(
-        # Produto (0-7) — D-06
-        AreaDefinition("gargalo", "Gargalo", 0),
-        AreaDefinition("frente_atuacao", "Frente de Atuação", 1),
-        AreaDefinition("impacto_usuario", "Impacto no Usuário", 2),
-        AreaDefinition("mapeamento_processos", "Mapeamento do Fluxo de Processos", 3),
-        AreaDefinition("fluxo_dados", "Fluxo dos Dados", 4),
-        AreaDefinition("desenho_solucao", "Desenho da Solução", 5),
-        AreaDefinition("expectativa_solucao", "Expectativa de Solução", 6),
-        AreaDefinition("viabilidade_solucao", "Viabilidade da Solução", 7),
-        # Dados (8-17) — D-06
-        AreaDefinition("qualidade_fontes", "Fontes e Qualidade dos Dados", 8),
-        AreaDefinition("metricas", "Métricas", 9),
-        AreaDefinition("lgpd_seguranca", "LGPD/Segurança", 10),
-        AreaDefinition("quick_wins", "Quick Wins", 11),
-        AreaDefinition("ciencia_dados", "Ciência de Dados", 12),
-        AreaDefinition("analise_dados", "Análise de Dados", 13),
-        AreaDefinition("engenharia_dados", "Engenharia de Dados", 14),
-        AreaDefinition("machine_learning", "Machine Learning", 15),
-        AreaDefinition("sistemas_nuvem", "Sistemas em Nuvem", 16),
-        AreaDefinition("automacoes", "Automações", 17),
+        # Produto (0-7) — D-06 / D-19 (lens="produto")
+        AreaDefinition("gargalo", "Gargalo", 0, "produto"),
+        AreaDefinition("frente_atuacao", "Frente de Atuação", 1, "produto"),
+        AreaDefinition("impacto_usuario", "Impacto no Usuário", 2, "produto"),
+        AreaDefinition("mapeamento_processos", "Mapeamento do Fluxo de Processos", 3, "produto"),
+        AreaDefinition("fluxo_dados", "Fluxo dos Dados", 4, "produto"),
+        AreaDefinition("desenho_solucao", "Desenho da Solução", 5, "produto"),
+        AreaDefinition("expectativa_solucao", "Expectativa de Solução", 6, "produto"),
+        AreaDefinition("viabilidade_solucao", "Viabilidade da Solução", 7, "produto"),
+        # Dados (8-17) — D-06 / D-19 (lens="dados")
+        AreaDefinition("qualidade_fontes", "Fontes e Qualidade dos Dados", 8, "dados"),
+        AreaDefinition("metricas", "Métricas", 9, "dados"),
+        AreaDefinition("lgpd_seguranca", "LGPD/Segurança", 10, "dados"),
+        AreaDefinition("quick_wins", "Quick Wins", 11, "dados"),
+        AreaDefinition("ciencia_dados", "Ciência de Dados", 12, "dados"),
+        AreaDefinition("analise_dados", "Análise de Dados", 13, "dados"),
+        AreaDefinition("engenharia_dados", "Engenharia de Dados", 14, "dados"),
+        AreaDefinition("machine_learning", "Machine Learning", 15, "dados"),
+        AreaDefinition("sistemas_nuvem", "Sistemas em Nuvem", 16, "dados"),
+        AreaDefinition("automacoes", "Automações", 17, "dados"),
     ),
 )
 

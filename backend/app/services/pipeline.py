@@ -279,14 +279,23 @@ class SessionPipeline:
                 self.state.session_id, "red_flag", rf.__dict__
             )
 
-    async def _run_question_planner(self) -> None:
-        key = self._resolve_gemini_key()
-        if not key:
-            await ws_manager.broadcast(
-                self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
-            )
-            return
-        # Max 5 queued
+    async def _run_single_planner(
+        self, lens: "str | None", prompt_key: str, max_questions: "int | None"
+    ) -> None:
+        """Fase 3 (Two-Agent Questions + Lens Tagging) / A2: helper único
+        extraído de `_run_question_planner` (era um corpo só, agora
+        parametrizado por lente). Roda uma chamada LLM + laço de
+        insert+broadcast para UM agente (Produto, Dados, ou o planner único
+        de sales quando `lens=None`).
+
+        `max_questions` corta a lista devolvida pelo LLM em
+        `[:max_questions]` (defesa em profundidade, D-20) — só quando não é
+        `None` (sales não corta, preserva D-24 byte-idêntico).
+
+        A trava de dedup normalizado (D-17) é aplicada SOMENTE quando
+        `lens is not None` (discovery) — ver Task 2.
+        """
+        # Max 5 queued (D-14: teto compartilhado, sem cota rígida por lente)
         queued_count = sum(1 for q in self.state.questions if q.status == "queued")
         if queued_count >= 5:
             return
@@ -301,17 +310,19 @@ class SessionPipeline:
             if q.status in ("queued", "pinned", "used")
         })
         questions, inp, out = await llm_service.generate_questions(
-            key,
+            self._resolve_gemini_key(),
             transcript,
             self.state.coverage_to_dict(),
             recent,
             self.state.project_type,
             self.state.data_maturity_score,
             bank_questions=self.state.bank_questions,
-            system_prompt=self.state.prompts.get("question_planner"),
+            system_prompt=self.state.prompts.get(prompt_key),
             pre_meeting_context=self.state.pre_meeting_context,
         )
         self.state.add_token_cost(inp, out)
+        if max_questions is not None:
+            questions = questions[:max_questions]
         db = get_supabase()
         now = datetime.now(timezone.utc)
         expires_at = (now + timedelta(seconds=self.state.question_ttl_seconds)).isoformat()
@@ -328,6 +339,7 @@ class SessionPipeline:
                 status="queued",
                 generated_at=now.isoformat(),
                 expires_at=expires_at,
+                lens=lens,
             )
             self.state.questions.append(q)
             db.table("questions").insert({
@@ -338,9 +350,41 @@ class SessionPipeline:
                 "source": "auto",
                 "status": "queued",
                 "expires_at": expires_at,
+                "lens": lens,
             }).execute()
             await ws_manager.broadcast(
                 self.state.session_id, "question_new", q.__dict__
+            )
+
+    async def _run_question_planner(self) -> None:
+        key = self._resolve_gemini_key()
+        if not key:
+            await ws_manager.broadcast(
+                self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
+            )
+            return
+
+        # Fase 3 / D-24: gate único por `mode` — mesmo padrão já usado na
+        # seleção de builder (pipeline.py PipelineManager.get_or_create).
+        # NUNCA introduzir um segundo flag paralelo a `mode`.
+        if self.state.mode == "discovery":
+            # D-13: contador incrementa a CADA gatilho discovery; Produto
+            # roda sempre, Dados só quando o contador fecha ciclo par.
+            self.state.question_trigger_count += 1
+            # D-16: await SEQUENCIAL (nunca asyncio.gather) — o Dados precisa
+            # ver as perguntas do Produto no seu `recent` (Pitfall 5).
+            await self._run_single_planner(
+                lens="produto", prompt_key="question_planner_produto", max_questions=3
+            )
+            if self.state.question_trigger_count % 2 == 0:
+                await self._run_single_planner(
+                    lens="dados", prompt_key="question_planner_dados", max_questions=2
+                )
+        else:
+            # Sales: caminho de hoje, byte-idêntico (D-24) — sem contador,
+            # sem fatiamento, lens=None.
+            await self._run_single_planner(
+                lens=None, prompt_key="question_planner", max_questions=None
             )
 
     async def _run_report_generator(self) -> Optional[str]:

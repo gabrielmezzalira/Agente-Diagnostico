@@ -68,6 +68,10 @@ class Question:
     status: str  # queued | pinned | dismissed | used
     generated_at: str
     expires_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-21: lente do agente que
+    # gerou a pergunta ("produto" | "dados"), setada pelo orquestrador — nunca
+    # derivada de `block`. ÚLTIMO campo, default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass
@@ -92,6 +96,10 @@ class SessionState:
 
     tokens_used: int = 0
     cost_usd: float = 0.0
+    # Fase 3 / D-13: contador determinístico de gatilhos de geração de
+    # perguntas no discovery. Estado em memória da sessão (não persistido,
+    # D-13); nunca incrementado no sales (D-24).
+    question_trigger_count: int = 0
     structured_context: Optional[Any] = None  # StructuredContext | None
 
     chunk_queue: asyncio.Queue = field(default_factory=asyncio.Queue)

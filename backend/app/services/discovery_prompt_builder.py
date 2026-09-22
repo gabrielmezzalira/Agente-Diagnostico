@@ -26,6 +26,15 @@ o agente como um facilitador de discovery — mapeia o gargalo, a frente de
 atuacao, o impacto no usuario, o fluxo de processos e de dados, e o
 desenho/expectativa/viabilidade da solucao — mantendo a calibracao por DMS e
 removendo qualquer referencia ao portfolio comercial da CITi.
+
+Fase 3 (Two-Agent Questions + Lens Tagging) / D-19, D-21, D-23:
+build_question_planner ganha o parametro `lens` ("produto" | "dados") e
+escopa o enum de block ao subconjunto de areas daquela lente
+(DISCOVERY_AREA_SET.by_lens(lens)). build_all() passa a devolver duas
+chaves de planner (question_planner_produto / question_planner_dados) em
+vez de uma unica question_planner — a lente e sempre autoritaria do laco do
+orquestrador que consome o prompt, nunca derivada do campo `block` que o
+LLM devolve (D-21).
 """
 
 from app.services.coverage_areas import DISCOVERY_AREA_SET
@@ -152,7 +161,9 @@ class DiscoveryPromptBuilder:
     # QuestionPlanner
     # -------------------------------------------------------------------------
 
-    def build_question_planner(self) -> str:
+    def build_question_planner(self, lens: str) -> str:
+        scoped = DISCOVERY_AREA_SET.by_lens(lens)
+
         if self.dms is None:
             vocab_hint = (
                 "DMS NÃO MAPEADO: adapte o vocabulário ao que a conversa revelar. "
@@ -178,17 +189,39 @@ class DiscoveryPromptBuilder:
         question_hint = self.sc.to_question_hint() if self.sc else ""
         question_block = f"{question_hint}\n\n" if question_hint else ""
 
+        # Fase 3 / D-20, D-21: enquadramento e quantidade variam por lente —
+        # Produto (primária, roda em todo gatilho) pede 3; Dados (auxiliar,
+        # roda em gatilho par) pede 2. Texto de enquadramento discricionário
+        # (analogo a D-10), a validar pelo time.
+        if lens == "produto":
+            framing = (
+                "Você é o QuestionPlanner de PRODUTO (lente primária) atuando como "
+                "facilitador de discovery — suas perguntas mapeiam o gargalo, a "
+                "frente de atuação, o impacto no usuário, o mapeamento de processos "
+                "e a viabilidade de entrega da solução. Você roda em TODO ciclo de "
+                "geração desta sessão."
+            )
+            n_questions = 3
+        else:  # lens == "dados"
+            framing = (
+                "Você é o QuestionPlanner de DADOS (lente auxiliar) atuando como "
+                "facilitador de discovery — suas perguntas mapeiam as fontes e a "
+                "qualidade dos dados, as métricas relevantes, riscos de "
+                "LGPD/segurança, a abordagem técnica da solução e possíveis quick "
+                "wins. Você roda com menor frequência que o QuestionPlanner de "
+                "Produto — aproveite cada ciclo para aprofundar o que ainda não foi "
+                "perguntado."
+            )
+            n_questions = 2
+
         return (
-            "Você é um QuestionPlanner atuando como facilitador de discovery — as "
-            "perguntas mapeiam o gargalo, a frente de atuação, o impacto no usuário, "
-            "o fluxo de processos e de dados, e o desenho/expectativa/viabilidade da "
-            "solução.\n"
+            f"{framing}\n"
             f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n"
             f"Contexto pré-reunião (o que já se sabe antes da conversa): {self.context}\n\n"
             f"{question_block}"
             f"{vocab_hint}\n\n"
-            "Sua tarefa: gerar exatamente 3 perguntas em português para o facilitador "
-            "fazer ao cliente.\n\n"
+            f"Sua tarefa: gerar exatamente {n_questions} perguntas em português para o "
+            "facilitador fazer ao cliente.\n\n"
             "ESTILO OBRIGATÓRIO — curtas, diretas, interrogativas:\n"
             "✅ BOM: 'Qual o principal gargalo hoje?', 'Quem sente esse impacto?', "
             "'Como os dados fluem entre os sistemas?'\n"
@@ -201,7 +234,7 @@ class DiscoveryPromptBuilder:
             "2. Olhe a cobertura — priorize áreas ainda descobertas ou com score baixo.\n"
             "3. Não repita perguntas recentes.\n\n"
             "Retorne APENAS JSON válido:\n"
-            '{"questions":[{"text":"...","block":"' + DISCOVERY_AREA_SET.block_enum() + '"}]}'
+            '{"questions":[{"text":"...","block":"' + scoped.block_enum() + '"}]}'
         )
 
     # -------------------------------------------------------------------------
@@ -241,9 +274,12 @@ class DiscoveryPromptBuilder:
     # -------------------------------------------------------------------------
 
     def build_all(self) -> dict[str, str]:
+        # D-23: dois valores de planner (Produto sempre roda; Dados só em
+        # gatilho par) — substitui a chave única "question_planner" do sales.
         return {
             "coverage_classifier": self.build_coverage_classifier(),
             "red_flag_detector": self.build_red_flag_detector(),
-            "question_planner": self.build_question_planner(),
+            "question_planner_produto": self.build_question_planner(lens="produto"),
+            "question_planner_dados": self.build_question_planner(lens="dados"),
             "report_generator": self.build_report_generator(),
         }
