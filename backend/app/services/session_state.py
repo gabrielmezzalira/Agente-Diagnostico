@@ -57,6 +57,11 @@ class RedFlag:
     severity: str  # warning | critical
     evidence: str
     detected_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-22: lente do red flag
+    # ("produto" | "dados"), classificada pelo LLM no discovery com fallback
+    # "produto" via allowlist quando ausente/vazia/inválida. ÚLTIMO campo,
+    # default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass
@@ -68,6 +73,10 @@ class Question:
     status: str  # queued | pinned | dismissed | used
     generated_at: str
     expires_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-21: lente do agente que
+    # gerou a pergunta ("produto" | "dados"), setada pelo orquestrador — nunca
+    # derivada de `block`. ÚLTIMO campo, default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass
@@ -92,6 +101,10 @@ class SessionState:
 
     tokens_used: int = 0
     cost_usd: float = 0.0
+    # Fase 3 / D-13: contador determinístico de gatilhos de geração de
+    # perguntas no discovery. Estado em memória da sessão (não persistido,
+    # D-13); nunca incrementado no sales (D-24).
+    question_trigger_count: int = 0
     structured_context: Optional[Any] = None  # StructuredContext | None
 
     chunk_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
@@ -141,7 +154,20 @@ class SessionState:
         return self.budget_usd - self.cost_usd
 
     def coverage_to_dict(self) -> dict:
+        # Fase 3 (Two-Agent Questions + Lens Tagging) / D-19: a lente de cada
+        # área vem do REGISTRO estático (AreaDefinition.lens) por lookup de
+        # chave conforme `mode` — nunca do CoverageArea runtime (Pitfall 3).
+        # Áreas custom (sem AreaDefinition correspondente) caem no .get(area)
+        # → None, sem tratamento especial nem crash.
+        area_set = DISCOVERY_AREA_SET if self.mode == "discovery" else SALES_AREA_SET
+        lens_by_key = {a.key: a.lens for a in area_set.areas}
         return {
-            area: {"status": c.status, "score": c.score, "notes": c.notes, "name": c.name}
+            area: {
+                "status": c.status,
+                "score": c.score,
+                "notes": c.notes,
+                "name": c.name,
+                "lens": lens_by_key.get(area),
+            }
             for area, c in self.coverage.items()
         }

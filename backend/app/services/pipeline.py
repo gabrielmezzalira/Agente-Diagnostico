@@ -16,6 +16,13 @@ from app.services.ws_manager import ws_manager
 _log = logging.getLogger(__name__)
 
 
+def _normalize_question_text(text: str) -> str:
+    """Fase 3 (Two-Agent Questions + Lens Tagging) / D-17: função pura, sem
+    side effects — normaliza texto de pergunta (trim + minúsculas + colapso
+    de espaços) para a trava de dedup entre os agentes Produto/Dados."""
+    return " ".join(text.strip().lower().split())
+
+
 class SessionPipeline:
     def __init__(self, state: SessionState):
         self.state = state
@@ -259,12 +266,22 @@ class SessionPipeline:
                 continue
             flag_id = str(uuid.uuid4())
             now = datetime.now(timezone.utc).isoformat()
+            # Fase 3 / D-22: lente do red flag SOMENTE no discovery — allowlist
+            # fechada {"produto","dados"} com fallback "produto"; valor bruto
+            # do LLM (influenciável pela transcrição) nunca é persistido sem
+            # passar pela allowlist. `.get("lens","")` (nunca indexação
+            # direta) porque o sales não devolve o campo.
+            lens = None
+            if self.state.mode == "discovery":
+                raw_lens = str(flag.get("lens", "")).strip().lower()
+                lens = raw_lens if raw_lens in ("produto", "dados") else "produto"
             rf = RedFlag(
                 id=flag_id,
                 text=text,
                 severity=flag.get("severity", "warning"),
                 evidence=flag.get("evidence", ""),
                 detected_at=now,
+                lens=lens,
             )
             self.state.red_flags.append(rf)
             existing_texts.add(text[:60])
@@ -274,19 +291,29 @@ class SessionPipeline:
                 "text": rf.text,
                 "severity": rf.severity,
                 "evidence": rf.evidence,
+                "lens": rf.lens,
             }).execute()
             await ws_manager.broadcast(
                 self.state.session_id, "red_flag", rf.__dict__
             )
 
-    async def _run_question_planner(self) -> None:
-        key = self._resolve_gemini_key()
-        if not key:
-            await ws_manager.broadcast(
-                self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
-            )
-            return
-        # Max 5 queued
+    async def _run_single_planner(
+        self, lens: "str | None", prompt_key: str, max_questions: "int | None"
+    ) -> None:
+        """Fase 3 (Two-Agent Questions + Lens Tagging) / A2: helper único
+        extraído de `_run_question_planner` (era um corpo só, agora
+        parametrizado por lente). Roda uma chamada LLM + laço de
+        insert+broadcast para UM agente (Produto, Dados, ou o planner único
+        de sales quando `lens=None`).
+
+        `max_questions` corta a lista devolvida pelo LLM em
+        `[:max_questions]` (defesa em profundidade, D-20) — só quando não é
+        `None` (sales não corta, preserva D-24 byte-idêntico).
+
+        A trava de dedup normalizado (D-17) é aplicada SOMENTE quando
+        `lens is not None` (discovery) — ver Task 2.
+        """
+        # Max 5 queued (D-14: teto compartilhado, sem cota rígida por lente)
         queued_count = sum(1 for q in self.state.questions if q.status == "queued")
         if queued_count >= 5:
             return
@@ -301,24 +328,52 @@ class SessionPipeline:
             if q.status in ("queued", "pinned", "used")
         })
         questions, inp, out = await llm_service.generate_questions(
-            key,
+            self._resolve_gemini_key(),
             transcript,
             self.state.coverage_to_dict(),
             recent,
             self.state.project_type,
             self.state.data_maturity_score,
             bank_questions=self.state.bank_questions,
-            system_prompt=self.state.prompts.get("question_planner"),
+            system_prompt=self.state.prompts.get(prompt_key),
             pre_meeting_context=self.state.pre_meeting_context,
         )
         self.state.add_token_cost(inp, out)
+        if max_questions is not None:
+            questions = questions[:max_questions]
         db = get_supabase()
         now = datetime.now(timezone.utc)
         expires_at = (now + timedelta(seconds=self.state.question_ttl_seconds)).isoformat()
+        # D-17: trava de dedup por texto normalizado — SOMENTE no discovery
+        # (lens is not None). Como o Dados roda DEPOIS do Produto inserir
+        # (await sequencial, D-16), este set já contém os textos do Produto
+        # quando o laço do Dados executa — não precisa recalcular fora do
+        # helper. No sales (lens is None) a trava não roda, preservando o
+        # comportamento byte-idêntico de hoje (D-24).
+        # WR-02 (03-REVIEW.md): exclui status "dismissed" do conjunto —
+        # perguntas que só expiraram por TTL (_expire_due_questions também
+        # usa "dismissed") não podem ficar banidas para o resto da sessão;
+        # sem status distinto para "rejeitada manualmente" vs "expirou sem
+        # interação", a opção segura é não travar em nenhum dos dois casos.
+        existing_normalized = (
+            {
+                _normalize_question_text(q.text)
+                for q in self.state.questions
+                if q.status != "dismissed"
+            }
+            if lens is not None
+            else None
+        )
         for q_data in questions:
             queued_count = sum(1 for q in self.state.questions if q.status == "queued")
             if queued_count >= 5:
                 break
+            text = q_data.get("text", "")
+            if existing_normalized is not None:
+                norm = _normalize_question_text(text)
+                if not text or norm in existing_normalized:
+                    continue
+                existing_normalized.add(norm)
             q_id = str(uuid.uuid4())
             q = Question(
                 id=q_id,
@@ -328,6 +383,7 @@ class SessionPipeline:
                 status="queued",
                 generated_at=now.isoformat(),
                 expires_at=expires_at,
+                lens=lens,
             )
             self.state.questions.append(q)
             db.table("questions").insert({
@@ -338,9 +394,41 @@ class SessionPipeline:
                 "source": "auto",
                 "status": "queued",
                 "expires_at": expires_at,
+                "lens": lens,
             }).execute()
             await ws_manager.broadcast(
                 self.state.session_id, "question_new", q.__dict__
+            )
+
+    async def _run_question_planner(self) -> None:
+        key = self._resolve_gemini_key()
+        if not key:
+            await ws_manager.broadcast(
+                self.state.session_id, "error", {"message": "Chave Gemini não configurada para este projeto."}
+            )
+            return
+
+        # Fase 3 / D-24: gate único por `mode` — mesmo padrão já usado na
+        # seleção de builder (pipeline.py PipelineManager.get_or_create).
+        # NUNCA introduzir um segundo flag paralelo a `mode`.
+        if self.state.mode == "discovery":
+            # D-13: contador incrementa a CADA gatilho discovery; Produto
+            # roda sempre, Dados só quando o contador fecha ciclo par.
+            self.state.question_trigger_count += 1
+            # D-16: await SEQUENCIAL (nunca asyncio.gather) — o Dados precisa
+            # ver as perguntas do Produto no seu `recent` (Pitfall 5).
+            await self._run_single_planner(
+                lens="produto", prompt_key="question_planner_produto", max_questions=3
+            )
+            if self.state.question_trigger_count % 2 == 0:
+                await self._run_single_planner(
+                    lens="dados", prompt_key="question_planner_dados", max_questions=2
+                )
+        else:
+            # Sales: caminho de hoje, byte-idêntico (D-24) — sem contador,
+            # sem fatiamento, lens=None.
+            await self._run_single_planner(
+                lens=None, prompt_key="question_planner", max_questions=None
             )
 
     async def _run_report_generator(self) -> Optional[str]:
@@ -352,7 +440,12 @@ class SessionPipeline:
             q.text for q in self.state.questions if q.status in ("used", "pinned")
         ]
         red_flags_raw = [
-            {"text": rf.text, "severity": rf.severity, "evidence": rf.evidence}
+            {
+                "text": rf.text,
+                "severity": rf.severity,
+                "evidence": rf.evidence,
+                "lens": rf.lens,
+            }
             for rf in self.state.red_flags
         ]
         markdown, inp, out = await llm_service.generate_report(
@@ -436,6 +529,7 @@ class SessionPipeline:
                 severity=f.get("severity", "warning"),
                 evidence=f.get("evidence", ""),
                 detected_at=f.get("detected_at", ""),
+                lens=f.get("lens"),
             ))
 
         questions = (
@@ -456,6 +550,7 @@ class SessionPipeline:
                 status=q["status"],
                 generated_at=q.get("generated_at", ""),
                 expires_at=q.get("expires_at", ""),
+                lens=q.get("lens"),
             ))
 
         # Injetar perguntas recomendadas do contexto pré-reunião como pinned,

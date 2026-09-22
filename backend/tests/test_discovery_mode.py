@@ -107,20 +107,28 @@ def test_build_red_flag_detector_has_dms_no_citi():
 
 
 def test_build_question_planner_has_dms_no_citi_and_block_enum():
+    # Fase 3 / D-19, D-21: build_question_planner agora recebe `lens` e
+    # escopa o enum de block ao subconjunto de áreas daquela lente (não mais
+    # ao DISCOVERY_AREA_SET inteiro) — ver test_two_agent_lens.py para a
+    # cobertura completa do split por lente.
     b = DiscoveryPromptBuilder(dms=3, pre_meeting_context="x")
-    prompt = b.build_question_planner()
+    prompt = b.build_question_planner(lens="produto")
 
     assert b._dms_str() in prompt
     assert "CITI_PORTFOLIO" not in prompt
-    assert DISCOVERY_AREA_SET.block_enum() in prompt
+    assert DISCOVERY_AREA_SET.by_lens("produto").block_enum() in prompt
 
 
-def test_build_all_returns_four_agent_keys():
+def test_build_all_returns_five_agent_keys():
+    # Fase 3 / D-23: question_planner (1 chave) vira question_planner_produto
+    # + question_planner_dados (2 chaves) — 4 chaves viram 5.
     b = DiscoveryPromptBuilder(dms=None)
     prompts = b.build_all()
 
     assert set(prompts.keys()) == {
-        "coverage_classifier", "red_flag_detector", "question_planner", "report_generator",
+        "coverage_classifier", "red_flag_detector",
+        "question_planner_produto", "question_planner_dados",
+        "report_generator",
     }
 
 
@@ -128,7 +136,7 @@ def test_dms_boundary_values_do_not_raise():
     for dms in (1, 5, None):
         b = DiscoveryPromptBuilder(dms=dms)
         prompts = b.build_all()
-        assert len(prompts) == 4
+        assert len(prompts) == 5
     assert DiscoveryPromptBuilder(dms=None)._dms_str().startswith("Não mapeado")
 
 
@@ -229,14 +237,16 @@ async def test_disc03_citi_portfolio_absent_from_all_four_discovery_surfaces(mon
     builder = DiscoveryPromptBuilder(dms=3, pre_meeting_context="contexto de teste")
     coverage_classifier = builder.build_coverage_classifier()
     red_flag_detector = builder.build_red_flag_detector()
-    question_planner = builder.build_question_planner()
+    question_planner_produto = builder.build_question_planner(lens="produto")
+    question_planner_dados = builder.build_question_planner(lens="dados")
 
     report_user = await _capture_report_user(monkeypatch, mode="discovery")
 
     surfaces = {
         "coverage_classifier": coverage_classifier,
         "red_flag_detector": red_flag_detector,
-        "question_planner": question_planner,
+        "question_planner_produto": question_planner_produto,
+        "question_planner_dados": question_planner_dados,
         "report_generator_user": report_user,
     }
 
@@ -244,5 +254,8 @@ async def test_disc03_citi_portfolio_absent_from_all_four_discovery_surfaces(mon
         assert "CITI_PORTFOLIO" not in text, f"{name} vaza CITI_PORTFOLIO"
 
     dms_str = builder._dms_str()
-    for name in ("coverage_classifier", "red_flag_detector", "question_planner"):
+    for name in (
+        "coverage_classifier", "red_flag_detector",
+        "question_planner_produto", "question_planner_dados",
+    ):
         assert dms_str in surfaces[name], f"{name} nao contem calibracao DMS"

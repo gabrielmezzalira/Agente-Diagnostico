@@ -16,11 +16,11 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 
 ### Two Lenses / Two Agents (LENS)
 
-- [ ] **LENS-01**: A "Produto" agent (primary) generates discovery questions covering the bottleneck, frente de atuação, user impact, process mapping, and delivery viability.
-- [ ] **LENS-02**: A "Dados" agent (auxiliary) generates data-focused questions (sources, quality, metrics, LGPD/security, solution approach, quick wins), triggered less often / on demand.
-- [ ] **LENS-03**: Questions from both agents appear in one shared queue, each tagged with its lens (produto/dados).
-- [ ] **LENS-04**: Coverage areas and red flags carry a lens tag.
-- [ ] **LENS-05**: No duplicate questions across the two agents (shared anti-repetition).
+- [x] **LENS-01**: A "Produto" agent (primary) generates discovery questions covering the bottleneck, frente de atuação, user impact, process mapping, and delivery viability.
+- [x] **LENS-02**: A "Dados" agent (auxiliary) generates data-focused questions (sources, quality, metrics, LGPD/security, solution approach, quick wins), triggered less often / on demand.
+- [x] **LENS-03**: Questions from both agents appear in one shared queue, each tagged with its lens (produto/dados).
+- [x] **LENS-04**: Coverage areas and red flags carry a lens tag.
+- [x] **LENS-05**: No duplicate questions across the two agents (shared anti-repetition).
 
 ### Report + Pricing (REP)
 
@@ -40,6 +40,7 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 - [ ] **TAQ-02**: A Taqciti stream binds to the correct backend discovery session (auto-detect from the web app + manual fallback).
 - [ ] **TAQ-03**: The transcription webhook is protected by an opt-in shared-secret header (does not break current production when unset).
 - [ ] **TAQ-04**: The old custom extension is retired after Taqciti is validated (cutover).
+- [ ] **TAQ-05**: During a live call, backend-generated discovery questions (each with its produto/dados lens) appear in near-real-time inside a dedicated "AGP" tab in the Taqciti extension, scoped to the bound session.
 
 ## Future Requirements
 
@@ -77,11 +78,11 @@ Which phases cover which requirements. Filled during roadmap creation.
 | DISC-01 | Phase 2 | Complete |
 | DISC-02 | Phase 2 | Complete |
 | DISC-03 | Phase 2 | Complete |
-| LENS-01 | Phase 3 | Pending |
-| LENS-02 | Phase 3 | Pending |
-| LENS-03 | Phase 3 | Pending |
-| LENS-04 | Phase 3 | Pending |
-| LENS-05 | Phase 3 | Pending |
+| LENS-01 | Phase 3 | Complete |
+| LENS-02 | Phase 3 | Complete |
+| LENS-03 | Phase 3 | Complete |
+| LENS-04 | Phase 3 | Complete |
+| LENS-05 | Phase 3 | Complete |
 | REP-01 | Phase 4 | Pending |
 | REP-02 | Phase 4 | Pending |
 | REP-03 | Phase 4 | Pending |
@@ -92,11 +93,12 @@ Which phases cover which requirements. Filled during roadmap creation.
 | TAQ-01 | Phase 7 | Pending |
 | TAQ-02 | Phase 8 | Pending |
 | TAQ-04 | Phase 9 | Pending |
+| TAQ-05 | Phase 10 | Pending |
 
 **Coverage:**
 
-- v3.0 requirements: 19 total
-- Mapped to phases: 19
+- v3.0 requirements: 20 total
+- Mapped to phases: 20
 - Unmapped: 0 ✓
 
 ---
