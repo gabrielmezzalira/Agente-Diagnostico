@@ -13,6 +13,7 @@ export interface Project {
   pre_meeting_context: string | null
   meeting_url: string | null
   source: string
+  mode: 'sales' | 'discovery'
   question_ttl_seconds: number
   has_api_key: boolean
   has_active_session: boolean
@@ -57,6 +58,7 @@ export interface ProjectCreate {
   pre_meeting_context?: string
   meeting_url?: string
   source: 'extension' | 'recall'
+  mode: 'sales' | 'discovery'
   question_ttl_seconds: number
   pricing_llm_provider?: string
   pricing_llm_model?: string

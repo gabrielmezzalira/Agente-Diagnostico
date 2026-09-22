@@ -14,6 +14,7 @@ class QuestionResponse(BaseModel):
     session_id: UUID
     text: str
     block: Optional[str] = None
+    lens: Optional[str] = None
     source: str
     status: str
     generated_at: datetime

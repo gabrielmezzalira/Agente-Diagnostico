@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 
 ProjectType = Literal["bi", "ml", "data_engineering", "automation", "integration", "science"]
 TranscriptSource = Literal["extension", "recall"]
+ProjectMode = Literal["sales", "discovery"]
 
 
 class ProjectCreate(BaseModel):
@@ -25,6 +26,7 @@ class ProjectCreate(BaseModel):
     pricing_llm_model: Optional[str] = None
     pricing_api_key: Optional[str] = None
     citi_flow_run_id: Optional[str] = None
+    mode: ProjectMode = "sales"
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -50,6 +52,7 @@ class ProjectUpdate(BaseModel):
     pricing_llm_model: Optional[str] = None
     pricing_api_key: Optional[str] = None
     citi_flow_run_id: Optional[str] = None
+    mode: Optional[ProjectMode] = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -78,3 +81,4 @@ class ProjectResponse(BaseModel):
     pricing_llm_provider: Optional[str] = None
     pricing_llm_model: Optional[str] = None
     has_pricing_api_key: bool = False
+    mode: ProjectMode

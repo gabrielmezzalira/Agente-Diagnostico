@@ -2,23 +2,39 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from app.services.llm import INPUT_COST_PER_1K, OUTPUT_COST_PER_1K
-from app.services.prompt_builder import AREAS_BY_PROJECT_TYPE
+from app.services.coverage_areas import (
+    AREAS_BY_PROJECT_TYPE,
+    DISCOVERY_AREA_SET,
+    SALES_AREA_SET,
+)
+from app.services.llm import (
+    INPUT_COST_PER_1K,
+    OUTPUT_COST_PER_1K,
+    REPORT_MAX_OUTPUT_TOKENS,
+)
 
-COVERAGE_AREAS = [
-    "negocio", "eng_dados", "visualizacao", "ciencia_dados",
-    "automacao", "integracao", "consumo", "parceria",
-]
+# Margem de segurança sobre o custo estimado do relatório (F7 do SDD): 20%.
+REPORT_COST_MARGIN = 1.2
 
 
 def _init_coverage(
-    project_type: str, custom_areas: "Optional[List[dict]]" = None
+    project_type: str,
+    mode: str = "sales",
+    custom_areas: "Optional[List[dict]]" = None,
 ) -> "Dict[str, CoverageArea]":
-    inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
-    coverage = {
-        a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
-        for a in COVERAGE_AREAS
-    }
+    # Fase 2 (Discovery Mode) / D-08: no discovery as 18 areas ficam SEMPRE
+    # ativas — sem o esquema critical/optional/inactive por project_type que
+    # o sales usa. `mode` fica como kwarg novo com default "sales" (NAO
+    # promover a 1o parametro posicional — quebraria test_session_state_custom_areas.py,
+    # que chama _init_coverage("bi") posicionalmente. Pitfall 2 do RESEARCH.md).
+    if mode == "discovery":
+        coverage = {a: CoverageArea() for a in DISCOVERY_AREA_SET.keys()}
+    else:
+        inactive = set(AREAS_BY_PROJECT_TYPE.get(project_type, {}).get("inactive", []))
+        coverage = {
+            a: CoverageArea(status="not_applicable") if a in inactive else CoverageArea()
+            for a in SALES_AREA_SET.keys()
+        }
     for area in custom_areas or []:
         key = area.get("key")
         if key:
@@ -41,6 +57,11 @@ class RedFlag:
     severity: str  # warning | critical
     evidence: str
     detected_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-22: lente do red flag
+    # ("produto" | "dados"), classificada pelo LLM no discovery com fallback
+    # "produto" via allowlist quando ausente/vazia/inválida. ÚLTIMO campo,
+    # default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass
@@ -52,6 +73,10 @@ class Question:
     status: str  # queued | pinned | dismissed | used
     generated_at: str
     expires_at: str
+    # Fase 3 (Two-Agent Questions + Lens Tagging) / D-21: lente do agente que
+    # gerou a pergunta ("produto" | "dados"), setada pelo orquestrador — nunca
+    # derivada de `block`. ÚLTIMO campo, default None (None no sales, D-24).
+    lens: "str | None" = None
 
 
 @dataclass
@@ -59,6 +84,7 @@ class SessionState:
     session_id: str
     project_id: str = ""
     project_type: str = ""
+    mode: str = "sales"
     data_maturity_score: Optional[int] = None
     pre_meeting_context: str = ""
     budget_usd: Optional[float] = None
@@ -75,13 +101,17 @@ class SessionState:
 
     tokens_used: int = 0
     cost_usd: float = 0.0
+    # Fase 3 / D-13: contador determinístico de gatilhos de geração de
+    # perguntas no discovery. Estado em memória da sessão (não persistido,
+    # D-13); nunca incrementado no sales (D-24).
+    question_trigger_count: int = 0
     structured_context: Optional[Any] = None  # StructuredContext | None
 
     chunk_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
 
     def __post_init__(self) -> None:
         if not self.coverage:
-            self.coverage = _init_coverage(self.project_type, self.custom_areas)
+            self.coverage = _init_coverage(self.project_type, mode=self.mode, custom_areas=self.custom_areas)
 
     def get_transcript_text(self, last_n: int = 0) -> str:
         chunks = self.transcript_chunks[-last_n:] if last_n else self.transcript_chunks
@@ -107,8 +137,16 @@ class SessionState:
         self.cost_usd += cost
 
     def estimated_report_cost(self) -> float:
+        # Saída estimada = teto real de tokens do relatório (mesma constante que
+        # generate_report usa), não um chute fixo. Sem isto o custo era
+        # subestimado em ~6× e a parada automática por budget (F7) ficava
+        # cega. Aplica margem de 20% conforme o SDD.
         transcript_tokens = len(self.get_transcript_text()) // 4 + 2000
-        return (transcript_tokens / 1000) * INPUT_COST_PER_1K + (2500 / 1000) * OUTPUT_COST_PER_1K
+        raw = (
+            (transcript_tokens / 1000) * INPUT_COST_PER_1K
+            + (REPORT_MAX_OUTPUT_TOKENS / 1000) * OUTPUT_COST_PER_1K
+        )
+        return raw * REPORT_COST_MARGIN
 
     def budget_remaining(self) -> Optional[float]:
         if self.budget_usd is None:
@@ -116,7 +154,20 @@ class SessionState:
         return self.budget_usd - self.cost_usd
 
     def coverage_to_dict(self) -> dict:
+        # Fase 3 (Two-Agent Questions + Lens Tagging) / D-19: a lente de cada
+        # área vem do REGISTRO estático (AreaDefinition.lens) por lookup de
+        # chave conforme `mode` — nunca do CoverageArea runtime (Pitfall 3).
+        # Áreas custom (sem AreaDefinition correspondente) caem no .get(area)
+        # → None, sem tratamento especial nem crash.
+        area_set = DISCOVERY_AREA_SET if self.mode == "discovery" else SALES_AREA_SET
+        lens_by_key = {a.key: a.lens for a in area_set.areas}
         return {
-            area: {"status": c.status, "score": c.score, "notes": c.notes, "name": c.name}
+            area: {
+                "status": c.status,
+                "score": c.score,
+                "notes": c.notes,
+                "name": c.name,
+                "lens": lens_by_key.get(area),
+            }
             for area, c in self.coverage.items()
         }

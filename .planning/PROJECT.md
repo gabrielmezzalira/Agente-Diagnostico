@@ -2,11 +2,21 @@
 
 ## What This Is
 
-A pre-sales technical risk detection system for CITi's data team. It acts as a senior tech lead interrogating projects before contract signing, surfacing technical risks through structured AI-driven interviews. Operates in two modes: interactive terminal (sales person describes project, agent asks questions one at a time) and realtime web (agent monitors a live meeting via audio transcription, classifies risk areas, fires alerts, and suggests questions to the sales person in real time).
+An AI **discovery assistant** for CITi's Produto and Dados teams, present in live discovery calls. Transcript is captured from Google Meet via **Taqciti** and streamed to the backend; two coordinated agents analyze it in real time — **Produto** (primary: maps the bottleneck, the frente de atuação, user impact, the full process flow, and what is viable to pass to delivery) and **Dados** (auxiliary: sources, data quality, metrics, LGPD/security, solution approach GenAI/ML/other, quick wins). Both feed a single question queue, raise lens-tagged red flags, and produce one complete discovery document that feeds pricing (Precificador). The system was originally built as a pre-sales technical-risk tool ("sales mode"), which is retained behind a mode flag; the current milestone pivots it to discovery.
 
 ## Core Value
 
-The sales team can identify and communicate technical risks to the client **before** the contract is signed, avoiding costly project failures during execution.
+Discovery teams map the bottleneck and its solution **completely during the call**, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly.
+
+## Current Milestone: v3.0 Pivot Discovery
+
+**Goal:** Pivot the agent from sales-acceleration to a live discovery assistant integrated with Taqciti, covering the Produto and Dados lenses, producing a discovery document that feeds pricing (MVP vertical slice, real Meet call).
+
+**Target features:**
+- Discovery mode + single coverage-area registry (Produto + Dados lenses), sales mode retained behind a flag
+- Two coordinated agents (Produto primary, Dados auxiliary) sharing one lens-tagged question queue
+- Discovery report with a "Métricas para Precificação" section feeding `import-from-diagnosis`
+- Taqciti live streaming as the transcription source; retire the duplicated custom extension
 
 ## Requirements
 
@@ -20,26 +30,28 @@ The sales team can identify and communicate technical risks to the client **befo
 - ✓ ReportGenerator — LLM produces Markdown report, saves to local file — v1
 - ✓ WebhookServer (aiohttp :8765) — receives Taqtic/Recall.ai transcription chunks — v1
 - ✓ GeminiClient wrapping google-generativeai SDK (deprecated; migration to google.genai required for v2) — v1
+- ✓ F1–F10 v2 web app: project config CRUD, session setup, dynamic PromptBuilder, question bank, monitoring screen (WebSocket 3-column), question queue (pin/dismiss/TTL), budget control, session persistence/history, Data Maturity Score — v2.0
+- ✓ Agente Precificador: pricing CRUD + calc engine, LLM feature suggestions, LangGraph pricing chatbot, diagnostic→pricing handoff (import-from-diagnosis), CITi Flow integration — v2.0
+- ✓ Chrome extension: Google Meet caption capture → `/webhook/extension` streaming ingestion — v2.0
 
 ### Active
 
-- [ ] F1: Project configuration CRUD (UI + Supabase schema for all 9 tables)
-- [ ] F2: Session setup flow (create session, pre-fill from project, redirect to monitoring)
-- [ ] F9: Tunnel URL exposure (cloudflared/ngrok auto-start, public URL displayed)
-- [ ] F4: Question bank (thematic blocks per project type, seeded data)
-- [ ] F3: Dynamic prompt generation (PromptBuilder class, prompts stored in session_prompts)
-- [ ] F5: Monitoring screen (React 3-column layout, WebSocket, budget bar, actions)
-- [ ] F6: Question queue (pin/dismiss/TTL/used states, anti-repeat, max 5 queued)
-- [ ] F7: Real-time budget control (TokenCounter, auto-stop, cost estimation)
-- [ ] F8: Session persistence and history (full transcript, snapshots, timeline view)
-- [ ] F10: Data Maturity Score (1-5 slider, calibrates all agents, maturity section in report)
+<!-- Milestone v3.0 — Pivot Discovery. See REQUIREMENTS.md for full list. -->
+
+- [ ] DISC: Discovery mode (project mode flag, discovery coverage areas, discovery framing, single area registry)
+- [ ] LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging
+- [ ] REP: Discovery report with "Métricas para Precificação" section feeding the Precificador
+- [ ] UI: Two-lens monitoring (coverage grouped by lens, lens badges, server-driven areas)
+- [ ] TAQ: Taqciti live streaming as transcription source; retire custom extension
 
 ### Out of Scope
 
-- LangChain/LangGraph — async concurrency pattern incompatible with 6-task pipeline; adds 100+ packages for no gain. (ADR)
-- Removing v1 terminal CLI mode — --ui web adds web mode; CLI must stay intact for local use
-- --resolve interactive in ingest-docs — reserved for future release
-- Dynamic cost learning in v2.0 — static estimation first; data-driven estimation after 10 sessions
+- LangChain/LangGraph in Diagnóstico — async concurrency pattern incompatible with the pipeline; retained only for Precificador. (ADR)
+- Removing v1 terminal CLI mode (`diagnostico/`) — kept as legacy offline tool
+- Deleting sales mode / CITi sales knowledge (CITI_PORTFOLIO) — kept behind the `mode` flag until discovery is validated
+- Real per-user authentication for the transcription webhook — MVP uses an opt-in shared secret; full auth is a separate backlog decision (PLANO_AJUSTES Task 2)
+- Multi-provider transcription beyond Google Meet (Zoom/Teams) — Recall.ai remains the optional fallback; not in this milestone
+- Dynamic cost learning — static estimation first; data-driven estimation later
 
 ## Context
 
@@ -72,6 +84,10 @@ Existing codebase in `./diagnostico/`:
 | PromptBuilder with v1 constants as fallback | Dynamic prompts may be lower quality initially; A/B test before full replacement (SPEC) | — Pending |
 | 30s default TTL for question queue | Balance between question freshness and frustration from too-short TTL; calibrate after user testing (SPEC) | — Pending |
 | Supabase Vault for API key storage | pgsodium column encryption; key never exposed in frontend (SPEC) | — Pending |
+| Pivot sales → discovery, keep sales behind `mode` flag | Company now requires every solution to pass through discovery; deleting sales framing is irreversible, so gate it (Open/Closed) until discovery is validated (v3.0) | — Pending |
+| Two agents only at the question stage (coverage + red-flags stay 1×) | Produto/Dados biases diverge only in questions; keeps LLM cost near 1× while honoring "dois agentes" (v3.0) | — Pending |
+| Adopt Taqciti capture engine + add live streaming; retire custom extension | Taqciti is the more complete/tested Meet capturer (speakers + timestamps + roster); both scraped Meet, so removing the custom extension kills duplication (v3.0) | — Pending |
+| Single coverage-area registry (kill 8 hardcoded areas) | 8 areas were duplicated across 6 files; a registry is the SOLID seam that lets discovery areas coexist with sales areas (v3.0) | — Pending |
 
 ## Evolution
 
@@ -91,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-24 after gsd-ingest-docs initialization*
+*Last updated: 2026-09-19 after starting milestone v3.0 (Pivot Discovery)*

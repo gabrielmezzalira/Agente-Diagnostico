@@ -1,220 +1,231 @@
-# Roadmap: Agente Diagnóstico v2.0
+# Roadmap: Agente Diagnóstico
 
 ## Overview
 
-The v1 Python backend (realtime pipeline, LLM agents, webhook server, CLI renderer) is complete and production-ready. V2 builds the full product surface on top of it: a React web frontend, FastAPI REST + WebSocket layer, Supabase persistence with 9 tables, per-project dynamic prompt generation calibrated by Data Maturity Score, question bank, budget control, question queue with TTL, session history, and automatic tunnel URL exposure. The 10 phases follow the SDD's dependency-ordered sequence: foundational data model first, then infrastructure, then intelligence layers, then the full realtime monitoring screen, then the advanced queue/budget/history features, and finally the DMS calibration layer that ties everything together.
+v1.0 (legacy CLI, `diagnostico/`) and v2.0 (web app + Precificador, Phases 1-13) are complete —
+full phase detail is archived in `.planning/milestones/v2.0-phases/`. v3.0 pivots the product from
+pre-sales technical-risk detection to live discovery: the same realtime pipeline (coverage
+classification, red-flag detection, question planning, reporting) is reframed around two
+coordinated lenses — Produto (primary) and Dados (auxiliary) — instead of one generic sales-risk
+classifier, and the transcription source moves from the custom Chrome extension to Taqciti. The 9
+phases split into two ordered tracks: Phases 1-5 do the domain reframe (area registry → discovery
+mode → two-agent questions → discovery report → two-lens UI), testable end-to-end with the existing
+streaming extension; Phases 6-9 then swap the transcription source to Taqciti (webhook auth → live
+streaming → session binding → cutover), so discovery correctness is proven before capture changes.
+
+## Milestones
+
+- ✅ **v1.0 Diagnóstico CLI** - terminal interview + realtime pipeline (legacy, `diagnostico/`)
+- ✅ **v2.0 Web + Precificador** - Phases 1-13 (archived in `.planning/milestones/v2.0-phases/`)
+- 🚧 **v3.0 Pivot Discovery** - Phases 1-9 (in progress)
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (1–10): Planned v2.0 milestone work
-- Decimal phases: Urgent insertions only (via `/gsd:phase insert`)
 
-- [ ] **Phase 1: Project Configuration + Supabase Schema** - Create, list, and edit projects; initialize all 9 Supabase tables
-- [ ] **Phase 2: Session Setup** - Create sessions from projects, pre-fill fields, confirm and persist
-- [ ] **Phase 3: Tunnel URL Exposure** - Auto-start cloudflared/ngrok, display public URL in setup screen
-- [ ] **Phase 4: Question Bank** - Seed thematic question bank, filter by project type, inject into planner
-- [ ] **Phase 5: Dynamic Prompt Generation** - PromptBuilder generates per-agent prompts from project config, stored for replay
-- [ ] **Phase 6: Monitoring Screen (base)** - 3-column React layout with live coverage, transcript, alerts, and actions via WebSocket
-- [ ] **Phase 7: Question Queue** - Pin/dismiss/TTL/used states, max-5 queue, anti-repeat context
-- [ ] **Phase 8: Budget Control** - TokenCounter, cost accumulation, auto-stop, budget bar at 250ms
-- [ ] **Phase 9: Session Persistence + History** - Full transcript, snapshots, red flags, reports saved; history screen with timeline
-- [ ] **Phase 10: Data Maturity Score** - DMS slider calibrates all 4 agents; report includes maturity gap section
+- This milestone (v3.0) restarts numbering at Phase 1 — this project's convention numbers each
+  milestone's phases from 1, archiving the prior milestone's phase detail under `.planning/milestones/`.
+- Integer phases (1-9): planned v3.0 milestone work.
+- Decimal phases (e.g. 1.1): urgent insertions only, via `/gsd-phase --insert`.
+
+- [x] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode (completed 2026-09-20)
+- [x] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing (completed 2026-09-21)
+- [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
+- [ ] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis
+- [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
+- [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
+- [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
+- [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
+- [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
+- [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
 
 ## Phase Details
 
-### Phase 1: Project Configuration + Supabase Schema
-**Goal**: Users can create, view, and edit projects in the web UI, with all project data persisted in Supabase; the complete 9-table schema is live
-**Mode:** mvp
+### Phase 1: Area-Set Registry
+
+**Goal**: A single source of truth generates the coverage JSON schema, eliminating the 8 hardcoded sales areas duplicated across ~6 files, with zero observable change to sales-mode output
 **Depends on**: Nothing (first phase)
-**Requirements**: PROJ-01, PROJ-02, PROJ-03, PROJ-04, PROJ-05
+**Requirements**: DISC-04
 **Success Criteria** (what must be TRUE):
-  1. User can create a project with all 11 fields (name, client, description, project type, Gemini API key, budget, DMS, pre-meeting context, meeting URL, source, TTL) and see it in the project list
-  2. User can edit a project at any time; the Gemini API key is masked after save and requires re-entry to update
-  3. Projects with active sessions display a green "ao vivo" badge in the project list
-  4. All 9 Supabase tables (projects, sessions, questions, red_flags, coverage_snapshots, reports, question_bank, session_prompts, transcript_chunks) are initialized and accepting data
-  5. Gemini API key is stored via Supabase Vault (pgsodium); it is never returned to the frontend in plaintext
-**Plans**: 3 plans
-Plans:
-- [ ] 01-01-PLAN.md — Scaffold + Schema (backend structure, Vite frontend, 9-table migration SQL, [BLOCKING] migration apply)
-- [ ] 01-02-PLAN.md — Project API (FastAPI router, Pydantic models, Vault integration, integration tests)
-- [ ] 01-03-PLAN.md — Project UI (HomePage, ProjectFormPage, components, API client, design system applied)
-**UI hint**: yes
 
-### Phase 2: Session Setup
-**Goal**: Users can create a session from a project, confirm or adjust session-specific settings, and have the session persisted in Supabase as active
-**Mode:** mvp
+  1. A sales-mode session's coverage classification output (8 areas, same names, order, and schema) is unchanged before and after the refactor
+  2. The 8 sales coverage areas are defined in exactly one file (`coverage_areas.py`); no other file in backend or frontend hardcodes the area list
+  3. `prompt_builder.py`, `llm.py`, and `session_state.py` all read the area list from the registry instead of embedding their own copy
+  4. Adding a new area set (used starting Phase 2) requires editing only the registry file, not the consuming modules
+
+**Plans**: 3/3 plans executed
+**Wave 1**
+
+- [x] 01-01-PLAN.md — Freeze golden fixture + create coverage_areas.py registry (leaf) + tracer rewire of llm.classify_coverage schema
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 01-02-PLAN.md — Rewire remaining llm.py (labels + block enum) + prompt_builder.py (relocate AREAS_BY_PROJECT_TYPE, schema not_applicable toggle, block enum)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 01-03-PLAN.md — Rewire session_state (keys + D-04 custom_areas guard) + structured_context block enum + single-source grep gates
+
+### Phase 2: Discovery Mode + DiscoveryPromptBuilder
+
+**Goal**: A project configured with `mode=discovery` runs the full pipeline over the 18 discovery areas (Produto + Dados lenses) with discovery framing, while sales projects behave exactly as before
 **Depends on**: Phase 1
-**Requirements**: SESS-01, SESS-02, SESS-03, SESS-04, SESS-05
+**Requirements**: DISC-01, DISC-02, DISC-03
 **Success Criteria** (what must be TRUE):
-  1. User can open "Nova sessão" from a project and see all fields pre-filled from the project (meeting URL, source, context, budget)
-  2. On confirmation, a session record is created in Supabase with status='active' and the project list shows the green badge
-  3. When source=taqtic, the setup screen shows a public URL (tunnel not yet required — placeholder is acceptable; full tunnel in Phase 3)
-  4. When source=recall, the backend POSTs to Recall.ai API and the bot joins the call
-  5. Confirmation redirects to the monitoring screen route (even if monitoring is not yet fully implemented)
-**Plans**: TBD
-**UI hint**: yes
 
-### Phase 3: Tunnel URL Exposure
-**Goal**: When a Taqtic session starts, a public tunnel URL is automatically started, displayed to the user, and torn down when the session ends
-**Mode:** mvp
+  1. A project can be created or edited with `mode=discovery` (vs `mode=sales`); existing sales projects keep working with `mode=sales` unaffected by the new column
+  2. A discovery-mode session's `coverage_update` events show the 18 discovery areas (Produto + Dados lenses) instead of the 8 sales areas
+  3. Discovery-mode prompts sent to the LLM omit the CITI_PORTFOLIO sales framing while still calibrating tone and depth by the project's Data Maturity Score
+  4. Re-running a sales-mode session after this change still produces the 8 sales areas and CITI_PORTFOLIO-aware prompts, with no regression
+
+> **D-12:** a lista de discovery é de **18 áreas** (não 11) — o usuário, autoridade de domínio,
+> somou as 11 iniciais com novas disciplinas e fundiu duplicatas (D-06/D-06a). Os SCs acima foram
+> atualizados de "11" para "18" (ajuste de texto, não de escopo).
+
+**Plans**: 2/3 plans executed
+
+**Wave 1**
+
+- [x] 02-01-PLAN.md — TRACER: `DISCOVERY_AREA_SET` (18 áreas) + `DiscoveryPromptBuilder` (irmão, D-09) + `SessionState.mode`/`_init_coverage` + seleção de builder no pipeline (DISC-02, DISC-03)
+
+**Wave 2** *(bloqueado na conclusão da Wave 1)*
+
+- [x] 02-02-PLAN.md — Relatório discovery: gate do portfólio comercial por `mode` em `generate_report` (Pitfall 1) (DISC-03)
+- [x] 02-03-PLAN.md — Configurar/persistir `mode`: migration one-way (checkpoint) + `mode` nos schemas Pydantic + toggle no formulário (DISC-01) — **CONCLUÍDO**: Task 1 decidida, Task 2 (`6b6f55a`), Task 4 toggle frontend (`dacc146`, build verde), Task 3 migration aplicada e confirmada no Supabase (2026-09-21). DISC-01 fechado ponta a ponta
+
+### Phase 3: Two-Agent Questions + Lens Tagging
+
+**Goal**: Produto (primary) and Dados (auxiliary) planners generate questions into one shared queue, and every coverage area, red flag, and question carries a lens tag, with no duplicate questions across the two agents
 **Depends on**: Phase 2
-**Requirements**: TUNNEL-01, TUNNEL-02, TUNNEL-03
+**Requirements**: LENS-01, LENS-02, LENS-03, LENS-04, LENS-05
 **Success Criteria** (what must be TRUE):
-  1. Backend detects cloudflared or ngrok on PATH at session start; cloudflared is used if both are present
-  2. The public tunnel URL appears in the setup screen and in the monitoring screen topbar within seconds of session creation
-  3. The tunnel is automatically terminated when the session is finished via the API (POST /sessions/:id/finish) or the Q action
-  4. If neither cloudflared nor ngrok is found, the user sees a clear error message with installation instructions rather than a silent failure
 
-### Phase 4: Question Bank
-**Goal**: The question_bank table is seeded with all mapped questions per thematic block and project type, and the QuestionPlanner receives filtered questions as context when generating suggestions
-**Mode:** mvp
-**Depends on**: Phase 1
-**Requirements**: QBANK-01, QBANK-02, QBANK-03, QBANK-04
-**Success Criteria** (what must be TRUE):
-  1. The question_bank table contains at least one question per thematic block (negocio, eng_dados, visualizacao, ciencia_dados, automacao, integracao, consumo, parceria) with correct project_types and priority fields
-  2. GET /question-bank?project_type=bi returns only questions relevant to BI projects; GET /question-bank?block=automacao returns only automation-block questions
-  3. When the QuestionPlanner is invoked for a session, it receives the filtered bank questions as prompt context — not a blank canvas
+  1. In a discovery session, questions from the Produto planner (bottleneck, frente de atuação, user impact, process mapping, delivery viability) and the Dados planner (sources, quality, metrics, LGPD/security, solution approach, quick wins) both land in the same question queue, each labeled with its lens
+  2. Every coverage area and every red flag shown for a discovery session carries a `lens` tag (`produto` or `dados`)
+  3. Across a live session, the Dados planner triggers on a visibly slower cadence than the Produto planner (not on every question-generation cycle)
+  4. No two questions in the queue — regardless of which agent produced them — are duplicates of each other; anti-repetition context is shared across both agents
 
-### Phase 5: Dynamic Prompt Generation
-**Goal**: Every session generates a unique set of agent prompts via PromptBuilder, stored in session_prompts, with v1 constants as fallback — making prompt content visible and debuggable per session
-**Mode:** mvp
-**Depends on**: Phase 1, Phase 4
-**Requirements**: PROMPT-01, PROMPT-02, PROMPT-03, PROMPT-04, PROMPT-05, PROMPT-06, PROMPT-07, PROMPT-08
-**Success Criteria** (what must be TRUE):
-  1. A BI project and an ML project produce observably different prompts for CoverageClassifier (different areas activated) and QuestionPlanner (different vocabulary and priorities)
-  2. All 4 agent prompts (CoverageClassifier, RedFlagDetector, QuestionPlanner, DiagnosticAgent) are stored in the session_prompts table at session start and can be retrieved via the API
-  3. When PromptBuilder fails or returns empty, the system falls back to v1 SYSTEM_PROMPT and CLASSIFIER_SYSTEM_PROMPT constants without crashing
-  4. RedFlagDetector prompt incorporates known pre-meeting context from the project record
+**Plans**: 3/3 plans complete
 
-### Phase 6: Monitoring Screen (base)
-**Goal**: The React monitoring screen is live, connected to WebSocket, and shows coverage status, transcript chunks, red flag alerts, and session controls in real time
-**Mode:** mvp
-**Depends on**: Phase 2, Phase 5
-**Requirements**: MON-01, MON-02, MON-03, MON-04, MON-05, MON-06, MON-07, MON-08, MON-09, MON-10, MON-11
+**Wave 1**
+
+- [x] 03-01-PLAN.md — TRACER: split de dois agentes (Produto/Dados) na fila única com `lens` por pergunta, contador de cadência, dedup normalizado e regressão sales (LENS-01/02/03/05, D-13/14/16/17/20/21/24)
+- [x] 03-02-PLAN.md — Migration aditiva one-way (`questions.lens`, `red_flags.lens`, COMMENT em `session_prompts.agent`) + `lens` em `QuestionResponse` (LENS-03/04, D-18/23) — **autonomous:false** (checkpoint:decision + apply manual no Supabase)
+
+**Wave 2** *(bloqueado na conclusão da Wave 1)*
+
+- [x] 03-03-PLAN.md — Lente nos red flags (contrato JSON + fallback produto validado) e nas coverage areas (`coverage_to_dict` derivado do registro) (LENS-04, D-15/19/22)
+
+### Phase 4: Discovery Report + Pricing Handoff
+
+**Goal**: A discovery session produces one report with Produto, Dados, and pricing-metrics sections, and that report feeds the Precificador via the existing import flow, while sales reporting is unaffected
+**Depends on**: Phase 2, Phase 3
+**Requirements**: REP-01, REP-02, REP-03
 **Success Criteria** (what must be TRUE):
-  1. The 3-column layout renders: Coverage panel (220px fixed, risk areas with status colors), Live feed (flex, scrolling transcript + red flag alerts with severity badges), Questions panel (280px fixed, question cards + "Generate Now" button)
-  2. The topbar shows project name + client, animated green status dot with "ao vivo" text, and a live HH:MM:SS session timer
-  3. The budget bar below the topbar shows a colored progress bar and consumed/limit values updated in real time
-  4. Actions work: Generate questions (P/button), Force classify (S/button), Generate report (R/button with budget check + modal), Finish session (Q/red button with confirmation)
-  5. The WebSocket connection at ws://localhost:8000/ws/{session_id} handles all event types: coverage_update, red_flag, question_new, question_expired, transcript_chunk, budget_update, session_status, error
+
+  1. Ending a discovery session generates a single Markdown report with distinct Produto and Dados sections plus a "Métricas para Precificação" section
+  2. Running "Importar do diagnóstico" against a discovery report extracts at least one feature into the pricing feature table, and the created pricing's `session_id` links back to the discovery session
+  3. Ending a sales-mode session still generates the existing sales report format with no regression
+
+**Plans**: TBD
+
+### Phase 5: Two-Lens Monitoring (Frontend)
+
+**Goal**: The monitoring screen visually separates the Produto and Dados lenses in discovery mode, keeps the flat layout in sales mode, and renders whatever area set the backend sends without hardcoding
+**Depends on**: Phase 2, Phase 3
+**Requirements**: UI-01, UI-02, UI-03
+**Success Criteria** (what must be TRUE):
+
+  1. Opening the monitoring screen for a discovery session shows coverage areas grouped into Produto and Dados sections; opening it for a sales session shows the same flat list as before
+  2. Every question card and red-flag row displays a lens badge (Produto or Dados) in discovery mode
+  3. `useSessionWS` and `SessionActivePage` render whatever coverage-area set the backend sends without a hardcoded area list in the frontend
+
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 7: Question Queue
-**Goal**: Question cards have full lifecycle management — TTL countdown, pin, dismiss, used states, animated expiry, max-5 cap, and anti-repeat context fed to QuestionPlanner
-**Mode:** mvp
-**Depends on**: Phase 6
-**Requirements**: QUEUE-01, QUEUE-02, QUEUE-03, QUEUE-04, QUEUE-05, QUEUE-06, QUEUE-07
+### Phase 6: Opt-In Webhook Auth
+
+**Goal**: The transcription webhook is protected by a shared-secret header that is opt-in — current production traffic is unaffected until the secret is configured
+**Depends on**: Nothing new (starts the Taqciti track; independent of Phases 1-5)
+**Requirements**: TAQ-03
 **Success Criteria** (what must be TRUE):
-  1. A queued question card shows a TTL countdown bar that is green above 60%, orange at 30–60%, and red below 30%; when it expires, the card fades and slides out
-  2. Clicking the pin button (📌) moves the card to the pinned section with no TTL; clicking dismiss (✕) removes it with animation; clicking used (✓) marks it done
-  3. When a 6th question arrives while 5 are already queued, the oldest queued card is automatically dismissed
-  4. The QuestionPlanner prompt includes the last 3 queued + pinned + used questions as anti-repeat context; dismissed questions are excluded
+
+  1. With `EXTENSION_SHARED_KEY` unset, `POST /webhook/extension` continues to accept chunks exactly as it does today
+  2. With `EXTENSION_SHARED_KEY` set, a request missing the `x-agente-key` header (or sending the wrong value) is rejected
+  3. With `EXTENSION_SHARED_KEY` set and the correct `x-agente-key` header supplied, the request is accepted and processed normally
+
+**Plans**: TBD
+
+### Phase 7: Taqciti Config + Background Streamer
+
+**Goal**: Taqciti streams merged live caption segments to the backend during a call, reusing the existing `/webhook/extension` endpoint, without disturbing Taqciti's existing batch flow
+**Depends on**: Phase 6
+**Requirements**: TAQ-01
+**Success Criteria** (what must be TRUE):
+
+  1. During a live Google Meet call, Taqciti streams merged caption segments to `/webhook/extension` in near-real-time, not only after the call ends
+  2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
+  3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
+
+**Plans**: TBD
+
+### Phase 8: Taqciti Session Association
+
+**Goal**: A Taqciti stream binds to the correct backend discovery session automatically when possible, with a manual fallback when it isn't
+**Depends on**: Phase 7
+**Requirements**: TAQ-02
+**Success Criteria** (what must be TRUE):
+
+  1. When the Agente web app and Taqciti run in the same browser during a call, Taqciti auto-detects the active session id (`localStorage['agente_session_id']`) and streams chunks tagged to that session with no manual step
+  2. When auto-detect is unavailable, the user can enter the session id manually in the Taqciti panel and streaming binds to that session
+  3. Chunks are only attributed to a session when the binding is explicit (auto-detected or manually entered) — never guessed or defaulted silently
+
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 8: Budget Control
-**Goal**: Every LLM call is metered, cost accumulates in real time, and the session automatically pauses coverage/alert tasks when the remaining budget would not cover the estimated report cost
-**Mode:** mvp
-**Depends on**: Phase 6
-**Requirements**: BUDGET-01, BUDGET-02, BUDGET-03, BUDGET-04, BUDGET-05, BUDGET-06, BUDGET-07
-**Success Criteria** (what must be TRUE):
-  1. sessions.cost_usd increments after every LLM call, using the Gemini 2.0 Flash pricing table ($0.0001/1k input, $0.0004/1k output)
-  2. When cost_usd approaches the budget limit such that budget_remaining < estimated_report_cost, the _coverage_task and _red_flag_task pause and the budget bar shows a red alert; the report button remains active
-  3. The estimated report cost is calculated as current_transcript_tokens × output_factor × 1.20 and displayed in the budget bar
-  4. When session.budget_usd is null, the system runs without any limit and the budget bar shows "sem limite"
-  5. The budget bar updates every 250ms (every _render_task tick)
+### Phase 9: Cutover + Retire Custom Extension
 
-### Phase 9: Session Persistence + History
-**Goal**: All session data (transcript, coverage snapshots, red flags, questions, reports) is saved to Supabase in real time, and a history screen lets users review completed sessions with full timeline and report
-**Mode:** mvp
+**Goal**: Taqciti is the sole transcription source in production; the custom extension is removed while the backend contract it used remains intact for historical data
 **Depends on**: Phase 6, Phase 7, Phase 8
-**Requirements**: HIST-01, HIST-02, HIST-03, HIST-04, HIST-05, HIST-06, HIST-07, HIST-08, HIST-09
+**Requirements**: TAQ-04
 **Success Criteria** (what must be TRUE):
-  1. Transcript chunks, coverage snapshots, red flags, questions (with status updates), and generated reports are all present in Supabase immediately after a session ends
-  2. sessions.tokens_used and sessions.cost_usd reflect the final values after session close
-  3. The history screen lists all sessions for a project ordered newest-first; each card shows date, duration, cost, final coverage status, and red flag count badge
-  4. Clicking a session card opens a detail view showing: the full rendered Markdown report, a timeline of alerts with severity, and a coverage area evolution chart
+
+  1. A full discovery session — transcript, coverage updates, questions, and final report — completes end-to-end using only Taqciti as the transcription source
+  2. The `extension/` directory and its packaged zip are removed from the repository
+  3. The `/webhook/extension` endpoint, the `ExtensionChunk` model, and the `extension` source enum value remain intact in the backend, so historical sessions referencing them still resolve
+
+**Plans**: TBD
+
+### Phase 10: AGP Question Panel in Taqciti
+
+**Goal**: During a live call, the discovery questions generated by the backend (each with its produto/dados lens) appear in near-real-time inside a dedicated "AGP" tab in the Taqciti extension, scoped to the bound discovery session — so the operator reads the questions to ask without leaving Taqciti
+**Depends on**: Phase 3 (lens-tagged questions), Phase 8 (session binding)
+**Requirements**: TAQ-05
+**Success Criteria** (what must be TRUE):
+
+  1. With Taqciti bound to an active discovery session, an "AGP" tab shows that session's live question queue (each card carrying its produto/dados lens), updating as the backend emits new questions
+  2. The questions and lenses shown in AGP come from the backend for the bound session (reusing the existing `/ws/{session_id}` `question_new` / `question_expired` stream) — Taqciti does not recompute or invent questions
+  3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
+  4. The panel lives in the Taqciti repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
+
 **Plans**: TBD
 **UI hint**: yes
-
-### Phase 10: Data Maturity Score
-**Goal**: The DMS 1–5 value set on a project visibly changes how all 4 agent prompts are generated and adds a maturity gap section to every report
-**Mode:** mvp
-**Depends on**: Phase 1, Phase 5
-**Requirements**: DMS-01, DMS-02, DMS-03
-**Success Criteria** (what must be TRUE):
-  1. The project configuration screen has a DMS slider (1–5) with a tooltip showing the level definitions (Inicial / Gerenciado / Definido / Quantificado / Otimizado)
-  2. Running the same project type (e.g., ML) at DMS 1 vs DMS 4 produces observably different CoverageClassifier and QuestionPlanner prompts — different criticality thresholds and vocabulary
-  3. The generated report includes a "Maturidade atual vs maturidade necessária" section with a gap assessment
-**Plans**: TBD
-**UI hint**: yes
-
-- [ ] **Phase 11: Precificador Foundation** - DB schema (4 new tables), pricing CRUD API, real-time calculation engine, feature-list UI with inline editing, approval flow that saves to pricing_history
-- [ ] **Phase 12: LLM-Powered Suggestions** - Parse diagnosis reports to seed feature list, LLM suggests additional features + hour estimates from approved historical pricings, history seed with past approved examples
-- [ ] **Phase 13: Embedded Pricing Chatbot** - Chat panel on pricing screen, LLM context = diagnosis report + history + current feature list, tool calls to apply feature CRUD and input updates from conversation
-
-## Phase Details
-
-### Phase 11: Precificador Foundation
-**Goal**: Users can create a pricing for a project, manage a feature list (bloco, funcionalidade, horas), see all calculated outputs in real time, and approve a pricing to save it as a historical snapshot
-**Mode:** mvp
-**Depends on**: Phase 1 (projects table, Supabase)
-**Requirements**: PREC-INF-02, PREC-INF-03, PREC-01, PREC-02, PREC-03, PREC-04, PREC-05, PREC-06, PREC-07
-*(PREC-INF-01, PREC-INF-04, PREC-INF-05 deferred to Phase 12 — LangChain/LangGraph not installed until LLM calls begin)*
-**Success Criteria** (what must be TRUE):
-  1. Project configuration screen has new LLM config fields: provider (openai/anthropic/google), model name (free text), API key (masked after save); user can update at any time
-  2. User can create a pricing from a project page with inputs: data_inicio, num_analistas, horas_por_dia, ticket_preco, dias_corridos_extras
-  3. Feature table accepts inline add/edit/remove with columns: Bloco, Funcionalidade, Horas, Dias (calculado), CITI?
-  4. All 6 outputs update in real time as features or inputs change: preco_total, data_final, dias_corridos, semanas, meses, sprints
-  5. Approving a pricing saves an immutable snapshot to pricing_history; only approved pricings enter the history
-  6. Project detail page lists all pricings with status (rascunho/aprovada)
-**Plans**: 4 plans
-Plans:
-- [ ] 11-01-PLAN.md — Schema migration (4 tables + projects LLM columns) + PricingCalculator + projects model/router extensions + [BLOCKING] migration apply
-- [ ] 11-02-PLAN.md — Project LLM config UI (collapsible section on ProjectFormPage, Nova Precificação on ProjectDetailPage)
-- [ ] 11-03-PLAN.md — Pricing CRUD backend (models, service, repository, routers, approve endpoint, pricing-history endpoint)
-- [ ] 11-04-PLAN.md — Pricing editor frontend (pricingCalculator.ts, hooks, PricingListPage, PricingEditorPage, routes)
-
-### Phase 12: LLM-Powered Suggestions
-**Goal**: The pricing screen can auto-populate features from diagnosis reports and the LLM suggests additional features with hour estimates learned from approved historical pricings
-**Mode:** mvp
-**Depends on**: Phase 11
-**Requirements**: PREC-INF-01, PREC-INF-04, PREC-INF-05, PREC-08, PREC-09, PREC-10, PREC-11
-*(PREC-INF-01/04/05 carried from Phase 11 deferral — install LangChain/LangGraph + llm_factory when first LLM call is needed)*
-**Success Criteria** (what must be TRUE):
-  1. "Importar do diagnóstico" extracts features from one or more diagnosis reports linked to the project and populates the feature table
-  2. "Sugerir funcionalidades" generates at least 3 additional feature suggestions not already in the table, with hour estimates, based on approved history
-  3. The LLM prompt correctly includes: diagnosis report text, current feature list, top-3 matching approved pricings from history
-  4. History is seeded with at least 7 past approved pricings (from provided examples)
-**Plans**: 3 plans
-Plans:
-- [x] 12-01-PLAN.md — Backend infrastructure (LangChain deps + llm_factory + repo extensions + seed data)
-- [x] 12-02-PLAN.md — LLM service + endpoints (import-from-diagnosis, suggest-features)
-- [ ] 12-03-PLAN.md — Frontend UI (api.ts, useLLMSuggestions hook, PricingEditorPage buttons + suggestions panel)
-
-### Phase 13: Embedded Pricing Chatbot
-**Goal**: An embedded chatbot in the pricing screen allows the commercial team to refine the pricing via natural language — discussing the diagnosis, querying the history, and applying edits to the feature table
-**Mode:** mvp
-**Depends on**: Phase 11, Phase 12
-**Requirements**: PREC-12, PREC-13, PREC-14, PREC-15
-**Success Criteria** (what must be TRUE):
-  1. Chat panel renders alongside the feature table; conversation history is persisted in pricing_chat_messages
-  2. User can say "adiciona uma funcionalidade de autenticação OAuth com 20 horas no bloco Geral" and the feature appears in the table
-  3. User can say "remove a funcionalidade de deploy" and the feature is removed from the table
-  4. User can ask "por que esse projeto está custando R$25k?" and the chatbot explains using the current inputs and outputs
-  5. Tool calls (add_feature, remove_feature, update_feature, update_inputs) are applied atomically and immediately reflected in the table
+**Note**: Lives in the separate Taqciti repo (like Phases 7-8); coordinate repo access before starting. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
 
 ## Progress
 
 **Execution Order:**
-Phases 1–10: Agente Diagnóstico (already built). Phases 11–13: Agente Precificador.
+Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP panel): 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Configuration + Supabase Schema | 1/5 | In Progress|  |
-| 2–10. Agente Diagnóstico (remaining) | — | Built (state outdated) | — |
-| 11. Precificador Foundation | 0/? | Not started | - |
-| 12. LLM-Powered Suggestions | 2/3 | In Progress | - |
-| 13. Embedded Pricing Chatbot | 0/? | Not started | - |
+| 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
+| 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
+| 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
+| 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
+| 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
+| 6. Opt-In Webhook Auth | 0/? | Not started | - |
+| 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
+| 8. Taqciti Session Association | 0/? | Not started | - |
+| 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
+| 10. AGP Question Panel in Taqciti | 0/? | Not started | - |

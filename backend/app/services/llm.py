@@ -5,12 +5,20 @@ from typing import Any, Optional
 import google.genai as genai
 from google.genai import types as genai_types
 
+from app.services.coverage_areas import SALES_AREA_SET
+
 MODEL = "gemini-flash-latest"
 _JSON_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 
 # Gemini 2.5 Flash pricing (USD per 1 000 tokens)
 INPUT_COST_PER_1K  = 0.00015   # $0.15 / 1M
 OUTPUT_COST_PER_1K = 0.00060   # $0.60 / 1M
+
+# Teto de tokens de saída do relatório. Fonte única de verdade: usada tanto no
+# max_output_tokens de generate_report quanto na estimativa de custo em
+# session_state.estimated_report_cost — mantê-las alinhadas evita subestimar o
+# custo e cortar a sessão sem saldo (F7). Ver PLANO_AJUSTES.md, Task 4b.
+REPORT_MAX_OUTPUT_TOKENS = 16384
 
 
 def tokens_to_usd(input_tokens: int, output_tokens: int) -> float:
@@ -61,14 +69,7 @@ async def classify_coverage(
         f"Project type: {project_type or 'unknown'}, Data Maturity Score: {dms_str}.\n"
         "Analyze the transcript and classify coverage for each area.\n"
         "Return ONLY valid JSON (no markdown fences, no extra text):\n"
-        '{"areas":{"negocio":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"eng_dados":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"visualizacao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"ciencia_dados":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"automacao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"integracao":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"consumo":{"status":"covered|partial|uncovered","score":0-100,"notes":""},'
-        '"parceria":{"status":"covered|partial|uncovered","score":0-100,"notes":""}}}'
+        + SALES_AREA_SET.schema_json(include_not_applicable=False)
     )
     text, inp, out = await _call(api_key, system, f"Transcrição:\n{transcript}")
     try:
@@ -109,6 +110,7 @@ async def generate_report(
     pre_meeting_context: str = "",
     system_prompt: str | None = None,
     structured_context: Any = None,
+    mode: str = "sales",
 ) -> tuple[str, int, int]:
     from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
@@ -116,11 +118,7 @@ async def generate_report(
     dms_label = dms_levels.get(dms, "Não mapeado") if dms is not None else "Não mapeado"
     dms_str = f"{dms}/5 ({dms_label})" if dms is not None else "Não mapeado"
 
-    area_labels = {
-        "negocio": "Negócio", "eng_dados": "Eng. de Dados", "visualizacao": "Visualização",
-        "ciencia_dados": "Ciência de Dados", "automacao": "Automação", "integracao": "Integração",
-        "consumo": "Consumo", "parceria": "Parceria",
-    }
+    area_labels = SALES_AREA_SET.labels()
     status_labels = {"covered": "Coberto", "partial": "Parcial", "uncovered": "Não coberto"}
     coverage_rows = [
         (area_labels.get(area, area), status_labels.get(info.get("status", ""), info.get("status", "")),
@@ -178,18 +176,22 @@ async def generate_report(
     else:
         context_block = f"Contexto pré-reunião: {pre_meeting_context or 'não fornecido'}\n\n"
 
+    citi_block = (
+        f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
+        f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
+        f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
+    ) if mode == "sales" else ""
+
     user = (
         f"Tipo de projeto: {project_type or 'não especificado'}\n"
         f"Data Maturity Score: {dms_str}\n"
         f"{context_block}"
         f"## Cobertura final\n{coverage_table}\n\n"
         f"## Alertas detectados\n{flags_text}\n\n"
-        f"## Portfólio CITi (referência comercial)\n{CITI_PORTFOLIO}\n\n"
-        f"## Catálogo de serviços CITi (referência para sprints)\n{CITI_SERVICE_CATALOG}\n\n"
-        f"## Referência de tecnologias\n{CITI_TECH_REFERENCE}\n\n"
+        f"{citi_block}"
         f"## Transcrição completa\n{transcript}"
     )
-    text, inp, out = await _call(api_key, system, user, max_output_tokens=16384)
+    text, inp, out = await _call(api_key, system, user, max_output_tokens=REPORT_MAX_OUTPUT_TOKENS)
     return text, inp, out
 
 
@@ -295,7 +297,7 @@ async def generate_questions(
         "Adapte, combine, reformule ou ignore completamente — use o que fizer sentido para a conversa atual.\n"
         "4. Não repita perguntas recentes.\n\n"
         "Retorne APENAS JSON válido:\n"
-        '{"questions":[{"text":"...","block":"negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"}]}'
+        '{"questions":[{"text":"...","block":"' + SALES_AREA_SET.block_enum() + '"}]}'
     )
     user = (
         (f"Contexto pré-reunião: {pre_meeting_context}\n\n" if pre_meeting_context else "")

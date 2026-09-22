@@ -22,3 +22,7 @@ reports/
 
 # Playwright MCP
 .playwright-mcp/
+
+# GSD — artefatos de runtime/lock (transitórios, específicos de sessão/máquina)
+.gsd/
+.planning/milestone.lock

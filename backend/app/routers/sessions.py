@@ -251,6 +251,19 @@ async def finish_session(session_id: UUID, db: Client = Depends(get_supabase)):
         .eq("id", str(session_id))
         .execute()
     )
+
+    # Para o pipeline em memória (coverage/red-flag tasks) mesmo quando o
+    # encerramento chega só por REST — ex.: aba fechada, WS caído, outro cliente.
+    # Sem isto as tasks continuam chamando o Gemini indefinidamente sobre uma
+    # reunião já encerrada, queimando budget. stop_session é idempotente, então
+    # o duplo caminho (WS + REST) é seguro. Uma falha aqui não pode impedir a
+    # resposta — o status no banco já foi gravado. Ver PLANO_AJUSTES.md, Task 3.
+    from app.services.pipeline import pipeline_manager
+    try:
+        await pipeline_manager.stop_session(str(session_id))
+    except Exception:
+        _log.exception("falha ao parar pipeline da sessão %s no finish", session_id)
+
     return result.data[0]
 
 

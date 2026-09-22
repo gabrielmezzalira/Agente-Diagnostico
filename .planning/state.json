@@ -1,0 +1,63 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v3.0 — Pivot Discovery",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Area-Set Registry",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Discovery Mode + DiscoveryPromptBuilder",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Two-Agent Questions + Lens Tagging",
+      "status": "complete"
+    },
+    {
+      "number": "4",
+      "name": "Discovery Report + Pricing Handoff",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Two-Lens Monitoring (Frontend)",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Opt-In Webhook Auth",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Taqciti Config + Background Streamer",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Taqciti Session Association",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Cutover + Retire Custom Extension",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "AGP Question Panel in Taqciti",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (plan phase 4)",
+    "reason": "Phase 4 of 10 — needs a plan"
+  },
+  "updated_at": "2026-09-22T13:31:37.034Z"
+}

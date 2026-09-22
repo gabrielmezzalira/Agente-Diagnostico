@@ -14,6 +14,27 @@
 # =============================================================================
 
 import pytest
+from pydantic import ValidationError
+
+from app.models.projects import ProjectCreate
+
+
+def test_project_mode_default_and_validation():
+    """DISC-01: ProjectCreate.mode tem default 'sales', aceita 'discovery' e rejeita valores fora do enum.
+
+    Verifica:
+    - ProjectCreate sem mode resolve mode == 'sales' (SC#4: zero regressão para projetos existentes)
+    - ProjectCreate com mode='discovery' resolve mode == 'discovery'
+    - ProjectCreate com mode='foo' levanta ValidationError (422 na borda da API)
+    """
+    default_project = ProjectCreate(name="n", client="c", gemini_api_key="k")
+    assert default_project.mode == "sales"
+
+    discovery_project = ProjectCreate(name="n", client="c", gemini_api_key="k", mode="discovery")
+    assert discovery_project.mode == "discovery"
+
+    with pytest.raises(ValidationError):
+        ProjectCreate(name="n", client="c", gemini_api_key="k", mode="foo")
 
 
 def test_create_project():
