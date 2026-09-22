@@ -114,6 +114,56 @@ quais os perigos, e como voltar atrás se der errado**, antes de uma única linh
 
 ---
 
+## Fluxo de Git — Branch por Fase (OBRIGATÓRIO — aplica-se a TODA fase do roadmap)
+
+Cada fase do roadmap tem a **sua própria branch**. Isso mantém o trabalho de uma fase isolado, fácil de
+revisar e fácil de reverter sem afetar as outras. **O GSD não troca de branch sozinho** — os comandos
+(`gsd-discuss-phase`, `gsd-plan-phase`, `gsd-execute-phase`) rodam na branch ativa. Criar e trocar a
+branch é responsabilidade de quem conduz a fase (pessoa ou agente).
+
+### A regra
+
+| # | Passo | Detalhe |
+|---|-------|---------|
+| 1 | **Uma branch por fase** | Nome no padrão `feat/fase-NN-slug` (ex: `feat/fase-04-discovery-report`). `NN` com dois dígitos. |
+| 2 | **Cortar da `main` atualizada** | Antes de criar a branch da fase, `git checkout main && git pull`. A branch nova nasce da `main`, **não** da branch da fase anterior. |
+| 3 | **Fechar a fase anterior primeiro** | Só corte a branch da fase seguinte depois que a fase atual estiver **concluída, revisada e com o `code-review --fix` mergeado**. Começar a fase nova sobre código ainda em revisão gera retrabalho de reconciliação. |
+| 4 | **Concluir com PR/merge na `main`** | Ao terminar a fase (após verificação e review), abrir PR e mergear na `main`. A `main` é sempre a base limpa da próxima fase. |
+| 5 | **Nunca misturar duas fases na mesma branch** | Se o trabalho pertence à Fase N+1, ele vai na branch da Fase N+1 — não na atual. |
+
+### Antes de iniciar qualquer fase — checklist
+
+1. A fase anterior está concluída e o `code-review --fix` dela foi mergeado? Se não, **pare e resolva isso primeiro**.
+2. `git checkout main && git pull`
+3. `git checkout -b feat/fase-NN-slug`
+4. Só então rodar `gsd-discuss-phase` / `gsd-plan-phase` / `gsd-execute-phase`.
+
+> **Nota:** `gsd-discuss-phase` e `gsd-plan-phase` só escrevem em `.planning/` (documentos), não tocam
+> em código-fonte. Tecnicamente rodam em qualquer branch — mas, por disciplina, rode-os já na branch
+> correta da fase para que todo o rastro daquela fase (docs + código) fique junto.
+
+---
+
+## Segredos — NUNCA ler arquivos `.env` (OBRIGATÓRIO — aplica-se a TODA interação)
+
+**É proibido abrir, ler, imprimir ou de qualquer forma trazer para a conversa o conteúdo de arquivos
+de segredo** — `.env`, `backend/.env`, `*.env`, `.secrets` e similares. Esses arquivos contêm chaves de
+API e credenciais; expô-los na conversa é um vazamento, mesmo que o arquivo esteja protegido no
+`.gitignore`.
+
+Regras concretas:
+
+- **Nunca** use Read, Bash (`cat`, `type`, `Get-Content`, `grep`, etc.), nem qualquer outra ferramenta
+  para ler o conteúdo de um `.env`.
+- Se precisar saber **quais variáveis** existem, leia o template não-secreto (`.env.example` /
+  `.env.template`) — nunca o `.env` real.
+- Se precisar do **valor** de uma variável, **peça ao usuário** que informe o valor; não vá buscá-lo no
+  arquivo.
+- Se o usuário colar ou selecionar um segredo por engano, **não repita o valor** na resposta e avise que
+  convém rotacionar a chave.
+
+---
+
 ## Índice
 
 1. [Visão Geral](#1-visão-geral)
