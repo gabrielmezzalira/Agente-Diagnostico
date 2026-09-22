@@ -623,7 +623,11 @@ export default function SessionActivePage() {
     if (!sessionId || !confirm('Encerrar a sessão?')) return
     setFinishing(true)
     try {
-      send('finish_session')
+      // Caminho único via REST: o endpoint /finish é autossuficiente (grava
+      // status=finished e para o pipeline, idempotente). Disparar também o
+      // evento WS 'finish_session' criava uma corrida — o WS encerrava primeiro
+      // e o POST /finish respondia 409 "Session is not active", cuja exceção
+      // impedia o navigate() e travava a tela em "reconectando...".
       await api.sessions.finish(sessionId)
       navigate(`/projects/${session?.project_id}`)
     } catch (e: unknown) {

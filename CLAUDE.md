@@ -6,6 +6,16 @@
 
 ---
 
+## Idioma das Respostas (OBRIGATÓRIO — aplica-se a TODA interação)
+
+**Toda resposta deve ser em português e com linguagem natural.** Escreva como se estivesse
+conversando com uma pessoa do time: frases claras e diretas, sem jargão desnecessário. Termos
+técnicos consagrados (nomes de funções, arquivos, comandos, trechos de código, caminhos) permanecem
+como estão — não traduza identificadores nem código. O que muda é a prosa ao redor: explicações,
+resumos, status, perguntas e conclusões são sempre em português, de forma acessível.
+
+---
+
 ## Princípios de Arquitetura de Código (OBRIGATÓRIO — aplica-se a TODO o projeto)
 
 Todo código produzido neste projeto — backend Python e frontend TypeScript/React — deve seguir os princípios SOLID e ser bem organizado e modularizado. Este é um requisito não-negociável que se sobrepõe a qualquer decisão de implementação.
@@ -69,6 +79,88 @@ Isso permite que o usuário troque o modelo de IA a qualquer momento sem tocar n
 - **Funções puras onde possível.** A engine de cálculo da precificação (`business_days`, `price`, etc.) deve ser uma função pura sem side effects, testável isoladamente.
 - **Um arquivo, uma responsabilidade.** Se um arquivo está ficando grande (>200 linhas), é sinal de que está fazendo coisas demais.
 - **Nomes descritivos e consistentes.** `get_project_by_id` é melhor que `get_project`. `PricingFeatureTable` é melhor que `Table`.
+
+---
+
+## Regras de Planejamento de Tasks (OBRIGATÓRIO — aplica-se a TODO plano de task)
+
+Sempre que alguém — pessoa ou agente — planejar uma task neste projeto (seja no `PLANO_AJUSTES.md`,
+seja em qualquer outro documento de planejamento), o plano daquela task **DEVE conter, sem exceção, as
+sete seções abaixo, nesta ordem**. Um plano de task sem essas seções é considerado incompleto e não deve
+ser executado. Este requisito é não-negociável e se sobrepõe a qualquer pressa de implementação.
+
+O objetivo é que **qualquer pessoa do time — inclusive quem não é técnico — entenda o que vai acontecer,
+quais os perigos, e como voltar atrás se der errado**, antes de uma única linha ser alterada.
+
+| # | Seção obrigatória | O que precisa ter |
+|---|-------------------|-------------------|
+| 1 | **O que muda (em linguagem comum)** | Explicação em português simples, sem jargão, do que a task altera e **por quê**. Use uma analogia quando ajudar. Um leitor não-técnico tem que entender o resultado. Nada de "refatorar o service" sem explicar o que isso significa na prática. |
+| 2 | **Como vai ser alterado** | O concreto: **quais arquivos**, quais funções, em **que ordem**. Trabalho grande = **commits atômicos** (uma mudança por commit, reversível sozinha). Diga o que é mecânico (recortar/colar) e o que muda comportamento. |
+| 3 | **Riscos de cada ação** | Para **cada** ação do passo 2, o que pode dar errado (quebrar a UI, quebrar a extensão/MCP/webhook, perder dado, estourar custo, regredir comportamento). Sem risco genérico — risco concreto ligado àquela ação. |
+| 4 | **Como prevenir** | A medida preventiva de **cada** risco do passo 3 (teste antes, validar cliente afetado, feature flag, rodar a UI, comparar antes/depois). |
+| 5 | **Como consertar (plano de rollback)** | Se aquela ação quebrar, **como voltar atrás**: qual commit reverter, qual valor restaurar, o que reiniciar. Todo passo tem que ter uma saída de emergência conhecida. |
+| 6 | **Decisões que são do usuário/time** | O que **NÃO** pode ser decidido sozinho pelo executor: estratégia, remoção de código, troca de dependência, mudança de contrato de API, qualquer coisa irreversível ou de fora do repo. Marcar como **DECISÃO EM ABERTO** e **parar** até o time decidir. |
+| 7 | **Verificação (ponta a ponta)** | Como **provar que funcionou** depois de pronto: o passo manual/automático que exercita o fluxo real e o resultado esperado. Onde houver teste, deixar ao menos 1 teste real como semente. |
+
+**Regras de conduta que acompanham o template:**
+
+- **Nunca misture correção crítica com refator no mesmo commit.** Segurança/bug num commit; reorganização
+  de código em outro. Facilita reverter só o que quebrou.
+- **Não decida o que é do time.** Ao encontrar uma decisão de estratégia, remoção, ou algo irreversível,
+  **pare e pergunte** — registre como DECISÃO EM ABERTO no plano; não escolha por conta própria.
+- **Refator ≠ mudança de comportamento.** "Refatorar" significa reorganizar sem mudar o que o sistema faz.
+  Se o comportamento mudar, isso é uma mudança à parte, planejada e sinalizada como tal.
+- **Prefira estender testes existentes a criar do zero;** cada task deixa pelo menos um teste real.
+
+---
+
+## Fluxo de Git — Branch por Fase (OBRIGATÓRIO — aplica-se a TODA fase do roadmap)
+
+Cada fase do roadmap tem a **sua própria branch**. Isso mantém o trabalho de uma fase isolado, fácil de
+revisar e fácil de reverter sem afetar as outras. **O GSD não troca de branch sozinho** — os comandos
+(`gsd-discuss-phase`, `gsd-plan-phase`, `gsd-execute-phase`) rodam na branch ativa. Criar e trocar a
+branch é responsabilidade de quem conduz a fase (pessoa ou agente).
+
+### A regra
+
+| # | Passo | Detalhe |
+|---|-------|---------|
+| 1 | **Uma branch por fase** | Nome no padrão `feat/fase-NN-slug` (ex: `feat/fase-04-discovery-report`). `NN` com dois dígitos. |
+| 2 | **Cortar da `main` atualizada** | Antes de criar a branch da fase, `git checkout main && git pull`. A branch nova nasce da `main`, **não** da branch da fase anterior. |
+| 3 | **Fechar a fase anterior primeiro** | Só corte a branch da fase seguinte depois que a fase atual estiver **concluída, revisada e com o `code-review --fix` mergeado**. Começar a fase nova sobre código ainda em revisão gera retrabalho de reconciliação. |
+| 4 | **Concluir com PR/merge na `main`** | Ao terminar a fase (após verificação e review), abrir PR e mergear na `main`. A `main` é sempre a base limpa da próxima fase. |
+| 5 | **Nunca misturar duas fases na mesma branch** | Se o trabalho pertence à Fase N+1, ele vai na branch da Fase N+1 — não na atual. |
+
+### Antes de iniciar qualquer fase — checklist
+
+1. A fase anterior está concluída e o `code-review --fix` dela foi mergeado? Se não, **pare e resolva isso primeiro**.
+2. `git checkout main && git pull`
+3. `git checkout -b feat/fase-NN-slug`
+4. Só então rodar `gsd-discuss-phase` / `gsd-plan-phase` / `gsd-execute-phase`.
+
+> **Nota:** `gsd-discuss-phase` e `gsd-plan-phase` só escrevem em `.planning/` (documentos), não tocam
+> em código-fonte. Tecnicamente rodam em qualquer branch — mas, por disciplina, rode-os já na branch
+> correta da fase para que todo o rastro daquela fase (docs + código) fique junto.
+
+---
+
+## Segredos — NUNCA ler arquivos `.env` (OBRIGATÓRIO — aplica-se a TODA interação)
+
+**É proibido abrir, ler, imprimir ou de qualquer forma trazer para a conversa o conteúdo de arquivos
+de segredo** — `.env`, `backend/.env`, `*.env`, `.secrets` e similares. Esses arquivos contêm chaves de
+API e credenciais; expô-los na conversa é um vazamento, mesmo que o arquivo esteja protegido no
+`.gitignore`.
+
+Regras concretas:
+
+- **Nunca** use Read, Bash (`cat`, `type`, `Get-Content`, `grep`, etc.), nem qualquer outra ferramenta
+  para ler o conteúdo de um `.env`.
+- Se precisar saber **quais variáveis** existem, leia o template não-secreto (`.env.example` /
+  `.env.template`) — nunca o `.env` real.
+- Se precisar do **valor** de uma variável, **peça ao usuário** que informe o valor; não vá buscá-lo no
+  arquivo.
+- Se o usuário colar ou selecionar um segredo por engano, **não repita o valor** na resposta e avise que
+  convém rotacionar a chave.
 
 ---
 
@@ -600,4 +692,48 @@ O `TokenCounter` acompanha tokens enviados e recebidos por chamada. O custo é a
 | `agent.py` | Estender | Recebe `prompt_builder` por injeção. Usa prompt dinâmico se `project_config` disponível; fallback para `SYSTEM_PROMPT` constante. |
 | `main.py` | Estender | Adicionar `--ui web` que sobe FastAPI + WebSocket. Modo CLI permanece intacto. |
 | `requirements.txt` | Atualizar | Adicionar `fastapi`, `uvicorn`, `supabase-py`, `google-genai`. Remover `google-generativeai`. |
+
+> **Nota (2026-09-15):** a migração planejada nesta Seção 9 **não** aconteceu na prática. A v2 web
+> foi **reescrita do zero** em `backend/app/` + `frontend/`, e a v1 (`diagnostico/`) permanece intacta
+> como app CLI à parte. Ver a seção "Modo CLI legado (v1)" abaixo.
+
+---
+
+## 10. Modo CLI legado (v1) — pasta `diagnostico/`
+
+**Status: LEGADO. Código órfão, mantido intencionalmente como modo de linha de comando offline.**
+
+A pasta `diagnostico/` é a **versão 1 completa e autossuficiente** do produto — um aplicativo de
+terminal (~3000 linhas, 31 arquivos), anterior à reescrita web. Foi confirmado por revisão de código
+(2026-09-15, Task 5 do `PLANO_AJUSTES.md`) que ela **não está ligada ao sistema web (v2) nem à
+extensão Chrome**:
+
+- **A extensão (`extension/`) fala apenas com o backend v2** (`backend/`, FastAPI no Railway) via
+  `POST /webhook/extension` e WebSocket `/ws/{sessionId}`. Nunca com `diagnostico/`.
+- **Nenhum arquivo de `backend/`, `frontend/` ou `extension/` importa `diagnostico/`** — as únicas
+  menções são comentários ("segue o mesmo padrão do diagnostico/config.py").
+- A v1 tem seu **próprio** caminho de transcrição (`diagnostico/transcription/webhook_server.py`,
+  aiohttp em loopback, recebe Taqtic/Recall/stdin/arquivo) e seu **próprio** painel
+  (`diagnostico/ui/web_renderer.py`, browser standalone). Nada disso se conecta à v2.
+- Usa **imports de topo** (`from config import ...`) — só roda com `diagnostico/` como raiz,
+  confirmando que é um app independente, não um módulo do `backend/`.
+
+**Como rodar (uso offline no terminal):**
+```bash
+cd diagnostico/
+export GEMINI_API_KEY=sua-chave
+pip install -r requirements.txt
+python main.py                                   # entrevista interativa no terminal
+python main.py --mode realtime --source stdin    # painel de cobertura ao vivo
+```
+
+**Regras ao trabalhar no repo:**
+- **Não confundir** a v1 (`diagnostico/`) com a v2 (`backend/` + `frontend/` + `extension/`). Prompts,
+  classificador e planner existem em **duas versões divergentes**; ao editar o produto atual, mexa
+  **sempre** na v2.
+- A v1 tem seu próprio `config.py`/`.env`/webhook — tratar como superfície separada em auditorias de
+  segurança.
+- Se no futuro o time confirmar que ninguém mais usa o modo terminal, a saída é remover
+  (`git rm -r diagnostico/`) — recuperável pelo histórico do git.
+
 *Agente Diagnóstico · SDD v2.0 · CITi Subárea de Dados · Maio 2026*

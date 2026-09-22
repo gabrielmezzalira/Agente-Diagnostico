@@ -1,41 +1,46 @@
 ---
-gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: milestone
-status: verifying
-stopped_at: context exhaustion at 79% (2026-07-25)
-last_updated: "2026-07-25T03:31:26.680Z"
-last_activity: 2026-07-19
+gsd_state_version: "1.0"
+milestone: v3.0
+milestone_name: Pivot Discovery
+current_phase: 4
+current_phase_name: Discovery Report + Pricing Handoff
+status: planning
+stopped_at: Phase 03 complete, ready to plan Phase 4
+last_updated: "2026-09-22T13:31:36.922Z"
+last_activity: 2026-09-22
+last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: da6294c6f5dc5d46d25c87033c72b82c802d5b1c
 progress:
-  total_phases: 13
-  completed_phases: 2
-  total_plans: 12
-  completed_plans: 8
-  percent: 15
+  total_phases: 10
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
+  percent: 30
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-24)
+See: .planning/PROJECT.md (updated 2026-09-19)
 
-**Core value:** Sales team identifies technical risks before contract signing, avoiding costly execution failures
-**Current focus:** Phase 12 completa. Próxima: Phase 13 (última fase)
+**Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
+**Current focus:** Phase 03 — two-agent-questions-lens-tagging
 
 ## Current Position
 
-Phase: 12 of 13 (LLM-Powered Suggestions)
-Status: Ready to execute — 3 plans verified, all 7 requirements covered
-Last activity: 2026-07-19
+Phase: 4 — Discovery Report + Pricing Handoff
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-22 — Phase 03 complete, transitioned to Phase 4
 
-Progress: [█░░░░░░░░░] ~15% (8/12 plans done — Phase 12 Plan 02 complete)
+Progress: [███░░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 9
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -43,7 +48,9 @@ Progress: [█░░░░░░░░░] ~15% (8/12 plans done — Phase 12 Pl
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 3 | - | - |
+| 02 | 3 | - | - |
+| 03 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -51,26 +58,36 @@ Progress: [█░░░░░░░░░] ~15% (8/12 plans done — Phase 12 Pl
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 01 P01b | 276 | 1 tasks | 7 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 25min | 2 tasks | 5 files |
+| Phase 01 P02 | 8min | 2 tasks | 3 files |
+| Phase 01 P03 | 9min | 2 tasks | 4 files |
+| Phase 02 P01 | 21min | 3 tasks | 6 files |
+| Phase 02 P02 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Key decisions affecting current work:
+Recent decisions affecting current work:
 
-- **No LangChain/LangGraph in Agente Diagnóstico** (ADR locked): asyncio.to_thread() for all LLM calls; 6-task pipeline pattern preserved
-- **LangChain + LangGraph obrigatório no Agente Precificador** (ADR locked): BaseChatModel abstraction via llm_factory.py; provider never referenced in service layer
-- **google.genai SDK** (ADR locked): migrate llm/gemini_client.py; rest of codebase unaffected
-- **Supabase Vault** (ADR locked): Gemini API key in pgsodium column; never returned to frontend
-- **v1 prompts as PromptBuilder fallback**: dynamic prompts may degrade quality initially; v1 constants are the safety net
-- [Phase ?]: Tailwind v4 @theme block in CSS for all design tokens — no tailwind.config.ts
-- [Phase ?]: @import url() placed before @import tailwindcss to respect CSS ordering
-- [Phase 12]: TYPE_CHECKING guard on BaseChatModel import in llm_factory.py — module importable before pip install
-- [Phase 12]: get_top_history_by_type uses PostgREST JSONB path filter (server-side) not Python-side filtering
-- [Phase 12]: TYPE_CHECKING guard + lazy method imports for langchain_core in LLMPricingService — keeps module importable before pip install
-- [Phase 12]: suggest_features returns LLM output without re-invoking if < 3 suggestions — avoids unbounded retry loops
+- Pivot sales → discovery, keep sales behind `mode` flag until discovery is validated
+- Single coverage-area registry (kill 8 hardcoded areas duplicated across ~6 files) — Phase 1 enabling refactor
+- Two agents only at the question stage (coverage + red-flags stay 1×) — bounds LLM cost near 1× while honoring "dois agentes"
+- Adopt Taqciti capture engine + add live streaming; retire the custom extension after cutover is validated (Phase 9)
+- [Phase 01]: Registry per-area dataclass named AreaDefinition (not CoverageArea) to avoid name collision with session_state.CoverageArea — session_state.py already has an unrelated runtime CoverageArea dataclass; reusing the name would be confusing even without an import cycle
+- [Phase 01]: Only llm.classify_coverage rewired to the registry in plan 01-01; area_labels and block-enum call sites deferred to later plans — Plan 01-01 scope is the tracer slice (one consumer, proven end-to-end); remaining consumers are plan 02/03 work
+- [Phase 01]: [Phase 01-02]: AREAS_BY_PROJECT_TYPE re-exported through prompt_builder.py's top-level import rather than repointing session_state.py directly, keeping this plan's diff scoped to its two named files — plan 03 is the one that repoints session_state's import directly to the registry
+- [Phase 01]: [Phase 01-03]: session_state.py re-pointed directly to coverage_areas (import no longer via prompt_builder re-export); structured_context.py's _EXTRACTOR_SYSTEM split into static PREFIX/SUFFIX plus a registry-sourced middle line (concatenation, not f-string) to avoid escaping literal JSON braces
+- [Phase 02]: [Phase 02-01]: DiscoveryPromptBuilder e classe irma (nao subclasse) de PromptBuilder; nunca importa CITI_PORTFOLIO/CATALOG/TECH_REFERENCE — garante DISC-03 por construcao para os 3 agentes realtime
+- [Phase 02]: [Phase 02-01]: _init_coverage ganha mode como kwarg novo com default 'sales' (project_type continua 1o posicional) para nao quebrar test_session_state_custom_areas.py
+- [Phase 02]: citi_block interpolado na mesma posicao textual (entre Alertas detectados e Transcricao completa) — gate por mode nunca reescreve o caminho sales — Garante SC#4 (sales byte-identico) e evita mover o bloco para o system_prompt, o que mudaria user->system no payload do Gemini
+- [Phase 02]: [Phase 02-03] Task 1 (checkpoint:decision, blocking-human, aprovado): coluna projects.mode criada como text DEFAULT 'sales' sem CHECK/enum nativo — Segue o padrao ja usado por project_type/source/status no repo -- validacao de enum 100% no Pydantic Literal, sem ALTER TYPE a cada modo futuro
+- [Phase 02]: [Phase 02-03] Task 2 concluida: migration aditiva + ProjectMode nos 3 schemas Pydantic + teste de validacao (commit 6b6f55a) — ProjectResponse.mode sem default Python (sempre presente pos-migration); nenhum ProjectRepository criado (Pitfall 5)
 
 ### Pending Todos
 
@@ -78,20 +95,28 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 6 (Monitoring Screen) is the largest phase (11 requirements); may need to split into sub-plans when planning
-- Phase 3 (Tunnel) depends on cloudflared/ngrok being installable in the target environment; verify before Phase 3 execution
-- Recall.ai integration (SESS-04) requires API credentials and endpoint confirmation before Phase 2 can fully complete
+- Phases 1-3 touch backend files shared with sales mode (`prompt_builder.py`, `llm.py`, `session_state.py`) — every change needs a sales-mode regression check, not just a discovery-mode happy path
+- Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
+- Phases 7-8 live in the separate Taqciti repo — coordinate access/branch strategy before starting Phase 7
+- Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
+- [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 
 ## Deferred Items
 
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| v2 req | Dynamic report cost estimation (data-driven, after 10 sessions) | Deferred | Init |
-| v2 req | A/B test framework for dynamic vs v1 prompts | Deferred | Init |
-| v2 req | Multi-user / team access | Deferred | Init |
+Items acknowledged and deferred at milestone close, most recent first:
+
+| Category | Item | Status | Deferred At | Milestone |
+|----------|------|--------|-------------|-----------|
+| Discovery depth | Report template refined against a real discovery document sample (DISCF-01) | Deferred | v3.0 requirements | v3.1+ |
+| Discovery depth | Dynamic/AI-generated discovery areas per client context — wire up `generate_custom_areas` (DISCF-02) | Deferred | v3.0 requirements | v3.1+ |
+| Transcription | Multi-provider capture beyond Google Meet — Zoom/Teams (TAQF-01) | Deferred | v3.0 requirements | v3.1+ |
+| Transcription | Real per-user auth (JWT/RLS) for the transcription webhook (TAQF-02) | Deferred | v3.0 requirements | v3.1+ |
+| v2 req | Dynamic report cost estimation (data-driven, after 10 sessions) | Deferred | v2.0 init | v2.1+ |
+| v2 req | A/B test framework for dynamic vs v1 prompts | Deferred | v2.0 init | v2.1+ |
+| v2 req | Multi-user / team access | Deferred | v2.0 init | v2.1+ |
 
 ## Session Continuity
 
-Last session: 2026-07-25T03:31:26.671Z
-Stopped at: context exhaustion at 79% (2026-07-25)
-Resume file: None
+Last session: 2026-09-21T20:52:51.254Z
+Stopped at: Phase 03 complete, ready to plan Phase 4
+Resume file: .planning/phases/03-two-agent-questions-lens-tagging/03-CONTEXT.md

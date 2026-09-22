@@ -4,6 +4,8 @@ PromptBuilder — gera system prompts personalizados por agente.
 Calibração dupla: DMS (1–5) × tipo de projeto (bi, ml, data_engineering, automation, integration, science).
 """
 
+from app.services.coverage_areas import AREAS_BY_PROJECT_TYPE, SALES_AREA_SET
+
 DMS_LABEL = {
     1: "Sem estrutura",
     2: "Estrutura inicial",
@@ -27,44 +29,9 @@ _ADVANCED_TERMS = (
 )
 
 # ---------------------------------------------------------------------------
-# Configuração de áreas por tipo de projeto
-#   critical  — avaliar com rigor, cobertura fraca é gap real
-#   optional  — avaliar se o cliente mencionar
-#   inactive  — não aplicável; inicializar como not_applicable no state
+# Configuração de áreas por tipo de projeto — AREAS_BY_PROJECT_TYPE agora vive
+# apenas em coverage_areas.py (D-02); importado no topo deste arquivo.
 # ---------------------------------------------------------------------------
-
-AREAS_BY_PROJECT_TYPE: dict[str, dict[str, list[str]]] = {
-    "bi": {
-        "critical": ["negocio", "visualizacao", "eng_dados", "parceria"],
-        "optional": ["integracao", "consumo"],
-        "inactive": ["ciencia_dados", "automacao"],
-    },
-    "ml": {
-        "critical": ["negocio", "ciencia_dados", "eng_dados", "parceria"],
-        "optional": ["integracao", "consumo"],
-        "inactive": ["visualizacao", "automacao"],
-    },
-    "data_engineering": {
-        "critical": ["negocio", "eng_dados", "integracao", "parceria"],
-        "optional": ["automacao", "consumo"],
-        "inactive": ["visualizacao", "ciencia_dados"],
-    },
-    "automation": {
-        "critical": ["negocio", "automacao", "integracao", "parceria"],
-        "optional": ["eng_dados", "consumo"],
-        "inactive": ["visualizacao", "ciencia_dados"],
-    },
-    "integration": {
-        "critical": ["negocio", "integracao", "parceria"],
-        "optional": ["eng_dados", "consumo", "automacao"],
-        "inactive": ["visualizacao", "ciencia_dados"],
-    },
-    "science": {
-        "critical": ["negocio", "ciencia_dados", "eng_dados", "parceria"],
-        "optional": ["integracao", "consumo"],
-        "inactive": ["visualizacao", "automacao"],
-    },
-}
 
 _TYPE_RED_FLAG_HINTS: dict[str, str] = {
     "bi": (
@@ -364,14 +331,7 @@ class PromptBuilder:
             "Quando houver dúvida entre 'uncovered' e 'partial', escolha 'uncovered'.\n\n"
             "Analise a transcrição e classifique a cobertura de cada área.\n"
             "Retorne APENAS JSON válido (sem markdown fences):\n"
-            '{"areas":{"negocio":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"eng_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"visualizacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"ciencia_dados":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"automacao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"integracao":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"consumo":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""},'
-            '"parceria":{"status":"covered|partial|uncovered|not_applicable","score":0-100,"notes":""}}}'
+            + SALES_AREA_SET.schema_json(include_not_applicable=True)
         )
 
     # -------------------------------------------------------------------------
@@ -490,7 +450,7 @@ class PromptBuilder:
             "Adapte, combine, reformule ou ignore completamente — use o que fizer sentido para a conversa atual.\n"
             "4. Não repita perguntas recentes.\n\n"
             "Retorne APENAS JSON válido:\n"
-            '{"questions":[{"text":"...","block":"negocio|eng_dados|visualizacao|ciencia_dados|automacao|integracao|consumo|parceria"}]}'
+            '{"questions":[{"text":"...","block":"' + SALES_AREA_SET.block_enum() + '"}]}'
         )
 
     # -------------------------------------------------------------------------
