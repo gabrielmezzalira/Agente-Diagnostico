@@ -163,3 +163,30 @@ fica preso em "reconectando" em vez de navegar para o histórico. A confirmar no
 (lógica de reconexão) + `SessionActivePage` (navegação pós-finish).
 
 **Status:** ✅ RESOLVIDO (2026-09-21) — commit `be2741e`: `handleFinish` passa a encerrar só via REST (removida a corrida WS+HTTP). Encerrar confirmado funcionando pelo humano.
+
+---
+
+## B-007 — `pipeline.py` chama Supabase direto no service (viola camada de repositories)
+
+**Capturado:** 2026-09-22 (durante `/gsd-code-review 03`, achado WR-03)
+**Severidade:** major (dívida arquitetural) — **NÃO é defeito da Fase 3.** Pré-existente; o code
+review da Fase 3 o encontrou mas decidiu **não** corrigir junto das correções pontuais (WR-01/02/04),
+porque misturar refator grande com fix crítico viola a regra de conduta do CLAUDE.md.
+
+**O que muda (linguagem comum):** o `CLAUDE.md` manda que quem fala com o banco seja a camada de
+`repositories/`, e que os `services/` só orquestrem lógica de negócio. Hoje o `pipeline.py` (um
+service) chama o Supabase diretamente, misturando as duas responsabilidades — o que dificulta testar
+e manter. A ideia é extrair esse acesso a banco para um repository dedicado.
+
+**Superfície afetada:** `backend/app/services/pipeline.py` (~743 linhas — o acesso a banco está
+espalhado por praticamente todo o arquivo). Provável criação de um `repositories/session_repo.py` (ou
+similar) e reescrita das chamadas do pipeline para passar por ele.
+
+**Riscos:** é refator amplo num arquivo central do fluxo realtime (sessão ao vivo, perguntas, red
+flags, relatório). Alto risco de regressão — exige commits atômicos, testes antes/depois e validação
+ponta a ponta numa sessão real.
+
+**A definir no planejamento:** desenhar a interface do repository, migrar por partes (leitura →
+escrita), e garantir que o modo sales continue byte-idêntico.
+
+**Status:** aberto — refator próprio, a promover para fase/requisito (não misturar com feature nova).
