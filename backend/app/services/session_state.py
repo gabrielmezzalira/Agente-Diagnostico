@@ -154,7 +154,20 @@ class SessionState:
         return self.budget_usd - self.cost_usd
 
     def coverage_to_dict(self) -> dict:
+        # Fase 3 (Two-Agent Questions + Lens Tagging) / D-19: a lente de cada
+        # área vem do REGISTRO estático (AreaDefinition.lens) por lookup de
+        # chave conforme `mode` — nunca do CoverageArea runtime (Pitfall 3).
+        # Áreas custom (sem AreaDefinition correspondente) caem no .get(area)
+        # → None, sem tratamento especial nem crash.
+        area_set = DISCOVERY_AREA_SET if self.mode == "discovery" else SALES_AREA_SET
+        lens_by_key = {a.key: a.lens for a in area_set.areas}
         return {
-            area: {"status": c.status, "score": c.score, "notes": c.notes, "name": c.name}
+            area: {
+                "status": c.status,
+                "score": c.score,
+                "notes": c.notes,
+                "name": c.name,
+                "lens": lens_by_key.get(area),
+            }
             for area, c in self.coverage.items()
         }

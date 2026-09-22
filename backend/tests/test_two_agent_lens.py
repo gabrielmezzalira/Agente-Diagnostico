@@ -455,6 +455,46 @@ def test_build_red_flag_detector_discovery_has_lens_contract_no_citi_portfolio()
     assert "CITI_PORTFOLIO" not in prompt
 
 
+# =============================================================================
+# Plano 03-03 / Task 2: lente nas coverage areas — coverage_to_dict deriva
+# lens do registro por mode (D-19, LENS-04, SC#2)
+# =============================================================================
+
+
+def test_coverage_to_dict_discovery_lens_matches_registry_partition():
+    d = SessionState(session_id="s", mode="discovery").coverage_to_dict()
+    assert len(d) == 18
+    for key in DISCOVERY_AREA_SET.by_lens("produto").keys():
+        assert d[key]["lens"] == "produto"
+    for key in DISCOVERY_AREA_SET.by_lens("dados").keys():
+        assert d[key]["lens"] == "dados"
+    # Campos existentes continuam presentes e inalterados.
+    sample = d[DISCOVERY_AREA_SET.keys()[0]]
+    assert set(["status", "score", "notes", "name", "lens"]) <= set(sample.keys())
+
+
+def test_coverage_to_dict_sales_lens_is_none_for_all_areas():
+    s = SessionState(session_id="s", project_type="bi").coverage_to_dict()
+    assert len(s) == len(SALES_AREA_SET.keys())
+    assert all(v["lens"] is None for v in s.values())
+
+
+def test_coverage_to_dict_custom_area_lens_is_none_without_crash():
+    state = SessionState(
+        session_id="s", project_type="bi",
+        custom_areas=[{"key": "x", "name": "X"}],
+    )
+    d = state.coverage_to_dict()
+    assert d["x"]["lens"] is None
+    assert d["x"]["name"] == "X"
+
+
+def test_coverage_to_dict_discovery_specific_keys_lens_smoke():
+    d = SessionState(session_id="s", mode="discovery").coverage_to_dict()
+    assert d["gargalo"]["lens"] == "produto"
+    assert d["metricas"]["lens"] == "dados"
+
+
 def test_discovery_area_golden_unchanged():
     """Confirma que adicionar o campo `lens` (Task 1) não mudou a saída do
     registro sales: SALES_AREA_SET.keys()/labels()/block_enum() continuam
