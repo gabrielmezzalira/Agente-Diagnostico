@@ -515,6 +515,7 @@ class SessionPipeline:
                 severity=f.get("severity", "warning"),
                 evidence=f.get("evidence", ""),
                 detected_at=f.get("detected_at", ""),
+                lens=f.get("lens"),
             ))
 
         questions = (
@@ -535,6 +536,7 @@ class SessionPipeline:
                 status=q["status"],
                 generated_at=q.get("generated_at", ""),
                 expires_at=q.get("expires_at", ""),
+                lens=q.get("lens"),
             ))
 
         # Injetar perguntas recomendadas do contexto pré-reunião como pinned,
