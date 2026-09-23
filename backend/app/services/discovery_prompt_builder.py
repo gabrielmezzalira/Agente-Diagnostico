@@ -9,13 +9,14 @@ ABC, sem flag interno. Os dois builders implementam o mesmo contrato informal
 build_report_generator / build_all) via duck typing; a selecao entre os dois
 acontece no ponto de montagem (pipeline.py), nunca aqui.
 
-Import critico para SC#3 (DISC-03): este modulo NUNCA importa CITI_PORTFOLIO,
-CITI_SERVICE_CATALOG nem CITI_TECH_REFERENCE de prompt_builder.py. Essa
+Import critico para SC#3 (DISC-03): este modulo NUNCA importa os tres
+simbolos comerciais do portfolio/catalogo/referencia tecnica de
+prompt_builder.py (ver DISC-03 em REQUIREMENTS.md para os nomes exatos). Essa
 ausencia de import e, por construcao, o que garante que os 3 agentes de tempo
 real (coverage_classifier, red_flag_detector, question_planner) nunca
 carregam o portfolio comercial da CITi. Reaproveita apenas os dicts de
 calibracao por DMS (DMS_LABEL/DMS_DESCRIPTION) de prompt_builder.py — importar
-esses dois dicts nao arrasta os textos CITi, que vivem em constantes
+esses dois dicts nao arrasta os textos comerciais, que vivem em constantes
 separadas no mesmo modulo.
 
 D-08: o discovery ignora `AREAS_BY_PROJECT_TYPE`/`_area_hint` — as 18 areas de
@@ -244,32 +245,130 @@ class DiscoveryPromptBuilder:
     # ReportGenerator
     # -------------------------------------------------------------------------
 
+    # Fase 4 (Discovery Report + Pricing Handoff) / D-26: marcador exato de
+    # subseção sem insumo — discricionário (D-26), mas precisa ser consistente
+    # e informado ao LLM (ver `<behavior>` do plano 04-02). Constante de
+    # módulo para o teste poder importar/comparar sem duplicar o literal.
+    EMPTY_SECTION_MARKER = "[a preencher no PRD]"
+
     def build_report_generator(self) -> str:
+        # D-25/D-26: esqueleto do PRD padrão da CITi (16 seções, 0-15),
+        # extraído de PRD_modelo_em_branco_CITi.pdf (ver 04-RESEARCH.md,
+        # "PRD Skeleton"). Preenche SOMENTE o que as tabelas/listas do 'user'
+        # message trouxerem (pré-montagem híbrida código+LLM, D-27, feita em
+        # llm.py::generate_report) — nunca inventa personas, protótipos,
+        # matriz É/Não É ou CSD formal que o pipeline não captura.
+        #
+        # Mapa de lens por seção (D-27): Produto -> 1-6, 10, 11; Dados -> 7 +
+        # partes de 8 (LGPD/observabilidade) e 9 (arquitetura/integrações).
+        # Sinais nativos de precificação (D-29, SEM seção nomeada): 6.3
+        # (backlog+estimativas), 7.3 (volumetria), 11 (faseamento).
         return (
-            "Você é um facilitador de discovery sênior da CITi gerando um documento "
-            "de discovery em português brasileiro — mapeando o gargalo, a frente de "
-            "atuação, o impacto no usuário, o fluxo de processos e de dados, e o "
-            "desenho/expectativa/viabilidade da solução proposta.\n"
+            "Você é um facilitador de discovery sênior da CITi gerando o PRD padrão "
+            "da subárea de Produto (esqueleto de 16 seções, 0-15) em português "
+            "brasileiro, a partir de uma reunião de discovery.\n"
             f"Perfil do cliente — Data Maturity Score: {self._dms_str()}.\n\n"
             "Escreva em Markdown claro e profissional. Seja específico, direto e "
             "orientado a ações. Sem texto de preenchimento. Quando houver expectativa "
             "irreal ou risco relevante para a solução, diga claramente.\n\n"
-            "Estruture o relatório com estas seções na ordem exata:\n"
-            "## Cobertura por Área\n"
-            "  Tabela: Área | Status | Score | Observações\n"
-            "  OBRIGATÓRIO: inclua TODAS as 18 áreas na tabela, mesmo com score 0 e "
-            "status uncovered.\n"
-            "## Gargalo e Frente de Atuação\n"
-            "  - O gargalo mapeado e a frente de atuação em foco (máximo 3 bullets)\n"
-            "## Fluxo de Processos e Dados\n"
-            "  - Resumo do fluxo mapeado, das fontes e da qualidade dos dados\n"
-            "## Desenho da Solução\n"
-            "  - Desenho, expectativa e viabilidade da solução discutida\n"
-            "## Riscos e Alertas\n"
-            "  - 🚨 ALERTA CRÍTICO: riscos que podem inviabilizar a solução\n"
-            "  - ⚠️ RED FLAG: pontos de atenção que precisam ser endereçados\n"
-            "## Perguntas Ainda Sem Resposta\n"
-            "  - Liste o que ficou sem resposta e precisa ser esclarecido antes de avançar\n"
+            "REGRA CRÍTICA DE PREENCHIMENTO (D-26): preencha CADA seção/subseção "
+            "APENAS com o que vier nas tabelas e listas do 'user' message (cobertura "
+            "por lens, red flags por lens, perguntas por lens, transcrição, contexto "
+            "estruturado). NUNCA invente personas, protótipos, matriz É/Não É ou "
+            f"matriz CSD que não estejam nos insumos. Se uma subseção não tiver "
+            f"nenhum insumo, escreva literalmente o marcador '{self.EMPTY_SECTION_MARKER}' "
+            "nela — isso é ESPERADO e CORRETO para várias subseções (seções 4, 5, 10 "
+            "e partes de 2.4/12.4 tendem a ficar assim; discovery não produz personas, "
+            "protótipos nem CSD formal).\n\n"
+            "Estruture o relatório com estas 16 seções, NESTA ORDEM EXATA, usando os "
+            "títulos e subtítulos abaixo (numeração incluída):\n\n"
+            "## 0. Controle do documento\n"
+            f"  0.1 Histórico de versões — {self.EMPTY_SECTION_MARKER}\n"
+            f"  0.2 Aprovações (sign-off) — {self.EMPTY_SECTION_MARKER}\n"
+            f"  0.3 Referências — {self.EMPTY_SECTION_MARKER}\n"
+            "## 1. Sumário executivo\n"
+            "  Problema / Solução proposta / Valor esperado / Escopo do MVP em uma "
+            "frase — derive do gargalo, frente de atuação e desenho de solução "
+            "mapeados (lens Produto).\n"
+            "## 2. Contexto & problema\n"
+            "  2.1 Contexto de negócio\n"
+            "  2.2 Problema central (o gargalo mapeado)\n"
+            "  2.3 Situação atual (AS-IS) e dores\n"
+            f"  2.4 Insights-chave do discovery (CSD) — {self.EMPTY_SECTION_MARKER} "
+            "se não houver matriz CSD formal nos insumos.\n"
+            "## 3. Objetivos & métricas de sucesso\n"
+            "  3.1 Objetivos de negócio\n"
+            "  3.2 Métrica North Star\n"
+            "  3.3 KPIs e metas\n"
+            "## 4. Público & jornadas\n"
+            f"  4.1 Personas — {self.EMPTY_SECTION_MARKER}\n"
+            "  4.2 Perfis de acesso (papéis)\n"
+            f"  4.3 Jornada TO-BE (fluxo desejado) — {self.EMPTY_SECTION_MARKER} salvo "
+            "se o desenho de solução mapeado descrever o fluxo desejado.\n"
+            "## 5. Escopo (É / Não É)\n"
+            f"  5.1 No escopo (É) — {self.EMPTY_SECTION_MARKER}\n"
+            f"  5.2 Fora do escopo (Não É) — {self.EMPTY_SECTION_MARKER}\n"
+            "  5.3 Escopo futuro (backlog / próximos ciclos)\n"
+            "  5.4 Premissas de escopo\n"
+            "## 6. Requisitos funcionais & user stories\n"
+            "  6.1 Visão de épicos\n"
+            "  6.2 Detalhamento dos requisitos\n"
+            "  6.3 Backlog consolidado de user stories (tabela: ID | Épico | User "
+            "story | Prio. | Est. | Depende de) — SINAL NATIVO DE PRECIFICAÇÃO "
+            "(D-29): preencha com o que for extraível do fluxo/solução mapeados; "
+            "estimativas grosseiras são aceitáveis, marcadas como tal.\n"
+            "  6.4 Catálogo de regras de negócio\n"
+            "## 7. Requisitos de dados\n"
+            "  Use as duas tabelas de cobertura por lens fornecidas no 'user' "
+            "message (Produto e Dados) — copie a tabela Dados SEM alterar.\n"
+            "  7.1 Entidades principais (modelo conceitual)\n"
+            "  7.2 Fontes e integrações de dados\n"
+            "  7.3 Volumetria e crescimento (volume inicial / crescimento / "
+            "retenção) — SINAL NATIVO DE PRECIFICAÇÃO (D-29).\n"
+            "  7.4 Qualidade de dados\n"
+            "  7.5 Dados pessoais & LGPD — NUNCA omitir esta subseção mesmo vazia; "
+            f"use '{self.EMPTY_SECTION_MARKER}' se não houver insumo de LGPD.\n"
+            "  7.6 Analytics & BI\n"
+            "  7.7 Migração de dados\n"
+            "## 8. Requisitos não-funcionais\n"
+            "  Tabela: Performance | Disponibilidade/SLA | Escalabilidade | "
+            "Segurança | Usabilidade/Acessibilidade | Compatibilidade | "
+            "Compliance/LGPD | Observabilidade | Backup & recuperação — preencha "
+            "as colunas de LGPD/observabilidade com o que vier da lente Dados.\n"
+            "## 9. Arquitetura, integrações & restrições técnicas\n"
+            "  9.1 Sistemas e integrações externas\n"
+            "  9.2 Restrições técnicas conhecidas\n"
+            "  9.3 Ambientes\n"
+            f"  9.4 Diagrama de contexto — {self.EMPTY_SECTION_MARKER} (não gere "
+            "diagramas ASCII especulativos)\n"
+            "## 10. Design & protótipos\n"
+            f"  10.1 Protótipos — {self.EMPTY_SECTION_MARKER}\n"
+            f"  10.2 Design system / identidade — {self.EMPTY_SECTION_MARKER}\n"
+            f"  10.3 Telas principais e mapeamento com requisitos — {self.EMPTY_SECTION_MARKER}\n"
+            "## 11. Priorização & faseamento\n"
+            "  11.1 Definição do MVP\n"
+            "  11.2 Fases de entrega / releases — SINAL NATIVO DE PRECIFICAÇÃO "
+            "(D-29): use o que for extraível da viabilidade/expectativa de solução.\n"
+            "  11.3 Critério de priorização utilizado\n"
+            "## 12. Riscos, premissas, dependências & dúvidas em aberto\n"
+            "  12.1 Riscos — use a lista de red flags por lens fornecida (Produto "
+            "e Dados) no 'user' message.\n"
+            "  12.2 Dependências\n"
+            "  12.3 Restrições\n"
+            "  12.4 Dúvidas em aberto (do CSD) — use a lista de perguntas por lens "
+            f"fornecida no 'user' message; itens no bucket 'não classificado' "
+            "aparecem numa subseção à parte, sem forçar lens.\n"
+            "## 13. Critérios de qualidade: Ready, Done & aceite\n"
+            "  13.1 Definition of Ready\n"
+            "  13.2 Definition of Done\n"
+            "  13.3 Critérios de aceite do MVP\n"
+            "  13.4 Estratégia de testes\n"
+            "## 14. Glossário\n"
+            f"  {self.EMPTY_SECTION_MARKER} salvo termos técnicos específicos já "
+            "usados na transcrição.\n"
+            "## 15. Anexos & matriz de rastreabilidade\n"
+            f"  15.1 Matriz de rastreabilidade — {self.EMPTY_SECTION_MARKER}\n"
+            f"  15.2 Anexos — {self.EMPTY_SECTION_MARKER}\n"
         )
 
     # -------------------------------------------------------------------------
