@@ -109,7 +109,26 @@ class LLMPricingService:
                 )
             reports = [report] if report else []
         else:
-            reports = self._repo.get_project_reports(project_id)
+            # Caminho de projeto (sem session_id): o PRD de discovery é
+            # construído de forma contínua e cumulativa — cada relatório
+            # pós-reunião aprovado ("Aprovado para build") entra na extração,
+            # junto com relatórios sales (status=None, sempre sem gate).
+            # Filtra fora rascunhos/em revisão para fechar o bypass do gate
+            # (review Blocker 2 / CR-02) sem bloquear o import inteiro só
+            # porque existe um rascunho não aprovado no projeto.
+            all_reports = self._repo.get_project_reports(project_id)
+            reports = [
+                r for r in all_reports
+                if r.get("status") in (None, "Aprovado para build")
+            ]
+            if all_reports and not reports:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Nenhum relatório de discovery aprovado ('Aprovado para build') "
+                        "disponível para importação."
+                    ),
+                )
 
         if not reports:
             raise HTTPException(
