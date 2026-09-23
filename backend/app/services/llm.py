@@ -148,7 +148,7 @@ async def generate_report(
     transcript: str,
     coverage: dict,
     red_flags: list,
-    questions_used: list,
+    questions_used: list[str] | list[dict],
     project_type: str,
     dms: Optional[int],
     pre_meeting_context: str = "",

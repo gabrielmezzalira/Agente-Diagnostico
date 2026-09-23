@@ -69,7 +69,7 @@ class DiscoveryPromptBuilder:
 
     def _dms_str(self) -> str:
         if self.dms is None:
-            return f"Não mapeado ({self.dms_label}): {self.dms_desc}"
+            return f"Não mapeado: {self.dms_desc}"
         return f"{self.dms}/5 ({self.dms_label}): {self.dms_desc}"
 
     # -------------------------------------------------------------------------
