@@ -498,6 +498,7 @@ async def upload_pdf_transcript(
         dms=dms,
         pre_meeting_context=pre_meeting_context,
         system_prompt=prompts.get("report_generator"),
+        mode=project.get("mode", "sales"),
     )
     total_inp += inp
     total_out += out
@@ -509,6 +510,7 @@ async def upload_pdf_transcript(
             "session_id": str(session_id),
             "markdown_content": markdown,
             "cost_usd": str(cost),
+            **({"status": "Rascunho"} if project.get("mode") == "discovery" else {}),
         })
         .execute()
     )
