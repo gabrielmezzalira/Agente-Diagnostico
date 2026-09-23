@@ -352,11 +352,26 @@ async def update_session_report_status(
 ):
     """Transiciona o status do relatório de discovery (D-38). Escrita simples de
     campo — aceitável no router, mesmo nível dos GET/POST de report já presentes
-    neste arquivo. O gate de negócio (D-37) vive em llm_pricing_service, não aqui."""
+    neste arquivo. O gate de negócio (D-37) vive em llm_pricing_service, não aqui.
+
+    Uma sessão pode ter mais de uma linha em `reports` (cada regeneração insere
+    uma nova) — resolve o relatório mais recente primeiro (mesmo padrão do
+    GET/POST acima) para nunca atualizar/retornar uma versão desatualizada
+    (review Blocker 1 / CR-01)."""
+    latest = (
+        db.table("reports")
+        .select("id")
+        .eq("session_id", str(session_id))
+        .order("generated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not latest.data:
+        raise HTTPException(status_code=404, detail="No report found for this session")
     result = (
         db.table("reports")
         .update({"status": payload.status})
-        .eq("session_id", str(session_id))
+        .eq("id", latest.data[0]["id"])
         .execute()
     )
     if not result.data:
