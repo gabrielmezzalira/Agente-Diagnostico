@@ -130,9 +130,17 @@ streaming → session binding → cutover), so discovery correctness is proven b
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 04-01-PLAN.md — Tracer: espinha do handoff gateado por status (migration reports.status + grant + PATCH transição D-38 + gate no import D-37) [Wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-02-PLAN.md — REP-01: esqueleto do PRD de 16 seções + duas tabelas por lens + perguntas por lens (D-26/D-27/D-28/D-40) + golden sales REP-03 [Wave 2]
 - [ ] 04-03-PLAN.md — Enriquecimento: blocos ampliados 7→12 (D-32) + readiness score ponderado (D-33/D-34) [Wave 2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-04-PLAN.md — Correção isolada D-39: upload_pdf_transcript propaga mode + grant de status [Wave 2]
 
 ### Phase 5: Two-Lens Monitoring (Frontend)

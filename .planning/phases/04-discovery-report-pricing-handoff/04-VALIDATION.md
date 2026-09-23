@@ -49,10 +49,10 @@ created: "2026-09-22"
 | 04-01-03 | 01 | 1 | REP-02 | T-04-01 (bypass do gate), T-04-02 (status arbitrário) | Import exige `status == 'Aprovado para build'`; extrai ≥1 feature; vincula `pricings.session_id`; sales (None) passa; PATCH valida Literal | integration (mock LLM) | `cd backend && python -m pytest tests/test_import_from_diagnosis_gate.py -x` | ❌ W0 | ⬜ pending |
 | 04-02-01 | 02 | 2 | REP-03 | — | `generate_report(mode="sales")` byte-idêntico ao pré-fase (golden congelado antes de tocar llm.py) | unit (golden) | `cd backend && python -m pytest tests/test_discovery_report.py::test_sales_mode_unchanged -x` | ❌ W0 | ⬜ pending |
 | 04-02-02 | 02 | 2 | REP-01 | — | `build_report_generator` = esqueleto PRD 16 seções; sem símbolos comerciais (DISC-03) | unit (import assert) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
-| 04-02-03 | 02 | 2 | REP-01 | T-04-04 | Duas tabelas por lens (DISCOVERY_AREA_SET); perguntas por lens; marcador de seção vazia | unit (golden/snapshot) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
+| 04-02-03 | 02 | 2 | REP-01 | T-04-04 | Duas tabelas por lens (DISCOVERY_AREA_SET); perguntas por lens; marcador de seção vazia; ramo discovery tolera shape lens-less do upload (questions=list[str] + red_flags sem lens → bucket "não classificado", sem AttributeError — contrato com 04-04, D-39) | unit (golden/snapshot + robustez) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
 | 04-03-01 | 03 | 2 | REP-02 | — | 12 blocos sincronizados nos dois prompts do Precificador + desambiguação (D-32) | grep/unit | `cd backend && python -m pytest tests/ -q` (grep BLOCKS_12_OK) | ✅ existente | ⬜ pending |
 | 04-03-02 | 03 | 2 | REP-01 | T-04-05 | readiness_score puro: 4 sinais, score ponderado + limiar, low_signals (D-33/D-34) | unit (pure) | `cd backend && python -m pytest tests/test_readiness_score.py -x` | ❌ W0 | ⬜ pending |
-| 04-04-01 | 04 | 2 | REP-01, REP-03 | T-04-07 | upload_pdf propaga `mode`; grant `status='Rascunho'` só discovery; sales inalterado (correção D-39, commit isolado) | unit | `cd backend && python -m pytest tests/test_upload_pdf_mode.py -x` | ❌ W0 | ⬜ pending |
+| 04-04-01 | 04 | 3 | REP-01, REP-03 | T-04-07 | upload_pdf propaga `mode`; grant `status='Rascunho'` só discovery; sales inalterado (correção D-39, commit isolado); depende de 04-02 para a crash-safety do discovery branch com shape lens-less | unit | `cd backend && python -m pytest tests/test_upload_pdf_mode.py -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -61,7 +61,7 @@ created: "2026-09-22"
 ## Wave 0 Requirements
 
 - [ ] `backend/tests/test_import_from_diagnosis_gate.py` (plano 04-01, tracer) — cobre REP-02 (gate de `status` 422/aprovado + extração + `pricings.session_id`; sales None passa)
-- [ ] `backend/tests/test_discovery_report.py` (plano 04-02) — cobre REP-03 (golden sales, congelar fixture ANTES de tocar `llm.py`) e REP-01 (esqueleto PRD, duas tabelas por lens, marcador de seção vazia)
+- [ ] `backend/tests/test_discovery_report.py` (plano 04-02) — cobre REP-03 (golden sales, congelar fixture ANTES de tocar `llm.py`) e REP-01 (esqueleto PRD, duas tabelas por lens, marcador de seção vazia); inclui `test_discovery_tolerates_lensless_upload_shape` (contrato cross-plan com 04-04: discovery branch não estoura com questions=list[str] + red_flags sem lens; itens no bucket "não classificado", D-39)
 - [ ] `backend/tests/test_readiness_score.py` (plano 04-03) — cobre readiness (D-33/D-34): sessão vazia (ready=False) vs. coberta (ready=True)
 - [ ] `backend/tests/test_upload_pdf_mode.py` (plano 04-04) — cobre a correção D-39 (discovery→PRD/'Rascunho'; sales→sales/None)
 - [ ] Nenhuma nova fixture de framework necessária — `pytest`/`pytest-asyncio`/`monkeypatch` já cobrem tudo.
