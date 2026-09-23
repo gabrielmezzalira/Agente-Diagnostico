@@ -121,6 +121,27 @@ continua **byte-a-byte idêntico** (REP-03).
   muda o contrato de comportamento do handoff (REP-02); precisa gatear por `mode`/tipo de relatório
   para não regredir o sales, e o parser/rota do Precificador precisa acompanhar a pré-condição.
 
+### Decisões da pesquisa (D-38 a D-40 — lacunas achadas no RESEARCH.md, resolvidas com o usuário 2026-09-22)
+- **D-38:** **Endpoint de transição de `status` entra na Fase 4 (backend).** A pesquisa achou que
+  não existe rota para mudar `reports.status` (Rascunho→Aprovado); sem ela, o SC#2/REP-02 ("marcar
+  Aprovado, rodar import") só rodaria via UPDATE manual no banco. Incluir um endpoint mínimo (ex.:
+  `PATCH /sessions/{session_id}/report` com body `{status}`), validado contra o `Literal` de 3
+  valores (Rascunho / Em revisão / Aprovado para build). A UI que chama esse endpoint continua na
+  Fase 5 (D-35); esta fase só entrega a rota. — **Reversibility:** reversible (nova rota; sem tocar
+  sales). **Decisão do usuário (2026-09-22).**
+- **D-39:** **Corrigir `upload_pdf_transcript` para propagar `mode` na Fase 4.** O endpoint
+  `POST /{session_id}/transcript/upload` chama `generate_report` sem `mode=` (default `"sales"`),
+  então uma sessão discovery importada via PDF geraria relatório sales silenciosamente. Propagar
+  `mode=project.mode` (ou equivalente). **Commit separado da feature** (correção ≠ refator/feature,
+  regra do CLAUDE.md). — **Reversibility:** reversible (poucas linhas). **Decisão do usuário
+  (2026-09-22).**
+- **D-40:** **Perguntas particionadas por `lens` na seção 12.4 do PRD ("Dúvidas em aberto").**
+  Mudar `questions_used` em `generate_report` de `list[str]` para `list[dict]` com `{text, lens}`
+  (mesmo padrão já usado para `red_flags_raw`), para manter a coerência do D-27 (todo item
+  taggeado aparece na seção da sua lente) e evitar o LLM alucinar a divisão. Sales continua
+  recebendo apenas texto (byte-identidade da saída sales preservada, REP-03). — **Reversibility:**
+  reversible (assinatura interna). **Decisão do usuário (2026-09-22).**
+
 ### Claude's Discretion
 - **Formato exato do esqueleto do PRD em Markdown** (derivar do PDF `PRD_modelo_em_branco_CITi.pdf`
   para uma forma machine-usável que o prompt/código consuma), nomes/marcadores das seções vazias
