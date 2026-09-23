@@ -44,9 +44,15 @@ created: "2026-09-22"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | REP-01 | — | Relatório discovery = esqueleto PRD, tabelas Produto/Dados, `[a preencher no PRD]` quando sem insumo | unit (golden/snapshot) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
-| 04-0x-0x | 0x | x | REP-02 | T-04-01 (bypass do gate) | Import exige `status == 'Aprovado para build'`; extrai ≥1 feature; vincula `pricings.session_id` | integration (mock LLM) | `cd backend && python -m pytest tests/test_import_from_diagnosis_gate.py -x` | ❌ W0 | ⬜ pending |
-| 04-0x-0x | 0x | x | REP-03 | — | `generate_report(mode="sales")` byte-idêntico ao pré-fase | unit (golden) | `cd backend && python -m pytest tests/test_discovery_report.py::test_sales_mode_unchanged -x` | ❌ W0 | ⬜ pending |
+| 04-01-01 | 01 | 1 | REP-02 | — | checkpoint:decision — aprovar migration one-way (D-36) | manual (gate) | — (checkpoint) | n/a | ⬜ pending |
+| 04-01-02 | 01 | 1 | REP-02 | — | Migration aditiva/nullable/sem-default aplicada; repo lê `status` (Pitfall 5) | grep + human-check | `MIG=supabase/migrations/20260923000000_add_status_to_reports.sql; test -f "$MIG" && grep -q "ADD COLUMN IF NOT EXISTS status text" "$MIG" && echo MIGRATION_OK` | ❌ W0 | ⬜ pending |
+| 04-01-03 | 01 | 1 | REP-02 | T-04-01 (bypass do gate), T-04-02 (status arbitrário) | Import exige `status == 'Aprovado para build'`; extrai ≥1 feature; vincula `pricings.session_id`; sales (None) passa; PATCH valida Literal | integration (mock LLM) | `cd backend && python -m pytest tests/test_import_from_diagnosis_gate.py -x` | ❌ W0 | ⬜ pending |
+| 04-02-01 | 02 | 2 | REP-03 | — | `generate_report(mode="sales")` byte-idêntico ao pré-fase (golden congelado antes de tocar llm.py) | unit (golden) | `cd backend && python -m pytest tests/test_discovery_report.py::test_sales_mode_unchanged -x` | ❌ W0 | ⬜ pending |
+| 04-02-02 | 02 | 2 | REP-01 | — | `build_report_generator` = esqueleto PRD 16 seções; sem símbolos comerciais (DISC-03) | unit (import assert) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
+| 04-02-03 | 02 | 2 | REP-01 | T-04-04 | Duas tabelas por lens (DISCOVERY_AREA_SET); perguntas por lens; marcador de seção vazia | unit (golden/snapshot) | `cd backend && python -m pytest tests/test_discovery_report.py -x` | ❌ W0 | ⬜ pending |
+| 04-03-01 | 03 | 2 | REP-02 | — | 12 blocos sincronizados nos dois prompts do Precificador + desambiguação (D-32) | grep/unit | `cd backend && python -m pytest tests/ -q` (grep BLOCKS_12_OK) | ✅ existente | ⬜ pending |
+| 04-03-02 | 03 | 2 | REP-01 | T-04-05 | readiness_score puro: 4 sinais, score ponderado + limiar, low_signals (D-33/D-34) | unit (pure) | `cd backend && python -m pytest tests/test_readiness_score.py -x` | ❌ W0 | ⬜ pending |
+| 04-04-01 | 04 | 2 | REP-01, REP-03 | T-04-07 | upload_pdf propaga `mode`; grant `status='Rascunho'` só discovery; sales inalterado (correção D-39, commit isolado) | unit | `cd backend && python -m pytest tests/test_upload_pdf_mode.py -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,8 +60,10 @@ created: "2026-09-22"
 
 ## Wave 0 Requirements
 
-- [ ] `backend/tests/test_discovery_report.py` — cobre REP-01 (esqueleto PRD, duas tabelas por lens, `[a preencher no PRD]`) e REP-03 (golden sales, congelar fixture ANTES de tocar `llm.py`)
-- [ ] `backend/tests/test_import_from_diagnosis_gate.py` — cobre REP-02 (gate de `status` + extração + `pricings.session_id` + transição de status via novo endpoint D-38)
+- [ ] `backend/tests/test_import_from_diagnosis_gate.py` (plano 04-01, tracer) — cobre REP-02 (gate de `status` 422/aprovado + extração + `pricings.session_id`; sales None passa)
+- [ ] `backend/tests/test_discovery_report.py` (plano 04-02) — cobre REP-03 (golden sales, congelar fixture ANTES de tocar `llm.py`) e REP-01 (esqueleto PRD, duas tabelas por lens, marcador de seção vazia)
+- [ ] `backend/tests/test_readiness_score.py` (plano 04-03) — cobre readiness (D-33/D-34): sessão vazia (ready=False) vs. coberta (ready=True)
+- [ ] `backend/tests/test_upload_pdf_mode.py` (plano 04-04) — cobre a correção D-39 (discovery→PRD/'Rascunho'; sales→sales/None)
 - [ ] Nenhuma nova fixture de framework necessária — `pytest`/`pytest-asyncio`/`monkeypatch` já cobrem tudo.
 
 ---
