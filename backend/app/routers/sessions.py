@@ -3,7 +3,7 @@ import io
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 import pdfplumber
@@ -342,6 +342,43 @@ async def generate_session_report(session_id: UUID, db: Client = Depends(get_sup
     return result.data[0]
 
 
+class ReportStatusUpdate(BaseModel):
+    status: Literal["Rascunho", "Em revisão", "Aprovado para build"]
+
+
+@router.patch("/{session_id}/report", response_model=ReportResponse)
+async def update_session_report_status(
+    session_id: UUID, payload: ReportStatusUpdate, db: Client = Depends(get_supabase)
+):
+    """Transiciona o status do relatório de discovery (D-38). Escrita simples de
+    campo — aceitável no router, mesmo nível dos GET/POST de report já presentes
+    neste arquivo. O gate de negócio (D-37) vive em llm_pricing_service, não aqui.
+
+    Uma sessão pode ter mais de uma linha em `reports` (cada regeneração insere
+    uma nova) — resolve o relatório mais recente primeiro (mesmo padrão do
+    GET/POST acima) para nunca atualizar/retornar uma versão desatualizada
+    (review Blocker 1 / CR-01)."""
+    latest = (
+        db.table("reports")
+        .select("id")
+        .eq("session_id", str(session_id))
+        .order("generated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not latest.data:
+        raise HTTPException(status_code=404, detail="No report found for this session")
+    result = (
+        db.table("reports")
+        .update({"status": payload.status})
+        .eq("id", latest.data[0]["id"])
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="No report found for this session")
+    return result.data[0]
+
+
 @router.post(
     "/{session_id}/transcript/upload",
     response_model=ReportResponse,
@@ -476,6 +513,7 @@ async def upload_pdf_transcript(
         dms=dms,
         pre_meeting_context=pre_meeting_context,
         system_prompt=prompts.get("report_generator"),
+        mode=project.get("mode", "sales"),
     )
     total_inp += inp
     total_out += out
@@ -487,6 +525,7 @@ async def upload_pdf_transcript(
             "session_id": str(session_id),
             "markdown_content": markdown,
             "cost_usd": str(cost),
+            **({"status": "Rascunho"} if project.get("mode") == "discovery" else {}),
         })
         .execute()
     )

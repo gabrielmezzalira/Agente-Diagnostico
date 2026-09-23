@@ -102,9 +102,33 @@ class LLMPricingService:
                     status_code=404, detail="Sessão não encontrada neste projeto"
                 )
             report = self._repo.get_session_report(session_id)
+            if report and report.get("status") not in (None, "Aprovado para build"):
+                raise HTTPException(
+                    status_code=422,
+                    detail="O relatório de discovery precisa estar 'Aprovado para build' antes do import.",
+                )
             reports = [report] if report else []
         else:
-            reports = self._repo.get_project_reports(project_id)
+            # Caminho de projeto (sem session_id): o PRD de discovery é
+            # construído de forma contínua e cumulativa — cada relatório
+            # pós-reunião aprovado ("Aprovado para build") entra na extração,
+            # junto com relatórios sales (status=None, sempre sem gate).
+            # Filtra fora rascunhos/em revisão para fechar o bypass do gate
+            # (review Blocker 2 / CR-02) sem bloquear o import inteiro só
+            # porque existe um rascunho não aprovado no projeto.
+            all_reports = self._repo.get_project_reports(project_id)
+            reports = [
+                r for r in all_reports
+                if r.get("status") in (None, "Aprovado para build")
+            ]
+            if all_reports and not reports:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Nenhum relatório de discovery aprovado ('Aprovado para build') "
+                        "disponível para importação."
+                    ),
+                )
 
         if not reports:
             raise HTTPException(
@@ -142,7 +166,11 @@ class LLMPricingService:
             "Você é um assistente de precificação técnica de projetos de dados da empresa CITi. "
             "Analise o relatório de diagnóstico e extraia funcionalidades técnicas concretas e implementáveis. "
             "Para cada funcionalidade, identifique:\n"
-            "- bloco temático (Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, Consumo/Interface, Geral)\n"
+            "- bloco temático (Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, "
+            "Consumo/Interface, GenAI/IA, Machine Learning, Governança & LGPD/Segurança, "
+            "Infra/MLOps/Observabilidade, Descoberta/Consultoria, Geral)\n"
+            "Desambiguação: ML = modelos preditivos clássicos; GenAI = LLM/RAG/agentes; "
+            "Ciência de Dados = análise/estatística exploratória.\n"
             "- nome da funcionalidade em português (conciso, máximo 10 palavras)\n"
             "- estimativa de horas de desenvolvimento\n\n"
             "REGRAS CRÍTICAS para estimativa de horas:\n"
@@ -256,7 +284,11 @@ class LLMPricingService:
         system_prompt = (
             "Você é um consultor técnico de precificação de projetos de dados da CITi. "
             "Sugira funcionalidades adicionais relevantes baseando-se no diagnóstico e no histórico aprovado. "
-            "Use blocos: Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, Consumo/Interface, Geral. "
+            "Use blocos: Engenharia de Dados, Visualização, Ciência de Dados, Automação, Integração, "
+            "Consumo/Interface, GenAI/IA, Machine Learning, Governança & LGPD/Segurança, "
+            "Infra/MLOps/Observabilidade, Descoberta/Consultoria, Geral. "
+            "Desambiguação: ML = modelos preditivos clássicos; GenAI = LLM/RAG/agentes; "
+            "Ciência de Dados = análise/estatística exploratória. "
             "Para horas: use o histórico como referência principal — funcionalidades similares devem ter horas similares. "
             "Máximo 80h por funcionalidade."
         )

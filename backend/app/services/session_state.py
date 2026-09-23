@@ -16,6 +16,21 @@ from app.services.llm import (
 # Margem de segurança sobre o custo estimado do relatório (F7 do SDD): 20%.
 REPORT_COST_MARGIN = 1.2
 
+# Fase 4 (Discovery Report + Pricing Handoff) / D-33 / D-34: pesos e limiar do
+# readiness score — constantes de módulo, calibráveis sem reescrever a
+# fórmula (Open/Closed), análogo ao TTL de perguntas (default=30s). Default
+# agora; ajustar depois de sessões reais.
+READINESS_WEIGHTS: "Dict[str, float]" = {
+    "cobertura_por_lente": 0.30,
+    "cobertura_global": 0.30,
+    "perguntas_transcricao": 0.20,
+    "secoes_chave": 0.20,
+}
+READINESS_THRESHOLD = 0.65
+# Piso abaixo do qual um sinal é reportado em `low_signals` (D-34 — "quais
+# sinais estão baixos", para a UI da Fase 5 mostrar o que falta).
+READINESS_LOW_SIGNAL_FLOOR = 0.5
+
 
 def _init_coverage(
     project_type: str,
@@ -77,6 +92,20 @@ class Question:
     # gerou a pergunta ("produto" | "dados"), setada pelo orquestrador — nunca
     # derivada de `block`. ÚLTIMO campo, default None (None no sales, D-24).
     lens: "str | None" = None
+
+
+@dataclass
+class ReadinessScore:
+    """Fase 4 / D-33 / D-34: resultado do cálculo de "insumos suficientes"
+    para liberar a geração do PRD. Puro — devolvido por
+    SessionState.readiness_score(), consumido pelo endpoint de report
+    (a UI da Fase 5 usa `ready` para habilitar/desabilitar o botão "Gerar
+    PRD" e `low_signals` para mostrar o que falta)."""
+
+    score: float
+    signals: "Dict[str, float]"
+    ready: bool
+    low_signals: "List[str]"
 
 
 @dataclass
@@ -171,3 +200,91 @@ class SessionState:
             }
             for area, c in self.coverage.items()
         }
+
+    def readiness_score(self) -> "ReadinessScore":
+        """Fase 4 (Discovery Report + Pricing Handoff) / D-33 / D-34.
+
+        Cálculo de "insumos suficientes" para liberar a geração do PRD —
+        função pura (mesma forma de estimated_report_cost(): sem I/O, sem
+        `await`, sem chamada a `db`/LLM, lê só `self.*`). Não persiste nada,
+        não emite WebSocket — só calcula e retorna.
+
+        4 sinais (D-33), pesos e limiar em READINESS_WEIGHTS/READINESS_THRESHOLD
+        (constantes de módulo, calibráveis — default agora, ajustar depois de
+        sessões reais, análogo ao TTL=30s):
+          1. cobertura_por_lente — mínimo entre Produto e Dados de
+             (áreas covered+partial) / total da lente.
+          2. cobertura_global — % das áreas (covered=1.0, partial=0.5) / total.
+          3. perguntas_transcricao — perguntas respondidas (used/pinned) e/ou
+             transcrição mínima (o maior dos dois sinais parciais).
+          4. secoes_chave — seções-chave do PRD com dado mapeável (há
+             cobertura Produto? há cobertura Dados? há red_flags? há
+             perguntas?).
+        """
+        area_set = DISCOVERY_AREA_SET if self.mode == "discovery" else SALES_AREA_SET
+        lens_by_key = {a.key: a.lens for a in area_set.areas}
+
+        def _area_value(c: "CoverageArea") -> float:
+            if c.status == "covered":
+                return 1.0
+            if c.status == "partial":
+                return 0.5
+            return 0.0
+
+        # Sinal 1: cobertura mínima por lente (pior das duas lentes libera).
+        lens_values: "Dict[str, List[float]]" = {"produto": [], "dados": []}
+        for key, c in self.coverage.items():
+            lens = lens_by_key.get(key)
+            if lens in lens_values:
+                lens_values[lens].append(_area_value(c))
+        produto_ratio = (
+            sum(lens_values["produto"]) / len(lens_values["produto"])
+            if lens_values["produto"]
+            else 0.0
+        )
+        dados_ratio = (
+            sum(lens_values["dados"]) / len(lens_values["dados"])
+            if lens_values["dados"]
+            else 0.0
+        )
+        sinal_cobertura_lente = min(produto_ratio, dados_ratio)
+
+        # Sinal 2: % global das áreas de cobertura (covered=1.0, partial=0.5).
+        total_areas = len(self.coverage) or 1
+        sinal_cobertura_global = (
+            sum(_area_value(c) for c in self.coverage.values()) / total_areas
+        )
+
+        # Sinal 3: perguntas respondidas (used/pinned) e/ou transcrição mínima
+        # — usa o maior dos dois sinais parciais (qualquer um dos dois já
+        # indica insumo suficiente de conversa).
+        answered_questions = sum(
+            1 for q in self.questions if q.status in ("used", "pinned")
+        )
+        sinal_perguntas = min(answered_questions / 3, 1.0)
+        sinal_transcricao = min(len(self.get_transcript_text()) / 2000, 1.0)
+        sinal_perguntas_transcricao = max(sinal_perguntas, sinal_transcricao)
+
+        # Sinal 4: seções-chave do PRD com dado mapeável.
+        tem_produto = produto_ratio > 0.0
+        tem_dados = dados_ratio > 0.0
+        tem_red_flags = len(self.red_flags) > 0
+        tem_perguntas = len(self.questions) > 0
+        sinal_secoes_chave = (
+            sum([tem_produto, tem_dados, tem_red_flags, tem_perguntas]) / 4
+        )
+
+        signals: "Dict[str, float]" = {
+            "cobertura_por_lente": sinal_cobertura_lente,
+            "cobertura_global": sinal_cobertura_global,
+            "perguntas_transcricao": sinal_perguntas_transcricao,
+            "secoes_chave": sinal_secoes_chave,
+        }
+        score = sum(signals[k] * w for k, w in READINESS_WEIGHTS.items())
+        ready = score >= READINESS_THRESHOLD
+        low_signals = [
+            k for k, v in signals.items() if v < READINESS_LOW_SIGNAL_FLOOR
+        ]
+        return ReadinessScore(
+            score=score, signals=signals, ready=ready, low_signals=low_signals
+        )
