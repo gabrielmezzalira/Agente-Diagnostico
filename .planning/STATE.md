@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 4
-current_phase_name: Discovery Report + Pricing Handoff
+current_phase: 5
+current_phase_name: Two-Lens Monitoring (Frontend)
 status: planning
-stopped_at: Phase 03 complete, ready to plan Phase 4
-last_updated: "2026-09-22T13:31:36.922Z"
-last_activity: 2026-09-22
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: da6294c6f5dc5d46d25c87033c72b82c802d5b1c
+stopped_at: Phase 04 complete, ready to plan Phase 5
+last_updated: "2026-09-23T14:23:30.171Z"
+last_activity: 2026-09-23
+last_activity_desc: Phase 04 complete, transitioned to Phase 5
+state_head: 60e26fb9cbdf1b40b3d3628b58b36aac91a908db
 progress:
   total_phases: 10
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 30
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 40
 ---
 
 # Project State
@@ -25,22 +25,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 03 — two-agent-questions-lens-tagging
+**Current focus:** Phase 04 — Discovery Report + Pricing Handoff
 
 ## Current Position
 
-Phase: 4 — Discovery Report + Pricing Handoff
+Phase: 5 — Two-Lens Monitoring (Frontend)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-22 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-09-23 — Phase 04 complete, transitioned to Phase 5
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 13
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -51,6 +51,7 @@ Progress: [███░░░░░░░] 30%
 | 01 | 3 | - | - |
 | 02 | 3 | - | - |
 | 03 | 3 | - | - |
+| 04 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -67,6 +68,10 @@ Progress: [███░░░░░░░] 30%
 | Phase 01 P03 | 9min | 2 tasks | 4 files |
 | Phase 02 P01 | 21min | 3 tasks | 6 files |
 | Phase 02 P02 | 10min | 2 tasks | 3 files |
+| Phase 04 P01 | 2h | 3 tasks | 6 files |
+| Phase 04 P02 | ~1h | 3 tasks | 4 files |
+| Phase 04 P03 | 25min | 2 tasks | 3 files |
+| Phase 04 P04 | 12min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -88,6 +93,13 @@ Recent decisions affecting current work:
 - [Phase 02]: citi_block interpolado na mesma posicao textual (entre Alertas detectados e Transcricao completa) — gate por mode nunca reescreve o caminho sales — Garante SC#4 (sales byte-identico) e evita mover o bloco para o system_prompt, o que mudaria user->system no payload do Gemini
 - [Phase 02]: [Phase 02-03] Task 1 (checkpoint:decision, blocking-human, aprovado): coluna projects.mode criada como text DEFAULT 'sales' sem CHECK/enum nativo — Segue o padrao ja usado por project_type/source/status no repo -- validacao de enum 100% no Pydantic Literal, sem ALTER TYPE a cada modo futuro
 - [Phase 02]: [Phase 02-03] Task 2 concluida: migration aditiva + ProjectMode nos 3 schemas Pydantic + teste de validacao (commit 6b6f55a) — ProjectResponse.mode sem default Python (sempre presente pos-migration); nenhum ProjectRepository criado (Pitfall 5)
+- [Phase 04]: D-37: gate de aprovacao de import_from_diagnosis vive no service (llm_pricing_service.py), nunca no router — trata status=None como sem-gate (nunca consulta projects.mode) — Segue CLAUDE.md (router nao toca regra de negocio) e mantem sales byte-identico (REP-03)
+- [Phase 04]: D-38: rota PATCH /sessions/{session_id}/report e escrita simples de campo no router (Literal de 3 valores), separada do gate de negocio D-37 que fica no service — Mesmo nivel de simplicidade dos GET/POST de report ja existentes no arquivo
+- [Phase 04]: [Phase 04] [Phase 04-02]: build_report_generator reescrito para o esqueleto do PRD de 16 secoes (D-26); marcador [a preencher no PRD] em subsecoes sem insumo
+- [Phase 04]: [Phase 04] [Phase 04-02]: generate_report ganha ramo discovery com duas tabelas de cobertura por lens (DISCOVERY_AREA_SET) e red flags/perguntas particionados por lens; questions_used vira list[dict] com lens (D-27/D-28/D-40); shape lens-less de upload_pdf_transcript tolerado via bucket nao classificado (D-39)
+- [Phase 04]: D-32: 12 blocos temáticos sincronizados nos dois prompts do Precificador (import_from_diagnosis + suggest_features), com desambiguação ML/GenAI/Ciência de Dados — Aditivo, sem migration — bloco continua texto livre no banco
+- [Phase 04]: D-33/D-34: readiness_score puro em SessionState combina 4 sinais por score ponderado (0.30/0.30/0.20/0.20) + limiar 0.65 (constantes calibráveis) — Backend-only; UI da Fase 5 consome ready/low_signals para habilitar botão Gerar PRD
+- [Phase 04]: D-39: upload_pdf_transcript propaga mode=project.get('mode','sales') para generate_report + grant condicional de status='Rascunho' no INSERT do upload quando discovery — Corrige inconsistencia silenciosa: PDF de sessao discovery gerava relatorio sales por omissao do parametro mode (Pitfall 4). Grant reusa o mesmo padrao condicional ja usado no pipeline ao vivo (D-36).
 
 ### Pending Todos
 
@@ -117,6 +129,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-21T20:52:51.254Z
-Stopped at: Phase 03 complete, ready to plan Phase 4
-Resume file: .planning/phases/03-two-agent-questions-lens-tagging/03-CONTEXT.md
+Last session: 2026-09-23T12:00:08.224Z
+Stopped at: Phase 04 complete, ready to plan Phase 5
+Resume file: None

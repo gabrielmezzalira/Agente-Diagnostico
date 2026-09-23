@@ -168,7 +168,7 @@ class PricingRepository:
         session_ids = [s["id"] for s in sessions.data]
         result = (
             self._db.table("reports")
-            .select("id, markdown_content, generated_at")
+            .select("id, markdown_content, generated_at, status")
             .in_("session_id", session_ids)
             .order("generated_at", desc=True)
             .execute()
@@ -183,7 +183,7 @@ class PricingRepository:
         """
         result = (
             self._db.table("reports")
-            .select("id, markdown_content, generated_at")
+            .select("id, markdown_content, generated_at, status")
             .eq("session_id", session_id)
             .order("generated_at", desc=True)
             .limit(1)

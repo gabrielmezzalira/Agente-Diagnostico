@@ -31,7 +31,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 1: Area-Set Registry** - Single source of truth for coverage areas; zero behavior change for sales mode (completed 2026-09-20)
 - [x] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing (completed 2026-09-21)
 - [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
-- [ ] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis
+- [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
 - [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
 - [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
 - [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
@@ -123,11 +123,25 @@ streaming → session binding → cutover), so discovery correctness is proven b
 **Requirements**: REP-01, REP-02, REP-03
 **Success Criteria** (what must be TRUE):
 
-  1. Ending a discovery session generates a single Markdown report with distinct Produto and Dados sections plus a "Métricas para Precificação" section
-  2. Running "Importar do diagnóstico" against a discovery report extracts at least one feature into the pricing feature table, and the created pricing's `session_id` links back to the discovery session
+  1. Ending a discovery session generates a single Markdown report following the CITi PRD skeleton (16 sections) with distinct Produto and Dados coverage sections, and the pricing metrics (backlog+estimates §6.3, phasing §11, volumetria §7.3) are present natively in the PRD and extractable by the import (REP-02) — reformulated per D-30/D-29 (no separately-named "Métricas para Precificação" section)
+  2. Running "Importar do diagnóstico" against an *approved* discovery report extracts at least one feature into the pricing feature table, and the created pricing's `session_id` links back to the discovery session
   3. Ending a sales-mode session still generates the existing sales report format with no regression
 
-**Plans**: TBD
+**Plans**: 4/4 plans executed
+
+Plans:
+**Wave 1**
+
+- [x] 04-01-PLAN.md — Tracer: espinha do handoff gateado por status (migration reports.status + grant + PATCH transição D-38 + gate no import D-37) [Wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 04-02-PLAN.md — REP-01: esqueleto do PRD de 16 seções + duas tabelas por lens + perguntas por lens (D-26/D-27/D-28/D-40) + golden sales REP-03 [Wave 2]
+- [x] 04-03-PLAN.md — Enriquecimento: blocos ampliados 7→12 (D-32) + readiness score ponderado (D-33/D-34) [Wave 2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 04-04-PLAN.md — Correção isolada D-39: upload_pdf_transcript propaga mode + grant de status [Wave 2]
 
 ### Phase 5: Two-Lens Monitoring (Frontend)
 
@@ -222,7 +236,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
-| 4. Discovery Report + Pricing Handoff | 0/? | Not started | - |
+| 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
