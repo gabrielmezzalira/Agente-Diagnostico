@@ -3,7 +3,7 @@ import io
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 import pdfplumber
@@ -339,6 +339,28 @@ async def generate_session_report(session_id: UUID, db: Client = Depends(get_sup
         .limit(1)
         .execute()
     )
+    return result.data[0]
+
+
+class ReportStatusUpdate(BaseModel):
+    status: Literal["Rascunho", "Em revisão", "Aprovado para build"]
+
+
+@router.patch("/{session_id}/report", response_model=ReportResponse)
+async def update_session_report_status(
+    session_id: UUID, payload: ReportStatusUpdate, db: Client = Depends(get_supabase)
+):
+    """Transiciona o status do relatório de discovery (D-38). Escrita simples de
+    campo — aceitável no router, mesmo nível dos GET/POST de report já presentes
+    neste arquivo. O gate de negócio (D-37) vive em llm_pricing_service, não aqui."""
+    result = (
+        db.table("reports")
+        .update({"status": payload.status})
+        .eq("session_id", str(session_id))
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="No report found for this session")
     return result.data[0]
 
 

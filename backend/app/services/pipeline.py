@@ -467,6 +467,7 @@ class SessionPipeline:
             "session_id": self.state.session_id,
             "markdown_content": markdown,
             "cost_usd": str(round(tokens_to_usd(inp, out), 6)),
+            **({"status": "Rascunho"} if self.state.mode == "discovery" else {}),
         }).execute()
         db.table("sessions").update({
             "tokens_used": self.state.tokens_used,

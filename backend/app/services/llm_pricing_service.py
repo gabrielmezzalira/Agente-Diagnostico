@@ -102,6 +102,11 @@ class LLMPricingService:
                     status_code=404, detail="Sessão não encontrada neste projeto"
                 )
             report = self._repo.get_session_report(session_id)
+            if report and report.get("status") not in (None, "Aprovado para build"):
+                raise HTTPException(
+                    status_code=422,
+                    detail="O relatório de discovery precisa estar 'Aprovado para build' antes do import.",
+                )
             reports = [report] if report else []
         else:
             reports = self._repo.get_project_reports(project_id)
