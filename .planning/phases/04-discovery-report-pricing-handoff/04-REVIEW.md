@@ -21,7 +21,8 @@ findings:
   warning: 4
   info: 1
   total: 7
-status: issues_found
+status: resolved
+resolution: "Blockers CR-01/CR-02 + W4/Info fixed in 47a343f, 7f3cdeb, f81da47 (gap-closure). W1/W2 accepted per continuous-PRD/no-mode-coupling."
 ---
 
 # Phase 04: Code Review Report
