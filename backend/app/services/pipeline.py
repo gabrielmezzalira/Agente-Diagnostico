@@ -436,8 +436,13 @@ class SessionPipeline:
         if not key:
             return None
         transcript = self.state.get_transcript_text()
+        # D-40: mesmo padrão de red_flags_raw abaixo — list[dict] com lens,
+        # em vez de list[str]. Sales continua recebendo lens=None (Question.lens
+        # default), e o ramo sales de generate_report nunca lê questions_used
+        # (já era ignorado antes desta fase) — REP-03 preservado.
         questions_used = [
-            q.text for q in self.state.questions if q.status in ("used", "pinned")
+            {"text": q.text, "lens": q.lens}
+            for q in self.state.questions if q.status in ("used", "pinned")
         ]
         red_flags_raw = [
             {

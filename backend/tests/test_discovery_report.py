@@ -19,6 +19,7 @@
 import pytest
 
 from app.services import llm
+from app.services.discovery_prompt_builder import DiscoveryPromptBuilder
 from app.services.prompt_builder import CITI_PORTFOLIO, CITI_SERVICE_CATALOG, CITI_TECH_REFERENCE
 
 _CITI_HEADER = "## Portfólio CITi (referência comercial)"
@@ -107,3 +108,87 @@ async def test_sales_default_mode_equals_sales(monkeypatch):
 
     assert user_default == user_sales
     assert user_default == _golden_sales_fixture()
+
+
+# =============================================================================
+# Tasks 2/3 — Discovery: esqueleto PRD de 16 seções + duas tabelas por lens
+# (REP-01, D-26/D-27/D-28/D-40) + tolerância ao shape lens-less de
+# upload_pdf_transcript (D-39, contrato cross-plan com 04-04)
+# =============================================================================
+
+
+async def _capture_report_system_and_user(monkeypatch, **kwargs) -> tuple[str, str]:
+    """Variante do helper acima que também captura o system prompt — precisa
+    para test_discovery_marks_empty_sections (o marcador de seção vazia vive
+    no system prompt discovery, não na mensagem user)."""
+    captured: dict = {}
+
+    async def _fake_call(api_key, system, user, max_output_tokens=None):
+        captured["system"] = system
+        captured["user"] = user
+        return "relatorio de teste", 0, 0
+
+    monkeypatch.setattr(llm, "_call", _fake_call)
+
+    kwargs.setdefault("coverage", {})
+    kwargs.setdefault("red_flags", [])
+    kwargs.setdefault("questions_used", [])
+
+    await llm.generate_report(
+        api_key="x",
+        transcript="transcricao de teste",
+        project_type="bi",
+        dms=None,
+        **kwargs,
+    )
+    return captured["system"], captured["user"]
+
+
+@pytest.mark.asyncio
+async def test_discovery_two_lens_tables(monkeypatch):
+    """REP-01/D-28: o ramo discovery monta DUAS tabelas de cobertura — uma
+    Produto, uma Dados — com labels do DISCOVERY_AREA_SET. Uma label
+    sales-only ('Parceria') nunca aparece (D-28 corrige o bug de llm.py:121
+    que usava SALES_AREA_SET.labels() fixo)."""
+    coverage = {
+        "gargalo": {"status": "covered", "score": 90, "notes": "ok", "lens": "produto", "name": ""},
+        "qualidade_fontes": {"status": "uncovered", "score": 0, "notes": "", "lens": "dados", "name": ""},
+    }
+    user = await _capture_report_user(monkeypatch, mode="discovery", coverage=coverage)
+
+    assert "## Cobertura final — Produto" in user
+    assert "## Cobertura final — Dados" in user
+    assert "Gargalo" in user
+    assert "Fontes e Qualidade dos Dados" in user
+    assert "Parceria" not in user  # label sales-only (SALES_AREA_SET), nunca no ramo discovery
+
+
+@pytest.mark.asyncio
+async def test_discovery_marks_empty_sections(monkeypatch):
+    """REP-01/D-26: quando não há system_prompt explícito, generate_report(mode=
+    'discovery') usa o esqueleto PRD de DiscoveryPromptBuilder.build_report_generator()
+    como system prompt — que instrui o marcador de seção vazia mesmo sem insumo."""
+    system, _ = await _capture_report_system_and_user(monkeypatch, mode="discovery")
+
+    assert system == DiscoveryPromptBuilder(dms=None).build_report_generator()
+    assert DiscoveryPromptBuilder.EMPTY_SECTION_MARKER in system
+    assert "Sumário executivo" in system
+
+
+@pytest.mark.asyncio
+async def test_discovery_tolerates_lensless_upload_shape(monkeypatch):
+    """D-39 (contrato cross-plan com 04-04): generate_report(mode='discovery')
+    NÃO estoura com o shape REAL que upload_pdf_transcript entrega —
+    questions_used como list[str] (sem lens) e red_flags como list[dict] SEM
+    a coluna lens. Os itens devem aparecer no bucket 'não classificado'."""
+    questions_used = ["Qual o prazo do projeto?"]
+    red_flags = [{"text": "Sem ponto focal definido", "severity": "critical", "evidence": "trecho x"}]
+
+    user = await _capture_report_user(
+        monkeypatch, mode="discovery", questions_used=questions_used, red_flags=red_flags
+    )
+
+    assert "## Dúvidas em aberto — Não classificado" in user
+    assert "Qual o prazo do projeto?" in user
+    assert "## Alertas detectados — Não classificado" in user
+    assert "Sem ponto focal definido" in user
