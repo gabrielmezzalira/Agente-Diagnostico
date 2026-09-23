@@ -127,7 +127,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
   2. Running "Importar do diagnóstico" against an *approved* discovery report extracts at least one feature into the pricing feature table, and the created pricing's `session_id` links back to the discovery session
   3. Ending a sales-mode session still generates the existing sales report format with no regression
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -137,7 +137,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 04-02-PLAN.md — REP-01: esqueleto do PRD de 16 seções + duas tabelas por lens + perguntas por lens (D-26/D-27/D-28/D-40) + golden sales REP-03 [Wave 2]
-- [ ] 04-03-PLAN.md — Enriquecimento: blocos ampliados 7→12 (D-32) + readiness score ponderado (D-33/D-34) [Wave 2]
+- [x] 04-03-PLAN.md — Enriquecimento: blocos ampliados 7→12 (D-32) + readiness score ponderado (D-33/D-34) [Wave 2]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -236,7 +236,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 1. Area-Set Registry | 3/3 | Complete    | 2026-09-20 |
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
-| 4. Discovery Report + Pricing Handoff | 2/4 | In Progress|  |
+| 4. Discovery Report + Pricing Handoff | 3/4 | In Progress|  |
 | 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |

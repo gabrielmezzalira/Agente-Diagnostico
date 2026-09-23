@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 04
 current_phase_name: Discovery Report + Pricing Handoff
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-09-23T11:44:33.150Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-09-23T11:52:20.025Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 04 execution started
-state_head: 21272842dda83ca14eeb5bf2a598d0d9b4b35c5e
+state_head: 2f40b306666bfc0112d3a8677f6d3bddfeb93ff8
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 04 (Discovery Report + Pricing Handoff) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-23 — Phase 04 execution started
 
@@ -68,6 +68,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 02 P02 | 10min | 2 tasks | 3 files |
 | Phase 04 P01 | 2h | 3 tasks | 6 files |
 | Phase 04 P02 | ~1h | 3 tasks | 4 files |
+| Phase 04 P03 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work:
 - [Phase 04]: D-38: rota PATCH /sessions/{session_id}/report e escrita simples de campo no router (Literal de 3 valores), separada do gate de negocio D-37 que fica no service — Mesmo nivel de simplicidade dos GET/POST de report ja existentes no arquivo
 - [Phase 04]: [Phase 04] [Phase 04-02]: build_report_generator reescrito para o esqueleto do PRD de 16 secoes (D-26); marcador [a preencher no PRD] em subsecoes sem insumo
 - [Phase 04]: [Phase 04] [Phase 04-02]: generate_report ganha ramo discovery com duas tabelas de cobertura por lens (DISCOVERY_AREA_SET) e red flags/perguntas particionados por lens; questions_used vira list[dict] com lens (D-27/D-28/D-40); shape lens-less de upload_pdf_transcript tolerado via bucket nao classificado (D-39)
+- [Phase 04]: D-32: 12 blocos temáticos sincronizados nos dois prompts do Precificador (import_from_diagnosis + suggest_features), com desambiguação ML/GenAI/Ciência de Dados — Aditivo, sem migration — bloco continua texto livre no banco
+- [Phase 04]: D-33/D-34: readiness_score puro em SessionState combina 4 sinais por score ponderado (0.30/0.30/0.20/0.20) + limiar 0.65 (constantes calibráveis) — Backend-only; UI da Fase 5 consome ready/low_signals para habilitar botão Gerar PRD
 
 ### Pending Todos
 
@@ -122,6 +125,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T11:44:33.008Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-09-23T11:52:19.947Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
