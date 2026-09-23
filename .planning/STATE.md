@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 04
-current_phase_name: discovery-report-pricing-handoff
+current_phase_name: Discovery Report + Pricing Handoff
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-09-23T02:57:47.550Z"
-last_activity: 2026-09-22
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: 0f78ba620ea3dd85d55b13814e542fdf7f962e8d
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-09-23T11:32:50.355Z"
+last_activity: 2026-09-23
+last_activity_desc: Phase 04 execution started
+state_head: 772194f2cbae4d7b12daa30e39517871e01da2b7
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 03 — two-agent-questions-lens-tagging
+**Current focus:** Phase 04 — Discovery Report + Pricing Handoff
 
 ## Current Position
 
-Phase: 04 (discovery-report-pricing-handoff) — READY TO EXECUTE
-Plan: Not started
+Phase: 04 (Discovery Report + Pricing Handoff) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-22 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-09-23 — Phase 04 execution started
 
 Progress: [███░░░░░░░] 30%
 
@@ -66,6 +66,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 01 P03 | 9min | 2 tasks | 4 files |
 | Phase 02 P01 | 21min | 3 tasks | 6 files |
 | Phase 02 P02 | 10min | 2 tasks | 3 files |
+| Phase 04 P01 | 2h | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 02]: citi_block interpolado na mesma posicao textual (entre Alertas detectados e Transcricao completa) — gate por mode nunca reescreve o caminho sales — Garante SC#4 (sales byte-identico) e evita mover o bloco para o system_prompt, o que mudaria user->system no payload do Gemini
 - [Phase 02]: [Phase 02-03] Task 1 (checkpoint:decision, blocking-human, aprovado): coluna projects.mode criada como text DEFAULT 'sales' sem CHECK/enum nativo — Segue o padrao ja usado por project_type/source/status no repo -- validacao de enum 100% no Pydantic Literal, sem ALTER TYPE a cada modo futuro
 - [Phase 02]: [Phase 02-03] Task 2 concluida: migration aditiva + ProjectMode nos 3 schemas Pydantic + teste de validacao (commit 6b6f55a) — ProjectResponse.mode sem default Python (sempre presente pos-migration); nenhum ProjectRepository criado (Pitfall 5)
+- [Phase 04]: D-37: gate de aprovacao de import_from_diagnosis vive no service (llm_pricing_service.py), nunca no router — trata status=None como sem-gate (nunca consulta projects.mode) — Segue CLAUDE.md (router nao toca regra de negocio) e mantem sales byte-identico (REP-03)
+- [Phase 04]: D-38: rota PATCH /sessions/{session_id}/report e escrita simples de campo no router (Literal de 3 valores), separada do gate de negocio D-37 que fica no service — Mesmo nivel de simplicidade dos GET/POST de report ja existentes no arquivo
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-22T21:47:14.072Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-discovery-report-pricing-handoff/04-CONTEXT.md
+Last session: 2026-09-23T11:32:50.254Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
