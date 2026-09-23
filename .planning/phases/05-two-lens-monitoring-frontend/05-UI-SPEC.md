@@ -1,7 +1,7 @@
 ---
 phase: "05"
 slug: "two-lens-monitoring-frontend"
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-09-23"
@@ -73,10 +73,13 @@ does not introduce new spacing tokens, it reuses the existing Tailwind utility s
 | lg | 24px | Section padding (`px-6`) |
 | xl | 32px | — (not currently used in scouted files; available if a task needs it) |
 
-Exceptions: none. Structural heights (`--height-topbar: 52px`, `--height-budget-bar: 36px`,
-`--height-btn: 34px`) and column widths (220px coverage, 280px questions) are **existing layout
-constants** — do not change them this phase (UI-01/UI-03 only change what renders inside the
-220px column, not its width, per D-43).
+Exceptions: `--height-btn: 34px` is **legacy** and **not a multiple of 4** (34/4 = 8.5). It is an
+existing layout constant — do not change it this phase, and **do not treat it as a precedent**: any
+NEW element introduced by this phase (readiness bar, lens badges, status selector) must use the
+4-multiple scale above, never clone 34px. Other structural constants (`--height-topbar: 52px`,
+`--height-budget-bar: 36px`) and column widths (220px coverage, 280px questions) are likewise
+**existing layout constants** — do not change them this phase (UI-01/UI-03 only change what renders
+inside the 220px column, not its width, per D-43).
 
 ---
 
@@ -94,6 +97,18 @@ constants** — do not change them this phase (UI-01/UI-03 only change what rend
 New lens-section headers ("Produto"/"Dados") reuse the **exact** existing `CoveragePanel` header
 style class (`text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider`),
 just repeated once per lens instead of once for the whole panel — do not invent a new heading size.
+
+### Visual Hierarchy (primary anchors — checker Dim 2)
+
+- **"Gerar PRD" block (`ProjectDetailPage`):** the **primary visual anchor is the "Gerar PRD"
+  button itself** (accent-filled CTA). The readiness bar is the **secondary** indicator sitting
+  directly above/inside it (thin bar, à la `BudgetBar`), and the "% pronto" label is tertiary.
+  Order of attention: button → bar → % text. Do not let the bar out-weigh the button (keep the bar
+  thin, `h-1.5`, muted until it approaches the threshold).
+- **Lens sections (coverage column):** "Produto" and "Dados" carry **equal visual weight** — same
+  header style, same section treatment. Neither lens is emphasized over the other structurally;
+  the only differentiator is the badge color (accent-green Produto vs neutral Dados), which encodes
+  primary/auxiliary identity, not visual dominance in the column.
 
 ---
 
@@ -258,12 +273,12 @@ correctly:
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: FLAG → addressed (Visual Hierarchy section added)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: FLAG → addressed (`--height-btn: 34px` flagged legacy, no-precedent note)
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: FLAG (no action — enumerate-reason genuine; revisit if a component manager is installed)
 
-**Approval:** pending
+**Approval:** APPROVED (2026-09-23) — 0 blocks, 3 non-blocking FLAGs (Dim 2 & 5 addressed inline, Dim 7 no action needed).
