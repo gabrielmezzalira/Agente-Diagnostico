@@ -24,9 +24,9 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 
 ### Report + Pricing (REP)
 
-- [ ] **REP-01**: A discovery session produces a single report with Produto + Dados sections and a "Métricas para Precificação" section.
+- [x] **REP-01**: A discovery session produces a single report with Produto + Dados sections and a "Métricas para Precificação" section.
 - [x] **REP-02**: The discovery report feeds the Precificador via `import-from-diagnosis` (≥1 feature extracted; session linked in `pricings.session_id`).
-- [ ] **REP-03**: Sales report generation continues to work unchanged.
+- [x] **REP-03**: Sales report generation continues to work unchanged.
 
 ### Frontend (UI)
 
@@ -83,9 +83,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | LENS-03 | Phase 3 | Complete |
 | LENS-04 | Phase 3 | Complete |
 | LENS-05 | Phase 3 | Complete |
-| REP-01 | Phase 4 | Pending |
+| REP-01 | Phase 4 | Complete |
 | REP-02 | Phase 4 | Complete |
-| REP-03 | Phase 4 | Pending |
+| REP-03 | Phase 4 | Complete |
 | UI-01 | Phase 5 | Pending |
 | UI-02 | Phase 5 | Pending |
 | UI-03 | Phase 5 | Pending |
