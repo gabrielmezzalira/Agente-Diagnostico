@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 04
 current_phase_name: Discovery Report + Pricing Handoff
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-09-23T11:32:50.355Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-09-23T11:44:33.150Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 04 execution started
-state_head: 772194f2cbae4d7b12daa30e39517871e01da2b7
+state_head: 21272842dda83ca14eeb5bf2a598d0d9b4b35c5e
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 04 (Discovery Report + Pricing Handoff) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-23 — Phase 04 execution started
 
@@ -67,6 +67,7 @@ Progress: [███░░░░░░░] 30%
 | Phase 02 P01 | 21min | 3 tasks | 6 files |
 | Phase 02 P02 | 10min | 2 tasks | 3 files |
 | Phase 04 P01 | 2h | 3 tasks | 6 files |
+| Phase 04 P02 | ~1h | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-03] Task 2 concluida: migration aditiva + ProjectMode nos 3 schemas Pydantic + teste de validacao (commit 6b6f55a) — ProjectResponse.mode sem default Python (sempre presente pos-migration); nenhum ProjectRepository criado (Pitfall 5)
 - [Phase 04]: D-37: gate de aprovacao de import_from_diagnosis vive no service (llm_pricing_service.py), nunca no router — trata status=None como sem-gate (nunca consulta projects.mode) — Segue CLAUDE.md (router nao toca regra de negocio) e mantem sales byte-identico (REP-03)
 - [Phase 04]: D-38: rota PATCH /sessions/{session_id}/report e escrita simples de campo no router (Literal de 3 valores), separada do gate de negocio D-37 que fica no service — Mesmo nivel de simplicidade dos GET/POST de report ja existentes no arquivo
+- [Phase 04]: [Phase 04] [Phase 04-02]: build_report_generator reescrito para o esqueleto do PRD de 16 secoes (D-26); marcador [a preencher no PRD] em subsecoes sem insumo
+- [Phase 04]: [Phase 04] [Phase 04-02]: generate_report ganha ramo discovery com duas tabelas de cobertura por lens (DISCOVERY_AREA_SET) e red flags/perguntas particionados por lens; questions_used vira list[dict] com lens (D-27/D-28/D-40); shape lens-less de upload_pdf_transcript tolerado via bucket nao classificado (D-39)
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T11:32:50.254Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-09-23T11:44:33.008Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
