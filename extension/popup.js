@@ -15,6 +15,40 @@ const saveUrlBtn = document.getElementById('save-url-btn')
 const extensionKeyInput = document.getElementById('extension-key')
 const saveKeyBtn = document.getElementById('save-key-btn')
 
+// G-06-1: rastreia edição por campo de configuração — o polling de 3s (mais
+// abaixo) não pode sobrescrever texto ainda não salvo. A chave de cada
+// entrada é o nome do campo no estado devolvido por GET_STATE
+// (extension/background.js).
+const configInputs = { extensionKey: extensionKeyInput }
+const configInputEdits = { extensionKey: createConfigFieldState() }
+
+Object.keys(configInputs).forEach((stateKey) => {
+  configInputs[stateKey].addEventListener('input', () => {
+    configInputEdits[stateKey] = recordConfigFieldEdit(configInputEdits[stateKey])
+  })
+})
+
+// Escreve o valor salvo só nos campos de configuração que o usuário ainda
+// não editou nesta abertura do popup — chamada pelo render() a cada tick.
+function renderConfigInputs(state) {
+  Object.keys(configInputs).forEach((stateKey) => {
+    if (canRenderOverwriteConfigField(configInputEdits[stateKey])) {
+      configInputs[stateKey].value = state[stateKey] || ''
+    }
+  })
+}
+
+// Relê o estado depois de um save confirmado e reescreve o campo com o
+// valor salvo (já normalizado pelo background, no caso da URL) — só se o
+// usuário não voltou a digitar entre o clique e esta releitura.
+function resyncConfigInputAfterSave(stateKey, snapshot) {
+  chrome.runtime.sendMessage({ type: 'GET_STATE' }, (freshState) => {
+    if (freshState && canResyncConfigFieldAfterSave(configInputEdits[stateKey], snapshot)) {
+      configInputs[stateKey].value = freshState[stateKey] || ''
+    }
+  })
+}
+
 function generateQuestions() {
   chrome.runtime.sendMessage({ type: 'GET_STATE' }, (state) => {
     if (!state.backendUrl || !state.sessionId) return
@@ -74,7 +108,7 @@ function renderQuestions(questions) {
 
 function render(state) {
   backendUrlInput.value = state.backendUrl || ''
-  extensionKeyInput.value = state.extensionKey || ''
+  renderConfigInputs(state)
 
   if (state.sessionId) {
     dot.classList.add('active')
@@ -133,8 +167,10 @@ saveUrlBtn.addEventListener('click', () => {
 // permite limpar a chave salva, por isso sem early return em valor vazio)
 saveKeyBtn.addEventListener('click', () => {
   const key = extensionKeyInput.value.trim()
-  chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, () => {
+  const snapshot = takeConfigFieldSnapshot(configInputEdits.extensionKey)
+  chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, (response) => {
     saveKeyBtn.textContent = 'Salvo!'
     setTimeout(() => { saveKeyBtn.textContent = 'Salvar' }, 1500)
+    if (isConfigSaveConfirmed(response, chrome.runtime.lastError)) resyncConfigInputAfterSave('extensionKey', snapshot)
   })
 })
