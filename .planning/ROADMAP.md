@@ -192,11 +192,11 @@ Plans:
   2. With `EXTENSION_SHARED_KEY` set, a request missing the `x-agente-key` header (or sending the wrong value) is rejected
   3. With `EXTENSION_SHARED_KEY` set and the correct `x-agente-key` header supplied, the request is accepted and processed normally
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans executed
 
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — TRACER: gate opt-in por shared-secret (`verify_extension_key`, route-scoped em `extension_webhook`) + expansão: campo opcional de chave na extensão Chrome (D-01/D-02, TAQ-03)
+- [x] 06-01-PLAN.md — TRACER: gate opt-in por shared-secret (`verify_extension_key`, route-scoped em `extension_webhook`) + expansão: campo opcional de chave na extensão Chrome (D-01/D-02, TAQ-03)
 
 ### Phase 7: Taqciti Config + Background Streamer
 
@@ -266,7 +266,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
-| 6. Opt-In Webhook Auth | 0/1 | Not started | - |
+| 6. Opt-In Webhook Auth | 1/1 | In Progress|  |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |

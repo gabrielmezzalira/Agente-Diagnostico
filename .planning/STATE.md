@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 6
+current_phase: 06
 current_phase_name: Opt-In Webhook Auth
-status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-09-24T13:41:24.501Z"
+status: verifying
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-09-24T14:11:29.401Z"
 last_activity: 2026-09-24
-last_activity_desc: Phase 05 complete, transitioned to Phase 6
-state_head: eed33fa6c03c689838fc7d5238a13d0ccddea4a2
+last_activity_desc: Phase 06 execution started
+state_head: e3b9571c9d68cadcc0838a62e16d7058f3213c9f
 progress:
   total_phases: 10
   completed_phases: 5
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 19
+  completed_plans: 19
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-24)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 6 — Opt-In Webhook Auth
+**Current focus:** Phase 06 — Opt-In Webhook Auth
 
 ## Current Position
 
-Phase: 6 — Opt-In Webhook Auth
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-24 — Phase 05 complete, transitioned to Phase 6
+Phase: 06 (Opt-In Webhook Auth) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-09-24 — Phase 06 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -77,6 +77,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05 P02 | ~10min | 2 tasks | 3 files |
 | Phase 05 P04 | ~15min | 2 tasks | 2 files |
 | Phase 05 P05 | ~10min | 2 tasks | 5 files |
+| Phase 06 P01 | ~10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,9 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 05]: [Phase 05-04]: Bloco 'Gerar PRD' inserido como secao dedicada antes de 'Precificacoes' (Claude's Discretion) em vez de por-card-de-sessao; seletor de status como <select> nativo (Claude's Discretion) em vez de 3 botoes
 - [Phase 05]: [Phase 05] [Phase 05-05]: shouldShowManualReportButton extraido para lens.ts (nao inline) — gate fail-closed do botao Relatorio por hasReceivedInitialState (fonte sincrona) em vez de ws.coverage assincrono (fecha CR-01)
 - [Phase 05]: [Phase 05] [Phase 05-05]: prdError separado de readinessError no ProjectDetailPage — GET-error (fail-closed, desabilita) distinto de POST-error (nao desabilita, permite retry) (fecha CR-02)
+- [Phase 06]: [Phase 06] D-01: Depends(verify_extension_key) conectado exclusivamente em extension_webhook(); recall_webhook() e o APIRouter(...) permanecem intocados — confirmado por 2 greps automatizados no <verify>
+- [Phase 06]: [Phase 06] D-02: campo da extensao usa input type=password e chrome.storage.local (nunca .sync) — mesmo nivel de exposicao do campo backendUrl ja existente
+- [Phase 06]: [Phase 06] D-03: ativacao real de EXTENSION_SHARED_KEY em producao (Railway) fica como DECISAO EM ABERTO do time — nenhuma task desta fase seta a env var em ambiente real
 
 ### Pending Todos
 
@@ -140,6 +144,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T13:41:24.215Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-opt-in-webhook-auth/06-CONTEXT.md
+Last session: 2026-09-24T14:11:29.270Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
