@@ -2,195 +2,193 @@
 phase: 05-two-lens-monitoring-frontend
 reviewed: 2026-09-23T00:00:00Z
 depth: standard
-files_reviewed: 11
+files_reviewed: 5
 files_reviewed_list:
-  - backend/app/models/sessions.py
-  - backend/app/routers/sessions.py
-  - backend/tests/test_readiness_route.py
-  - frontend/package.json
-  - frontend/src/lib/api.ts
   - frontend/src/lib/lens.test.ts
   - frontend/src/lib/lens.ts
   - frontend/src/lib/useSessionWS.ts
   - frontend/src/pages/ProjectDetailPage.tsx
   - frontend/src/pages/SessionActivePage.tsx
-  - frontend/vite.config.ts
 findings:
-  critical: 2
+  critical: 0
   warning: 3
-  info: 2
-  total: 7
+  info: 0
+  total: 3
 status: issues_found
 ---
 
-# Phase 05: Code Review Report
+# Phase 05: Code Review Report (Incremental — Gap Closure 05-05)
 
-**Reviewed:** 2026-09-23
+**Reviewed:** 2026-09-23T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 11
+**Files Reviewed:** 5
 **Status:** issues_found
 
 ## Summary
 
-A fase 05 introduz o monitoramento "duas lentes" (Produto/Dados) na tela de sessão ativa, o botão "Gerar PRD" na página do projeto (D-47) e a rota `GET /sessions/{id}/readiness` (D-49). A camada pura (`lens.ts` + `lens.test.ts`) está bem coberta e correta — a inferência de modo (`isDiscoveryCoverage`) e o agrupamento por lente (`groupCoverageByLens`) preservam corretamente o comportamento sales byte-a-byte, como os testes provam.
+This is an incremental review of the 05-05 gap-closure diff (`git diff ddce96b..HEAD` on the 5 listed
+files) against the two Critical defects it claims to close: CR-01 (manual "Relatório" button visible
+before `initial_state` / in discovery) and CR-02 ("Gerar PRD" button gets stuck disabled after a
+transient generation failure).
 
-O problema real está na composição dessas peças no lado React: o novo botão "Gerar PRD" reusa um único estado de erro para dois motivos de falha completamente diferentes (o que produz uma mensagem enganosa e um travamento permanente do botão), e a lógica que oculta o botão "Relatório" da sessão ao vivo em modo discovery depende de um heurístico (`ws.coverage`) que começa vazio a cada montagem do componente — não de um sinal de modo confiável vindo do servidor. As duas coisas juntas abrem uma janela real, ainda que curta, em que o fluxo de geração de PRD com gate de readiness pode ser contornado. Também há uma lacuna de configuração de teste (vitest) que vai silenciosamente ignorar futuros testes de componente `.tsx`.
+**Both Critical fixes were verified correct and complete:**
 
-## Critical Issues
+- **CR-01** — `shouldShowManualReportButton(hasReceivedInitialState, coverage)` correctly ANDs a new
+  synchronous `hasReceivedInitialState` flag (set only on the WS `initial_state` event, `useSessionWS.ts:127`)
+  with `!isDiscoveryCoverage(coverage)`. I traced the backend contract that this depends on:
+  `_init_coverage(mode="discovery")` (`backend/app/services/session_state.py:45-46`) eagerly populates
+  all 18 discovery areas at session construction, and `coverage_to_dict()` derives `lens` from the
+  static `DISCOVERY_AREA_SET` registry (not from a runtime-only field), so a discovery session's very
+  first `initial_state` payload is guaranteed to already carry non-null `lens` on at least one area.
+  This means there is no window, even at t=0, where a discovery session's `coverage` looks sales-shaped
+  after `hasReceivedInitialState` flips true. `coverage_update` also always sends the full area dict
+  (`pipeline.py:248`, `self.state.coverage_to_dict()`), so no partial-merge could make a discovery
+  session transiently register as sales. The 4 new unit tests in `lens.test.ts` correctly cover the
+  pre-initial_state/discovery/sales matrix. Sales flat-list rendering path in
+  `SessionActivePage.tsx` (`CoveragePanel`, lines 140-164) and `groupCoverageByLens`/`isDiscoveryCoverage`
+  in `lens.ts` are untouched by this diff — confirmed via `git diff`, byte-identical.
+- **CR-02** — `prdError` (POST failure) is now split from `readinessError` (GET failure) in
+  `ProjectDetailPage.tsx`. The button's `disabled` expression (`!readiness?.ready || readinessLoading
+  || !!readinessError || generatingPrd`, line 411) correctly excludes `prdError`, so a transient
+  generation failure no longer permanently disables the retry path. The real `e.message` is surfaced
+  (line 141) instead of a generic string. Fail-closed behavior on the readiness GET error path is
+  unchanged and preserved (`readinessError` truthy still disables the button and replaces the
+  `ReadinessBar` with an error line).
 
-### CR-01: Botão "Relatório" da sessão ativa vaza para sessões discovery na janela antes do primeiro evento WS
-
-**File:** `frontend/src/pages/SessionActivePage.tsx:1053` (interage com `frontend/src/lib/useSessionWS.ts:62-70`)
-
-**Issue:** O botão manual "Relatório" (que dispara `POST /sessions/{id}/report` diretamente, sem qualquer gate de readiness) agora só deveria aparecer no modo sales:
-
-```tsx
-{!isDiscoveryCoverage(ws.coverage) && (
-  <button onClick={handleGenerateReport} ...>
-```
-
-O problema é que `isDiscoveryCoverage` é derivado do payload de WebSocket (`ws.coverage`), e este estado nasce vazio (`coverage: {}`, ver `useSessionWS.ts:62-70`, onde o `INITIAL_COVERAGE` fixo foi removido nesta mesma fase). `isDiscoveryCoverage({})` retorna `false` (nenhuma área tem `lens != null` porque não há áreas) — logo `!isDiscoveryCoverage(ws.coverage)` é `true` e o botão **é renderizado e clicável** desde o primeiro render, até que a mensagem `initial_state` chegue pelo WebSocket e popule `ws.coverage` com os dados reais (incluindo `lens`).
-
-Essa janela (do mount do componente até o `onmessage` do `initial_state`) é exatamente o intervalo em que o usuário mais provavelmente vai olhar/clicar na tela (ex.: ao entrar numa sessão discovery já em andamento, ou após uma reconexão de rede — `useSessionWS` não tem lógica de reconexão automática: ao cair, `ws.onclose` só marca `connected:false`, sem novo `new WebSocket(...)`, então "reconectando..." nunca de fato reconecta e uma nova montagem/navegação é o único jeito de reabrir a conexão, reabrindo a mesma janela vazia). Um clique nessa janela dispara `handleGenerateReport` → `api.sessions.generateReport` → `POST /sessions/{id}/report`, que no backend (`backend/app/routers/sessions.py:325-343`) **não verifica `readiness_score()` em nenhum momento** — ou seja, o único gate do fluxo D-47 é esse `!isDiscoveryCoverage(...)` no frontend, e ele é derivado de um estado que começa incorreto por design.
-
-**Fix:** Não inferir o modo a partir do payload de WebSocket, que é assíncrono e pode estar vazio. Buscar o modo de uma fonte síncrona e confiável — por exemplo, incluir `mode` no `SessionResponse` (backend) e usá-lo diretamente:
-
-```tsx
-// backend/app/models/sessions.py — adicionar ao SessionResponse
-mode: str  # veio de projects.mode via join, ou herdado explicitamente na criação da sessão
-
-// SessionActivePage.tsx
-{session.mode !== 'discovery' && (
-  <button onClick={handleGenerateReport} ...>
-)}
-```
-Enquanto isso não existir, pelo menos usar um estado derivado explícito (`hasReceivedInitialState`) para não decidir a visibilidade do botão antes do primeiro `initial_state`.
-
----
-
-### CR-02: `readinessError` mistura dois erros diferentes e trava o botão "Gerar PRD" permanentemente após uma falha transitória
-
-**File:** `frontend/src/pages/ProjectDetailPage.tsx:97, 118-127, 129-140, 399-416`
-
-**Issue:** O mesmo estado `readinessError` é usado para dois cenários completamente distintos:
-
-1. Falha ao **buscar** o readiness (`getReadiness`, linha 125): `.catch(() => setReadinessError('Erro ao carregar readiness'))`
-2. Falha ao **gerar** o relatório (`handleGeneratePrd`, linha 135-136): `catch (e) { setReadinessError(e instanceof Error ? e.message : 'Erro ao gerar PRD') }`
-
-O JSX que renderiza o erro, porém, sempre mostra o texto fixo do caso 1, independentemente da causa real:
-
-```tsx
-{readinessError ? (
-  <p className="text-xs text-[var(--color-red)]">Erro ao carregar readiness</p>
-) : (
-  <ReadinessBar pct={...} />
-)}
-```
-
-Ou seja: se a chamada de geração do PRD falhar (ex.: chave Gemini ausente, erro 422 do backend "Could not generate report — check Gemini API key"), a mensagem real capturada em `e.message` é descartada e o usuário vê "Erro ao carregar readiness" — uma mensagem que não corresponde ao problema.
-
-Pior: como `readinessError` também entra na condição de desabilitar o botão (`disabled={!readiness?.ready || readinessLoading || !!readinessError || generatingPrd}`, linha 406) e na guarda de `handleGeneratePrd` (linha 130), uma vez que esse estado é setado por uma falha de geração, **o botão "Gerar PRD" fica permanentemente desabilitado** — não há nenhum caminho de retry, porque o único `useEffect` que limpa/recalcula `readinessError` roda apenas quando `discoverySessionId` muda (linha 118-127), o que não vai acontecer de novo para a mesma sessão. O usuário precisa recarregar a página inteira para tentar de novo, mesmo que a falha tenha sido transitória (timeout de rede, rate limit do Gemini, etc.) e o readiness continue "pronto".
-
-**Fix:** Separar os dois estados de erro e permitir retry:
-
-```tsx
-const [readinessError, setReadinessError] = useState<string | null>(null)   // erro ao carregar readiness
-const [prdError, setPrdError] = useState<string | null>(null)               // erro ao gerar o PRD
-
-async function handleGeneratePrd(sessionId: string) {
-  if (!readiness?.ready || readinessLoading || readinessError || generatingPrd) return
-  setGeneratingPrd(true)
-  setPrdError(null)
-  try {
-    await api.sessions.generateReport(sessionId)
-    navigate(`/sessions/${sessionId}`)
-  } catch (e: unknown) {
-    setPrdError(e instanceof Error ? e.message : 'Erro ao gerar PRD')
-  } finally {
-    setGeneratingPrd(false)
-  }
-}
-```
-E no botão, não incluir `prdError` na condição de `disabled` (deixar o usuário tentar de novo), mostrando `prdError` como uma mensagem separada da barra de readiness.
+While both fixes are correct, the diff introduces one behavioral regression and one documentation
+defect, and there is a pre-existing (not introduced by this diff, but directly adjacent to the new
+`hasReceivedInitialState` fail-closed contract) robustness gap worth flagging. See Warnings below.
 
 ## Warnings
 
-### WR-01: Redirect de "Gerar PRD" pode não exibir o relatório recém-gerado quando a sessão discovery ainda está ativa
+### WR-01: `prdError` is not cleared when the selected discovery session changes (regression vs. prior behavior)
 
-**File:** `frontend/src/pages/ProjectDetailPage.tsx:129-140` + `frontend/src/pages/SessionActivePage.tsx:668-685, 999-1128`
+**File:** `frontend/src/pages/ProjectDetailPage.tsx:97-131`
+**Issue:** Before this fix, a POST-generate failure was written into `readinessError`
+(`setReadinessError(e.message)`), which is unconditionally reset to `null` at the top of the
+readiness-fetch effect (`setReadinessError(null)` on line 125) every time `discoverySessionId` changes.
+That gave the old code an (accidental) reset-on-session-switch behavior for free.
 
-**Issue:** `pickDiscoverySession` (linha 34-39 de `ProjectDetailPage.tsx`) escolhe a sessão discovery mais recente por `started_at`, **sem filtrar por `status`** — ou seja, o bloco "Gerar PRD" pode aparecer associado a uma sessão ainda `active` (o readiness é calculado ao vivo, então isso é um caminho esperado: o analista pode atingir o threshold de prontidão antes de encerrar a call).
+The new `prdError` state has no such reset: it is only ever cleared inside `handleGeneratePrd` right
+before a new attempt (line 135). `discoverySessionId` can legitimately change while `ProjectDetailPage`
+stays mounted — `pickDiscoverySession(sessions)` (line 34-39) re-picks the most-recent session by
+`started_at` whenever `sessions` changes, and `sessions` changes in-place via `handleDeleteSession`
+(line 147-157, deletion is allowed for any non-active session, line 377 in the render). Concretely:
+generate a PRD for the current (most recent, finished) discovery session, have it fail (`prdError` set),
+then delete that session from the history list — `discoverySessionId` now points at the next most
+recent session, but the stale `prdError` message from the deleted session's failed attempt remains
+displayed under the new session's "Gerar PRD" card, misattributing an unrelated past error to the
+newly-selected session.
 
-Quando `handleGeneratePrd` termina com sucesso, ele navega para `/sessions/${sessionId}` (linha 134). Se a sessão ainda estiver `active`:
-- `SessionActivePage` renderiza o layout de monitoramento ao vivo, não a view de "sessão encerrada" que busca e exibe `finishedReport` (esse fetch só acontece em `else` quando `s.status !== 'active'`, linhas 675-679).
-- O único outro caminho para mostrar o relatório recém-criado seria o evento WS `report_ready` (emitido em `pipeline.py` dentro de `trigger_report()`), mas esse broadcast já ocorreu **antes** da nova conexão WebSocket ser aberta (a conexão só é criada depois que `api.sessions.generateReport` resolve e o `navigate()` monta o novo componente) — logo esse evento nunca chega ao cliente.
-- O botão "Relatório" do topbar ao vivo fica oculto para sessões discovery (ver CR-01), então não há nem esse atalho manual para reabrir o modal.
-
-Resultado: o PRD foi gerado e persistido corretamente no banco, mas o usuário é redirecionado para uma tela que não mostra nada disso — precisa encerrar a sessão e voltar para conseguir vê-lo.
-
-**Fix:** Ou (a) restringir `pickDiscoverySession`/o bloco "Gerar PRD" a sessões `finished`, ou (b) fazer `SessionActivePage` buscar o relatório mais recente via `api.sessions.getReport(sessionId)` também quando a sessão está ativa (não só no `else`), abrindo o modal se algo for encontrado.
-
-### WR-02: Configuração do vitest não cobre os testes de componente que os devDependencies já preveem
-
-**File:** `frontend/vite.config.ts:17-20`, `frontend/package.json:11`
-
-**Issue:** Este PR liga o `test` script (`"test": "vitest run"`) e o bloco `test` do `vite.config.ts` pela primeira vez:
-
+**Fix:** Clear `prdError` whenever `discoverySessionId` changes, alongside the existing
+`readinessError` reset:
 ```ts
-test: {
-  environment: 'node',
-  include: ['src/**/*.test.ts'],
-},
+useEffect(() => {
+  if (!discoverySessionId) return
+  setReadinessLoading(true)
+  setReadinessError(null)
+  setPrdError(null) // reset stale generation error from a previously-selected session
+  api.sessions
+    .getReadiness(discoverySessionId)
+    .then(setReadiness)
+    .catch(() => setReadinessError('Erro ao carregar readiness'))
+    .finally(() => setReadinessLoading(false))
+}, [discoverySessionId])
 ```
 
-`environment: 'node'` não tem DOM, e `include` só casa arquivos `*.test.ts` — nunca `*.test.tsx`. O repositório já tem `@testing-library/react`, `@testing-library/jest-dom` e `@testing-library/user-event` como devDependencies (pré-existentes, não adicionados nesta fase), o que só faz sentido para testes de componente React, que por convenção usam extensão `.tsx` e precisam de `environment: 'jsdom'`. Do jeito que está, o primeiro teste de componente `.tsx` escrito por alguém do time será **silenciosamente ignorado** pelo `vitest run` (não aparece como falha, só não roda), e mesmo que a extensão fosse `.ts`, ainda falharia por falta de DOM.
+### WR-02: Orphaned JSDoc comment in `lens.ts` — misdocuments `shouldShowManualReportButton`, leaves `groupCoverageByLens` undocumented
 
-**Fix:**
+**File:** `frontend/src/lib/lens.ts:75-99`
+**Issue:** The new `shouldShowManualReportButton` function (with its own docstring) was inserted
+between the pre-existing "Particiona a cobertura por lente..." docstring and the `groupCoverageByLens`
+function it was written to describe. The result:
+- Lines 75-81 ("Particiona a cobertura por lente (Produto/Dados), preservando a ordem de inserção...")
+  now sit directly above `shouldShowManualReportButton` (lines 92-97), reading as if they document that
+  function — they don't; they describe partitioning/grouping semantics that belong to
+  `groupCoverageByLens`.
+- `groupCoverageByLens` (line 99) is now undocumented — it lost its docstring to the misplacement.
+
+This is a pure documentation defect (verified via `git diff`: the new block was inserted immediately
+after the pre-existing docstring, not after the function it belongs to) but it will actively mislead
+future maintainers reading `shouldShowManualReportButton` (whose real contract, "gate a button on
+`hasReceivedInitialState` AND non-discovery", is described correctly by the *second* docstring at lines
+82-91, immediately below the misplaced one) and anyone changing `groupCoverageByLens` without doc
+guidance.
+
+**Fix:** Move the "Particiona a cobertura por lente..." docblock to sit directly above
+`groupCoverageByLens`, after `shouldShowManualReportButton`'s own docblock+function:
 ```ts
-test: {
-  environment: 'jsdom',
-  include: ['src/**/*.test.{ts,tsx}'],
-},
+/**
+ * Decide a visibilidade do botão manual "Relatório" ...
+ */
+export function shouldShowManualReportButton(
+  hasReceivedInitialState: boolean,
+  coverage: CoverageState
+): boolean {
+  return hasReceivedInitialState && !isDiscoveryCoverage(coverage)
+}
+
+/**
+ * Particiona a cobertura por lente (Produto/Dados), preservando a ordem de
+ * inserção do payload (Object.entries) — nunca reordena. As duas chaves
+ * (`produto` e `dados`) estão sempre presentes, mesmo vazias, para que o
+ * cabeçalho de uma lente sem áreas ativas ainda possa ser renderizado
+ * (backstop zero-one-many).
+ */
+export function groupCoverageByLens(
+  coverage: CoverageState
+): { produto: [string, CoverageArea][]; dados: [string, CoverageArea][] } {
+  ...
 ```
-(requer adicionar `jsdom` como devDependency, já que `environment: 'jsdom'` do vitest depende do pacote `jsdom` instalado separadamente).
 
-### WR-03: `GET /sessions/{session_id}/readiness` não declara `response_model`
+### WR-03: `hasReceivedInitialState` fail-closed guarantee does not survive a `sessionId` change without component remount
 
-**File:** `backend/app/routers/sessions.py:382-394`
+**File:** `frontend/src/lib/useSessionWS.ts:67-78, 101-174`; `frontend/src/pages/SessionActivePage.tsx:656-672`
+**Issue:** `useSessionWS`'s `state` is created once via `useState(...)` with `hasReceivedInitialState:
+false` as the *initial* value only. The WebSocket lifecycle effect re-runs when `sessionId` changes
+(`[sessionId]` dependency, line 174), correctly tearing down the old socket and opening a new one — but
+it does **not** reset `state` back to its pristine shape first. If `SessionActivePage` (mounted at route
+`/sessions/:sessionId`, `App.tsx:18`) were ever navigated between two different session IDs without an
+intervening unmount (e.g., a future direct session-to-session link, or a router change that reuses the
+component instance across a param-only URL change), `hasReceivedInitialState` and `coverage` would carry
+over from the previous session until the new session's `initial_state` arrives, defeating exactly the
+fail-closed guarantee this diff introduces: the manual "Relatório" button could render immediately using
+stale sales-shaped coverage/`hasReceivedInitialState=true` from the previously-viewed session, even
+though the newly-loaded session is a discovery session whose real `initial_state` hasn't arrived yet.
 
-**Issue:** Todas as outras rotas deste arquivo (`get_session`, `finish_session`, `get_session_report`, `generate_session_report`, `update_session_report_status`, etc.) declaram `response_model=...` com um schema Pydantic explícito. A nova rota de readiness retorna o dataclass `ReadinessScore` diretamente, sem `response_model`:
+Today this is not reachable through any in-app navigation — I checked all `to`/`navigate` call sites
+that target `/sessions/:id` (`ProjectDetailPage.tsx:139,330`, `SessionSetupPage.tsx:71,93`) and none of
+them link from one `/sessions/:id` route directly to another; every session view is reached via a
+different route (`/projects/:id` or `/projects/:id/sessions/new`) first, which forces a full remount.
+The existing code comment in `lens.ts:87-88` and `useSessionWS.ts:59-61` explicitly asserts "já que
+`useSessionWS` não reconecta sozinho" as the basis for the fix's correctness — that assertion is true
+today, but nothing enforces it going forward, and the state-reuse gap is exactly the kind of thing that
+would silently reopen CR-01 if a future change (e.g., an in-session "next session" link, or a router
+version bump that changes remount semantics) is made without touching this file.
 
-```python
-@router.get("/{session_id}/readiness")
-async def get_session_readiness(session_id: UUID, db: Client = Depends(get_supabase)):
-    ...
-    return pipeline.state.readiness_score()
+**Fix:** Either reset `state` at the top of the WS effect when `sessionId` changes, or key the hook's
+internal identity to `sessionId` explicitly:
+```ts
+useEffect(() => {
+  if (!sessionId) return
+  setState({
+    connected: false,
+    coverage: {},
+    redFlags: [],
+    questions: [],
+    transcript: [],
+    budget: { used_usd: 0, limit_usd: null, estimated_report_cost: 0, status: 'ok' },
+    reportMarkdown: null,
+    wsError: null,
+    hasReceivedInitialState: false,
+  })
+  const ws = new WebSocket(`${WS_BASE}/ws/${sessionId}`)
+  ...
+}, [sessionId])
 ```
-
-Funciona porque o `jsonable_encoder` do FastAPI sabe serializar dataclasses, mas quebra a consistência do arquivo: o schema OpenAPI gerado para este endpoint fica genérico (sem os 4 campos documentados), e não há validação de tipo na saída como as demais rotas têm. O frontend já espelha o contrato manualmente em `Readiness` (`api.ts`) — um `response_model=ReadinessScoreResponse` faria esse contrato ser verificado automaticamente em vez de depender só do espelhamento manual.
-
-**Fix:** Criar um `ReadinessResponse(BaseModel)` em `backend/app/models/sessions.py` (mesmo padrão de `ReportResponse`) com os 4 campos (`score: float`, `signals: dict[str, float]`, `ready: bool`, `low_signals: list[str]`) e declarar `response_model=ReadinessResponse` na rota.
-
-## Info
-
-### IN-01: `db` injetado mas nunca usado em `get_session_readiness`
-
-**File:** `backend/app/routers/sessions.py:383`
-
-**Issue:** O parâmetro `db: Client = Depends(get_supabase)` é declarado mas nunca referenciado no corpo da função — toda a resolução de estado passa por `pipeline_manager.get_or_create`. Mesmo padrão já existe em `generate_session_questions` (linha 301) nesse arquivo, então não é uma regressão introduzida por este PR, mas continua sendo peso morto na assinatura.
-
-**Fix:** Remover o parâmetro se de fato não for necessário, ou documentar por que a dependência é mantida (ex.: efeito colateral de inicialização de conexão).
-
-### IN-02: `ReadinessBar`/`% pronto` não faz clamp de `readiness.score`
-
-**File:** `frontend/src/pages/ProjectDetailPage.tsx:393-403`
-
-**Issue:** `Math.round((readiness?.score ?? 0) * 100)` é usado tanto no texto ("X% pronto") quanto na largura da barra (`style={{ width: `${pct}%` }}`), sem `Math.min(100, ...)`. Hoje `readiness_score()` no backend é matematicamente limitado a `[0, 1]` por construção (média ponderada de sinais em `[0,1]`), então na prática não estoura — mas não há nenhuma garantia de contrato que impeça um valor futuro > 1 (ex.: um bug num sinal novo) de estourar a barra visualmente (`width: 130%`) sem qualquer aviso.
-
-**Fix:** `Math.min(100, Math.round((readiness?.score ?? 0) * 100))` como defesa barata.
 
 ---
 
-_Reviewed: 2026-09-23_
+_Reviewed: 2026-09-23T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
