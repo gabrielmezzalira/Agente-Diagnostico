@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 06
-current_phase_name: opt-in-webhook-auth
+current_phase_name: Opt-In Webhook Auth
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-09-24T22:34:31.727Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-09-24T23:08:45.411Z"
 last_activity: 2026-09-24
 last_activity_desc: Phase 06 execution started
-state_head: 26ac75b4986d22f050eeab3f667b6bda0dc1512e
+state_head: 7c9f44e4e98ee2bc3e0d4a63cd2fcb72683267a7
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-09-24)
 
 ## Current Position
 
-Phase: 06 (opt-in-webhook-auth) — READY TO EXECUTE
-Plan: 1 of 1
+Phase: 06 (Opt-In Webhook Auth) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
 Last activity: 2026-09-24 — Phase 06 execution started
 
@@ -78,6 +78,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05 P04 | ~15min | 2 tasks | 2 files |
 | Phase 05 P05 | ~10min | 2 tasks | 5 files |
 | Phase 06 P01 | ~10min | 2 tasks | 5 files |
+| Phase 06 P02 | 35min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,7 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06] D-01: Depends(verify_extension_key) conectado exclusivamente em extension_webhook(); recall_webhook() e o APIRouter(...) permanecem intocados — confirmado por 2 greps automatizados no <verify>
 - [Phase 06]: [Phase 06] D-02: campo da extensao usa input type=password e chrome.storage.local (nunca .sync) — mesmo nivel de exposicao do campo backendUrl ja existente
 - [Phase 06]: [Phase 06] D-03: ativacao real de EXTENSION_SHARED_KEY em producao (Railway) fica como DECISAO EM ABERTO do time — nenhuma task desta fase seta a env var em ambiente real
+- [Phase 06]: [Fase 06] [06-02]: rastreio de edicao por campo (editCount) + releitura pos-save substitui a guarda de foco do plano anterior (3f0d1e8) - foco sai do campo para o botao Salvar antes do clique (Tab/mousedown), entao so a guarda de foco nao fecha o G-06-1
 
 ### Pending Todos
 
@@ -144,6 +146,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T14:11:29.270Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-09-24T23:08:45.263Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
