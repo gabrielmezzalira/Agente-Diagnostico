@@ -84,6 +84,16 @@ export interface Report {
   markdown_content: string
   cost_usd: string
   generated_at: string
+  status: 'Rascunho' | 'Em revisão' | 'Aprovado para build' | null
+}
+
+// D-49 (Fase 5): espelha ReadinessScore (backend) verbatim — sem reshaping,
+// score/signals/ready/low_signals sao exatamente os 4 campos do dataclass.
+export interface Readiness {
+  score: number
+  signals: Record<string, number>
+  ready: boolean
+  low_signals: string[]
 }
 
 export interface Question {
@@ -227,6 +237,13 @@ export const api = {
       request<Report>(`/sessions/${id}/report`, { method: 'POST' }),
     getReport: (id: string) =>
       request<Report>(`/sessions/${id}/report`),
+    getReadiness: (id: string) =>
+      request<Readiness>(`/sessions/${id}/readiness`),
+    updateReportStatus: (id: string, status: NonNullable<Report['status']>) =>
+      request<Report>(`/sessions/${id}/report`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }),
     uploadTranscript: async (id: string, file: File): Promise<Report> => {
       const form = new FormData()
       form.append('file', file)
