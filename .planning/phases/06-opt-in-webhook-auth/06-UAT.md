@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 06-opt-in-webhook-auth
 source: [06-VERIFICATION.md]
 started: 2026-09-24T14:28:40Z
@@ -36,8 +36,14 @@ blocked: 0
 - gap_id: G-06-1
   truth: "O request POST /webhook/extension carrega o header x-agente-key com o valor exatamente igual ao salvo em chrome.storage.local."
   status: failed
-  reason: "User reported: o campo 'Chave de autenticação (opcional)' no popup da extensão apaga o texto digitado sozinho, antes do usuário conseguir clicar em Salvar. Causa raiz identificada em code review: setInterval de 3s em popup.js chama GET_STATE e render(), que sobrescreve extensionKeyInput.value com state.extensionKey a cada tick, mesmo com o campo em foco/edição. O valor final salvo funciona (header confirmado correto), mas a UX de configurar a chave é falha e pode levar a salvar valor errado/vazio sem o usuário perceber."
+  reason: "User reported: o campo 'Chave de autenticação (opcional)' no popup da extensão apaga o texto digitado sozinho, antes do usuário conseguir clicar em Salvar. O valor final salvo funciona (header confirmado correto), mas a UX de configurar a chave é falha e pode levar a salvar valor errado/vazio sem o usuário perceber."
   severity: major
   test: 1
-  artifacts: [extension/popup.js]
-  missing: []
+  root_cause: "extension/popup.js render() (linhas 75-77) sobrescreve extensionKeyInput.value incondicionalmente a cada tick do setInterval de 3s (linhas 98-100), sem checar document.activeElement, sem debounce, sem flag de edição. state.extensionKey só é atualizado por SET_EXTENSION_KEY (background.js), disparado só ao clicar em Salvar — então qualquer digitação ainda não salva é sobrescrita pelo valor antigo (tipicamente vazio) no próximo tick. O mesmo defeito também afeta backendUrlInput (linha 76), não reportado no UAT mas com a mesma causa."
+  artifacts:
+    - path: "extension/popup.js"
+      issue: "render() sobrescreve extensionKeyInput.value (e backendUrlInput.value) sem checar foco do elemento, mesmo com o usuário editando"
+  missing:
+    - "Pular a atribuição de .value em render() quando o campo está com document.activeElement (foco ativo)"
+    - "Aplicar a mesma correção ao backendUrlInput, que compartilha o defeito"
+  debug_session: .planning/debug/extension-key-field-clears-while-typing.md
