@@ -18,22 +18,15 @@ import {
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, type Report, type Session } from '../lib/api'
-import { useSessionWS, type WSQuestion } from '../lib/useSessionWS'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const AREA_LABELS: Record<string, string> = {
-  negocio: 'Negócio',
-  eng_dados: 'Eng. de Dados',
-  visualizacao: 'Visualização',
-  ciencia_dados: 'Ciência de Dados',
-  automacao: 'Automação',
-  integracao: 'Integração',
-  consumo: 'Consumo',
-  parceria: 'Parceria',
-}
+import { useSessionWS, type CoverageArea, type CoverageState, type WSQuestion } from '../lib/useSessionWS'
+import {
+  blockLabel,
+  groupCoverageByLens,
+  isDiscoveryCoverage,
+  lensBadgeVariant,
+  lensLabel,
+  shouldShowManualReportButton,
+} from '../lib/lens'
 
 // ---------------------------------------------------------------------------
 // Session timer
@@ -69,7 +62,7 @@ function CoveragePanel({
   coverage,
   onForceClassify,
 }: {
-  coverage: Record<string, { status: string; score: number; notes: string }>
+  coverage: CoverageState
   onForceClassify: () => void
 }) {
   const statusColor: Record<string, string> = {
@@ -85,8 +78,90 @@ function CoveragePanel({
     not_applicable: 'bg-[var(--color-border-std)]',
   }
 
-  const active = Object.entries(coverage).filter(([, i]) => i.status !== 'not_applicable')
-  const inactive = Object.entries(coverage).filter(([, i]) => i.status === 'not_applicable')
+  function renderAreaRow([area, info]: [string, CoverageArea]) {
+    return (
+      <div
+        key={area}
+        className="px-3 py-2 hover:bg-[var(--color-muted)] rounded-sm transition-colors"
+        title={info.notes || undefined}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`shrink-0 w-2 h-2 rounded-full ${statusDot[info.status] ?? statusDot.uncovered}`} />
+          <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">
+            {info.name || area}
+          </span>
+          <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
+            {info.score}%
+          </span>
+        </div>
+        <div className="ml-4 h-1 bg-[var(--color-border-std)] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${statusColor[info.status] ?? statusColor.uncovered}`}
+            style={{ width: `${info.score}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const isEmpty = Object.keys(coverage).length === 0
+  const isDiscovery = !isEmpty && isDiscoveryCoverage(coverage)
+
+  let body: React.ReactNode
+
+  if (isEmpty) {
+    // D-46: nunca inventar áreas fixas — placeholder discreto até o initial_state chegar.
+    body = (
+      <p className="text-xs text-[var(--color-text-secondary)] text-center pt-8">
+        aguardando classificação…
+      </p>
+    )
+  } else if (isDiscovery) {
+    // D-43: duas seções empilhadas por lente, na ordem do payload; cabeçalho
+    // renderizado mesmo se o grupo ficar com 0 áreas ativas (backstop zero-one-many).
+    const grouped = groupCoverageByLens(coverage)
+    body = (
+      <>
+        {(['produto', 'dados'] as const).map(lensKey => {
+          const entries = grouped[lensKey].filter(([, i]) => i.status !== 'not_applicable')
+          return (
+            <div key={lensKey}>
+              <div className="px-3 py-1.5">
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+                  {lensKey === 'produto' ? 'Produto' : 'Dados'}
+                </span>
+              </div>
+              {entries.map(renderAreaRow)}
+            </div>
+          )
+        })}
+      </>
+    )
+  } else {
+    // Sales (lens todo null): lista plana byte-idêntica ao comportamento atual.
+    const active = Object.entries(coverage).filter(([, i]) => i.status !== 'not_applicable')
+    const inactive = Object.entries(coverage).filter(([, i]) => i.status === 'not_applicable')
+    body = (
+      <>
+        {active.map(renderAreaRow)}
+
+        {inactive.length > 0 && (
+          <>
+            <div className="mx-3 my-1 border-t border-[var(--color-border-std)]" />
+            {inactive.map(([area, info]) => (
+              <div key={area} className="px-3 py-1.5 flex items-center gap-2 opacity-35">
+                <span className="shrink-0 w-2 h-2 rounded-full border border-[var(--color-border-std)]" />
+                <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                  {info.name || area}
+                </span>
+                <span className="text-xs text-[var(--color-text-secondary)]">N/A</span>
+              </div>
+            ))}
+          </>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -102,46 +177,7 @@ function CoveragePanel({
           <RefreshCw size={12} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto py-1">
-        {active.map(([area, info]) => (
-          <div
-            key={area}
-            className="px-3 py-2 hover:bg-[var(--color-muted)] rounded-sm transition-colors"
-            title={info.notes || undefined}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`shrink-0 w-2 h-2 rounded-full ${statusDot[info.status] ?? statusDot.uncovered}`} />
-              <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">
-                {AREA_LABELS[area] ?? area}
-              </span>
-              <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
-                {info.score}%
-              </span>
-            </div>
-            <div className="ml-4 h-1 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${statusColor[info.status] ?? statusColor.uncovered}`}
-                style={{ width: `${info.score}%` }}
-              />
-            </div>
-          </div>
-        ))}
-
-        {inactive.length > 0 && (
-          <>
-            <div className="mx-3 my-1 border-t border-[var(--color-border-std)]" />
-            {inactive.map(([area]) => (
-              <div key={area} className="px-3 py-1.5 flex items-center gap-2 opacity-35">
-                <span className="shrink-0 w-2 h-2 rounded-full border border-[var(--color-border-std)]" />
-                <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
-                  {AREA_LABELS[area] ?? area}
-                </span>
-                <span className="text-xs text-[var(--color-text-secondary)]">N/A</span>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+      <div className="flex-1 overflow-y-auto py-1">{body}</div>
     </div>
   )
 }
@@ -198,6 +234,31 @@ function BudgetBar({
 }
 
 // ---------------------------------------------------------------------------
+// Lens badge (Produto/Dados) — UI-02/D-44. Tag principal em discovery;
+// não renderiza nada quando lens é null (sales, byte-idêntico).
+// ---------------------------------------------------------------------------
+
+const LENS_BADGE_CLASSES: Record<'produto' | 'dados', string> = {
+  produto:
+    'bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]',
+  dados:
+    'bg-[var(--color-muted)] text-[var(--color-text-secondary)] border border-[var(--color-border-std)]',
+}
+
+function LensBadge({ lens }: { lens: 'produto' | 'dados' | null }) {
+  const variant = lensBadgeVariant(lens)
+  if (variant === 'none') return null
+
+  return (
+    <span
+      className={`text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] w-fit ${LENS_BADGE_CLASSES[variant]}`}
+    >
+      {lensLabel(lens)}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Transcript + red flags (center column)
 // ---------------------------------------------------------------------------
 
@@ -206,7 +267,14 @@ function TranscriptPanel({
   redFlags,
 }: {
   transcript: Array<{ text: string; speaker: string | null; timestamp: string }>
-  redFlags: Array<{ id: string; text: string; severity: string; evidence: string; detected_at: string }>
+  redFlags: Array<{
+    id: string
+    text: string
+    severity: string
+    evidence: string
+    detected_at: string
+    lens?: 'produto' | 'dados' | null
+  }>
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -241,6 +309,11 @@ function TranscriptPanel({
                   }`}
                 />
                 <div className="min-w-0">
+                  {rf.lens != null && (
+                    <div className="mb-1">
+                      <LensBadge lens={rf.lens} />
+                    </div>
+                  )}
                   <p className="text-sm text-[var(--color-text-primary)]">{rf.text}</p>
                   {rf.evidence && (
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 italic truncate">
@@ -331,23 +404,21 @@ function QuestionCard({
   onDismiss: () => void
   onUse: () => void
 }) {
-  const blockLabel: Record<string, string> = {
-    negocio: 'Negócio',
-    eng_dados: 'Eng. Dados',
-    visualizacao: 'Visualização',
-    ciencia_dados: 'C. de Dados',
-    automacao: 'Automação',
-    integracao: 'Integração',
-    consumo: 'Consumo',
-    parceria: 'Parceria',
-  }
-
   return (
     <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-[var(--radius-card)] px-3 py-2.5">
       <div className="flex items-start justify-between gap-1 mb-1">
-        <span className="text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-          {blockLabel[question.block] ?? question.block}
-        </span>
+        {question.lens != null ? (
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <LensBadge lens={question.lens} />
+            <span className="text-[10px] text-[var(--color-text-secondary)] truncate">
+              {blockLabel(question.block)}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] w-fit">
+            {blockLabel(question.block)}
+          </span>
+        )}
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={onPin}
@@ -595,6 +666,7 @@ export default function SessionActivePage() {
   const [reportModal, setReportModal] = useState<string | null>(null)
   const [finishedReport, setFinishedReport] = useState<Report | null>(null)
   const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
   const { state: ws, send, updateQuestionStatus } = useSessionWS(sessionId)
@@ -671,6 +743,22 @@ export default function SessionActivePage() {
       setError(e instanceof Error ? e.message : 'Erro ao regenerar relatório')
     } finally {
       setRegenerating(false)
+    }
+  }
+
+  // D-48: seletor de status/aprovação do relatório na sessão encerrada —
+  // mesmo padrão disable-while-mutating de handleRegenerate/handleUploadPdf.
+  async function handleUpdateReportStatus(newStatus: NonNullable<Report['status']>) {
+    if (!sessionId || updatingStatus) return
+    setUpdatingStatus(true)
+    setError(null)
+    try {
+      const updated = await api.sessions.updateReportStatus(sessionId, newStatus)
+      setFinishedReport(updated)
+    } catch {
+      setError('Erro ao atualizar status')
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -839,6 +927,37 @@ export default function SessionActivePage() {
                   {new Date(finishedReport.generated_at).toLocaleString('pt-BR')}
                 </span>
               </div>
+
+              {/* D-48: seletor de status/aprovação — só relatório de discovery (status != null) */}
+              {finishedReport.status != null && (
+                <div className="flex items-center gap-2 mb-3">
+                  <label
+                    htmlFor="report-status-select"
+                    className="text-xs text-[var(--color-text-secondary)]"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="report-status-select"
+                    value={finishedReport.status}
+                    disabled={updatingStatus}
+                    onChange={e =>
+                      handleUpdateReportStatus(e.target.value as NonNullable<Report['status']>)
+                    }
+                    className="text-xs border border-[var(--color-border-std)] rounded-[var(--radius-btn)] px-2 py-1 bg-[var(--color-surface)] text-[var(--color-text-primary)] disabled:opacity-50"
+                  >
+                    <option value="Rascunho">Rascunho</option>
+                    <option value="Em revisão">Em revisão</option>
+                    <option value="Aprovado para build">Aprovado para build</option>
+                  </select>
+                  {finishedReport.status === 'Aprovado para build' && (
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      Libera a importação no Precificador
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="text-sm text-[var(--color-text-primary)] leading-relaxed line-clamp-6 overflow-hidden
                 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1
                 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-1
@@ -938,15 +1057,17 @@ export default function SessionActivePage() {
         )}
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleGenerateReport}
-            disabled={generatingReport || ws.budget.status === 'insufficient'}
-            title={ws.budget.status === 'insufficient' ? 'Saldo insuficiente' : 'Gerar relatório (R)'}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
-          >
-            <FileText size={12} />
-            {generatingReport ? 'Gerando...' : 'Relatório'}
-          </button>
+          {shouldShowManualReportButton(ws.hasReceivedInitialState, ws.coverage) && (
+            <button
+              onClick={handleGenerateReport}
+              disabled={generatingReport || ws.budget.status === 'insufficient'}
+              title={ws.budget.status === 'insufficient' ? 'Saldo insuficiente' : 'Gerar relatório (R)'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
+            >
+              <FileText size={12} />
+              {generatingReport ? 'Gerando...' : 'Relatório'}
+            </button>
+          )}
           <button
             onClick={handleFinish}
             disabled={finishing}

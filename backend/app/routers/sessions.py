@@ -379,6 +379,21 @@ async def update_session_report_status(
     return result.data[0]
 
 
+@router.get("/{session_id}/readiness")
+async def get_session_readiness(session_id: UUID, db: Client = Depends(get_supabase)):
+    """D-49 (Fase 5): expõe `SessionState.readiness_score()` (função pura, Fase 4/
+    D-33/D-34) por uma rota REST mínima e aditiva — hoje só existia em memória,
+    sem nenhuma superfície HTTP. Reusa o mesmo padrão de lookup das rotas de
+    report acima (`pipeline_manager.get_or_create(..., allow_finished=True)` +
+    404 idêntico) para que o readiness seja legível também em sessões discovery
+    já encerradas (a página do projeto lê pós-call, não só ao vivo)."""
+    from app.services.pipeline import pipeline_manager
+    pipeline = await pipeline_manager.get_or_create(str(session_id), allow_finished=True)
+    if not pipeline:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return pipeline.state.readiness_score()
+
+
 @router.post(
     "/{session_id}/transcript/upload",
     response_model=ReportResponse,

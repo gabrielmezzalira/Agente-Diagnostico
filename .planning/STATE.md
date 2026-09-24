@@ -2,45 +2,45 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 5
-current_phase_name: Two-Lens Monitoring (Frontend)
+current_phase: 6
+current_phase_name: Opt-In Webhook Auth
 status: planning
-stopped_at: Phase 04 complete, ready to plan Phase 5
-last_updated: "2026-09-23T14:23:30.171Z"
-last_activity: 2026-09-23
-last_activity_desc: Phase 04 complete, transitioned to Phase 5
-state_head: 60e26fb9cbdf1b40b3d3628b58b36aac91a908db
+stopped_at: Phase 05 complete, ready to plan Phase 6
+last_updated: "2026-09-24T12:27:35.671Z"
+last_activity: 2026-09-24
+last_activity_desc: Phase 05 complete, transitioned to Phase 6
+state_head: 31ac10176fa7d437fca94856059ea944335ad7ba
 progress:
   total_phases: 10
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
-  percent: 40
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-19)
+See: .planning/PROJECT.md (updated 2026-09-24)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 04 — Discovery Report + Pricing Handoff
+**Current focus:** Phase 6 — Opt-In Webhook Auth
 
 ## Current Position
 
-Phase: 5 — Two-Lens Monitoring (Frontend)
+Phase: 6 — Opt-In Webhook Auth
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-23 — Phase 04 complete, transitioned to Phase 5
+Last activity: 2026-09-24 — Phase 05 complete, transitioned to Phase 6
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 18
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -52,6 +52,7 @@ Progress: [████░░░░░░] 40%
 | 02 | 3 | - | - |
 | 03 | 3 | - | - |
 | 04 | 4 | - | - |
+| 05 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -72,6 +73,11 @@ Progress: [████░░░░░░] 40%
 | Phase 04 P02 | ~1h | 3 tasks | 4 files |
 | Phase 04 P03 | 25min | 2 tasks | 3 files |
 | Phase 04 P04 | 12min | 1 tasks | 2 files |
+| Phase 05 P01 | 15min | 2 tasks | 6 files |
+| Phase 05 P03 | ~20min | 3 tasks | 4 files |
+| Phase 05 P02 | ~10min | 2 tasks | 3 files |
+| Phase 05 P04 | ~15min | 2 tasks | 2 files |
+| Phase 05 P05 | ~10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -100,6 +106,12 @@ Recent decisions affecting current work:
 - [Phase 04]: D-32: 12 blocos temáticos sincronizados nos dois prompts do Precificador (import_from_diagnosis + suggest_features), com desambiguação ML/GenAI/Ciência de Dados — Aditivo, sem migration — bloco continua texto livre no banco
 - [Phase 04]: D-33/D-34: readiness_score puro em SessionState combina 4 sinais por score ponderado (0.30/0.30/0.20/0.20) + limiar 0.65 (constantes calibráveis) — Backend-only; UI da Fase 5 consome ready/low_signals para habilitar botão Gerar PRD
 - [Phase 04]: D-39: upload_pdf_transcript propaga mode=project.get('mode','sales') para generate_report + grant condicional de status='Rascunho' no INSERT do upload quando discovery — Corrige inconsistencia silenciosa: PDF de sessao discovery gerava relatorio sales por omissao do parametro mode (Pitfall 4). Grant reusa o mesmo padrao condicional ja usado no pipeline ao vivo (D-36).
+- [Phase 05]: [Phase 05-01]: CoverageArea.status ganhou o literal not_applicable no tipo compartilhado (Rule 1 - bug de tipo pre-existente exposto ao trocar a prop coverage do CoveragePanel para o CoverageState compartilhado)
+- [Phase 05]: [Phase 05-03]: ReportResponse.status como Optional[Literal] = None (nao Literal obrigatorio) para preservar sales byte-identico (REP-03); rota GET /sessions/{id}/readiness reusa pipeline_manager.get_or_create(allow_finished=True) + 404 identico as rotas de report
+- [Phase 05]: [Phase 05-02]: LensBadge extraido como componente compartilhado (nao helper de string) entre QuestionCard e TranscriptPanel — evita a cor da badge Produto/Dados divergir entre pergunta e red flag
+- [Phase 05]: [Phase 05]: [Phase 05-04]: Bloco 'Gerar PRD' inserido como secao dedicada antes de 'Precificacoes' (Claude's Discretion) em vez de por-card-de-sessao; seletor de status como <select> nativo (Claude's Discretion) em vez de 3 botoes
+- [Phase 05]: [Phase 05] [Phase 05-05]: shouldShowManualReportButton extraido para lens.ts (nao inline) — gate fail-closed do botao Relatorio por hasReceivedInitialState (fonte sincrona) em vez de ws.coverage assincrono (fecha CR-01)
+- [Phase 05]: [Phase 05] [Phase 05-05]: prdError separado de readinessError no ProjectDetailPage — GET-error (fail-closed, desabilita) distinto de POST-error (nao desabilita, permite retry) (fecha CR-02)
 
 ### Pending Todos
 
@@ -129,6 +141,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T12:00:08.224Z
-Stopped at: Phase 04 complete, ready to plan Phase 5
+Last session: 2026-09-24T12:30:00.000Z
+Stopped at: Phase 05 complete (passed, human UAT executed live), ready to plan Phase 6
 Resume file: None

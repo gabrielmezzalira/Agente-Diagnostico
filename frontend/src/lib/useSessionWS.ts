@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE } from './api'
 
 export interface CoverageArea {
-  status: 'covered' | 'partial' | 'uncovered'
+  status: 'covered' | 'partial' | 'uncovered' | 'not_applicable'
   score: number
   notes: string
+  name: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface RedFlag {
@@ -13,6 +15,7 @@ export interface RedFlag {
   severity: 'warning' | 'critical'
   evidence: string
   detected_at: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface WSQuestion {
@@ -23,6 +26,7 @@ export interface WSQuestion {
   status: 'queued' | 'pinned' | 'dismissed' | 'used'
   generated_at: string
   expires_at: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface TranscriptChunk {
@@ -49,29 +53,28 @@ export interface SessionWSState {
   budget: BudgetState
   reportMarkdown: string | null
   wsError: string | null
+  /**
+   * True a partir do primeiro evento `initial_state` recebido nesta conexão.
+   * Fonte síncrona confiável de "já sei o modo desta sessão" — usada para
+   * gatear o botão manual "Relatório" (CR-01), já que `coverage` nasce `{}`
+   * antes do initial_state chegar (montagem do componente ou reconexão).
+   */
+  hasReceivedInitialState: boolean
 }
-
-const COVERAGE_AREAS = [
-  'negocio', 'eng_dados', 'visualizacao', 'ciencia_dados',
-  'automacao', 'integracao', 'consumo', 'parceria',
-]
-
-const INITIAL_COVERAGE: CoverageState = Object.fromEntries(
-  COVERAGE_AREAS.map(a => [a, { status: 'uncovered' as const, score: 0, notes: '' }])
-)
 
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
 export function useSessionWS(sessionId: string | undefined) {
   const [state, setState] = useState<SessionWSState>({
     connected: false,
-    coverage: INITIAL_COVERAGE,
+    coverage: {},
     redFlags: [],
     questions: [],
     transcript: [],
     budget: { used_usd: 0, limit_usd: null, estimated_report_cost: 0, status: 'ok' },
     reportMarkdown: null,
     wsError: null,
+    hasReceivedInitialState: false,
   })
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -121,6 +124,7 @@ export function useSessionWS(sessionId: string | undefined) {
                 questions: (data.questions as WSQuestion[]) ?? s.questions,
                 transcript: (data.transcript as TranscriptChunk[]) ?? s.transcript,
                 budget: (data.budget as BudgetState) ?? s.budget,
+                hasReceivedInitialState: true,
               }
             case 'coverage_update':
               return { ...s, coverage: (data.areas as CoverageState) ?? s.coverage }
