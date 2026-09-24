@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE } from './api'
 
 export interface CoverageArea {
-  status: 'covered' | 'partial' | 'uncovered'
+  status: 'covered' | 'partial' | 'uncovered' | 'not_applicable'
   score: number
   notes: string
+  name: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface RedFlag {
@@ -13,6 +15,7 @@ export interface RedFlag {
   severity: 'warning' | 'critical'
   evidence: string
   detected_at: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface WSQuestion {
@@ -23,6 +26,7 @@ export interface WSQuestion {
   status: 'queued' | 'pinned' | 'dismissed' | 'used'
   generated_at: string
   expires_at: string
+  lens: 'produto' | 'dados' | null
 }
 
 export interface TranscriptChunk {
@@ -51,21 +55,12 @@ export interface SessionWSState {
   wsError: string | null
 }
 
-const COVERAGE_AREAS = [
-  'negocio', 'eng_dados', 'visualizacao', 'ciencia_dados',
-  'automacao', 'integracao', 'consumo', 'parceria',
-]
-
-const INITIAL_COVERAGE: CoverageState = Object.fromEntries(
-  COVERAGE_AREAS.map(a => [a, { status: 'uncovered' as const, score: 0, notes: '' }])
-)
-
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
 export function useSessionWS(sessionId: string | undefined) {
   const [state, setState] = useState<SessionWSState>({
     connected: false,
-    coverage: INITIAL_COVERAGE,
+    coverage: {},
     redFlags: [],
     questions: [],
     transcript: [],

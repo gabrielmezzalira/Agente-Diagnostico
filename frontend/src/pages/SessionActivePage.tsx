@@ -18,22 +18,8 @@ import {
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, type Report, type Session } from '../lib/api'
-import { useSessionWS, type WSQuestion } from '../lib/useSessionWS'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const AREA_LABELS: Record<string, string> = {
-  negocio: 'Negócio',
-  eng_dados: 'Eng. de Dados',
-  visualizacao: 'Visualização',
-  ciencia_dados: 'Ciência de Dados',
-  automacao: 'Automação',
-  integracao: 'Integração',
-  consumo: 'Consumo',
-  parceria: 'Parceria',
-}
+import { useSessionWS, type CoverageArea, type CoverageState, type WSQuestion } from '../lib/useSessionWS'
+import { isDiscoveryCoverage, groupCoverageByLens } from '../lib/lens'
 
 // ---------------------------------------------------------------------------
 // Session timer
@@ -69,7 +55,7 @@ function CoveragePanel({
   coverage,
   onForceClassify,
 }: {
-  coverage: Record<string, { status: string; score: number; notes: string }>
+  coverage: CoverageState
   onForceClassify: () => void
 }) {
   const statusColor: Record<string, string> = {
@@ -85,8 +71,90 @@ function CoveragePanel({
     not_applicable: 'bg-[var(--color-border-std)]',
   }
 
-  const active = Object.entries(coverage).filter(([, i]) => i.status !== 'not_applicable')
-  const inactive = Object.entries(coverage).filter(([, i]) => i.status === 'not_applicable')
+  function renderAreaRow([area, info]: [string, CoverageArea]) {
+    return (
+      <div
+        key={area}
+        className="px-3 py-2 hover:bg-[var(--color-muted)] rounded-sm transition-colors"
+        title={info.notes || undefined}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`shrink-0 w-2 h-2 rounded-full ${statusDot[info.status] ?? statusDot.uncovered}`} />
+          <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">
+            {info.name || area}
+          </span>
+          <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
+            {info.score}%
+          </span>
+        </div>
+        <div className="ml-4 h-1 bg-[var(--color-border-std)] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${statusColor[info.status] ?? statusColor.uncovered}`}
+            style={{ width: `${info.score}%` }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const isEmpty = Object.keys(coverage).length === 0
+  const isDiscovery = !isEmpty && isDiscoveryCoverage(coverage)
+
+  let body: React.ReactNode
+
+  if (isEmpty) {
+    // D-46: nunca inventar áreas fixas — placeholder discreto até o initial_state chegar.
+    body = (
+      <p className="text-xs text-[var(--color-text-secondary)] text-center pt-8">
+        aguardando classificação…
+      </p>
+    )
+  } else if (isDiscovery) {
+    // D-43: duas seções empilhadas por lente, na ordem do payload; cabeçalho
+    // renderizado mesmo se o grupo ficar com 0 áreas ativas (backstop zero-one-many).
+    const grouped = groupCoverageByLens(coverage)
+    body = (
+      <>
+        {(['produto', 'dados'] as const).map(lensKey => {
+          const entries = grouped[lensKey].filter(([, i]) => i.status !== 'not_applicable')
+          return (
+            <div key={lensKey}>
+              <div className="px-3 py-1.5">
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+                  {lensKey === 'produto' ? 'Produto' : 'Dados'}
+                </span>
+              </div>
+              {entries.map(renderAreaRow)}
+            </div>
+          )
+        })}
+      </>
+    )
+  } else {
+    // Sales (lens todo null): lista plana byte-idêntica ao comportamento atual.
+    const active = Object.entries(coverage).filter(([, i]) => i.status !== 'not_applicable')
+    const inactive = Object.entries(coverage).filter(([, i]) => i.status === 'not_applicable')
+    body = (
+      <>
+        {active.map(renderAreaRow)}
+
+        {inactive.length > 0 && (
+          <>
+            <div className="mx-3 my-1 border-t border-[var(--color-border-std)]" />
+            {inactive.map(([area, info]) => (
+              <div key={area} className="px-3 py-1.5 flex items-center gap-2 opacity-35">
+                <span className="shrink-0 w-2 h-2 rounded-full border border-[var(--color-border-std)]" />
+                <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                  {info.name || area}
+                </span>
+                <span className="text-xs text-[var(--color-text-secondary)]">N/A</span>
+              </div>
+            ))}
+          </>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -102,46 +170,7 @@ function CoveragePanel({
           <RefreshCw size={12} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto py-1">
-        {active.map(([area, info]) => (
-          <div
-            key={area}
-            className="px-3 py-2 hover:bg-[var(--color-muted)] rounded-sm transition-colors"
-            title={info.notes || undefined}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`shrink-0 w-2 h-2 rounded-full ${statusDot[info.status] ?? statusDot.uncovered}`} />
-              <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">
-                {AREA_LABELS[area] ?? area}
-              </span>
-              <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
-                {info.score}%
-              </span>
-            </div>
-            <div className="ml-4 h-1 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${statusColor[info.status] ?? statusColor.uncovered}`}
-                style={{ width: `${info.score}%` }}
-              />
-            </div>
-          </div>
-        ))}
-
-        {inactive.length > 0 && (
-          <>
-            <div className="mx-3 my-1 border-t border-[var(--color-border-std)]" />
-            {inactive.map(([area]) => (
-              <div key={area} className="px-3 py-1.5 flex items-center gap-2 opacity-35">
-                <span className="shrink-0 w-2 h-2 rounded-full border border-[var(--color-border-std)]" />
-                <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
-                  {AREA_LABELS[area] ?? area}
-                </span>
-                <span className="text-xs text-[var(--color-text-secondary)]">N/A</span>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+      <div className="flex-1 overflow-y-auto py-1">{body}</div>
     </div>
   )
 }
