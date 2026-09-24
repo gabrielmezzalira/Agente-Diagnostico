@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 05
-current_phase_name: two-lens-monitoring-frontend
+current_phase_name: Two-Lens Monitoring (Frontend)
 status: executing
-stopped_at: Phase 05 UI-SPEC approved
-last_updated: "2026-09-24T00:48:17.190Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-09-24T00:58:30.397Z"
 last_activity: 2026-09-23
-last_activity_desc: Phase 04 complete, transitioned to Phase 5
-state_head: 76727d9b288e84de4b035a8b5210ad69cffbadbd
+last_activity_desc: Phase 05 execution started
+state_head: 2930c4d12e338077998cee494644bf25b2c62236
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-19)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 04 — Discovery Report + Pricing Handoff
+**Current focus:** Phase 05 — Two-Lens Monitoring (Frontend)
 
 ## Current Position
 
-Phase: 05 (two-lens-monitoring-frontend) — READY TO EXECUTE
-Plan: Not started
+Phase: 05 (Two-Lens Monitoring (Frontend)) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-23 — Phase 04 complete, transitioned to Phase 5
+Last activity: 2026-09-23 — Phase 05 execution started
 
 Progress: [████░░░░░░] 40%
 
@@ -71,6 +71,7 @@ Progress: [████░░░░░░] 40%
 | Phase 04 P02 | ~1h | 3 tasks | 4 files |
 | Phase 04 P03 | 25min | 2 tasks | 3 files |
 | Phase 04 P04 | 12min | 1 tasks | 2 files |
+| Phase 05 P01 | 15min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Recent decisions affecting current work:
 - [Phase 04]: D-32: 12 blocos temáticos sincronizados nos dois prompts do Precificador (import_from_diagnosis + suggest_features), com desambiguação ML/GenAI/Ciência de Dados — Aditivo, sem migration — bloco continua texto livre no banco
 - [Phase 04]: D-33/D-34: readiness_score puro em SessionState combina 4 sinais por score ponderado (0.30/0.30/0.20/0.20) + limiar 0.65 (constantes calibráveis) — Backend-only; UI da Fase 5 consome ready/low_signals para habilitar botão Gerar PRD
 - [Phase 04]: D-39: upload_pdf_transcript propaga mode=project.get('mode','sales') para generate_report + grant condicional de status='Rascunho' no INSERT do upload quando discovery — Corrige inconsistencia silenciosa: PDF de sessao discovery gerava relatorio sales por omissao do parametro mode (Pitfall 4). Grant reusa o mesmo padrao condicional ja usado no pipeline ao vivo (D-36).
+- [Phase 05]: [Phase 05-01]: CoverageArea.status ganhou o literal not_applicable no tipo compartilhado (Rule 1 - bug de tipo pre-existente exposto ao trocar a prop coverage do CoveragePanel para o CoverageState compartilhado)
 
 ### Pending Todos
 
@@ -128,6 +130,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-23T21:37:12.156Z
-Stopped at: Phase 05 UI-SPEC approved
-Resume file: C:/Users/anton/OneDrive/Desktop/Agente-Diagnostico/.planning/phases/05-two-lens-monitoring-frontend/05-UI-SPEC.md
+Last session: 2026-09-24T00:58:30.258Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None

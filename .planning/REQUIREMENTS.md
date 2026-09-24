@@ -30,9 +30,9 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 
 ### Frontend (UI)
 
-- [ ] **UI-01**: The monitoring screen groups coverage by lens (Produto/Dados) in discovery mode, and shows a flat list in sales mode.
+- [x] **UI-01**: The monitoring screen groups coverage by lens (Produto/Dados) in discovery mode, and shows a flat list in sales mode.
 - [ ] **UI-02**: Question cards and red-flag rows show a lens badge.
-- [ ] **UI-03**: The monitoring screen renders any coverage-area set server-driven (no hardcoded area list in the frontend).
+- [x] **UI-03**: The monitoring screen renders any coverage-area set server-driven (no hardcoded area list in the frontend).
 
 ### Taqciti Transcription (TAQ)
 
@@ -86,9 +86,9 @@ Which phases cover which requirements. Filled during roadmap creation.
 | REP-01 | Phase 4 | Complete |
 | REP-02 | Phase 4 | Complete |
 | REP-03 | Phase 4 | Complete |
-| UI-01 | Phase 5 | Pending |
+| UI-01 | Phase 5 | Complete |
 | UI-02 | Phase 5 | Pending |
-| UI-03 | Phase 5 | Pending |
+| UI-03 | Phase 5 | Complete |
 | TAQ-03 | Phase 6 | Pending |
 | TAQ-01 | Phase 7 | Pending |
 | TAQ-02 | Phase 8 | Pending |

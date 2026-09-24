@@ -160,11 +160,11 @@ Plans:
 > entrega, além de UI-01/02/03, a camada de frontend do handoff de PRD (honrando D-35 — Fase 4 fez o
 > backend, Fase 5 faz o frontend). A única mudança de backend é a rota aditiva de readiness (D-49).
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — TRACER: cobertura server-driven + agrupamento por lente (kill hardcoded, consome name+lens, empty state) + semente de regressão sales byte-idêntico (UI-01/UI-03)
+- [x] 05-01-PLAN.md — TRACER: cobertura server-driven + agrupamento por lente (kill hardcoded, consome name+lens, empty state) + semente de regressão sales byte-idêntico (UI-01/UI-03)
 - [ ] 05-03-PLAN.md — Backend aditivo: rota `GET /sessions/{id}/readiness` (D-49) + `ReportResponse.status` (Impl Note 3) + client api.ts (Readiness/Report.status/getReadiness/updateReportStatus) (REP-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -257,7 +257,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
-| 5. Two-Lens Monitoring (Frontend) | 0/4 | Planned | - |
+| 5. Two-Lens Monitoring (Frontend) | 1/4 | In Progress|  |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |
