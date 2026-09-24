@@ -31,7 +31,7 @@
     {
       "number": "6",
       "name": "Opt-In Webhook Auth",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "7",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 06 of 10 · ready to verify"
+    "label": "Advance to the next step",
+    "reason": "Phase 06 of 10 · executing"
   },
-  "updated_at": "2026-09-24T14:10:59.456Z"
+  "updated_at": "2026-09-24T22:34:31.807Z"
 }
