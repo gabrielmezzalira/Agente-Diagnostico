@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -25,6 +25,13 @@ class ReportResponse(BaseModel):
     markdown_content: str
     cost_usd: Decimal
     generated_at: datetime
+    # Impl Note 3 (Fase 5, UI-SPEC): a coluna `reports.status` existe desde a
+    # Fase 4 (D-36), mas o response_model filtrava o campo fora do JSON por
+    # esquecimento. Optional com default None de propósito: relatórios sales
+    # não gravam status (REP-03) — Literal obrigatório causaria 422 e
+    # regrediria o sales. Discovery devolve um dos 3 valores; sales devolve
+    # null.
+    status: Optional[Literal["Rascunho", "Em revisão", "Aprovado para build"]] = None
 
 
 class SessionResponse(BaseModel):
