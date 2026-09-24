@@ -46,4 +46,5 @@ blocked: 0
   missing:
     - "Pular a atribuição de .value em render() quando o campo está com document.activeElement (foco ativo)"
     - "Aplicar a mesma correção ao backendUrlInput, que compartilha o defeito"
+    - "Fechar a brecha do Tab/clique (decisão do usuário em 2026-09-24, /gsd-plan-phase 6 --gaps): checar só o foco não basta, porque o campo perde o foco para o botão Salvar (mousedown do mouse ou Tab do teclado) ANTES do handler ler .value; se o tick de 3s cair nesse intervalo, o valor antigo é regravado e salvo com 'Salvo!'. Texto digitado e ainda não salvo nunca pode ser sobrescrito pelo polling, e é ele que o Salvar deve persistir"
   debug_session: .planning/debug/extension-key-field-clears-while-typing.md

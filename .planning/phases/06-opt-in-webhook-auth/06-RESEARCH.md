@@ -378,7 +378,7 @@ out of scope per D-01.
 | A2 | 401 Unauthorized (not 403 Forbidden) is the better status code for "missing or wrong shared secret" | Pattern 1 / Common Pitfalls | Low — CONTEXT.md's Claude's Discretion explicitly allows either "401/403 com mensagem clara"; if the team prefers 403 semantics (key is never a login credential, more like an allow-list check), a one-line change |
 | A3 | The extension's new key field should NOT be a `type="password"` masked input, mirroring D-02's "mesmo padrão" of the plaintext "URL do backend" field | Anti-Patterns to Avoid | Low-medium — if the team considers the shared secret more sensitive than a backend URL, this should be a `password` input instead; worth a quick confirm before implementing since CONTEXT.md doesn't say explicitly either way (only "mesmo padrão" for the input+button+storage mechanics, not necessarily the input `type`) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact field/message naming for the new extension key (UI label, `chrome.storage.local` key
    name, background.js message type)**
@@ -388,6 +388,9 @@ out of scope per D-01.
    - What's unclear: Whether the team has a house style for this (none found in the two existing
      analogous fields beyond the pattern itself).
    - Recommendation: Planner can lock these names; low-risk, purely cosmetic, trivially renamable.
+   - RESOLVED: 06-01 shipped exactly the recommended names — storage key `extensionKey` and message
+     type `SET_EXTENSION_KEY` (`extension/background.js`), UI label "Chave de autenticação
+     (opcional)" on `input#extension-key` (`extension/popup.html`).
 
 2. **Should the 401 response body be silently uninformative (generic "invalid key") or should it
    avoid confirming whether a key was configured at all?**
@@ -400,6 +403,8 @@ out of scope per D-01.
    - Recommendation: Use the clear message — this repo's existing `HTTPException` `detail` strings
      are consistently specific/debuggable (e.g. `"RECALL_API_KEY not configured"`), not generic;
      matches established convention and the low threat model justifies it.
+   - RESOLVED: 06-01 shipped the clear message — `HTTPException(status_code=401, detail="Missing or
+     invalid x-agente-key header")` in `backend/app/routers/webhook.py` (`verify_extension_key`).
 
 <phase_requirements>
 ## Phase Requirements
