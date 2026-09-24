@@ -197,7 +197,10 @@ Plans:
 **Wave 1**
 
 - [x] 06-01-PLAN.md — TRACER: gate opt-in por shared-secret (`verify_extension_key`, route-scoped em `extension_webhook`) + expansão: campo opcional de chave na extensão Chrome (D-01/D-02, TAQ-03)
-- [ ] 06-02-PLAN.md — GAP G-06-1: guarda de foco no `render()` do popup (helper puro `applyInputValueUnlessFocused`) para o campo da chave e o de URL do backend pararem de apagar o texto durante a digitação (TAQ-03)
+
+**Gap closure** *(fecha G-06-1 do 06-UAT.md — bloqueado na conclusão da Wave 1)*
+
+- [ ] 06-02-PLAN.md — GAP G-06-1 (replanejado): rastreio de edição por campo no popup (regras puras em `extension/lib/configFieldGuard.js`) — o polling de 3s nunca sobrescreve texto não salvo, nem depois de o foco sair para o "Salvar" (Tab/mousedown) ou de um clique fora; "Salvar" grava exatamente o texto digitado e relê o valor salvo após confirmação. Tracer no campo da chave + campo URL do backend, com testes `node:test` (zero dependências) que executam o popup e o `background.js` reais (TAQ-03/D-02)
 
 ### Phase 7: Taqciti Config + Background Streamer
 
