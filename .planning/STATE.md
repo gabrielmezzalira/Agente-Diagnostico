@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 05
 current_phase_name: Two-Lens Monitoring (Frontend)
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-09-24T00:58:30.397Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-09-24T01:04:03.787Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 05 execution started
-state_head: 2930c4d12e338077998cee494644bf25b2c62236
+state_head: 7554c445e48f4cb6ce2d7637beb608a5698f0c8b
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 ## Current Position
 
 Phase: 05 (Two-Lens Monitoring (Frontend)) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-23 — Phase 05 execution started
 
@@ -72,6 +72,7 @@ Progress: [████░░░░░░] 40%
 | Phase 04 P03 | 25min | 2 tasks | 3 files |
 | Phase 04 P04 | 12min | 1 tasks | 2 files |
 | Phase 05 P01 | 15min | 2 tasks | 6 files |
+| Phase 05 P03 | ~20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Recent decisions affecting current work:
 - [Phase 04]: D-33/D-34: readiness_score puro em SessionState combina 4 sinais por score ponderado (0.30/0.30/0.20/0.20) + limiar 0.65 (constantes calibráveis) — Backend-only; UI da Fase 5 consome ready/low_signals para habilitar botão Gerar PRD
 - [Phase 04]: D-39: upload_pdf_transcript propaga mode=project.get('mode','sales') para generate_report + grant condicional de status='Rascunho' no INSERT do upload quando discovery — Corrige inconsistencia silenciosa: PDF de sessao discovery gerava relatorio sales por omissao do parametro mode (Pitfall 4). Grant reusa o mesmo padrao condicional ja usado no pipeline ao vivo (D-36).
 - [Phase 05]: [Phase 05-01]: CoverageArea.status ganhou o literal not_applicable no tipo compartilhado (Rule 1 - bug de tipo pre-existente exposto ao trocar a prop coverage do CoveragePanel para o CoverageState compartilhado)
+- [Phase 05]: [Phase 05-03]: ReportResponse.status como Optional[Literal] = None (nao Literal obrigatorio) para preservar sales byte-identico (REP-03); rota GET /sessions/{id}/readiness reusa pipeline_manager.get_or_create(allow_finished=True) + 404 identico as rotas de report
 
 ### Pending Todos
 
@@ -130,6 +132,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:58:30.258Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-09-24T01:04:03.671Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
