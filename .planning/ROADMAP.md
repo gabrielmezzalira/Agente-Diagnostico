@@ -192,11 +192,12 @@ Plans:
   2. With `EXTENSION_SHARED_KEY` set, a request missing the `x-agente-key` header (or sending the wrong value) is rejected
   3. With `EXTENSION_SHARED_KEY` set and the correct `x-agente-key` header supplied, the request is accepted and processed normally
 
-**Plans**: 1/1 plans executed
+**Plans**: 2 plans (1 executed, 1 gap-closure pending)
 
 **Wave 1**
 
 - [x] 06-01-PLAN.md — TRACER: gate opt-in por shared-secret (`verify_extension_key`, route-scoped em `extension_webhook`) + expansão: campo opcional de chave na extensão Chrome (D-01/D-02, TAQ-03)
+- [ ] 06-02-PLAN.md — GAP G-06-1: guarda de foco no `render()` do popup (helper puro `applyInputValueUnlessFocused`) para o campo da chave e o de URL do backend pararem de apagar o texto durante a digitação (TAQ-03)
 
 ### Phase 7: Taqciti Config + Background Streamer
 
