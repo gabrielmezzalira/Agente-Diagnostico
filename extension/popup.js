@@ -19,8 +19,8 @@ const saveKeyBtn = document.getElementById('save-key-btn')
 // abaixo) não pode sobrescrever texto ainda não salvo. A chave de cada
 // entrada é o nome do campo no estado devolvido por GET_STATE
 // (extension/background.js).
-const configInputs = { extensionKey: extensionKeyInput }
-const configInputEdits = { extensionKey: createConfigFieldState() }
+const configInputs = { backendUrl: backendUrlInput, extensionKey: extensionKeyInput }
+const configInputEdits = { backendUrl: createConfigFieldState(), extensionKey: createConfigFieldState() }
 
 Object.keys(configInputs).forEach((stateKey) => {
   configInputs[stateKey].addEventListener('input', () => {
@@ -107,7 +107,6 @@ function renderQuestions(questions) {
 }
 
 function render(state) {
-  backendUrlInput.value = state.backendUrl || ''
   renderConfigInputs(state)
 
   if (state.sessionId) {
@@ -157,9 +156,11 @@ manualBtn.addEventListener('click', () => {
 saveUrlBtn.addEventListener('click', () => {
   const url = backendUrlInput.value.trim().replace(/\/+$/, '')
   if (!url) return
-  chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, () => {
+  const snapshot = takeConfigFieldSnapshot(configInputEdits.backendUrl)
+  chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, (response) => {
     saveUrlBtn.textContent = 'Salvo!'
     setTimeout(() => { saveUrlBtn.textContent = 'Salvar' }, 1500)
+    if (isConfigSaveConfirmed(response, chrome.runtime.lastError)) resyncConfigInputAfterSave('backendUrl', snapshot)
   })
 })
 

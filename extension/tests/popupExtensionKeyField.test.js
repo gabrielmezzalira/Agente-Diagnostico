@@ -22,9 +22,7 @@ const BASE_STORAGE = { sessionId: 'sess-1', backendUrl: 'https://agente.example.
 
 // Devolve os headers do último fetch registrado; falha se não houve nenhum.
 function lastFetchHeaders(ext) {
-  if (ext.fetchCalls.length === 0) {
-    throw new Error('lastFetchHeaders: nenhum fetch foi registrado')
-  }
+  if (ext.fetchCalls.length === 0) throw new Error('lastFetchHeaders: nenhum fetch foi registrado')
   return ext.fetchCalls[ext.fetchCalls.length - 1].init.headers
 }
 
@@ -46,39 +44,23 @@ test('abertura: o campo mostra a chave já salva', async () => {
 test('(i) digitação lenta não apaga o texto entre ticks do polling de 3s', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
-
-  ext.type('extension-key', 'n')
-  ext.tick()
-  await ext.deliverAll()
-  assert.strictEqual(ext.el('extension-key').value, 'n')
-
-  ext.type('extension-key', 'no')
-  ext.tick()
-  await ext.deliverAll()
-  assert.strictEqual(ext.el('extension-key').value, 'no')
-
-  ext.type('extension-key', 'nov')
-  ext.tick()
-  await ext.deliverAll()
-  assert.strictEqual(ext.el('extension-key').value, 'nov')
-
-  ext.type('extension-key', 'nova-chave')
-  ext.tick()
-  await ext.deliverAll()
-  assert.strictEqual(ext.el('extension-key').value, 'nova-chave')
+  for (const value of ['n', 'no', 'nov', 'nova-chave']) {
+    ext.type('extension-key', value)
+    ext.tick()
+    await ext.deliverAll()
+    assert.strictEqual(ext.el('extension-key').value, value)
+  }
 })
 
 test('(ii) Tab até Salvar, esperar um tick e Enter grava o texto digitado', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
-
   ext.type('extension-key', 'nova-chave')
   ext.focus('save-key-btn')
   ext.tick()
   await ext.deliverAll()
   ext.click('save-key-btn')
   await ext.deliverAll()
-
   assert.strictEqual(ext.stored.extensionKey, 'nova-chave')
   assert.strictEqual(ext.el('extension-key').value, 'nova-chave')
   assert.strictEqual(ext.el('save-key-btn').textContent, 'Salvo!')
@@ -87,21 +69,18 @@ test('(ii) Tab até Salvar, esperar um tick e Enter grava o texto digitado', asy
 test('(iii) mousedown até Salvar, esperar um tick e soltar (click) grava o texto digitado', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-antiga' })
   await ext.deliverAll()
-
   ext.type('extension-key', 'chave-nova')
   ext.focus('save-key-btn')
   ext.tick()
   await ext.deliverAll()
   ext.click('save-key-btn')
   await ext.deliverAll()
-
   assert.strictEqual(ext.stored.extensionKey, 'chave-nova')
 })
 
-test('clicar fora do campo com texto não salvo não apaga o texto; um Salvar posterior grava esse texto', async () => {
+test('clicar fora do campo com texto não salvo não apaga o texto; Salvar posterior grava esse texto', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
-
   ext.type('extension-key', 'digitada')
   ext.focus(null)
   ext.tick()
@@ -109,7 +88,6 @@ test('clicar fora do campo com texto não salvo não apaga o texto; um Salvar po
   ext.tick()
   await ext.deliverAll()
   assert.strictEqual(ext.el('extension-key').value, 'digitada')
-
   ext.click('save-key-btn')
   await ext.deliverAll()
   assert.strictEqual(ext.stored.extensionKey, 'digitada')
@@ -118,31 +96,25 @@ test('clicar fora do campo com texto não salvo não apaga o texto; um Salvar po
 test('(iv) apagar a chave até vazio salva vazio e o header some do próximo POST', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-antiga' })
   await ext.deliverAll()
-
   ext.type('extension-key', '')
   ext.tick()
   await ext.deliverAll()
   assert.strictEqual(ext.el('extension-key').value, '')
-
   ext.click('save-key-btn')
   await ext.deliverAll()
   assert.strictEqual(ext.stored.extensionKey, '')
-
   ext.sendTranscriptChunk('olá')
   await ext.deliverAll()
-  const headers = lastFetchHeaders(ext)
-  assert.strictEqual(Object.prototype.hasOwnProperty.call(headers, 'x-agente-key'), false)
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(lastFetchHeaders(ext), 'x-agente-key'), false)
 })
 
 test('(v) com edição não salva, o polling continua atualizando status/sessão/perguntas', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
-
   ext.type('extension-key', 'em-edicao')
   ext.pushQuestionViaWs({ id: 'q1', text: 'Qual o gargalo?', status: 'queued', block: 'negocio' })
   ext.tick()
   await ext.deliverAll()
-
   assert.strictEqual(ext.el('session-id-display').textContent, 'sess-1')
   assert.ok(ext.el('status-text').innerHTML.includes('Capturando'))
   assert.ok(ext.el('dot').classList.contains('active'))
@@ -154,11 +126,9 @@ test('(v) com edição não salva, o polling continua atualizando status/sessão
 test('(vi) todo POST /webhook/extension carrega x-agente-key com o último valor salvo', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-salva' })
   await ext.deliverAll()
-
   ext.sendTranscriptChunk('primeiro chunk')
   await ext.deliverAll()
-  let headers = lastFetchHeaders(ext)
-  assert.strictEqual(headers['x-agente-key'], 'chave-salva')
+  assert.strictEqual(lastFetchHeaders(ext)['x-agente-key'], 'chave-salva')
 
   ext.type('extension-key', 'segredo')
   ext.tick()
@@ -172,23 +142,19 @@ test('(vi) todo POST /webhook/extension carrega x-agente-key com o último valor
 
   ext.sendTranscriptChunk('segundo chunk')
   await ext.deliverAll()
-  headers = lastFetchHeaders(ext)
-  assert.strictEqual(headers['x-agente-key'], 'segredo-123')
-  const lastCall = ext.fetchCalls[ext.fetchCalls.length - 1]
-  assert.strictEqual(lastCall.url, 'https://agente.example.app/webhook/extension')
+  assert.strictEqual(lastFetchHeaders(ext)['x-agente-key'], 'segredo-123')
+  assert.strictEqual(ext.fetchCalls[ext.fetchCalls.length - 1].url, 'https://agente.example.app/webhook/extension')
 })
 
 test('resposta atrasada do polling (pedida antes do save) não sobrescreve o valor salvo', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-antiga' })
   await ext.deliverAll()
-
   ext.type('extension-key', 'chave-nova')
   ext.tick()
   const held = await ext.holdResponse('GET_STATE')
   ext.click('save-key-btn')
   await ext.deliverAll()
   held.callback(held.response)
-
   assert.strictEqual(ext.el('extension-key').value, 'chave-nova')
   assert.strictEqual(ext.stored.extensionKey, 'chave-nova')
 })
@@ -196,25 +162,21 @@ test('resposta atrasada do polling (pedida antes do save) não sobrescreve o val
 test('redigitar durante o save preserva o texto digitado mais recente', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
-
   ext.type('extension-key', 'abc')
   ext.click('save-key-btn')
   ext.type('extension-key', 'abcd')
   await ext.deliverAll()
   ext.tick()
   await ext.deliverAll()
-
   assert.strictEqual(ext.el('extension-key').value, 'abcd')
 })
 
 test('sem auto-save: digitar sozinho nunca dispara SET_EXTENSION_KEY nem grava no storage', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-salva' })
   await ext.deliverAll()
-
   ext.type('extension-key', 'rascunho')
   ext.tick()
   await ext.deliverAll()
-
   assert.ok(!ext.sentMessages.some((m) => m.type === 'SET_EXTENSION_KEY'))
   assert.strictEqual(ext.stored.extensionKey, 'chave-salva')
 })
