@@ -95,6 +95,10 @@ export default function ProjectDetailPage() {
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [readinessLoading, setReadinessLoading] = useState(false)
   const [readinessError, setReadinessError] = useState<string | null>(null)
+  // CR-02: erro dedicado à falha de geração do PRD (POST), separado de
+  // readinessError (falha do GET). Fora da condição `disabled` do botão —
+  // uma falha transitória de geração não trava o retry.
+  const [prdError, setPrdError] = useState<string | null>(null)
   const [generatingPrd, setGeneratingPrd] = useState(false)
 
   useEffect(() => {
@@ -128,12 +132,13 @@ export default function ProjectDetailPage() {
 
   async function handleGeneratePrd(sessionId: string) {
     if (!readiness?.ready || readinessLoading || readinessError || generatingPrd) return
+    setPrdError(null)
     setGeneratingPrd(true)
     try {
       await api.sessions.generateReport(sessionId)
       navigate(`/sessions/${sessionId}`)
     } catch (e: unknown) {
-      setReadinessError(e instanceof Error ? e.message : 'Erro ao gerar PRD')
+      setPrdError(e instanceof Error ? e.message : 'Erro ao gerar PRD')
     } finally {
       setGeneratingPrd(false)
     }
@@ -413,6 +418,9 @@ export default function ProjectDetailPage() {
             >
               {readinessLoading ? 'Carregando...' : generatingPrd ? 'Gerando...' : 'Gerar PRD'}
             </button>
+            {prdError && (
+              <p className="text-xs text-[var(--color-red)]">{prdError}</p>
+            )}
           </div>
         )}
 
