@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { CoverageArea, CoverageState } from './useSessionWS'
-import { blockLabel, groupCoverageByLens, isDiscoveryCoverage, lensBadgeVariant, lensLabel } from './lens'
+import {
+  blockLabel,
+  groupCoverageByLens,
+  isDiscoveryCoverage,
+  lensBadgeVariant,
+  lensLabel,
+  shouldShowManualReportButton,
+} from './lens'
 
 function fakeArea(name: string, lens: CoverageArea['lens']): CoverageArea {
   return { status: 'covered', score: 100, notes: '', name, lens }
@@ -69,5 +76,32 @@ describe('lens.ts', () => {
     expect(lensLabel('produto')).toBe('Produto')
     expect(lensLabel('dados')).toBe('Dados')
     expect(lensLabel(null)).toBe('')
+  })
+})
+
+describe('shouldShowManualReportButton (CR-01)', () => {
+  it('antes do initial_state, coverage vazio -> oculto (fecha o vazamento em discovery na janela de montagem/reconexão)', () => {
+    expect(shouldShowManualReportButton(false, {})).toBe(false)
+  })
+
+  it('antes do initial_state, mesmo com áreas sales em cache -> oculto (fail-closed até a fonte síncrona confirmar o modo)', () => {
+    const coverage: CoverageState = { negocio: fakeArea('Negócio', null) }
+    expect(shouldShowManualReportButton(false, coverage)).toBe(false)
+  })
+
+  it('discovery pós-initial_state -> permanece oculto', () => {
+    const coverage: CoverageState = {
+      gargalo: fakeArea('Gargalo', 'produto'),
+      qualidade_fontes: fakeArea('Fontes e Qualidade dos Dados', 'dados'),
+    }
+    expect(shouldShowManualReportButton(true, coverage)).toBe(false)
+  })
+
+  it('sales pós-initial_state -> aparece (byte-idêntico ao sales)', () => {
+    const coverage: CoverageState = {
+      negocio: fakeArea('Negócio', null),
+      parceria: fakeArea('Parceria', null),
+    }
+    expect(shouldShowManualReportButton(true, coverage)).toBe(true)
   })
 })

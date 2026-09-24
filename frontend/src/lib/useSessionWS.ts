@@ -53,6 +53,13 @@ export interface SessionWSState {
   budget: BudgetState
   reportMarkdown: string | null
   wsError: string | null
+  /**
+   * True a partir do primeiro evento `initial_state` recebido nesta conexão.
+   * Fonte síncrona confiável de "já sei o modo desta sessão" — usada para
+   * gatear o botão manual "Relatório" (CR-01), já que `coverage` nasce `{}`
+   * antes do initial_state chegar (montagem do componente ou reconexão).
+   */
+  hasReceivedInitialState: boolean
 }
 
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
@@ -67,6 +74,7 @@ export function useSessionWS(sessionId: string | undefined) {
     budget: { used_usd: 0, limit_usd: null, estimated_report_cost: 0, status: 'ok' },
     reportMarkdown: null,
     wsError: null,
+    hasReceivedInitialState: false,
   })
 
   const wsRef = useRef<WebSocket | null>(null)
@@ -116,6 +124,7 @@ export function useSessionWS(sessionId: string | undefined) {
                 questions: (data.questions as WSQuestion[]) ?? s.questions,
                 transcript: (data.transcript as TranscriptChunk[]) ?? s.transcript,
                 budget: (data.budget as BudgetState) ?? s.budget,
+                hasReceivedInitialState: true,
               }
             case 'coverage_update':
               return { ...s, coverage: (data.areas as CoverageState) ?? s.coverage }

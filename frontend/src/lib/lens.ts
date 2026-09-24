@@ -79,6 +79,23 @@ export function isDiscoveryCoverage(coverage: CoverageState): boolean {
  * cabeçalho de uma lente sem áreas ativas ainda possa ser renderizado
  * (backstop zero-one-many).
  */
+/**
+ * Decide a visibilidade do botão manual "Relatório" da topbar da sessão ativa
+ * (dispara `POST /sessions/{id}/report`, sem gate de readiness no backend —
+ * ver threat T-05-01). Fail-closed: só pode aparecer depois que o primeiro
+ * `initial_state` do WebSocket chegou — nunca decide a partir de um
+ * `coverage` que nasce `{}` (montagem do componente ou reconexão, já que
+ * `useSessionWS` não reconecta sozinho) — E quando a cobertura indica sales
+ * (nenhuma lente). Em discovery, a geração do PRD migra para a página do
+ * projeto (D-47), então o botão permanece oculto mesmo pós-initial_state.
+ */
+export function shouldShowManualReportButton(
+  hasReceivedInitialState: boolean,
+  coverage: CoverageState
+): boolean {
+  return hasReceivedInitialState && !isDiscoveryCoverage(coverage)
+}
+
 export function groupCoverageByLens(
   coverage: CoverageState
 ): { produto: [string, CoverageArea][]; dados: [string, CoverageArea][] } {

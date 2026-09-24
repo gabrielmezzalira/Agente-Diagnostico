@@ -19,7 +19,14 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, type Report, type Session } from '../lib/api'
 import { useSessionWS, type CoverageArea, type CoverageState, type WSQuestion } from '../lib/useSessionWS'
-import { blockLabel, groupCoverageByLens, isDiscoveryCoverage, lensBadgeVariant, lensLabel } from '../lib/lens'
+import {
+  blockLabel,
+  groupCoverageByLens,
+  isDiscoveryCoverage,
+  lensBadgeVariant,
+  lensLabel,
+  shouldShowManualReportButton,
+} from '../lib/lens'
 
 // ---------------------------------------------------------------------------
 // Session timer
@@ -1050,7 +1057,7 @@ export default function SessionActivePage() {
         )}
 
         <div className="flex items-center gap-2 shrink-0">
-          {!isDiscoveryCoverage(ws.coverage) && (
+          {shouldShowManualReportButton(ws.hasReceivedInitialState, ws.coverage) && (
             <button
               onClick={handleGenerateReport}
               disabled={generatingReport || ws.budget.status === 'insufficient'}
