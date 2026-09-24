@@ -659,6 +659,7 @@ export default function SessionActivePage() {
   const [reportModal, setReportModal] = useState<string | null>(null)
   const [finishedReport, setFinishedReport] = useState<Report | null>(null)
   const [uploadingPdf, setUploadingPdf] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
   const { state: ws, send, updateQuestionStatus } = useSessionWS(sessionId)
@@ -735,6 +736,22 @@ export default function SessionActivePage() {
       setError(e instanceof Error ? e.message : 'Erro ao regenerar relatório')
     } finally {
       setRegenerating(false)
+    }
+  }
+
+  // D-48: seletor de status/aprovação do relatório na sessão encerrada —
+  // mesmo padrão disable-while-mutating de handleRegenerate/handleUploadPdf.
+  async function handleUpdateReportStatus(newStatus: NonNullable<Report['status']>) {
+    if (!sessionId || updatingStatus) return
+    setUpdatingStatus(true)
+    setError(null)
+    try {
+      const updated = await api.sessions.updateReportStatus(sessionId, newStatus)
+      setFinishedReport(updated)
+    } catch {
+      setError('Erro ao atualizar status')
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -903,6 +920,37 @@ export default function SessionActivePage() {
                   {new Date(finishedReport.generated_at).toLocaleString('pt-BR')}
                 </span>
               </div>
+
+              {/* D-48: seletor de status/aprovação — só relatório de discovery (status != null) */}
+              {finishedReport.status != null && (
+                <div className="flex items-center gap-2 mb-3">
+                  <label
+                    htmlFor="report-status-select"
+                    className="text-xs text-[var(--color-text-secondary)]"
+                  >
+                    Status
+                  </label>
+                  <select
+                    id="report-status-select"
+                    value={finishedReport.status}
+                    disabled={updatingStatus}
+                    onChange={e =>
+                      handleUpdateReportStatus(e.target.value as NonNullable<Report['status']>)
+                    }
+                    className="text-xs border border-[var(--color-border-std)] rounded-[var(--radius-btn)] px-2 py-1 bg-[var(--color-surface)] text-[var(--color-text-primary)] disabled:opacity-50"
+                  >
+                    <option value="Rascunho">Rascunho</option>
+                    <option value="Em revisão">Em revisão</option>
+                    <option value="Aprovado para build">Aprovado para build</option>
+                  </select>
+                  {finishedReport.status === 'Aprovado para build' && (
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      Libera a importação no Precificador
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="text-sm text-[var(--color-text-primary)] leading-relaxed line-clamp-6 overflow-hidden
                 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1
                 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-1
