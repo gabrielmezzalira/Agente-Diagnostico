@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Activity, ChevronLeft, Clock, Edit2, Pencil, Play, Trash2 } from 'lucide-react'
-import { api, type Project, type Session, type Pricing } from '../lib/api'
+import { api, type Project, type Session, type Pricing, type Readiness } from '../lib/api'
 
 const PROJECT_TYPE_LABELS: Record<string, string> = {
   bi: 'BI',
@@ -18,6 +18,37 @@ const DMS_LABELS: Record<number, string> = {
   3: 'Definido',
   4: 'Quantificado',
   5: 'Otimizado',
+}
+
+// D-47: mapa fechado dos 4 sinais de READINESS_WEIGHTS (session_state.py:23-29)
+// para frases curtas em PT, usadas no tooltip do botão "Gerar PRD".
+const READINESS_SIGNAL_LABELS: Record<string, string> = {
+  cobertura_por_lente: 'cobertura por lente',
+  cobertura_global: 'cobertura geral',
+  perguntas_transcricao: 'perguntas respondidas ou transcrição',
+  secoes_chave: 'seções-chave do relatório',
+}
+
+// D-47: escolhe deterministicamente a sessão de discovery associada ao
+// "Gerar PRD" — a mais recente por started_at.
+function pickDiscoverySession(sessions: Session[]): Session | null {
+  if (sessions.length === 0) return null
+  return [...sessions].sort(
+    (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+  )[0]
+}
+
+// D-47: clone visual do BudgetBar (SessionActivePage.tsx:153-198) — barra fina,
+// secundária ao botão "Gerar PRD" (Visual Hierarchy do UI-SPEC).
+function ReadinessBar({ pct }: { pct: number }) {
+  return (
+    <div className="h-1.5 bg-[var(--color-border-std)] rounded-full overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-500 bg-[var(--color-accent)]"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -59,6 +90,13 @@ export default function ProjectDetailPage() {
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
+  // D-47: readiness da sessão de discovery + estado do botão "Gerar PRD" —
+  // escopado a este bloco, não à página toda (backstop de loading/erro).
+  const [readiness, setReadiness] = useState<Readiness | null>(null)
+  const [readinessLoading, setReadinessLoading] = useState(false)
+  const [readinessError, setReadinessError] = useState<string | null>(null)
+  const [generatingPrd, setGeneratingPrd] = useState(false)
+
   useEffect(() => {
     if (!id) return
     Promise.all([api.projects.get(id), api.sessions.list(id)])
@@ -70,6 +108,36 @@ export default function ProjectDetailPage() {
       .finally(() => setLoading(false))
     api.pricings.listByProject(id).then(setPricings).catch(() => {})
   }, [id])
+
+  // D-42 (nuance de superfície): aqui a detecção de modo usa project.mode,
+  // não o payload de WS — caminho separado do da tela de monitoramento.
+  const discoverySession =
+    project && project.mode === 'discovery' ? pickDiscoverySession(sessions) : null
+  const discoverySessionId = discoverySession?.id ?? null
+
+  useEffect(() => {
+    if (!discoverySessionId) return
+    setReadinessLoading(true)
+    setReadinessError(null)
+    api.sessions
+      .getReadiness(discoverySessionId)
+      .then(setReadiness)
+      .catch(() => setReadinessError('Erro ao carregar readiness'))
+      .finally(() => setReadinessLoading(false))
+  }, [discoverySessionId])
+
+  async function handleGeneratePrd(sessionId: string) {
+    if (!readiness?.ready || readinessLoading || readinessError || generatingPrd) return
+    setGeneratingPrd(true)
+    try {
+      await api.sessions.generateReport(sessionId)
+      navigate(`/sessions/${sessionId}`)
+    } catch (e: unknown) {
+      setReadinessError(e instanceof Error ? e.message : 'Erro ao gerar PRD')
+    } finally {
+      setGeneratingPrd(false)
+    }
+  }
 
   async function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
     e.preventDefault()
@@ -314,6 +382,37 @@ export default function ProjectDetailPage() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Gerar PRD (D-47) — só em discovery, associado à sessão mais recente */}
+        {project.mode === 'discovery' && discoverySession && (
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[var(--color-text-primary)]">Gerar PRD</span>
+              <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
+                {readinessLoading
+                  ? '0% pronto'
+                  : `${Math.round((readiness?.score ?? 0) * 100)}% pronto`}
+              </span>
+            </div>
+            {readinessError ? (
+              <p className="text-xs text-[var(--color-red)]">Erro ao carregar readiness</p>
+            ) : (
+              <ReadinessBar pct={readinessLoading ? 0 : Math.round((readiness?.score ?? 0) * 100)} />
+            )}
+            <button
+              onClick={() => handleGeneratePrd(discoverySession.id)}
+              disabled={!readiness?.ready || readinessLoading || !!readinessError || generatingPrd}
+              title={
+                readiness && !readiness.ready
+                  ? `Faltam: ${readiness.low_signals.map(k => READINESS_SIGNAL_LABELS[k] ?? k).join(', ')}`
+                  : undefined
+              }
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
+            >
+              {readinessLoading ? 'Carregando...' : generatingPrd ? 'Gerando...' : 'Gerar PRD'}
+            </button>
           </div>
         )}
 
