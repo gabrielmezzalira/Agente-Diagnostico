@@ -1,0 +1,84 @@
+---
+phase: "6"
+slug: "opt-in-webhook-auth"
+# status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
+# audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
+status: draft
+nyquist_compliant: false
+wave_0_complete: false
+created: "2026-09-24"
+---
+
+# Phase 6 — Validation Strategy
+
+> Per-phase validation contract for feedback sampling during execution.
+
+---
+
+## Test Infrastructure
+
+| Property | Value |
+|----------|-------|
+| **Framework** | pytest 8.x + pytest-asyncio (`asyncio_mode = auto`) |
+| **Config file** | `backend/pytest.ini` |
+| **Quick run command** | `cd backend && python -m pytest tests/test_webhook_auth.py -x` |
+| **Full suite command** | `cd backend && python -m pytest tests/ -x` |
+| **Estimated runtime** | ~5 seconds (quick) / existing suite runtime (full) |
+
+No test framework/runner exists for `extension/` (plain unbundled JS, no `package.json`, no
+`*.test.js`). The three extension-side changes (`background.js`, `popup.html`, `popup.js`) are
+manual-only this phase.
+
+---
+
+## Sampling Rate
+
+- **After every task commit:** Run `cd backend && python -m pytest tests/test_webhook_auth.py -x`
+- **After every plan wave:** Run `cd backend && python -m pytest tests/ -x`
+- **Before `/gsd-verify-work`:** Full suite must be green; manual extension check (DevTools Network
+  tab, unpacked-extension reload) recorded as part of UAT since no automated JS harness exists.
+- **Max feedback latency:** ~10 seconds
+
+---
+
+## Per-Task Verification Map
+
+| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| 06-01-01 | 01 | 1 | TAQ-03 (SC1) | Fail-open-by-design (V4) | Unset `EXTENSION_SHARED_KEY` → route accepts exactly as today | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_noop_when_unset -x` | ❌ W0 | ⬜ pending |
+| 06-01-02 | 01 | 1 | TAQ-03 (SC2) | Timing attack (V6) / Spoofing (V4) | Set + missing/wrong header → 401, `secrets.compare_digest` used | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_rejects_missing_header_when_set -x`; `::test_verify_extension_key_rejects_wrong_value_when_set -x` | ❌ W0 | ⬜ pending |
+| 06-01-03 | 01 | 1 | TAQ-03 (SC3) | Access Control (V4) | Set + correct header → accepted, processed normally | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_accepts_correct_value_when_set -x` | ❌ W0 | ⬜ pending |
+| 06-01-04 | 01 | 1 | TAQ-03 (D-01) | Route-scoped, not router-scoped | `/webhook/recall` untouched — gate applies only to `/webhook/extension` | unit/manual read | grep confirms no `Depends(verify_extension_key)` on `recall_webhook` | ✅ existing file | ⬜ pending |
+| 06-0X (extension) | TBD | TBD | TAQ-03 (D-02) | Secret storage (chrome.storage.local, not .sync) | Popup key field saves/loads via `chrome.storage.local`; header sent only when key is set | manual-only | Load unpacked extension, fill/clear key field, inspect DevTools Network tab on `POST /webhook/extension` | n/a — manual | ⬜ pending |
+
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+---
+
+## Wave 0 Requirements
+
+- [ ] `backend/tests/test_webhook_auth.py` — new file, stubs for TAQ-03 (all 3 success criteria);
+      no existing file covers `webhook.py` today.
+- [ ] No fixture/conftest changes needed — `monkeypatch` is a built-in pytest fixture.
+- [ ] No framework install needed — pytest/pytest-asyncio already installed and configured.
+
+---
+
+## Manual-Only Verifications
+
+| Behavior | Requirement | Why Manual | Test Instructions |
+|----------|-------------|------------|-------------------|
+| Extension popup key field persists via `chrome.storage.local` and `background.js` conditionally sends `x-agente-key` | TAQ-03 (D-02) | No JS test harness in `extension/` (no `package.json`, no test runner) | Load the unpacked extension in Chrome (`chrome://extensions` → Load unpacked), fill the new key field and save, open DevTools → Network on a real `POST /webhook/extension` call and confirm the `x-agente-key` header is present with the saved value; clear the field, repeat, confirm the header is absent. |
+
+---
+
+## Validation Sign-Off
+
+- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
+- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
+- [ ] Wave 0 covers all MISSING references
+- [ ] No watch-mode flags
+- [ ] Feedback latency < 10s
+- [ ] `nyquist_compliant: true` set in frontmatter
+
+**Approval:** pending
