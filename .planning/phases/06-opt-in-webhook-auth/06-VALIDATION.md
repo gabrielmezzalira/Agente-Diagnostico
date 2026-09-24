@@ -3,9 +3,9 @@ phase: "6"
 slug: "opt-in-webhook-auth"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-24"
 ---
 
@@ -45,11 +45,11 @@ manual-only this phase.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 06-01-01 | 01 | 1 | TAQ-03 (SC1) | Fail-open-by-design (V4) | Unset `EXTENSION_SHARED_KEY` → route accepts exactly as today | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_noop_when_unset -x` | ❌ W0 | ⬜ pending |
-| 06-01-02 | 01 | 1 | TAQ-03 (SC2) | Timing attack (V6) / Spoofing (V4) | Set + missing/wrong header → 401, `secrets.compare_digest` used | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_rejects_missing_header_when_set -x`; `::test_verify_extension_key_rejects_wrong_value_when_set -x` | ❌ W0 | ⬜ pending |
-| 06-01-03 | 01 | 1 | TAQ-03 (SC3) | Access Control (V4) | Set + correct header → accepted, processed normally | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_accepts_correct_value_when_set -x` | ❌ W0 | ⬜ pending |
-| 06-01-04 | 01 | 1 | TAQ-03 (D-01) | Route-scoped, not router-scoped | `/webhook/recall` untouched — gate applies only to `/webhook/extension` | unit/manual read | grep confirms no `Depends(verify_extension_key)` on `recall_webhook` | ✅ existing file | ⬜ pending |
-| 06-0X (extension) | TBD | TBD | TAQ-03 (D-02) | Secret storage (chrome.storage.local, not .sync) | Popup key field saves/loads via `chrome.storage.local`; header sent only when key is set | manual-only | Load unpacked extension, fill/clear key field, inspect DevTools Network tab on `POST /webhook/extension` | n/a — manual | ⬜ pending |
+| 06-01-01 | 01 | 1 | TAQ-03 (SC1) | Fail-open-by-design (V4) | Unset `EXTENSION_SHARED_KEY` → route accepts exactly as today | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_noop_when_unset -x` | ✅ W1 | ✅ green |
+| 06-01-02 | 01 | 1 | TAQ-03 (SC2) | Timing attack (V6) / Spoofing (V4) | Set + missing/wrong header → 401, `secrets.compare_digest` used | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_rejects_missing_header_when_set -x`; `::test_verify_extension_key_rejects_wrong_value_when_set -x` | ✅ W1 | ✅ green |
+| 06-01-03 | 01 | 1 | TAQ-03 (SC3) | Access Control (V4) | Set + correct header → accepted, processed normally | unit | `pytest tests/test_webhook_auth.py::test_verify_extension_key_accepts_correct_value_when_set -x` | ✅ W1 | ✅ green |
+| 06-01-04 | 01 | 1 | TAQ-03 (D-01) | Route-scoped, not router-scoped | `/webhook/recall` untouched — gate applies only to `/webhook/extension` | unit/manual read | grep confirms no `Depends(verify_extension_key)` on `recall_webhook` | ✅ existing file | ✅ green |
+| 06-0X (extension) | 01 | 1 | TAQ-03 (D-02) | Secret storage (chrome.storage.local, not .sync) | Popup key field saves/loads via `chrome.storage.local`; header sent only when key is set | manual-only | Load unpacked extension, fill/clear key field, inspect DevTools Network tab on `POST /webhook/extension` | n/a — manual | ⬜ pending (UAT) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -57,10 +57,10 @@ manual-only this phase.
 
 ## Wave 0 Requirements
 
-- [ ] `backend/tests/test_webhook_auth.py` — new file, stubs for TAQ-03 (all 3 success criteria);
-      no existing file covers `webhook.py` today.
-- [ ] No fixture/conftest changes needed — `monkeypatch` is a built-in pytest fixture.
-- [ ] No framework install needed — pytest/pytest-asyncio already installed and configured.
+- [x] `backend/tests/test_webhook_auth.py` — new file, 4 tests for TAQ-03 (all 3 success criteria);
+      written first (TDD RED), then made GREEN by Task 1.
+- [x] No fixture/conftest changes needed — `monkeypatch` is a built-in pytest fixture.
+- [x] No framework install needed — pytest/pytest-asyncio already installed and configured.
 
 ---
 
@@ -74,11 +74,30 @@ manual-only this phase.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated (2026-09-24)
+
+---
+
+## Validation Audit 2026-09-24
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 4 automated tests in `backend/tests/test_webhook_auth.py` exist exactly as named in the
+Per-Task Verification Map and pass individually (`test_verify_extension_key_noop_when_unset`,
+`test_verify_extension_key_rejects_missing_header_when_set`,
+`test_verify_extension_key_rejects_wrong_value_when_set`,
+`test_verify_extension_key_accepts_correct_value_when_set`). The D-01 route-scoping grep
+(06-01-04) confirms `Depends(verify_extension_key)` appears exactly once, exclusively on
+`extension_webhook`. The extension row (06-0X) remains manual-only by design (no JS test
+harness in `extension/`) — pending human UAT per `<human-check>` in 06-01-PLAN.md Task 2.
