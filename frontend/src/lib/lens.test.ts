@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CoverageArea, CoverageState } from './useSessionWS'
-import { groupCoverageByLens, isDiscoveryCoverage } from './lens'
+import { blockLabel, groupCoverageByLens, isDiscoveryCoverage, lensBadgeVariant, lensLabel } from './lens'
 
 function fakeArea(name: string, lens: CoverageArea['lens']): CoverageArea {
   return { status: 'covered', score: 100, notes: '', name, lens }
@@ -52,5 +52,22 @@ describe('lens.ts', () => {
     const grouped = groupCoverageByLens(coverage)
     expect(grouped.produto).toHaveLength(2)
     expect(grouped.dados).toEqual([])
+  })
+
+  it('blockLabel: devolve labels discovery verbatim (não o vocabulário de 12 blocos do Precificador)', () => {
+    expect(blockLabel('gargalo')).toBe('Gargalo')
+    expect(blockLabel('qualidade_fontes')).toBe('Fontes e Qualidade dos Dados')
+    expect(blockLabel('viabilidade_solucao')).toBe('Viabilidade da Solução')
+    // fallback para a própria chave quando desconhecida
+    expect(blockLabel('bloco_inexistente')).toBe('bloco_inexistente')
+  })
+
+  it('lensBadgeVariant/lensLabel: decide a variante/tag da badge de lente', () => {
+    expect(lensBadgeVariant(null)).toBe('none')
+    expect(lensBadgeVariant('produto')).toBe('produto')
+    expect(lensBadgeVariant('dados')).toBe('dados')
+    expect(lensLabel('produto')).toBe('Produto')
+    expect(lensLabel('dados')).toBe('Dados')
+    expect(lensLabel(null)).toBe('')
   })
 })
