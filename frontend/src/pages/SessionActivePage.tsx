@@ -19,7 +19,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api, type Report, type Session } from '../lib/api'
 import { useSessionWS, type CoverageArea, type CoverageState, type WSQuestion } from '../lib/useSessionWS'
-import { isDiscoveryCoverage, groupCoverageByLens } from '../lib/lens'
+import { blockLabel, groupCoverageByLens, isDiscoveryCoverage, lensBadgeVariant, lensLabel } from '../lib/lens'
 
 // ---------------------------------------------------------------------------
 // Session timer
@@ -227,6 +227,31 @@ function BudgetBar({
 }
 
 // ---------------------------------------------------------------------------
+// Lens badge (Produto/Dados) — UI-02/D-44. Tag principal em discovery;
+// não renderiza nada quando lens é null (sales, byte-idêntico).
+// ---------------------------------------------------------------------------
+
+const LENS_BADGE_CLASSES: Record<'produto' | 'dados', string> = {
+  produto:
+    'bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]',
+  dados:
+    'bg-[var(--color-muted)] text-[var(--color-text-secondary)] border border-[var(--color-border-std)]',
+}
+
+function LensBadge({ lens }: { lens: 'produto' | 'dados' | null }) {
+  const variant = lensBadgeVariant(lens)
+  if (variant === 'none') return null
+
+  return (
+    <span
+      className={`text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] w-fit ${LENS_BADGE_CLASSES[variant]}`}
+    >
+      {lensLabel(lens)}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Transcript + red flags (center column)
 // ---------------------------------------------------------------------------
 
@@ -235,7 +260,14 @@ function TranscriptPanel({
   redFlags,
 }: {
   transcript: Array<{ text: string; speaker: string | null; timestamp: string }>
-  redFlags: Array<{ id: string; text: string; severity: string; evidence: string; detected_at: string }>
+  redFlags: Array<{
+    id: string
+    text: string
+    severity: string
+    evidence: string
+    detected_at: string
+    lens?: 'produto' | 'dados' | null
+  }>
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -270,6 +302,11 @@ function TranscriptPanel({
                   }`}
                 />
                 <div className="min-w-0">
+                  {rf.lens != null && (
+                    <div className="mb-1">
+                      <LensBadge lens={rf.lens} />
+                    </div>
+                  )}
                   <p className="text-sm text-[var(--color-text-primary)]">{rf.text}</p>
                   {rf.evidence && (
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 italic truncate">
@@ -360,23 +397,21 @@ function QuestionCard({
   onDismiss: () => void
   onUse: () => void
 }) {
-  const blockLabel: Record<string, string> = {
-    negocio: 'Negócio',
-    eng_dados: 'Eng. Dados',
-    visualizacao: 'Visualização',
-    ciencia_dados: 'C. de Dados',
-    automacao: 'Automação',
-    integracao: 'Integração',
-    consumo: 'Consumo',
-    parceria: 'Parceria',
-  }
-
   return (
     <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-[var(--radius-card)] px-3 py-2.5">
       <div className="flex items-start justify-between gap-1 mb-1">
-        <span className="text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-          {blockLabel[question.block] ?? question.block}
-        </span>
+        {question.lens != null ? (
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <LensBadge lens={question.lens} />
+            <span className="text-[10px] text-[var(--color-text-secondary)] truncate">
+              {blockLabel(question.block)}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] w-fit">
+            {blockLabel(question.block)}
+          </span>
+        )}
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={onPin}
@@ -967,15 +1002,17 @@ export default function SessionActivePage() {
         )}
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleGenerateReport}
-            disabled={generatingReport || ws.budget.status === 'insufficient'}
-            title={ws.budget.status === 'insufficient' ? 'Saldo insuficiente' : 'Gerar relatório (R)'}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
-          >
-            <FileText size={12} />
-            {generatingReport ? 'Gerando...' : 'Relatório'}
-          </button>
+          {!isDiscoveryCoverage(ws.coverage) && (
+            <button
+              onClick={handleGenerateReport}
+              disabled={generatingReport || ws.budget.status === 'insufficient'}
+              title={ws.budget.status === 'insufficient' ? 'Saldo insuficiente' : 'Gerar relatório (R)'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
+            >
+              <FileText size={12} />
+              {generatingReport ? 'Gerando...' : 'Relatório'}
+            </button>
+          )}
           <button
             onClick={handleFinish}
             disabled={finishing}
