@@ -1,14 +1,16 @@
 ---
 phase: 06-opt-in-webhook-auth
-reviewed: 2026-09-24T14:22:32Z
+reviewed: 2026-09-24T18:00:00Z
 depth: standard
-files_reviewed: 5
+files_reviewed: 7
 files_reviewed_list:
-  - backend/app/routers/webhook.py
-  - backend/tests/test_webhook_auth.py
-  - extension/background.js
+  - extension/lib/configFieldGuard.js
   - extension/popup.html
   - extension/popup.js
+  - extension/tests/configFieldGuard.test.js
+  - extension/tests/extensionHarness.js
+  - extension/tests/popupBackendUrlField.test.js
+  - extension/tests/popupExtensionKeyField.test.js
 findings:
   critical: 0
   warning: 2
@@ -17,162 +19,154 @@ findings:
 status: issues_found
 ---
 
-# Phase 6: Code Review Report
+# Phase 6: Code Review Report (incremental — plano 06-02, gap closure G-06-1)
 
-**Reviewed:** 2026-09-24T14:22:32Z
+**Reviewed:** 2026-09-24T18:00:00Z
 **Depth:** standard
-**Files Reviewed:** 5
+**Files Reviewed:** 7
 **Status:** issues_found
+
+> Escopo: diff incremental desde `78853ef` (review anterior da fase, que cobriu o plano 06-01).
+> O relatório do 06-01 continua disponível no histórico do git (`git show 78853ef:.planning/phases/06-opt-in-webhook-auth/06-REVIEW.md`).
+> Nada de `backend/app/routers/webhook.py` nem `extension/background.js` foi re-revisado aqui.
 
 ## Summary
 
-Revisei o gate opt-in por shared-secret (`verify_extension_key`, header `x-agente-key` vs
-`EXTENSION_SHARED_KEY`, `secrets.compare_digest`) e o campo correspondente na extensão Chrome
-(`popup.html`/`popup.js`/`background.js`, persistido via `chrome.storage.local`).
+Revisei a correção do G-06-1: o helper puro `extension/lib/configFieldGuard.js`, a integração em
+`extension/popup.js` (rastreio de edição por campo, carimbo no clique em Salvar e releitura pós-save),
+a tag nova em `popup.html` e as três suítes `node:test` com o harness que sobe `background.js` e o
+popup reais em contextos `vm` separados.
 
-O núcleo de segurança está correto: a comparação é feita com `secrets.compare_digest` (resistente a
-timing attack), o valor esperado é lido do ambiente a cada chamada (nunca em nível de módulo, então
-não fica "congelado" no import), a rota `/webhook/recall` de fato não recebe a dependência (escopo
-correto, conforme intencional), e o texto do erro 401 não vaza o valor esperado. Os testes em
-`test_webhook_auth.py` cobrem os três cenários relevantes (SC1/SC2/SC3) e seguem o padrão já
-estabelecido no projeto (`test_readiness_route.py`) de testar a dependência isoladamente.
+O núcleo da correção está certo. Tracei os cenários de corrida relevantes: (a) resposta de polling
+pedida antes da primeira edição e entregue depois — bloqueada, porque `canRenderOverwriteConfigField`
+é avaliado na entrega, não no envio; (b) polling em voo durante o save — bloqueado pelo mesmo motivo;
+(c) redigitação entre o clique e a confirmação — bloqueada pelo carimbo (`takeConfigFieldSnapshot`
+vs `canResyncConfigFieldAfterSave`); (d) ordem de processamento no background — as mensagens são
+atendidas em ordem de chegada via `ensureState().then(...)`, então a releitura pós-save sempre vê o
+valor já gravado. O helper realmente não toca DOM/`chrome`, não declara `const`/`let` de topo (sem
+risco de colisão de escopo global com `popup.js`) e os testes confirmam a ordem das tags `<script>`.
+Rodei as três suítes localmente (Node 24): 22/22 passam.
 
-Não encontrei nenhum bloqueador. Encontrei, porém, um bug real de UX no popup da extensão (o campo
-da chave é sobrescrito a cada 3s por um polling que não respeita foco — pode apagar o que o usuário
-está digitando antes de salvar) e uma lacuna de reforço de transporte (o segredo pode trafegar em
-texto puro se o usuário configurar a URL do backend com `http://` em vez de `https://`). Os demais
-itens são observações informativas, a maioria pré-existente e não introduzida por esta fase.
+Não há bloqueador. Os dois avisos são sobre o mesmo efeito colateral do mecanismo escolhido: como o
+campo fica "travado" para o polling pelo resto da abertura do popup após a primeira edição, o polling
+deixa de funcionar como sinal visual de que um save **não** aconteceu. Isso piora dois caminhos que já
+existiam (save não confirmado exibindo "Salvo!" e URL vazia ignorada em silêncio). O primeiro já está
+registrado como DECISÃO EM ABERTO no `06-02-PLAN.md`; reporto porque a correção muda o impacto dele.
+O XSS pré-existente via `innerHTML` em `renderQuestions` (IN-04 do review anterior) continua aberto e
+não foi tocado por este plano.
 
 ## Warnings
 
-### WR-01: Campo da chave é sobrescrito enquanto o usuário digita (perda de input)
+### WR-01: "Salvo!" em save não confirmado — e agora o campo trava no valor não gravado
 
-**File:** `extension/popup.js:75-77` e `extension/popup.js:97-100`
+**File:** `extension/popup.js:160-164` e `extension/popup.js:172-176`
 
-**Issue:** `render()` é chamado a cada 3 segundos por um `setInterval` (linha 98) enquanto o popup
-está aberto, e a cada chamada ele reatribui incondicionalmente
-`extensionKeyInput.value = state.extensionKey || ''` (linha 77) — sem checar se o campo está com foco
-ou se o usuário está no meio da digitação. Como o valor de `state.extensionKey` só muda depois que o
-usuário clica em "Salvar" (`saveKeyBtn` dispara `SET_EXTENSION_KEY`), qualquer chave digitada que
-leve mais de 3 segundos para ser inserida (comum para um segredo colado ou digitado manualmente) corre
-o risco de ser apagada no meio da digitação pelo próximo tick do polling, que reescreve o campo com o
-valor antigo (vazio ou a chave anterior) vindo do `background.js`.
+**Issue:** O callback de `SET_BACKEND_URL`/`SET_EXTENSION_KEY` mostra `'Salvo!'` incondicionalmente,
+mesmo quando `isConfigSaveConfirmed(response, chrome.runtime.lastError)` é `false` (service worker
+reiniciando, porta fechada, `{ ok: false }`). O predicado de confirmação foi criado justamente neste
+plano, mas só é usado para decidir a releitura, não o feedback.
 
-Esse mesmo padrão já existia para `backendUrlInput` antes desta fase, mas a linha nova
-(`extensionKeyInput.value = ...`) estende o mesmo defeito ao campo recém-criado — e aqui o dado
-sensível é justamente o segredo de autenticação, tornando a frustração de "perdi o que digitei"
-mais provável de acontecer com um valor difícil de redigitar corretamente (chave gerada, não uma URL
-memorável).
+Antes do 06-02, um save que falhasse era "denunciado" em até 3 s: o polling reescrevia o campo com o
+valor antigo. Agora, como `configInputEdits[stateKey].editCount > 0` pelo resto da abertura do popup,
+o campo continua exibindo o texto digitado para sempre, junto com "Salvo!". O usuário sai convencido
+de que gravou a chave (ou a URL) e só descobre o contrário quando os POSTs começarem a voltar 401
+durante a reunião — exatamente o sintoma "achei que salvei e não salvei" que o G-06-1 queria eliminar.
 
-**Fix:** Não sobrescrever o campo se ele estiver com foco (o padrão comum é comparar
-`document.activeElement`):
-```javascript
-function render(state) {
-  backendUrlInput.value = state.backendUrl || ''
-  if (document.activeElement !== extensionKeyInput) {
-    extensionKeyInput.value = state.extensionKey || ''
-  }
-  ...
+**Fix:** usar o predicado que já existe para escolher o feedback (texto de erro é mudança de
+comportamento pequena e reversível; se o time preferir manter só "Salvo!", no mínimo não exibi-lo em
+falha):
+```js
+chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, (response) => {
+  const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
+  saveKeyBtn.textContent = confirmed ? 'Salvo!' : 'Erro — tente de novo'
+  setTimeout(() => { saveKeyBtn.textContent = 'Salvar' }, 1500)
+  if (confirmed) resyncConfigInputAfterSave('extensionKey', snapshot)
+})
+```
+(Mesma alteração em `saveUrlBtn`.) Acrescentar um cenário no harness com `chrome.runtime.lastError`
+definido — ver IN-02.
+
+### WR-02: Apagar a URL e clicar em Salvar é ignorado em silêncio, e o campo fica vazio enquanto a URL antiga continua em uso
+
+**File:** `extension/popup.js:156-158`; teste que trava o comportamento em
+`extension/tests/popupBackendUrlField.test.js:76-88`
+
+**Issue:** Com URL vazia, `saveUrlBtn` faz `return` antes de qualquer feedback (sem "Salvo!", sem
+erro). Antes desta correção, o próximo tick do polling repunha a URL salva no campo, deixando claro que
+nada mudou. Agora o campo fica permanentemente vazio (edição registrada, polling bloqueado), enquanto
+o `background.js` continua mandando chunks e abrindo o WebSocket para a URL antiga. A tela mostra uma
+configuração ("sem backend") diferente da que está de fato em vigor, e o teste
+`'URL vazia continua sem ser salva; o polling não repõe a URL antiga no campo'` consolida essa
+divergência como comportamento esperado (`assert.strictEqual(ext.el('backend-url').value, '')`).
+
+**Fix:** no early return, restaurar o valor efetivo e liberar o campo para o polling, por exemplo:
+```js
+if (!url) {
+  configInputEdits.backendUrl = createConfigFieldState()
+  chrome.runtime.sendMessage({ type: 'GET_STATE' }, (s) => { if (s) backendUrlInput.value = s.backendUrl || '' })
+  return
 }
 ```
-(O mesmo tratamento vale para `backendUrlInput`, mas isso é pré-existente e fora do escopo desta
-fase — mencionado aqui só para contexto.)
-
----
-
-### WR-02: Segredo pode trafegar em texto puro se a URL do backend não usar TLS
-
-**File:** `extension/background.js:13-19` (`normalizeUrl`) e `extension/background.js:112-132`
-(`TRANSCRIPT_CHUNK` handler, header setado na linha 119)
-
-**Issue:** `normalizeUrl()` só força `https://` quando a URL não tem protocolo algum
-(`if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url`). Se o usuário digitar explicitamente
-uma URL com `http://` no campo "URL do backend" (ex. para testar contra um backend local), a extensão
-aceita sem aviso e passa a enviar `x-agente-key` nesse canal sem TLS a cada chunk de transcrição
-(`fetch(url, { headers, ... })`, linha 119-128). Como o propósito inteiro do header é autenticar a
-extensão perante o backend, transmiti-lo em texto puro anula a proteção que a Fase 6 está introduzindo
-— qualquer um na mesma rede pode capturar o segredo.
-
-Isso é uma configuração incomum (o padrão é `https://agente-diagnostico-production.up.railway.app`),
-mas nada no código impede ou avisa o usuário sobre o downgrade, o que é relevante justamente para um
-segredo que a própria fase está introduzindo.
-
-**Fix:** Avisar (ou bloquear) quando `extensionKey` está preenchida e a URL normalizada não começa com
-`https://`, por exemplo emitindo um aviso visível no popup, ou recusando enviar o header em URLs
-`http://` não-loopback.
+ou, no mínimo, dar um feedback explícito no botão ("URL obrigatória"). Ajustar a asserção do teste
+para o comportamento escolhido. Como muda comportamento visível, é decisão do time — registrar como
+DECISÃO EM ABERTO se não houver consenso.
 
 ## Info
 
-### IN-01: Resposta 401 sem `WWW-Authenticate`
+### IN-01: `render(state)` não protege `state` indefinido, ao contrário de `resyncConfigInputAfterSave`
 
-**File:** `backend/app/routers/webhook.py:27`
+**File:** `extension/popup.js:33-39`, `extension/popup.js:109-110`, `extension/popup.js:128-133`
 
-**Issue:** `raise HTTPException(status_code=401, detail=...)` não inclui o header `WWW-Authenticate`,
-que a RFC 7235 recomenda em respostas 401. Não afeta o comportamento funcional da extensão (que já
-sabe o que enviar), é só uma questão de aderência ao padrão HTTP para clientes genéricos.
+**Issue:** `resyncConfigInputAfterSave` checa `freshState &&` (linha 46), mas `render` — chamado a
+cada 3 s — passa `state` direto para `renderConfigInputs`, que faz `state[stateKey]`. Se o
+`GET_STATE` voltar `undefined` (`chrome.runtime.lastError` no despertar do service worker MV3), o tick
+lança `TypeError` e ainda gera "Unchecked runtime.lastError" no console. É pré-existente
+(`state.backendUrl` já quebrava antes), mas a nova função perpetua o padrão e deixa os dois caminhos
+inconsistentes.
 
-**Fix:** Opcional — `raise HTTPException(status_code=401, detail=..., headers={"WWW-Authenticate": "Header x-agente-key"})`.
+**Fix:** `function render(state) { if (chrome.runtime.lastError || !state) return; ... }`.
 
----
+### IN-02: Nenhum teste de integração cobre o ramo "save não confirmado"
 
-### IN-02: Nenhum teste automatizado do lado da extensão para o novo caminho de auth
+**File:** `extension/tests/extensionHarness.js:78-86`
 
-**File:** `extension/background.js:105-132`
+**Issue:** O harness fixa `chrome.runtime.lastError = undefined` e sempre responde via o background
+real (que sempre devolve `{ ok: true }` para os SETs). O ramo `isConfigSaveConfirmed === false` — sem
+releitura, campo mantém o texto digitado — só é coberto pelo teste unitário do predicado, não pelo
+fluxo ponta a ponta. É justamente o ramo do WR-01.
 
-**Issue:** O backend ganhou `test_webhook_auth.py` cobrindo os três cenários do gate, mas a lógica
-correspondente no cliente (`SET_EXTENSION_KEY` grava `state.extensionKey`; `TRANSCRIPT_CHUNK` só
-adiciona o header `x-agente-key` quando `state.extensionKey` é truthy) não tem nenhuma cobertura —
-não há harness de teste JS no projeto (`extension/` não tem `*.test.js`). Um erro futuro (ex.: nome do
-header errado, `trim()` removido, condição invertida) quebraria a autenticação silenciosamente, sem
-nenhum teste para pegar.
+**Fix:** expor no harness algo como `failNext(type, { lastError, response })` que faz o próximo
+`sendResponse` daquele tipo entregar `undefined`/`{ ok: false }` com `chrome.runtime.lastError`
+definido durante o callback, e adicionar um cenário por campo.
 
-Isso não é uma regressão desta fase especificamente (o projeto já não tinha testes JS para a
-extensão antes), mas vale registrar como lacuna de cobertura já que é justamente o código
-complementar da funcionalidade de segurança testada no backend.
+### IN-03: Asserções incompletas em dois cenários
 
-**Fix:** Se/quando o projeto adotar um test runner para `extension/` (ex. Vitest + mocks de
-`chrome.*`), adicionar um teste unitário para o handler `TRANSCRIPT_CHUNK` confirmando que o header só
-é enviado quando há chave configurada e que o nome do header é exatamente `x-agente-key`.
+**File:** `extension/tests/popupExtensionKeyField.test.js:69-79` e
+`extension/tests/popupExtensionKeyField.test.js:162-172`
 
----
+**Issue:** O cenário (iii) só verifica `stored.extensionKey`, sem checar o valor do campo nem o
+"Salvo!" (o (ii) checa os três). O cenário "redigitar durante o save" verifica que o campo mantém
+`'abcd'`, mas não que o valor gravado foi `'abc'` (o lido no clique) — uma regressão que fizesse o
+save ler o campo tarde demais passaria despercebida.
 
-### IN-03: Router acessa o Supabase diretamente (pré-existente)
+**Fix:** acrescentar `assert.strictEqual(ext.el('extension-key').value, 'chave-nova')` no (iii) e
+`assert.strictEqual(ext.stored.extensionKey, 'abc')` no cenário de redigitação.
 
-**File:** `backend/app/routers/webhook.py:40-44`, `56-99`
+### IN-04: Suítes da extensão não estão ligadas a nenhum runner/CI
 
-**Issue:** O `CLAUDE.md` deste projeto exige "sem queries SQL/Supabase em services" e "sem lógica de
-negócio em routers" (routers só roteiam, chamam services). `webhook.py` chama
-`db.table("transcript_chunks").insert(...).execute()` e importa `pipeline_manager` diretamente dentro
-do router, tanto em `extension_webhook` quanto em `recall_webhook`. Essa violação já existia antes da
-Fase 6 (não foi introduzida por este diff — a Fase 6 só adicionou a dependência de auth em cima do
-código existente) e outros routers do projeto (`sessions.py`) têm o mesmo padrão, então não é uma
-regressão isolada desta fase. Registro aqui apenas para visibilidade, já que o arquivo foi tocado
-novamente nesta fase sem mover essa lógica para uma camada de serviço/repositório.
+**File:** `extension/tests/*.test.js`
 
-**Fix:** Fora do escopo desta fase — se o time decidir endereçar, mover a inserção em
-`transcript_chunks` e a resolução de `session_id` para um `WebhookService`/`TranscriptRepository`
-dedicado, mantendo o router só com validação de entrada + chamada ao service.
+**Issue:** Não há `package.json` em `extension/` nem workflow em `.github/workflows` que rode estas
+suítes; elas só rodam se alguém lembrar do comando manual em cada cabeçalho. Além disso,
+`node --test extension/tests/` (passando o diretório) falha com `MODULE_NOT_FOUND` — o comando correto
+é listar os arquivos ou usar glob (`node --test "extension/tests/*.test.js"`). Sem isso, a proteção
+do G-06-1 pode regredir silenciosamente.
 
----
-
-### IN-04: XSS pré-existente via `innerHTML` com texto de pergunta não escapado
-
-**File:** `extension/popup.js:36-52` (função `renderQuestions`, linhas 42 e 44 especificamente)
-
-**Issue:** `renderQuestions` monta HTML via template literal interpolando `q.block` e `q.text`
-diretamente em `questionsList.innerHTML` sem escapar. Se o texto de uma pergunta gerada pelo
-`QuestionPlanner` (ou qualquer dado no payload de `question_new`/`initial_state` vindo do WebSocket)
-contiver caracteres HTML, isso executa como markup dentro do popup da extensão. Essa função não foi
-alterada por este diff (só o restante do arquivo foi tocado para adicionar o campo de chave), então
-não é uma regressão da Fase 6 — mas como o arquivo inteiro foi lido para esta revisão, registro para
-visibilidade já que é uma superfície de risco real (mesmo que a fonte do texto seja hoje confiável —
-o próprio backend/LLM do projeto).
-
-**Fix:** Fora do escopo desta fase — se endereçado, trocar a interpolação direta por
-`textContent`/escaping (ex. função `escapeHtml()`) para `q.block` e `q.text`.
+**Fix:** adicionar um `extension/package.json` mínimo com
+`"scripts": { "test": "node --test \"tests/*.test.js\"" }` (zero dependências) e/ou um passo no CI.
 
 ---
 
-_Reviewed: 2026-09-24T14:22:32Z_
+_Reviewed: 2026-09-24T18:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
