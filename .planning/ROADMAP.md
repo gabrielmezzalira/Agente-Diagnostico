@@ -32,7 +32,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing (completed 2026-09-21)
 - [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
 - [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
-- [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
+- [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
 - [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
@@ -261,7 +261,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
-| 5. Two-Lens Monitoring (Frontend) | 5/5 | In Progress|  |
+| 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |
