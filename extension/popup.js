@@ -12,6 +12,8 @@ const overrideIdInput = document.getElementById('override-id')
 const overrideBtn = document.getElementById('override-btn')
 const backendUrlInput = document.getElementById('backend-url')
 const saveUrlBtn = document.getElementById('save-url-btn')
+const extensionKeyInput = document.getElementById('extension-key')
+const saveKeyBtn = document.getElementById('save-key-btn')
 
 function generateQuestions() {
   chrome.runtime.sendMessage({ type: 'GET_STATE' }, (state) => {
@@ -72,6 +74,7 @@ function renderQuestions(questions) {
 
 function render(state) {
   backendUrlInput.value = state.backendUrl || ''
+  extensionKeyInput.value = state.extensionKey || ''
 
   if (state.sessionId) {
     dot.classList.add('active')
@@ -123,5 +126,15 @@ saveUrlBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, () => {
     saveUrlBtn.textContent = 'Salvo!'
     setTimeout(() => { saveUrlBtn.textContent = 'Salvar' }, 1500)
+  })
+})
+
+// Salvar chave de autenticação da extensão (campo vazio é um valor válido —
+// permite limpar a chave salva, por isso sem early return em valor vazio)
+saveKeyBtn.addEventListener('click', () => {
+  const key = extensionKeyInput.value.trim()
+  chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, () => {
+    saveKeyBtn.textContent = 'Salvo!'
+    setTimeout(() => { saveKeyBtn.textContent = 'Salvar' }, 1500)
   })
 })

@@ -3,7 +3,8 @@
 let state = {
   sessionId: null,
   backendUrl: 'https://agente-diagnostico-production.up.railway.app',
-  questions: []
+  questions: [],
+  extensionKey: ''
 }
 
 let stateLoaded = false
@@ -19,10 +20,11 @@ function normalizeUrl(url) {
 
 function loadState() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['sessionId', 'backendUrl', 'questions'], (data) => {
+    chrome.storage.local.get(['sessionId', 'backendUrl', 'questions', 'extensionKey'], (data) => {
       if (data.sessionId) state.sessionId = data.sessionId
       if (data.backendUrl) state.backendUrl = data.backendUrl
       if (data.questions) state.questions = data.questions
+      if (data.extensionKey) state.extensionKey = data.extensionKey
       stateLoaded = true
       resolve()
     })
@@ -100,15 +102,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return
     }
 
+    if (msg.type === 'SET_EXTENSION_KEY') {
+      state.extensionKey = msg.key || ''
+      chrome.storage.local.set({ extensionKey: state.extensionKey })
+      sendResponse({ ok: true })
+      return
+    }
+
     if (msg.type === 'TRANSCRIPT_CHUNK') {
       if (!state.sessionId) {
         sendResponse({ ok: false, reason: 'no session' })
         return
       }
       const url = `${normalizeUrl(state.backendUrl)}/webhook/extension`
+      const headers = { 'Content-Type': 'application/json' }
+      if (state.extensionKey) headers['x-agente-key'] = state.extensionKey
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           session_id: state.sessionId,
           text: msg.text,
