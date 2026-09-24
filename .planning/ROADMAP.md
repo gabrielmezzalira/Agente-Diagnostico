@@ -160,7 +160,7 @@ Plans:
 > entrega, além de UI-01/02/03, a camada de frontend do handoff de PRD (honrando D-35 — Fase 4 fez o
 > backend, Fase 5 faz o frontend). A única mudança de backend é a rota aditiva de readiness (D-49).
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 **Wave 1**
 
@@ -173,7 +173,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-04-PLAN.md — Handoff de PRD (frontend): ReadinessBar + "Gerar PRD" gated por readiness (D-47) + seletor de status/aprovação na sessão encerrada (D-48) (REP-02)
+- [x] 05-04-PLAN.md — Handoff de PRD (frontend): ReadinessBar + "Gerar PRD" gated por readiness (D-47) + seletor de status/aprovação na sessão encerrada (D-48) (REP-02)
 
 **UI hint**: yes
 
@@ -257,7 +257,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
-| 5. Two-Lens Monitoring (Frontend) | 3/4 | In Progress|  |
+| 5. Two-Lens Monitoring (Frontend) | 4/4 | In Progress|  |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |
