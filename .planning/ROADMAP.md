@@ -32,7 +32,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 2: Discovery Mode + DiscoveryPromptBuilder** - Projects can run in discovery mode over the 18 discovery areas with discovery framing (completed 2026-09-21)
 - [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
 - [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
-- [ ] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering
+- [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
 - [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
@@ -153,8 +153,32 @@ Plans:
   1. Opening the monitoring screen for a discovery session shows coverage areas grouped into Produto and Dados sections; opening it for a sales session shows the same flat list as before
   2. Every question card and red-flag row displays a lens badge (Produto or Dados) in discovery mode
   3. `useSessionWS` and `SessionActivePage` render whatever coverage-area set the backend sends without a hardcoded area list in the frontend
+  4. On the project page, a discovery session shows a readiness bar and a "Gerar PRD" button that stays blocked until readiness passes the threshold (tooltip lists what's missing) and generates the report once it does (D-41/D-47/D-49)
+  5. On a finished discovery session, a report status selector (Rascunho / Em revisão / Aprovado para build) lets the user mark "Aprovado para build", which unlocks import-from-diagnosis in the Precificador (D-41/D-48)
 
-**Plans**: TBD
+> **D-41:** os SCs 4–5 foram acrescentados no planejamento (mesmo precedente de D-12/D-30): a Fase 5
+> entrega, além de UI-01/02/03, a camada de frontend do handoff de PRD (honrando D-35 — Fase 4 fez o
+> backend, Fase 5 faz o frontend). A única mudança de backend é a rota aditiva de readiness (D-49).
+
+**Plans**: 5/5 plans executed (05-05 é fechamento de gaps, aguardando execução)
+
+**Wave 1**
+
+- [x] 05-01-PLAN.md — TRACER: cobertura server-driven + agrupamento por lente (kill hardcoded, consome name+lens, empty state) + semente de regressão sales byte-idêntico (UI-01/UI-03)
+- [x] 05-03-PLAN.md — Backend aditivo: rota `GET /sessions/{id}/readiness` (D-49) + `ReportResponse.status` (Impl Note 3) + client api.ts (Readiness/Report.status/getReadiness/updateReportStatus) (REP-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 05-02-PLAN.md — Badges de lente em QuestionCard + linhas de red flag (D-44) + 18 labels de bloco discovery + ocultar botão Relatório da topbar em discovery (UI-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 05-04-PLAN.md — Handoff de PRD (frontend): ReadinessBar + "Gerar PRD" gated por readiness (D-47) + seletor de status/aprovação na sessão encerrada (D-48) (REP-02)
+
+**Gap closure** *(fecha CR-01/CR-02 da 05-VERIFICATION.md)*
+
+- [x] 05-05-PLAN.md — Fechamento de gaps: gate do botão "Relatório" por fonte síncrona (hasReceivedInitialState, CR-01) + separar prdError de readinessError com retry no "Gerar PRD" (CR-02) (UI-01/UI-02/UI-03/REP-02)
+
 **UI hint**: yes
 
 ### Phase 6: Opt-In Webhook Auth
@@ -237,7 +261,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 2. Discovery Mode + DiscoveryPromptBuilder | 3/3 | Complete    | 2026-09-21 |
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
-| 5. Two-Lens Monitoring (Frontend) | 0/? | Not started | - |
+| 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 0/? | Not started | - |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |

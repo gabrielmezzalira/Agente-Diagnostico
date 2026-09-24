@@ -33,15 +33,15 @@ Discovery teams map the bottleneck and its solution **completely during the call
 - ✓ F1–F10 v2 web app: project config CRUD, session setup, dynamic PromptBuilder, question bank, monitoring screen (WebSocket 3-column), question queue (pin/dismiss/TTL), budget control, session persistence/history, Data Maturity Score — v2.0
 - ✓ Agente Precificador: pricing CRUD + calc engine, LLM feature suggestions, LangGraph pricing chatbot, diagnostic→pricing handoff (import-from-diagnosis), CITi Flow integration — v2.0
 - ✓ Chrome extension: Google Meet caption capture → `/webhook/extension` streaming ingestion — v2.0
+- ✓ DISC: Discovery mode (project mode flag, discovery coverage areas, discovery framing, single area registry) — Phase 1-2
+- ✓ LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging — Phase 3
+- ✓ REP: Discovery report with "Métricas para Precificação" section feeding the Precificador — Phase 4
+- ✓ UI: Two-lens monitoring (coverage grouped by lens, lens badges, server-driven areas) — Phase 5
 
 ### Active
 
 <!-- Milestone v3.0 — Pivot Discovery. See REQUIREMENTS.md for full list. -->
 
-- [ ] DISC: Discovery mode (project mode flag, discovery coverage areas, discovery framing, single area registry)
-- [ ] LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging
-- [ ] REP: Discovery report with "Métricas para Precificação" section feeding the Precificador
-- [ ] UI: Two-lens monitoring (coverage grouped by lens, lens badges, server-driven areas)
 - [ ] TAQ: Taqciti live streaming as transcription source; retire custom extension
 
 ### Out of Scope
@@ -107,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-19 after starting milestone v3.0 (Pivot Discovery)*
+*Last updated: 2026-09-24 after Phase 5 (Two-Lens Monitoring Frontend)*
