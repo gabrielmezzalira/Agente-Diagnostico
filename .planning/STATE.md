@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 05
-current_phase_name: two-lens-monitoring-frontend
+current_phase_name: Two-Lens Monitoring (Frontend)
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-09-24T02:01:46.636Z"
+stopped_at: Completed 05-05-PLAN.md (gap-closure CR-01/CR-02)
+last_updated: "2026-09-24T02:11:51.071Z"
 last_activity: 2026-09-23
 last_activity_desc: Phase 05 execution started
-state_head: 11d37cc9b2a4ce459af3eec6a842d95e949df632
+state_head: 9aa7183c1cd82c00e0e0708b0c9059ae7dd41453
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-09-19)
 
 ## Current Position
 
-Phase: 05 (two-lens-monitoring-frontend) — READY TO EXECUTE
-Plan: 4 of 4
+Phase: 05 (Two-Lens Monitoring (Frontend)) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
 Last activity: 2026-09-23 — Phase 05 execution started
 
@@ -75,6 +75,7 @@ Progress: [████░░░░░░] 40%
 | Phase 05 P03 | ~20min | 3 tasks | 4 files |
 | Phase 05 P02 | ~10min | 2 tasks | 3 files |
 | Phase 05 P04 | ~15min | 2 tasks | 2 files |
+| Phase 05 P05 | ~10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 05-03]: ReportResponse.status como Optional[Literal] = None (nao Literal obrigatorio) para preservar sales byte-identico (REP-03); rota GET /sessions/{id}/readiness reusa pipeline_manager.get_or_create(allow_finished=True) + 404 identico as rotas de report
 - [Phase 05]: [Phase 05-02]: LensBadge extraido como componente compartilhado (nao helper de string) entre QuestionCard e TranscriptPanel — evita a cor da badge Produto/Dados divergir entre pergunta e red flag
 - [Phase 05]: [Phase 05]: [Phase 05-04]: Bloco 'Gerar PRD' inserido como secao dedicada antes de 'Precificacoes' (Claude's Discretion) em vez de por-card-de-sessao; seletor de status como <select> nativo (Claude's Discretion) em vez de 3 botoes
+- [Phase 05]: [Phase 05] [Phase 05-05]: shouldShowManualReportButton extraido para lens.ts (nao inline) — gate fail-closed do botao Relatorio por hasReceivedInitialState (fonte sincrona) em vez de ws.coverage assincrono (fecha CR-01)
+- [Phase 05]: [Phase 05] [Phase 05-05]: prdError separado de readinessError no ProjectDetailPage — GET-error (fail-closed, desabilita) distinto de POST-error (nao desabilita, permite retry) (fecha CR-02)
 
 ### Pending Todos
 
@@ -136,6 +139,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T01:16:41.401Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-09-24T02:11:50.928Z
+Stopped at: Completed 05-05-PLAN.md (gap-closure CR-01/CR-02)
 Resume file: None
