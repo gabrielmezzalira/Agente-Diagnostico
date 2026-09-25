@@ -76,6 +76,8 @@ test('(iii) mousedown até Salvar, esperar um tick e soltar (click) grava o text
   ext.click('save-key-btn')
   await ext.deliverAll()
   assert.strictEqual(ext.stored.extensionKey, 'chave-nova')
+  assert.strictEqual(ext.el('extension-key').value, 'chave-nova')
+  assert.strictEqual(ext.el('save-key-btn').textContent, 'Salvo!')
 })
 
 test('clicar fora do campo com texto não salvo não apaga o texto; Salvar posterior grava esse texto', async () => {
@@ -169,6 +171,10 @@ test('redigitar durante o save preserva o texto digitado mais recente', async ()
   ext.tick()
   await ext.deliverAll()
   assert.strictEqual(ext.el('extension-key').value, 'abcd')
+  // O valor gravado deve ser o lido no momento do clique ('abc') — se o save
+  // lesse o campo tarde demais (já com 'abcd'), essa asserção pegaria a
+  // regressão mesmo com o campo mostrando o texto certo.
+  assert.strictEqual(ext.stored.extensionKey, 'abc')
 })
 
 test('save não confirmado (chrome.runtime.lastError) mostra erro e não relê o estado', async () => {
