@@ -107,6 +107,8 @@ function renderQuestions(questions) {
 }
 
 function render(state) {
+  if (chrome.runtime.lastError || !state) return
+
   renderConfigInputs(state)
 
   if (state.sessionId) {
