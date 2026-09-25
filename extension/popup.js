@@ -158,9 +158,10 @@ saveUrlBtn.addEventListener('click', () => {
   if (!url) return
   const snapshot = takeConfigFieldSnapshot(configInputEdits.backendUrl)
   chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, (response) => {
-    saveUrlBtn.textContent = 'Salvo!'
+    const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
+    saveUrlBtn.textContent = confirmed ? 'Salvo!' : 'Erro — tente de novo'
     setTimeout(() => { saveUrlBtn.textContent = 'Salvar' }, 1500)
-    if (isConfigSaveConfirmed(response, chrome.runtime.lastError)) resyncConfigInputAfterSave('backendUrl', snapshot)
+    if (confirmed) resyncConfigInputAfterSave('backendUrl', snapshot)
   })
 })
 
@@ -170,8 +171,9 @@ saveKeyBtn.addEventListener('click', () => {
   const key = extensionKeyInput.value.trim()
   const snapshot = takeConfigFieldSnapshot(configInputEdits.extensionKey)
   chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, (response) => {
-    saveKeyBtn.textContent = 'Salvo!'
+    const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
+    saveKeyBtn.textContent = confirmed ? 'Salvo!' : 'Erro — tente de novo'
     setTimeout(() => { saveKeyBtn.textContent = 'Salvar' }, 1500)
-    if (isConfigSaveConfirmed(response, chrome.runtime.lastError)) resyncConfigInputAfterSave('extensionKey', snapshot)
+    if (confirmed) resyncConfigInputAfterSave('extensionKey', snapshot)
   })
 })
