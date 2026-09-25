@@ -95,6 +95,21 @@ test('URL vazia continua sem ser salva; o campo é restaurado com a URL efetiva 
   assert.strictEqual(ext.el('backend-url').value, 'https://agente.example.app')
 })
 
+test('save não confirmado (chrome.runtime.lastError) mostra erro e não relê o estado', async () => {
+  const ext = await bootExtension({ ...BASE_STORAGE })
+  await ext.deliverAll()
+  ext.type('backend-url', 'http://novo-backend.example.app')
+  ext.click('save-url-btn')
+  ext.failNext('SET_BACKEND_URL', { lastError: { message: 'service worker reiniciando' } })
+  await ext.deliverAll()
+  assert.strictEqual(ext.el('save-url-btn').textContent, 'Erro — tente de novo')
+  // Sem confirmação (lastError setado na entrega), não há releitura
+  // pós-save — o campo mantém o texto digitado em vez de ser resincronizado
+  // com o GET_STATE (é essa releitura que estaria ausente num cenário real
+  // de porta fechada / service worker reiniciando).
+  assert.strictEqual(ext.el('backend-url').value, 'http://novo-backend.example.app')
+})
+
 test('sem auto-save: digitar sozinho na URL nunca dispara SET_BACKEND_URL', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()

@@ -171,6 +171,21 @@ test('redigitar durante o save preserva o texto digitado mais recente', async ()
   assert.strictEqual(ext.el('extension-key').value, 'abcd')
 })
 
+test('save não confirmado (chrome.runtime.lastError) mostra erro e não relê o estado', async () => {
+  const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-antiga' })
+  await ext.deliverAll()
+  ext.type('extension-key', 'chave-nova')
+  ext.click('save-key-btn')
+  ext.failNext('SET_EXTENSION_KEY', { lastError: { message: 'service worker reiniciando' } })
+  await ext.deliverAll()
+  assert.strictEqual(ext.el('save-key-btn').textContent, 'Erro — tente de novo')
+  // Sem confirmação (lastError setado na entrega), não há releitura
+  // pós-save — o campo mantém o texto digitado em vez de ser resincronizado
+  // com o GET_STATE (é essa releitura que estaria ausente num cenário real
+  // de porta fechada / service worker reiniciando).
+  assert.strictEqual(ext.el('extension-key').value, 'chave-nova')
+})
+
 test('sem auto-save: digitar sozinho nunca dispara SET_EXTENSION_KEY nem grava no storage', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE, extensionKey: 'chave-salva' })
   await ext.deliverAll()
