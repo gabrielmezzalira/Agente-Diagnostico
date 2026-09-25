@@ -75,6 +75,13 @@ async function bootExtension(storage) {
   let backgroundListener = null
   let pollingTick = null
 
+  // Mapa de overrides de falha "de um tiro" por tipo de mensagem — ver
+  // failNext() abaixo. Consumido em deliverAll() na hora de entregar a
+  // resposta ao callback do popup (não na hora de enfileirar), então a ordem
+  // entre a chamada que dispara a mensagem e a chamada a failNext() não
+  // importa, desde que ambas aconteçam antes do deliverAll() correspondente.
+  const failNextByType = new Map()
+
   const chrome = {
     runtime: {
       lastError: undefined,
@@ -147,9 +154,36 @@ async function bootExtension(storage) {
       await new Promise((resolve) => setImmediate(resolve))
       if (pendingResponses.length === 0) break
       const item = pendingResponses.shift()
-      item.callback(item.response)
+      if (item.msg && failNextByType.has(item.msg.type)) {
+        const opts = failNextByType.get(item.msg.type)
+        failNextByType.delete(item.msg.type)
+        const hadLastError = Object.prototype.hasOwnProperty.call(chrome.runtime, 'lastError')
+        const previousLastError = chrome.runtime.lastError
+        chrome.runtime.lastError = Object.prototype.hasOwnProperty.call(opts, 'lastError')
+          ? opts.lastError
+          : { message: 'forced failure (extensionHarness.failNext)' }
+        try {
+          item.callback(Object.prototype.hasOwnProperty.call(opts, 'response') ? opts.response : undefined)
+        } finally {
+          if (hadLastError) chrome.runtime.lastError = previousLastError
+          else delete chrome.runtime.lastError
+        }
+      } else {
+        item.callback(item.response)
+      }
       if (++iterations > 50) throw new Error('deliverAll: mais de 50 iterações — possível loop infinito de mensagens')
     }
+  }
+
+  // Faz a PRÓXIMA resposta pendente do tipo `type` ser entregue como uma
+  // falha de save: por padrão, response === undefined e
+  // chrome.runtime.lastError definido durante o callback (restaurado ao
+  // valor anterior logo depois) — simula porta fechada / service worker
+  // reiniciando. `opts.response` e `opts.lastError` sobrescrevem os
+  // defaults. Efeito de um único tiro: consumido na próxima entrega
+  // daquele tipo e removido do mapa.
+  function failNext(type, opts = {}) {
+    failNextByType.set(type, opts)
   }
 
   // Retira (sem entregar) a resposta pendente mais antiga do tipo pedido —
@@ -192,7 +226,7 @@ async function bootExtension(storage) {
 
   return {
     document, el: (id) => document.getElementById(id), stored, fetchCalls, sentMessages,
-    deliverAll, holdResponse, tick, type, focus, click, pushQuestionViaWs, sendTranscriptChunk
+    deliverAll, holdResponse, failNext, tick, type, focus, click, pushQuestionViaWs, sendTranscriptChunk
   }
 }
 
