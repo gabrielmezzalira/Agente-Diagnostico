@@ -1,0 +1,9 @@
+{
+  "name": "agente-diagnostico-extension",
+  "version": "1.0.0",
+  "description": "Extensão Chrome do Agente Diagnóstico — testes node:test (sem dependências).",
+  "private": true,
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}
