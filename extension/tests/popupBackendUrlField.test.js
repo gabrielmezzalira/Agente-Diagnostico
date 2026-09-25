@@ -73,18 +73,26 @@ test('clicar fora do campo da URL não apaga o texto ainda não salvo', async ()
   assert.strictEqual(ext.el('backend-url').value, 'http://localhost:8000')
 })
 
-test('URL vazia continua sem ser salva; o polling não repõe a URL antiga no campo', async () => {
+test('URL vazia continua sem ser salva; o campo é restaurado com a URL efetiva em uso e o polling volta a atualizá-lo', async () => {
   const ext = await bootExtension({ ...BASE_STORAGE })
   await ext.deliverAll()
 
   ext.type('backend-url', '')
   ext.click('save-url-btn')
-  ext.tick()
   await ext.deliverAll()
 
   assert.ok(!ext.sentMessages.some((m) => m.type === 'SET_BACKEND_URL'))
   assert.strictEqual(ext.stored.backendUrl, 'https://agente.example.app')
-  assert.strictEqual(ext.el('backend-url').value, '')
+  // O clique em Salvar com URL vazia libera o campo de novo (edição
+  // resetada) e o repõe imediatamente com a URL em uso — a tela nunca deve
+  // mostrar "sem backend" enquanto o background segue usando a URL antiga.
+  assert.strictEqual(ext.el('backend-url').value, 'https://agente.example.app')
+
+  // Como a edição foi resetada, o próximo tick do polling volta a atualizar
+  // o campo normalmente (não fica mais travado).
+  ext.tick()
+  await ext.deliverAll()
+  assert.strictEqual(ext.el('backend-url').value, 'https://agente.example.app')
 })
 
 test('sem auto-save: digitar sozinho na URL nunca dispara SET_BACKEND_URL', async () => {

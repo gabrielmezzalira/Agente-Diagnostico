@@ -155,7 +155,16 @@ manualBtn.addEventListener('click', () => {
 // Salvar URL do backend
 saveUrlBtn.addEventListener('click', () => {
   const url = backendUrlInput.value.trim().replace(/\/+$/, '')
-  if (!url) return
+  if (!url) {
+    // URL vazia não é salva — libera o campo para o polling e o repõe com a
+    // URL efetiva em uso agora mesmo, para não deixar a tela mostrando
+    // "sem backend" enquanto o background continua falando com a URL antiga.
+    configInputEdits.backendUrl = createConfigFieldState()
+    chrome.runtime.sendMessage({ type: 'GET_STATE' }, (freshState) => {
+      if (freshState) backendUrlInput.value = freshState.backendUrl || ''
+    })
+    return
+  }
   const snapshot = takeConfigFieldSnapshot(configInputEdits.backendUrl)
   chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, (response) => {
     const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
