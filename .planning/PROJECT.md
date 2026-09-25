@@ -37,12 +37,13 @@ Discovery teams map the bottleneck and its solution **completely during the call
 - ✓ LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging — Phase 3
 - ✓ REP: Discovery report with "Métricas para Precificação" section feeding the Precificador — Phase 4
 - ✓ UI: Two-lens monitoring (coverage grouped by lens, lens badges, server-driven areas) — Phase 5
+- ✓ TAQ-03: Opt-in shared-secret header (`x-agente-key`) gates `/webhook/extension`; unset key leaves current production traffic unaffected — Phase 6
 
 ### Active
 
 <!-- Milestone v3.0 — Pivot Discovery. See REQUIREMENTS.md for full list. -->
 
-- [ ] TAQ: Taqciti live streaming as transcription source; retire custom extension
+- [ ] TAQ-01/02/04/05: Taqciti live streaming as transcription source; session binding; retire custom extension; AGP question panel
 
 ### Out of Scope
 
@@ -107,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-24 after Phase 5 (Two-Lens Monitoring Frontend)*
+*Last updated: 2026-09-25 after Phase 6 (Opt-In Webhook Auth)*

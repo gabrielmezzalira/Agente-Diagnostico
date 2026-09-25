@@ -1,6 +1,8 @@
 import asyncio
+import os
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from supabase import Client
 
@@ -15,8 +17,22 @@ class ExtensionChunk(BaseModel):
     speaker: str | None = None
 
 
+def verify_extension_key(x_agente_key: str | None = Header(default=None)) -> None:
+    """Gate opcional por shared-secret. Sem EXTENSION_SHARED_KEY configurada,
+    a rota se comporta exatamente como hoje (TAQ-03 / D-01)."""
+    expected = os.environ.get("EXTENSION_SHARED_KEY", "")
+    if not expected:
+        return  # opt-in: gate desativado até a env var existir
+    if not x_agente_key or not secrets.compare_digest(x_agente_key, expected):
+        raise HTTPException(status_code=401, detail="Missing or invalid x-agente-key header")
+
+
 @router.post("/extension", status_code=202)
-async def extension_webhook(payload: ExtensionChunk, db: Client = Depends(get_supabase)):
+async def extension_webhook(
+    payload: ExtensionChunk,
+    db: Client = Depends(get_supabase),
+    _: None = Depends(verify_extension_key),
+):
     """Recebe chunks de transcrição da extensão Chrome."""
     if not payload.text.strip():
         return {"accepted": True}

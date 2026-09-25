@@ -91,7 +91,7 @@
       gap: 6px;
     }
 
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       flex: 1;
       background: #1e2535;
       border: 1px solid #2d3748;
@@ -102,7 +102,7 @@
       outline: none;
     }
 
-    input[type="text"]:focus { border-color: #22a267; }
+    input[type="text"]:focus, input[type="password"]:focus { border-color: #22a267; }
 
     button {
       background: #22a267;
@@ -241,10 +241,19 @@
     </div>
   </div>
 
+  <div class="section">
+    <label>Chave de autenticação (opcional)</label>
+    <div class="manual-row">
+      <input type="password" id="extension-key" placeholder="deixe em branco para não usar" />
+      <button id="save-key-btn">Salvar</button>
+    </div>
+  </div>
+
   <div class="info">
     Legendas do Meet devem estar ativas (botão <strong>CC</strong>).
   </div>
 
+  <script src="lib/configFieldGuard.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

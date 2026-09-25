@@ -33,7 +33,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 3: Two-Agent Questions + Lens Tagging** - Produto + Dados planners share one question queue; areas/red flags/questions carry a lens tag (completed 2026-09-22)
 - [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
 - [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
-- [ ] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook
+- [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
 - [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
 - [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
@@ -192,7 +192,15 @@ Plans:
   2. With `EXTENSION_SHARED_KEY` set, a request missing the `x-agente-key` header (or sending the wrong value) is rejected
   3. With `EXTENSION_SHARED_KEY` set and the correct `x-agente-key` header supplied, the request is accepted and processed normally
 
-**Plans**: TBD
+**Plans**: 2/2 plans executed (1 executed, 1 gap-closure pending)
+
+**Wave 1**
+
+- [x] 06-01-PLAN.md — TRACER: gate opt-in por shared-secret (`verify_extension_key`, route-scoped em `extension_webhook`) + expansão: campo opcional de chave na extensão Chrome (D-01/D-02, TAQ-03)
+
+**Gap closure** *(fecha G-06-1 do 06-UAT.md — bloqueado na conclusão da Wave 1)*
+
+- [x] 06-02-PLAN.md — GAP G-06-1 (replanejado): rastreio de edição por campo no popup (regras puras em `extension/lib/configFieldGuard.js`) — o polling de 3s nunca sobrescreve texto não salvo, nem depois de o foco sair para o "Salvar" (Tab/mousedown) ou de um clique fora; "Salvar" grava exatamente o texto digitado e relê o valor salvo após confirmação. Tracer no campo da chave + campo URL do backend, com testes `node:test` (zero dependências) que executam o popup e o `background.js` reais (TAQ-03/D-02)
 
 ### Phase 7: Taqciti Config + Background Streamer
 
@@ -262,7 +270,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 3. Two-Agent Questions + Lens Tagging | 3/3 | Complete    | 2026-09-22 |
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
-| 6. Opt-In Webhook Auth | 0/? | Not started | - |
+| 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |

@@ -12,6 +12,42 @@ const overrideIdInput = document.getElementById('override-id')
 const overrideBtn = document.getElementById('override-btn')
 const backendUrlInput = document.getElementById('backend-url')
 const saveUrlBtn = document.getElementById('save-url-btn')
+const extensionKeyInput = document.getElementById('extension-key')
+const saveKeyBtn = document.getElementById('save-key-btn')
+
+// G-06-1: rastreia edição por campo de configuração — o polling de 3s (mais
+// abaixo) não pode sobrescrever texto ainda não salvo. A chave de cada
+// entrada é o nome do campo no estado devolvido por GET_STATE
+// (extension/background.js).
+const configInputs = { backendUrl: backendUrlInput, extensionKey: extensionKeyInput }
+const configInputEdits = { backendUrl: createConfigFieldState(), extensionKey: createConfigFieldState() }
+
+Object.keys(configInputs).forEach((stateKey) => {
+  configInputs[stateKey].addEventListener('input', () => {
+    configInputEdits[stateKey] = recordConfigFieldEdit(configInputEdits[stateKey])
+  })
+})
+
+// Escreve o valor salvo só nos campos de configuração que o usuário ainda
+// não editou nesta abertura do popup — chamada pelo render() a cada tick.
+function renderConfigInputs(state) {
+  Object.keys(configInputs).forEach((stateKey) => {
+    if (canRenderOverwriteConfigField(configInputEdits[stateKey])) {
+      configInputs[stateKey].value = state[stateKey] || ''
+    }
+  })
+}
+
+// Relê o estado depois de um save confirmado e reescreve o campo com o
+// valor salvo (já normalizado pelo background, no caso da URL) — só se o
+// usuário não voltou a digitar entre o clique e esta releitura.
+function resyncConfigInputAfterSave(stateKey, snapshot) {
+  chrome.runtime.sendMessage({ type: 'GET_STATE' }, (freshState) => {
+    if (freshState && canResyncConfigFieldAfterSave(configInputEdits[stateKey], snapshot)) {
+      configInputs[stateKey].value = freshState[stateKey] || ''
+    }
+  })
+}
 
 function generateQuestions() {
   chrome.runtime.sendMessage({ type: 'GET_STATE' }, (state) => {
@@ -71,7 +107,9 @@ function renderQuestions(questions) {
 }
 
 function render(state) {
-  backendUrlInput.value = state.backendUrl || ''
+  if (chrome.runtime.lastError || !state) return
+
+  renderConfigInputs(state)
 
   if (state.sessionId) {
     dot.classList.add('active')
@@ -119,9 +157,34 @@ manualBtn.addEventListener('click', () => {
 // Salvar URL do backend
 saveUrlBtn.addEventListener('click', () => {
   const url = backendUrlInput.value.trim().replace(/\/+$/, '')
-  if (!url) return
-  chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, () => {
-    saveUrlBtn.textContent = 'Salvo!'
+  if (!url) {
+    // URL vazia não é salva — libera o campo para o polling e o repõe com a
+    // URL efetiva em uso agora mesmo, para não deixar a tela mostrando
+    // "sem backend" enquanto o background continua falando com a URL antiga.
+    configInputEdits.backendUrl = createConfigFieldState()
+    chrome.runtime.sendMessage({ type: 'GET_STATE' }, (freshState) => {
+      if (freshState) backendUrlInput.value = freshState.backendUrl || ''
+    })
+    return
+  }
+  const snapshot = takeConfigFieldSnapshot(configInputEdits.backendUrl)
+  chrome.runtime.sendMessage({ type: 'SET_BACKEND_URL', url }, (response) => {
+    const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
+    saveUrlBtn.textContent = confirmed ? 'Salvo!' : 'Erro — tente de novo'
     setTimeout(() => { saveUrlBtn.textContent = 'Salvar' }, 1500)
+    if (confirmed) resyncConfigInputAfterSave('backendUrl', snapshot)
+  })
+})
+
+// Salvar chave de autenticação da extensão (campo vazio é um valor válido —
+// permite limpar a chave salva, por isso sem early return em valor vazio)
+saveKeyBtn.addEventListener('click', () => {
+  const key = extensionKeyInput.value.trim()
+  const snapshot = takeConfigFieldSnapshot(configInputEdits.extensionKey)
+  chrome.runtime.sendMessage({ type: 'SET_EXTENSION_KEY', key }, (response) => {
+    const confirmed = isConfigSaveConfirmed(response, chrome.runtime.lastError)
+    saveKeyBtn.textContent = confirmed ? 'Salvo!' : 'Erro — tente de novo'
+    setTimeout(() => { saveKeyBtn.textContent = 'Salvar' }, 1500)
+    if (confirmed) resyncConfigInputAfterSave('extensionKey', snapshot)
   })
 })
