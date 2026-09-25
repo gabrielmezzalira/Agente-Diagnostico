@@ -2,44 +2,45 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 06
-current_phase_name: Opt-In Webhook Auth
-status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-09-24T23:08:45.411Z"
-last_activity: 2026-09-24
-last_activity_desc: Phase 06 execution started
-state_head: 7c9f44e4e98ee2bc3e0d4a63cd2fcb72683267a7
+current_phase: 7
+current_phase_name: Taqciti Config + Background Streamer
+status: planning
+stopped_at: Phase 06 complete, ready to plan Phase 7
+last_updated: "2026-09-25T13:58:48.838Z"
+last_activity: 2026-09-25
+last_activity_desc: Phase 06 complete, transitioned to Phase 7
+state_head: 2702b12f453a13b3ad04d2020a5eaec936b10bed
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
   completed_plans: 20
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-24)
+See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 06 — Opt-In Webhook Auth
+**Current focus:** Phase 07 — Taqciti Config + Background Streamer
 
 ## Current Position
 
-Phase: 06 (Opt-In Webhook Auth) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-09-24 — Phase 06 execution started
+Phase: 7 — Taqciti Config + Background Streamer
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-25 — Phase 06 complete, transitioned to Phase 7
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 18
+- Total plans completed: 20
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -52,6 +53,7 @@ Progress: [█████░░░░░] 50%
 | 03 | 3 | - | - |
 | 04 | 4 | - | - |
 | 05 | 5 | - | - |
+| 06 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -128,6 +130,7 @@ None yet.
 - Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
 - Phases 7-8 live in the separate Taqciti repo — coordinate access/branch strategy before starting Phase 7
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
+- ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 
 ## Deferred Items
@@ -146,6 +149,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-24T23:08:45.263Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-09-25
+Stopped at: Phase 06 complete, ready to plan Phase 7
 Resume file: None
