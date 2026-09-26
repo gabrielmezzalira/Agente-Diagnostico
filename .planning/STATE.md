@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 07
 current_phase_name: Taqciti Config + Background Streamer
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-09-26T01:53:12.726Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-09-26T02:10:26.571Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 07 execution started
-state_head: ed8cbfa17c34f5e76526d84a720dc034ae0e464f
+state_head: 76447872660b2c6b1727850c49b21beb91017640
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 ## Current Position
 
 Phase: 07 (Taqciti Config + Background Streamer) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 07 execution started
 
@@ -81,6 +81,7 @@ Progress: [██████░░░░] 60%
 | Phase 06 P01 | ~10min | 2 tasks | 5 files |
 | Phase 06 P02 | 35min | 2 tasks | 7 files |
 | Phase 07 P07-01 | ~30min | 3 tasks | 7 files |
+| Phase 07 P07-02 | ~20min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase 06]: [Fase 06] [06-02]: rastreio de edicao por campo (editCount) + releitura pos-save substitui a guarda de foco do plano anterior (3f0d1e8) - foco sai do campo para o botao Salvar antes do clique (Tab/mousedown), entao so a guarda de foco nao fecha o G-06-1
 - [Phase 07]: [Phase 07-01]: computeSegmentDeltas ganhou tipo de retorno proprio (cursor nunca nulo) em vez de reusar StreamStep -- elimina checagens de null desnecessarias reveladas pelo typecheck
 - [Phase 07]: [Phase 07-01]: precondicao da Task 1 tratada como satisfeita incluindo .planning/state.json (companheiro JSON de STATE.md) na mesma categoria de bookkeeping do GSD ja prevista pela Passo 3 do plano
+- [Phase 07]: [Phase 07-02]: createAgenteConfigReader registra o listener de onChanged ANTES da leitura inicial (mesma ordem de prefsStore.ts) para nao perder mudanca que chegue entre as duas operacoes assincronas
+- [Phase 07]: [Phase 07-02]: streamer passa a ler a config real do storage via createAgenteConfigReader() no lugar de DEFAULT_AGENTE_CONFIG fixo - gravar ligado+session_id+URL no storage liga a transmissao sem recompilar
 
 ### Pending Todos
 
@@ -151,6 +154,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-26T01:53:12.596Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-09-26T02:10:26.430Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
