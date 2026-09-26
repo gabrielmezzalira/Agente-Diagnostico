@@ -9,6 +9,7 @@
 import { useMemo } from 'react';
 import { useMeetingState } from '@/shared/hooks/useMeetingState';
 import { readWideViewRequest } from './route';
+import { AgenteConfigScreen } from './screens/AgenteConfigScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { LiveScreen } from './screens/LiveScreen';
 import { SummaryScreen } from './screens/SummaryScreen';
@@ -22,6 +23,13 @@ export function App() {
    * não precisa ter.
    */
   const request = useMemo(() => readWideViewRequest(window.location.search), []);
+
+  /*
+   * O pedido explícito vence a fase — mesma lógica do histórico logo abaixo
+   * (ver src/sidepanel/route.ts). Vem ANTES do teste de `history`: pedir a
+   * tela do Agente nunca deve cair no histórico.
+   */
+  if (request.agenteConfig) return <AgenteConfigScreen />;
 
   /*
    * O pedido explícito vence a fase — e é justamente por não vencer que o botão

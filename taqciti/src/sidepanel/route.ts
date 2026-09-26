@@ -24,13 +24,22 @@ export interface WideViewRequest {
   history: boolean;
   /** Abrir já nesta reunião do histórico, em vez da lista. */
   recordId: string | null;
+  /** Mostrar a tela de configuração do Agente Diagnóstico, seja qual for a fase. */
+  agenteConfig: boolean;
 }
 
 /** Nenhum pedido: a tela vem da fase, como sempre veio. */
 export const NO_WIDE_VIEW_REQUEST: WideViewRequest = {
   history: false,
   recordId: null,
+  agenteConfig: false,
 };
+
+/**
+ * Query string que pede a tela "Agente Diagnóstico" (Fase 7, TAQ-01) — mesmo
+ * mecanismo de `?view=history`, sem implicar histórico nenhum.
+ */
+export const AGENTE_CONFIG_SEARCH = '?view=agente';
 
 /**
  * Lê o pedido de `location.search`.
@@ -47,5 +56,6 @@ export function readWideViewRequest(search: string): WideViewRequest {
   return {
     history: params.get('view') === 'history' || recordId !== null,
     recordId,
+    agenteConfig: params.get('view') === 'agente',
   };
 }
