@@ -361,17 +361,17 @@ x-agente-key: <valor configurado>        # OMITIR o header inteiro se vazio (D-1
 
 **Se esta tabela parecer pequena:** a maior parte das decisões de produto já estava fechada no CONTEXT.md (D-01 a D-10); as únicas áreas remanescentes são de implementação (nome de arquivo/tela), marcadas como discrição do executor pelo próprio CONTEXT.md.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **O streamer deve respeitar o "gate de budget" do backend (F7 do SDD v2.0) antes de mandar chunks?**
    - What we know: `extension_webhook()` hoje não verifica budget — só insere e empurra pro pipeline. O corte por budget (se existir na v3.0 atual) acontece no pipeline/LLM, não no recebimento do chunk.
    - What's unclear: se em algum caso o backend rejeitar (ex: sessão `finished`), o streamer deve tratar erro silenciosamente (log) — não há requisito de "parar de tentar".
-   - Recommendation: comportamento fire-and-forget com log de erro é suficiente para esta fase; não é um SC desta fase.
+   - RESOLVED: Recommendation: comportamento fire-and-forget com log de erro é suficiente para esta fase; não é um SC desta fase.
 
 2. **Onde exatamente a rota/tela de config deve entrar na navegação do painel lateral?**
    - What we know: não existe hoje nenhuma tela de "configurações" na Taqciti; `PanelRoute` só tem `auto` / `history` / `record`.
    - What's unclear: se o executor deve estender `PanelRoute` com um novo `kind: 'config'`, ou usar uma superfície separada (ex: reaproveitar `popup/App.tsx`, ligando-o via `default_popup` no manifest — o que mudaria o comportamento hoje documentado como proposital de abrir o painel injetado no clique do ícone).
-   - Recommendation: **não** ligar `default_popup` (quebraria o comportamento documentado em `manifest.config.ts:76-85` de abrir o painel injetado); estender `PanelRoute`/`sidepanel` é o caminho que não regride nada existente. Decisão de nome/UX fica com o executor (Claude's Discretion, conforme CONTEXT.md).
+   - RESOLVED: Recommendation: **não** ligar `default_popup` (quebraria o comportamento documentado em `manifest.config.ts:76-85` de abrir o painel injetado); estender `PanelRoute`/`sidepanel` é o caminho que não regride nada existente. Decisão de nome/UX fica com o executor (Claude's Discretion, conforme CONTEXT.md).
 
 ## Environment Availability
 
