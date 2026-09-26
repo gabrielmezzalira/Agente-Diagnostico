@@ -164,6 +164,119 @@ Regras concretas:
 
 ---
 
+## Modelo e Esforço do GSD (OBRIGATÓRIO — aplica-se a `/gsd-plan-phase`, `/gsd-execute-phase`,
+`/gsd-code-review`, `/gsd-ui-phase`, `/gsd-ui-review`, `/gsd-verify-work` e `/gsd-discuss-phase`)
+
+Este projeto tem uma política fixa de modelo/esforço por etapa do GSD, com **uma única exceção
+proposital**: o esforço do `/gsd-execute-phase` fica em aberto, para ser escolhido na hora de rodar.
+Ninguém deve reduzir os itens fixos "pra economizar" ou "pra ir mais rápido" sem alinhar com o time
+primeiro.
+
+> **Atualizado em 2026-09-25, com alinhamento do time:** planejar passou de `max` para `xhigh` e
+> revisar código passou de `high` para `medium` — continuam **FIXO** nos novos valores (a trava é sobre
+> "não altere sem alinhar com o time", não sobre nunca mudar o número). O esforço de **executar** foi
+> deliberadamente **destravado**: o modelo continua fixo em `sonnet`, mas o esforço não vem mais
+> gravado no agente — quem for rodar `/gsd-execute-phase` escolhe o esforço daquela execução. É o
+> único item da tabela com essa liberdade; todo o resto permanece fixo.
+> (Nota: não existe nível "ultracode" nos agentes GSD — isso é um recurso à parte, a keyword que liga o
+> Workflow tool multi-agente numa sessão, sem relação com o effort de um subagente.)
+
+| Etapa | Comando | Agente GSD | Modelo | Esforço | Status |
+|-------|---------|-----------|--------|---------|--------|
+| Planejar | `/gsd-plan-phase` | `gsd-planner` | `opus` | `xhigh` | **FIXO — não alterar** |
+| Validar plano | `/gsd-plan-phase` (checker interno) | `gsd-plan-checker` | perfil padrão | `high` | Fixo |
+| Executar | `/gsd-execute-phase` | `gsd-executor` | `sonnet` (fixo) | **em aberto — escolhido na hora** | **Único item destravado — ver abaixo** |
+| Revisar código | `/gsd-code-review` | `gsd-code-reviewer` | `opus` | `medium` | Fixo |
+| Planejar UI | `/gsd-ui-phase` (pesquisa) | `gsd-ui-researcher` | `sonnet` | `medium` | Fixo |
+| Validar UI-SPEC | `/gsd-ui-phase` (checker interno) | `gsd-ui-checker` | `sonnet` | `medium` | Fixo |
+| Revisar UI implementada | `/gsd-ui-review` | `gsd-ui-auditor` | `sonnet` | `medium` | Fixo |
+| Discutir fase | `/gsd-discuss-phase` (modo padrão, interativo) | *nenhum subagente — roda na sessão atual* | o que a sessão Claude Code estiver usando | o que a sessão estiver usando | Sem trava — ver abaixo |
+| Validar trabalho (UAT) | `/gsd-verify-work` (modo padrão, interativo) | *nenhum subagente — roda na sessão atual* | o que a sessão Claude Code estiver usando | o que a sessão estiver usando | Sem trava — ver abaixo |
+
+#### Como funciona o esforço "em aberto" do `/gsd-execute-phase`
+
+Diferente de `/gsd-discuss-phase` e `/gsd-verify-work` (que rodam inline, sem subagente),
+`/gsd-execute-phase` **sempre** spawna o subagente `gsd-executor` — só que agora sem um esforço
+gravado no frontmatter dele. Na prática isso significa:
+
+- O valor `"gsd-executor": "inherit"` em `effort.agent_overrides` é o que produz esse estado — **não**
+  é a mesma coisa que simplesmente apagar a chave do JSON (apagar faria o resolvedor cair no default de
+  tier do agente, que travaria de novo, só que silenciosamente em `xhigh`).
+- Depois do `effort sync --apply`, o arquivo `~/.claude/agents/gsd-executor.md` fica sem a linha
+  `effort:` — o agente herda o esforço/raciocínio que a sessão do Claude Code estiver usando no
+  momento em que `/gsd-execute-phase` é chamado.
+- **Para escolher o esforço daquela execução:** ajuste o esforço/modelo da sessão atual (o mesmo
+  mecanismo citado para `/gsd-discuss-phase`) antes de digitar `/gsd-execute-phase`.
+- Se no futuro quiser travar de novo num valor fixo, basta voltar a chave para um dos valores válidos
+  (`minimal`/`low`/`medium`/`high`/`xhigh`/`max`) e rodar `effort sync --apply`.
+
+### Onde isso é aplicado de verdade
+
+Esta tabela é a **intenção documentada**; quem aplica de fato é `.planning/config.json`, nas chaves
+`model_overrides` e `effort.agent_overrides`:
+
+```json
+{
+  "model_overrides": {
+    "gsd-planner": "opus",
+    "gsd-executor": "sonnet",
+    "gsd-assumptions-analyzer": "sonnet",
+    "gsd-code-reviewer": "opus",
+    "gsd-ui-researcher": "sonnet",
+    "gsd-ui-checker": "sonnet",
+    "gsd-ui-auditor": "sonnet"
+  },
+  "effort": {
+    "agent_overrides": {
+      "gsd-planner": "xhigh",
+      "gsd-plan-checker": "high",
+      "gsd-executor": "inherit",
+      "gsd-assumptions-analyzer": "high",
+      "gsd-code-reviewer": "medium",
+      "gsd-ui-researcher": "medium",
+      "gsd-ui-checker": "medium",
+      "gsd-ui-auditor": "medium"
+    }
+  }
+}
+```
+
+Depois de qualquer mudança nesse bloco `effort`, é preciso rodar (uma vez) para sincronizar os arquivos
+de agente em `~/.claude/agents/`:
+
+```bash
+node ~/.claude/gsd-core/bin/gsd-tools.cjs effort sync --apply
+```
+
+Sem esse comando, a mudança fica só no `config.json` e não tem efeito real — o esforço de cada agente é
+lido do frontmatter do arquivo `.md` dele, não do config a cada chamada.
+
+### Regras de conduta
+
+- **Nunca** rode `/gsd-config` (o assistente interativo de configuração) e aceite um "Model Profile"
+  padrão sem depois conferir se ele não sobrescreveu `model_overrides`/`effort.agent_overrides` desta
+  tabela — `/gsd-config` mexe em `model_profile` (a camada mais baixa de prioridade), então normalmente
+  não sobrescreve os overrides, mas confira antes de assumir isso.
+- Se este projeto migrar para outra geração de modelo Anthropic, **não precisa editar nada aqui** — os
+  valores `opus`/`sonnet` são aliases de nível que sempre resolvem para a versão atual daquele nível na
+  sessão. Só edite esta tabela se a *política* (qual etapa usa qual nível) mudar, não quando a Anthropic
+  lançar um modelo novo.
+- **`/gsd-discuss-phase` e `/gsd-verify-work` no modo padrão não têm trava de modelo no config** — nenhum
+  dos dois spawna um subagente GSD dedicado; ambos rodam inline na sessão atual. Se uma fase específica
+  exigir raciocínio mais forte num desses dois, troque o modelo da própria sessão Claude Code (`/model`)
+  antes de rodar o comando.
+- **Não existe nível de esforço `ultracode` nos agentes GSD.** Os únicos valores aceitos por
+  `.planning/config.json` → `effort.agent_overrides` são `minimal`, `low`, `medium`, `high`, `xhigh` e
+  `max` (ver `~/.claude/gsd-core/bin/lib/model-resolver.cjs`). Um valor fora dessa lista é
+  silenciosamente ignorado pelo resolvedor — a config parece aplicada mas não faz nada. "Ultracode" é o
+  nome de um recurso diferente: a keyword que liga o Workflow tool (orquestração multi-agente) numa
+  sessão — não tem relação com o effort de um subagente GSD.
+- Qualquer mudança nesta política (subir/descer um nível de esforço, trocar modelo de uma etapa) deve
+  atualizar **os dois lugares juntos**: esta tabela no `CLAUDE.md` e o `.planning/config.json` — nunca só
+  um dos dois, para não divergirem.
+
+---
+
 ## Índice
 
 1. [Visão Geral](#1-visão-geral)
