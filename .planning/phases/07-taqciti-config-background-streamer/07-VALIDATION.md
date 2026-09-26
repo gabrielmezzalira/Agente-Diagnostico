@@ -3,9 +3,9 @@ phase: "7"
 slug: "taqciti-config-background-streamer"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-25"
 ---
 
@@ -40,13 +40,13 @@ created: "2026-09-25"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 7-01-01 | 01 | 1 | TAQ-01 | T-07-01, T-07-02 | Importação pinada no SHA c41309a, merge isolado só sob taqciti/, histórico sem segredo | smoke | `git ls-files taqciti \| wc -l` (284) + `git rev-list --count HEAD^2` (105) | ❌ W0 | ⬜ pending |
-| 7-01-02 | 01 | 1 | TAQ-01 | T-07-03..T-07-06 | Só delta enviado; desligado por padrão; header condicional; envio não bloqueia o flush | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ❌ W0 | ⬜ pending |
-| 7-01-03 | 01 | 1 | TAQ-01 | T-07-06, T-07-07 | Bordas do delta (vazio, codificação, idempotência, captionId reaproveitado, reunião nova) e da config | unit | `cd taqciti && npx vitest run src/features/agente/wordDelta.test.ts src/shared/config/agenteConfig.test.ts` | ❌ W0 | ⬜ pending |
-| 7-02-01 | 02 | 2 | TAQ-01 | T-07-08, T-07-09 | Config normalizada, patch serializado, chave só em storage local | unit | `cd taqciti && npx vitest run src/shared/config/agenteConfigStore.test.ts` | ❌ W0 | ⬜ pending |
-| 7-02-02 | 02 | 2 | TAQ-01 | T-07-10, T-07-11 | Config salva liga o streaming; religar sem backfill; reinício sem reenvio | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ❌ W0 | ⬜ pending |
-| 7-03-01 | 03 | 3 | TAQ-01 | T-07-13 | Rota `?view=agente` vence a fase | unit | `cd taqciti && npx vitest run src/sidepanel/route.test.ts` | ✅ (estendido) | ⬜ pending |
-| 7-03-02 | 03 | 3 | TAQ-01 | T-07-12, T-07-14, T-07-15 | Chave mascarada, sem session_id adivinhado, manifesto/painel injetado intocados | component + suíte | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreen.test.tsx` + `cd taqciti && npm run typecheck && npm run lint && npm test && npm run build` | ❌ W0 | ⬜ pending |
+| 7-01-01 | 01 | 1 | TAQ-01 | T-07-01, T-07-02 | Importação pinada no SHA c41309a, merge isolado só sob taqciti/, histórico sem segredo | smoke | `git rev-list --count HEAD^2` (105, no merge 9a26937) + diff contra o 1º pai só sob taqciti/ (0 fora) | ✅ | ✅ green |
+| 7-01-02 | 01 | 1 | TAQ-01 | T-07-03..T-07-06 | Só delta enviado; desligado por padrão; header condicional; envio não bloqueia o flush | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` (10/10, inclui os 4 casos do plano 02) | ✅ | ✅ green |
+| 7-01-03 | 01 | 1 | TAQ-01 | T-07-06, T-07-07 | Bordas do delta (vazio, codificação, idempotência, captionId reaproveitado, reunião nova) e da config | unit | `cd taqciti && npx vitest run src/features/agente/wordDelta.test.ts src/shared/config/agenteConfig.test.ts` | ✅ | ✅ green |
+| 7-02-01 | 02 | 2 | TAQ-01 | T-07-08, T-07-09 | Config normalizada, patch serializado, chave só em storage local | unit | `cd taqciti && npx vitest run src/shared/config/agenteConfigStore.test.ts` (11/11) | ✅ | ✅ green |
+| 7-02-02 | 02 | 2 | TAQ-01 | T-07-10, T-07-11 | Config salva liga o streaming; religar sem backfill; reinício sem reenvio | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ✅ | ✅ green |
+| 7-03-01 | 03 | 3 | TAQ-01 | T-07-13 | Rota `?view=agente` vence a fase | unit | `cd taqciti && npx vitest run src/sidepanel/route.test.ts` | ✅ (estendido) | ✅ green |
+| 7-03-02 | 03 | 3 | TAQ-01 | T-07-12, T-07-14, T-07-15 | Chave mascarada, sem session_id adivinhado, manifesto/painel injetado intocados | component + suíte | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreen.test.tsx` (6/6) + `cd taqciti && npm run typecheck && npm run lint && npm test && npm run build` (33 arquivos, 439 testes) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -56,9 +56,9 @@ created: "2026-09-25"
 
 ## Wave 0 Requirements
 
-- [ ] `taqciti/` importado via `git subtree add` (sem `--squash`) — pré-requisito de qualquer arquivo da Taqciti existir neste repo
-- [ ] `npm ci` dentro de `taqciti/` — `node_modules` ausente hoje
-- [ ] `taqciti/src/background/agenteStreamer.test.ts` — cobre TAQ-01 (diff por segmento, gate on/off, header condicional, reset de sessão)
+- [x] `taqciti/` importado via `git subtree add` (sem `--squash`) — merge commit `9a26937`, 105 commits, trailer `git-subtree-split: c41309a1c58f3fa06095db877e6dc8f1dbd65635`
+- [x] `npm ci` dentro de `taqciti/` — `node_modules` instalado e ignorado pelo git
+- [x] `taqciti/src/background/agenteStreamer.test.ts` — cobre TAQ-01 (diff por segmento, gate on/off, header condicional, reset de sessão) — 10/10 verde
 
 ---
 
@@ -71,13 +71,23 @@ created: "2026-09-25"
 
 ---
 
+## Validation Audit 2026-09-26
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All 7 per-task automated commands were re-run directly against the post-execution codebase and confirmed green (subtree merge stats, `agenteStreamer.test.ts` 10/10, `wordDelta.test.ts`+`agenteConfig.test.ts`, `agenteConfigStore.test.ts` 11/11, `route.test.ts`, `AgenteConfigScreen.test.tsx` 6/6, full taqciti CI battery). No auditor subagent was needed since no gap existed to fill.
+
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** Nyquist-compliant — all requirements have automated verification. The 2 Manual-Only items (SC1 real Meet call, SC2 Gerar Documento) are correctly out of scope for automated coverage and remain pending for `/gsd-verify-work`, per the Manual-Only table above.
