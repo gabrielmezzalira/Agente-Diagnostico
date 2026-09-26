@@ -213,11 +213,11 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Importação da Taqciti em `taqciti/` via `git subtree` (commit isolado, com histórico — D-01/D-02/D-03) + TRACER do streaming ponta a ponta: flush agrupado de 250 ms → delta palavra-a-palavra por segmento → `POST /webhook/extension` com `x-agente-key` condicional, desligado por padrão (D-06/D-07/D-08/D-09/D-10) + casos de borda (TAQ-01)
+- [x] 07-01-PLAN.md — Importação da Taqciti em `taqciti/` via `git subtree` (commit isolado, com histórico — D-01/D-02/D-03) + TRACER do streaming ponta a ponta: flush agrupado de 250 ms → delta palavra-a-palavra por segmento → `POST /webhook/extension` com `x-agente-key` condicional, desligado por padrão (D-06/D-07/D-08/D-09/D-10) + casos de borda (TAQ-01)
 
 **Wave 2** *(bloqueada na conclusão da Wave 1)*
 
@@ -283,7 +283,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
-| 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
+| 7. Taqciti Config + Background Streamer | 1/3 | In Progress|  |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
