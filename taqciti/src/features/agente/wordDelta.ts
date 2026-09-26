@@ -63,7 +63,7 @@ export function primeCursor(session: MeetingSessionState, sessionId: string): St
 export function computeSegmentDeltas(
   cursor: StreamCursor,
   segments: readonly LiveSegment[],
-): StreamStep {
+): { cursor: StreamCursor; deltas: SegmentDelta[] } {
   const sent: Record<string, number> = {};
   const deltas: SegmentDelta[] = [];
 
