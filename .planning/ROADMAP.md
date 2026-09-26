@@ -213,7 +213,7 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 **Wave 1**
 
@@ -225,7 +225,7 @@ Plans:
 
 **Wave 3** *(bloqueada na conclusão da Wave 2)*
 
-- [ ] 07-03-PLAN.md — Tela "Agente Diagnóstico" na saída larga (`?view=agente`, link na tela inicial, sem `default_popup`): toggle, session_id manual, URL e chave mascarada + verificação final (typecheck/lint/test/build da Taqciti, pytest do backend, nada fora do escopo alterado) (D-04/D-05/D-08/D-09/D-10, TAQ-01)
+- [x] 07-03-PLAN.md — Tela "Agente Diagnóstico" na saída larga (`?view=agente`, link na tela inicial, sem `default_popup`): toggle, session_id manual, URL e chave mascarada + verificação final (typecheck/lint/test/build da Taqciti, pytest do backend, nada fora do escopo alterado) (D-04/D-05/D-08/D-09/D-10, TAQ-01)
 
 ### Phase 8: Taqciti Session Association
 
@@ -283,7 +283,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
-| 7. Taqciti Config + Background Streamer | 2/3 | In Progress|  |
+| 7. Taqciti Config + Background Streamer | 3/3 | In Progress|  |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |

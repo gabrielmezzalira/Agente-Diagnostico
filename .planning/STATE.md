@@ -4,17 +4,17 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 07
 current_phase_name: Taqciti Config + Background Streamer
-status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-09-26T02:10:26.571Z"
+status: verifying
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-09-26T11:49:16.130Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 07 execution started
-state_head: 76447872660b2c6b1727850c49b21beb91017640
+state_head: dd5a76d50666600fe5506b9633da2a892cec3e98
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 23
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 Phase: 07 (Taqciti Config + Background Streamer) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-25 — Phase 07 execution started
 
 Progress: [██████░░░░] 60%
@@ -82,6 +82,7 @@ Progress: [██████░░░░] 60%
 | Phase 06 P02 | 35min | 2 tasks | 7 files |
 | Phase 07 P07-01 | ~30min | 3 tasks | 7 files |
 | Phase 07 P07-02 | ~20min | 2 tasks | 5 files |
+| Phase 07 P07-03 | ~35min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,9 @@ Recent decisions affecting current work:
 - [Phase 07]: [Phase 07-01]: precondicao da Task 1 tratada como satisfeita incluindo .planning/state.json (companheiro JSON de STATE.md) na mesma categoria de bookkeeping do GSD ja prevista pela Passo 3 do plano
 - [Phase 07]: [Phase 07-02]: createAgenteConfigReader registra o listener de onChanged ANTES da leitura inicial (mesma ordem de prefsStore.ts) para nao perder mudanca que chegue entre as duas operacoes assincronas
 - [Phase 07]: [Phase 07-02]: streamer passa a ler a config real do storage via createAgenteConfigReader() no lugar de DEFAULT_AGENTE_CONFIG fixo - gravar ligado+session_id+URL no storage liga a transmissao sem recompilar
+- [Phase 07]: [Phase 07] [07-03]: request.agenteConfig decidido em App.tsx antes de request.history e do switch de fase - pedido explicito da URL vence, mesma logica do historico
+- [Phase 07]: [Phase 07] [07-03]: readiness deriva da config salva (nao do rascunho em edicao) - digitar nao muda o status ate Salvar; so o toggle grava na hora e muda o status imediatamente
+- [Phase 07]: [Phase 07] [07-03]: teste de componente descobriu que act(async) so comita no fim do callback - vi.waitFor chamado de dentro do act trava ate o timeout; correcao foi o helper flushUntil fazendo o polling fora do act
 
 ### Pending Todos
 
@@ -137,6 +141,7 @@ None yet.
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
+- [Phase 07] SC1 (chamada real do Meet) e SC2 (Gerar Documento sem regressao) do plano 07-03 ainda nao verificados manualmente - pendentes para /gsd-verify-work (human-check da Task 2)
 
 ## Deferred Items
 
@@ -154,6 +159,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-26T02:10:26.430Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-09-26T11:49:15.959Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
