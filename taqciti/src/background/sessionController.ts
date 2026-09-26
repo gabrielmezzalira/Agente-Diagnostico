@@ -24,6 +24,7 @@ import { logger } from '@/shared/services/log';
 import { finalizeStaleRecordings, upsertRecord } from './history';
 import { bumpMetrics } from './metrics';
 import { forgetPanelTab, panelTabs } from './panelTabs';
+import { onSessionFlushed } from './agenteStreamer';
 
 let state: MeetingState = IDLE_STATE;
 let lastLiveSaveAt = 0;
@@ -171,6 +172,7 @@ async function flushState(): Promise<void> {
   }
   await writeSession(STORAGE_KEYS.state, state);
   broadcast();
+  void onSessionFlushed(state).catch((error) => logger.error('streamer do Agente falhou', error));
 }
 
 function scheduleFlush(): void {
