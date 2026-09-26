@@ -287,3 +287,29 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 7 deferred UAT follow-up: caption quality/punctuation lag (BACKLOG)
+
+**Goal:** Improve punctuation and coherence of the text streamed to the Agente, which currently comes straight from Google Meet's native captions (CC) with no cleanup pass
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "a pontuação, entendimento das falas pelo taqciti estão muito defasada" — Meet's own captions are the source; a fix would require an AI cleanup/rewrite pass over the raw caption text, which is new scope, not a Phase 7 defect (deferred 2026-09-26)
+
+### Phase 999.2: Follow-up — Phase 7 deferred UAT follow-up: make the Agente Diagnóstico link more prominent in Taqciti (BACKLOG)
+
+**Goal:** Make the "Agente Diagnóstico · streaming ao vivo" entry point on the Taqciti home screen more visually explicit (currently a small muted-caption text link)
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "a parte de conectar com a gente diagnostico está muito pequena na aba do taqciti, quero deixar mais explicito essa conexão" — cosmetic/UX polish, out of Phase 7's scope (deferred 2026-09-26)
+
+### Phase 999.3: Follow-up — Phase 7 deferred UAT follow-up: option to not generate a transcript for a meeting (BACKLOG)
+
+**Goal:** Let the user opt a given Taqciti meeting out of transcript generation entirely (today every captured meeting produces a transcript)
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "não existe uma opção de não querer gerar uma transcrição" — product-scope decision, needs team alignment before planning (deferred 2026-09-26)
