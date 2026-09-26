@@ -14,5 +14,26 @@
   },
   "ship": {
     "pr_body_sections": []
+  },
+  "model_overrides": {
+    "gsd-planner": "opus",
+    "gsd-executor": "sonnet",
+    "gsd-assumptions-analyzer": "sonnet",
+    "gsd-code-reviewer": "opus",
+    "gsd-ui-researcher": "sonnet",
+    "gsd-ui-checker": "sonnet",
+    "gsd-ui-auditor": "sonnet"
+  },
+  "effort": {
+    "agent_overrides": {
+      "gsd-planner": "xhigh",
+      "gsd-executor": "inherit",
+      "gsd-assumptions-analyzer": "high",
+      "gsd-code-reviewer": "medium",
+      "gsd-plan-checker": "high",
+      "gsd-ui-researcher": "medium",
+      "gsd-ui-checker": "medium",
+      "gsd-ui-auditor": "medium"
+    }
   }
 }
