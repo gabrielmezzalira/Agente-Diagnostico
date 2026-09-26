@@ -1,0 +1,2 @@
+*.sh text eol=lf
+installer/macos/postinstall text eol=lf
