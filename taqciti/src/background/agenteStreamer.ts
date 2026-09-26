@@ -12,12 +12,12 @@
 import type { MeetingState } from '@/shared/types/domain';
 import {
   AGENTE_REQUEST_TIMEOUT_MS,
-  DEFAULT_AGENTE_CONFIG,
   buildExtensionChunkRequest,
   isStreamingReady,
   type AgenteConfig,
   type ExtensionChunkRequest,
 } from '@/shared/config/agenteConfig';
+import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
 import { planStreamStep, type StreamBinding, type StreamCursor } from '@/features/agente/wordDelta';
 import { logger } from '@/shared/services/log';
 
@@ -80,8 +80,16 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   return { onSessionFlushed };
 }
 
+/**
+ * Padrão de produção (Fase 7, plano 02, D-08): lê a config salva em
+ * `chrome.storage.local` (`agenteConfigStore.ts`), com cache — não o valor
+ * fixo `DEFAULT_AGENTE_CONFIG` do plano 01, que mantinha o streaming sempre
+ * desligado até este plano ligar a leitura em runtime. `createAgenteConfigReader()`
+ * é preguiçoso: só toca o storage na primeira chamada de `loadConfig`, então
+ * importar este módulo continua sem efeito colateral.
+ */
 let activeDeps: AgenteStreamerDeps = {
-  loadConfig: () => Promise.resolve(DEFAULT_AGENTE_CONFIG),
+  loadConfig: createAgenteConfigReader(),
   send: defaultSend,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);

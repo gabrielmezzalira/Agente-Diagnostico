@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
-import { STATE_FLUSH_INTERVAL_MS } from '@/shared/config/constants';
+import { STATE_FLUSH_INTERVAL_MS, STORAGE_KEYS } from '@/shared/config/constants';
 import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 
 const AGENTE_URL = 'http://agente.test';
@@ -244,6 +244,209 @@ describe('não bloqueante em erro de rede', () => {
       const saved = mock.session.values['taq:state'] as MeetingState | undefined;
       expect(saved?.session?.segments).toHaveLength(1);
     });
+  });
+});
+
+describe('configuração vinda do storage (D-08)', () => {
+  it('sem configureAgenteStreamer: grava a config no storage e o streamer transmite (TAQ-01/SC1)', async () => {
+    const { sessionController } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`${AGENTE_URL}/webhook/extension`);
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'olá tudo bem',
+    });
+  });
+
+  it('desligar para o envio na hora; religar não reenvia o que foi falado desligado (D-09)', async () => {
+    const { sessionController } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // Desliga pelo storage: nenhum fetch novo a partir do próximo flush.
+    await patchAgenteConfig({ streamingEnabled: false });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem pausa aqui', atMs: 1300 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(true).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Religa: o primeiro flush pós-religar só re-ancora o cursor (prime) —
+    // nada do que foi falado desligado é enviado (D-09).
+    await patchAgenteConfig({ streamingEnabled: true });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem pausa aqui e agora', atMs: 1500 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(true).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Só o texto realmente novo dali para frente é enviado — nunca "pausa aqui".
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: {
+        captionId: 'c1',
+        speaker: 'Ana',
+        text: 'olá tudo bem pausa aqui e agora sim',
+        atMs: 1700,
+      },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    const [, init] = fetchMock.mock.calls[1]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'sim' });
+  });
+
+  it('reinício do service worker: primeiro flush pós-reinício não reenvia texto antigo', async () => {
+    const { sessionController } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // Reinício do service worker: módulos recarregados (cursor/queue em memória
+    // somem), estado reidratado do storage — igual ao Meet em produção.
+    vi.resetModules();
+    const restarted = await import('./sessionController');
+    await restarted.hydrate();
+
+    await restarted.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem e mais isso', atMs: 1600 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(true).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await restarted.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem e mais isso ok', atMs: 1800 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    const [, init] = fetchMock.mock.calls[1]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'ok' });
+  });
+
+  it('custo: chrome.storage.local.get da chave taq:agenteConfig é chamado uma única vez em vários flushes', async () => {
+    const { sessionController, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    const countAgenteConfigReads = () =>
+      mock.local.get.mock.calls.filter(([keys]) => keys === STORAGE_KEYS.agenteConfig).length;
+    const readsBeforeFlushes = countAgenteConfigReads();
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+
+    const novasPalavras = ['zero', 'um', 'dois'];
+    let texto = 'olá tudo bem';
+    for (let i = 0; i < novasPalavras.length; i += 1) {
+      texto = `${texto} ${novasPalavras[i]}`;
+      await sessionController.dispatch({
+        type: 'CAPTION_CHUNK',
+        chunk: { captionId: 'c1', speaker: 'Ana', text: texto, atMs: 1100 + i * 300 },
+      });
+      await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(i + 1));
+    }
+
+    expect(countAgenteConfigReads() - readsBeforeFlushes).toBe(1);
   });
 });
 
