@@ -213,7 +213,19 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Importação da Taqciti em `taqciti/` via `git subtree` (commit isolado, com histórico — D-01/D-02/D-03) + TRACER do streaming ponta a ponta: flush agrupado de 250 ms → delta palavra-a-palavra por segmento → `POST /webhook/extension` com `x-agente-key` condicional, desligado por padrão (D-06/D-07/D-08/D-09/D-10) + casos de borda (TAQ-01)
+
+**Wave 2** *(bloqueada na conclusão da Wave 1)*
+
+- [ ] 07-02-PLAN.md — Config do Agente editável em runtime: store em `chrome.storage.local` (`taq:agenteConfig`, fila de patch + `onChanged`) ligado como fonte do streamer — liga/desliga sem recompilar, sem backfill ao religar (D-08/D-09/D-10, TAQ-01)
+
+**Wave 3** *(bloqueada na conclusão da Wave 2)*
+
+- [ ] 07-03-PLAN.md — Tela "Agente Diagnóstico" na saída larga (`?view=agente`, link na tela inicial, sem `default_popup`): toggle, session_id manual, URL e chave mascarada + verificação final (typecheck/lint/test/build da Taqciti, pytest do backend, nada fora do escopo alterado) (D-04/D-05/D-08/D-09/D-10, TAQ-01)
 
 ### Phase 8: Taqciti Session Association
 

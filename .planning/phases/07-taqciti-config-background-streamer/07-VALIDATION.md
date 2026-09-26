@@ -40,7 +40,13 @@ created: "2026-09-25"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 7-01-01 | 01 | 1 | TAQ-01 | — | N/A (importação via subtree) | smoke | `git ls-files taqciti/ \| wc -l` | ❌ W0 | ⬜ pending |
+| 7-01-01 | 01 | 1 | TAQ-01 | T-07-01, T-07-02 | Importação pinada no SHA c41309a, merge isolado só sob taqciti/, histórico sem segredo | smoke | `git ls-files taqciti \| wc -l` (284) + `git rev-list --count HEAD^2` (105) | ❌ W0 | ⬜ pending |
+| 7-01-02 | 01 | 1 | TAQ-01 | T-07-03..T-07-06 | Só delta enviado; desligado por padrão; header condicional; envio não bloqueia o flush | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ❌ W0 | ⬜ pending |
+| 7-01-03 | 01 | 1 | TAQ-01 | T-07-06, T-07-07 | Bordas do delta (vazio, codificação, idempotência, captionId reaproveitado, reunião nova) e da config | unit | `cd taqciti && npx vitest run src/features/agente/wordDelta.test.ts src/shared/config/agenteConfig.test.ts` | ❌ W0 | ⬜ pending |
+| 7-02-01 | 02 | 2 | TAQ-01 | T-07-08, T-07-09 | Config normalizada, patch serializado, chave só em storage local | unit | `cd taqciti && npx vitest run src/shared/config/agenteConfigStore.test.ts` | ❌ W0 | ⬜ pending |
+| 7-02-02 | 02 | 2 | TAQ-01 | T-07-10, T-07-11 | Config salva liga o streaming; religar sem backfill; reinício sem reenvio | e2e (Vitest) | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ❌ W0 | ⬜ pending |
+| 7-03-01 | 03 | 3 | TAQ-01 | T-07-13 | Rota `?view=agente` vence a fase | unit | `cd taqciti && npx vitest run src/sidepanel/route.test.ts` | ✅ (estendido) | ⬜ pending |
+| 7-03-02 | 03 | 3 | TAQ-01 | T-07-12, T-07-14, T-07-15 | Chave mascarada, sem session_id adivinhado, manifesto/painel injetado intocados | component + suíte | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreen.test.tsx` + `cd taqciti && npm run typecheck && npm run lint && npm test && npm run build` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
