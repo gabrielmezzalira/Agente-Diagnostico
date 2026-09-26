@@ -15,6 +15,7 @@ import { Wordmark } from '@/shared/ui/Wordmark';
 import { countWords, formatCount } from '@/shared/ui/format';
 import { HistoryCard } from '../components/HistoryCard';
 import { RecordDetail } from '../components/RecordDetail';
+import { AGENTE_CONFIG_SEARCH } from '../route';
 
 interface HomeScreenProps {
   /**
@@ -70,6 +71,13 @@ export function HomeScreen({ initialRecordId = null }: HomeScreenProps) {
             Entre numa chamada do Google Meet e a transcrição começa sozinha. Sem
             legendas cobrindo a tela, sem apertar nada.
           </p>
+
+          <a
+            href={AGENTE_CONFIG_SEARCH}
+            className="mt-2 inline-block text-caption text-muted hover:text-foreground"
+          >
+            Agente Diagnóstico · streaming ao vivo
+          </a>
 
           {records.length > 0 && (
             <p className="mt-3 text-caption font-semibold uppercase tracking-wide text-muted/75">

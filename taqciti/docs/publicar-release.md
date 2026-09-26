@@ -76,6 +76,25 @@ node scripts/smokePdf.mjs
 
 ---
 
+### Integração com o Agente Diagnóstico (opcional)
+
+`VITE_AGENTE_BACKEND_URL` (padrão `http://localhost:8000`) e
+`VITE_AGENTE_STREAMING_ENABLED` (padrão `false`) são diferentes das duas
+variáveis da tabela acima: elas são só **valores-padrão** para quem nunca
+abriu a tela de configuração. Depois de instalado, qualquer pessoa troca os
+dois na própria extensão — tela "Agente Diagnóstico" (link na tela inicial,
+ou `?view=agente`) — sem precisar recompilar nem cortar release nova.
+Configuração vive em `src/shared/config/agenteConfig.ts` e é gravada em
+`chrome.storage.local` (`src/shared/config/agenteConfigStore.ts`).
+
+A chave `x-agente-key` (autenticação opcional do webhook) **não tem** variável
+de build de propósito — não existe `VITE_AGENTE_KEY` nem qualquer valor
+embutido no bundle. Ela só é colada na mesma tela quando o time decidir
+ativar `EXTENSION_SHARED_KEY` no backend do Agente (decisão em aberto do
+time, fora desta release).
+
+---
+
 ## Cortar a release
 
 ### 3. Subir a versão nos dois lugares
