@@ -890,6 +890,54 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     });
   });
 
+  it('WR-12: se loadConfig falhar no tick, a fala pendente não fica sem timer — o retry manda depois', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    let loadConfigCalls = 0;
+    const loadConfig = vi.fn(() => {
+      loadConfigCalls += 1;
+      // A 3ª chamada é o tick que dispara depois do silêncio — falha só uma
+      // vez, pra provar que o retry defensivo (WR-12) se recupera sozinho.
+      if (loadConfigCalls === 3) return Promise.reject(new Error('storage indisponível'));
+      return Promise.resolve(READY_CONFIG);
+    });
+    agenteStreamer.configureAgenteStreamer({ loadConfig });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'fala pendente', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    // O silêncio bate — o tick roda e a 3ª chamada de loadConfig falha.
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await agenteStreamer.whenAgenteStreamerIdle();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Sem o retry defensivo, a fala ficaria presa aqui pra sempre — nenhum
+    // timer novo seria armado depois de uma falha no tick.
+    await vi.advanceTimersByTimeAsync(1_000); // RETRY_MIN_MS (agenteStreamer.ts)
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'fala pendente' });
+  });
+
   it('cadência local intacta: o estado é gravado e retransmitido em 250ms, independente do envio ao Agente', async () => {
     const { sessionController, agenteStreamer, mock } = await fresh();
     const fetchMock = createFetchMock();

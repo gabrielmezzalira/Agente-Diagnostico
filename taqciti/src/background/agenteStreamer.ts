@@ -52,6 +52,9 @@ const PHRASE_TIMING: PhraseTiming = {
   maxWaitMs: AGENTE_PHRASE_MAX_WAIT_MS,
 };
 
+/** Atraso do timer de retry defensivo do `tick` (WR-12) — nunca laço apertado. */
+const RETRY_MIN_MS = 1_000;
+
 /**
  * Cria uma instância do streamer: cursor em memória + buffer de falas
  * pendentes + timer único da janela + fila de promessas (cada passo espera o
@@ -144,12 +147,24 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
 
   /** Callback do timer da janela: relê a config (pode ter mudado) antes de mandar. */
   async function tick(): Promise<void> {
-    const config = await deps.loadConfig();
-    if (!isStreamingReady(config)) {
-      discard();
-      return;
+    try {
+      const config = await deps.loadConfig();
+      if (!isStreamingReady(config)) {
+        discard();
+        return;
+      }
+      drain(config, Date.now(), false);
+    } finally {
+      // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
+      // isto, uma fala pendente ficava sem timer até alguém falar de novo
+      // (ou se perdia). Atraso mínimo pra não virar laço apertado.
+      if (timer === null && pending.length > 0) {
+        timer = setTimeout(() => {
+          timer = null;
+          void enqueue(tick);
+        }, RETRY_MIN_MS);
+      }
     }
-    drain(config, Date.now(), false);
   }
 
   function onSessionFlushed(state: MeetingState): Promise<void> {
