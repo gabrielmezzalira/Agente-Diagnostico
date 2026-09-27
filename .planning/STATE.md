@@ -2,44 +2,45 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 07
-current_phase_name: Taqciti Config + Background Streamer
-status: verifying
-stopped_at: Completed 07-04-PLAN.md (gap closure G-07-1/G-07-2)
-last_updated: "2026-09-27T01:11:12.674Z"
-last_activity: 2026-09-25
-last_activity_desc: Phase 07 execution started
-state_head: 2d0727d255d00b37d206cc4a1164361912c47d7f
+current_phase: 8
+current_phase_name: Taqciti Session Association
+status: planning
+stopped_at: Phase 7 complete, ready to plan Phase 8
+last_updated: "2026-09-27T13:18:52.007Z"
+last_activity: 2026-09-27
+last_activity_desc: Phase 7 complete, transitioned to Phase 8
+state_head: 7f2dd542f16ab8bc074f5d4b169fed5c0ebe2468
 progress:
   total_phases: 10
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 24
   completed_plans: 24
+  percent: 70
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-25)
+See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 07 — Taqciti Config + Background Streamer
+**Current focus:** Phase 08 — Taqciti Session Association
 
 ## Current Position
 
-Phase: 07 (Taqciti Config + Background Streamer) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-25 — Phase 07 execution started
+Phase: 8 — Taqciti Session Association
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-27 — Phase 7 complete, transitioned to Phase 8
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 24
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -53,6 +54,7 @@ Progress: [██████░░░░] 60%
 | 04 | 4 | - | - |
 | 05 | 5 | - | - |
 | 06 | 2 | - | - |
+| 7 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -144,7 +146,7 @@ None yet.
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
-- [Phase 07] SC1 (chamada real do Meet) e SC2 (Gerar Documento sem regressao) do plano 07-03 ainda nao verificados manualmente - pendentes para /gsd-verify-work (human-check da Task 2)
+- [Phase 07] RESOLVIDO (2026-09-27): SC1 e SC2 verificados via /gsd-verify-work. SC1 encontrou G-07-1/G-07-2 (fala fragmentada em varias linhas) na primeira rodada; fechados pelo plano 07-04 (janela de agrupamento por fala) e confirmados OK no reteste ao vivo no Meet. SC2 (Gerar Documento sem regressao) passou de primeira.
 
 ## Deferred Items
 
@@ -162,6 +164,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-27T01:11:12.469Z
-Stopped at: Completed 07-04-PLAN.md (gap closure G-07-1/G-07-2)
+Last session: 2026-09-27T13:20:00Z
+Stopped at: Phase 7 complete (UAT passed, re-verified 30/30), ready to plan Phase 8
 Resume file: None
