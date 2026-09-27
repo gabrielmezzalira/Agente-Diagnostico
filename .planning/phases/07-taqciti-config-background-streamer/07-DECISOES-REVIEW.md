@@ -51,6 +51,13 @@ nesta ordem:
 | 6 | `fix(07): CR-01` esperar e avisar | comportamento + UI | `features/agente/wordDelta.ts` (`waitingForNewMeeting`, `confirmedMeetingId`), `agenteConfig.ts` (campo `confirmedMeetingId`), `agenteStreamerInstance.ts` (reporta espera), `AgenteConfigScreen.tsx` (aviso + botão), testes |
 | 7 | `docs(07)`: atualiza REVIEW-FIX + disposição | doc | `07-REVIEW-FIX.md`, `07-REVIEW-DISPOSITION.md` |
 
+**Execução (2026-09-27):** feito na ordem acima. Para manter `agenteStreamerInstance.ts` perto de ~200 linhas,
+entraram três refactors mecânicos extras, cada um em commit próprio e sem mudar teste nenhum: `51a6902` (timer
+da janela), `6139853` (deps em arquivo próprio, `buildPhraseRequests`, `restoreOnce`) e `2ef854b`
+(`agenteStatusReporter`). Commits de correção: WR-01 `1a5c10a`, WR-11 `6814865`, WR-02 `634f541`,
+WR-07 `a73349d`, CR-01 `c17cefb`. Resultado: 517/517 testes (eram 480), typecheck e build ok.
+Arquivo final: `agenteStreamerInstance.ts` com 216 linhas.
+
 ## 3. Riscos de cada ação
 
 | # | Risco concreto |
