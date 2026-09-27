@@ -5,15 +5,15 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: skipped
+    disposition: fixed
     title: "Reunião nova com o mesmo session_id trava o streaming em silêncio, enquanto a UI diz \"Ligado\""
   - id: WR-01
     severity: warning
-    disposition: skipped
+    disposition: fixed
     title: "O cursor avança antes do envio ser confirmado: falha de rede perde palavras de vez (agora até 5 s de fala), e a ordem de chegada não é garantida"
   - id: WR-02
     severity: warning
-    disposition: skipped
+    disposition: fixed
     title: "Depois de reiniciar o service worker ou religar o toggle, palavras são descartadas (agora também tudo o que estava pendente na janela)"
   - id: WR-03
     severity: warning
@@ -33,7 +33,7 @@ findings:
     title: "A chave `x-agente-key` pode ir em texto puro por `http://` para qualquer host, e digitar \"localhost:8000\" vira https e quebra o dev local"
   - id: WR-07
     severity: warning
-    disposition: skipped
+    disposition: fixed
     title: "O status \"Ligado — está sendo enviada\" não reflete a entrega real (401, 404 e erros de rede ficam invisíveis)"
   - id: WR-08
     severity: warning
@@ -45,7 +45,7 @@ findings:
     title: "Testes da janela por fala que passam por construção: o \"drain\" é um passo real com efeito colateral"
   - id: WR-11
     severity: warning
-    disposition: skipped
+    disposition: fixed
     title: "Desligar e religar o toggle dentro da janela envia a fala pendente (D-09 não é reativo)"
   - id: WR-12
     severity: warning
@@ -101,24 +101,24 @@ findings:
     title: "A fala pendente de uma sessão antiga sai com a URL e a chave atuais, não as do momento em que foi acumulada"
 open: 11
 total: 24
-recorded: 2026-09-27T14:05:43.812Z
+recorded: 2026-09-27T15:39:56.559Z
 ---
 
 # Phase 07: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | skipped | 07-REVIEW-FIX.md |
-| WR-01 | warning | skipped | 07-REVIEW-FIX.md |
-| WR-02 | warning | skipped | 07-REVIEW-FIX.md |
+| CR-01 | critical | fixed | 07-REVIEW-FIX.md |
+| WR-01 | warning | fixed | 07-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-03 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-04 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-05 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-06 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-07 | warning | skipped | 07-REVIEW-FIX.md |
+| WR-07 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-08 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-10 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-11 | warning | skipped | 07-REVIEW-FIX.md |
+| WR-11 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-12 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-13 | warning | fixed | 07-REVIEW-FIX.md |
 | IN-01 | info | open | - |
