@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 07
 current_phase_name: Taqciti Config + Background Streamer
 status: verifying
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-09-26T11:49:16.130Z"
+stopped_at: Completed 07-04-PLAN.md (gap closure G-07-1/G-07-2)
+last_updated: "2026-09-27T01:11:12.674Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 07 execution started
-state_head: dd5a76d50666600fe5506b9633da2a892cec3e98
+state_head: 2d0727d255d00b37d206cc4a1164361912c47d7f
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 24
+  completed_plans: 24
 ---
 
 # Project State
@@ -83,6 +83,7 @@ Progress: [██████░░░░] 60%
 | Phase 07 P07-01 | ~30min | 3 tasks | 7 files |
 | Phase 07 P07-02 | ~20min | 2 tasks | 5 files |
 | Phase 07 P07-03 | ~35min | 2 tasks | 8 files |
+| Phase 07 P04 | 24min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ Recent decisions affecting current work:
 - [Phase 07]: [Phase 07] [07-03]: request.agenteConfig decidido em App.tsx antes de request.history e do switch de fase - pedido explicito da URL vence, mesma logica do historico
 - [Phase 07]: [Phase 07] [07-03]: readiness deriva da config salva (nao do rascunho em edicao) - digitar nao muda o status ate Salvar; so o toggle grava na hora e muda o status imediatamente
 - [Phase 07]: [Phase 07] [07-03]: teste de componente descobriu que act(async) so comita no fim do callback - vi.waitFor chamado de dentro do act trava ate o timeout; correcao foi o helper flushUntil fazendo o polling fora do act
+- [Phase 07]: D-06 refinado (aprovado pelo usuario em 2026-09-26, opcao phrase-window): envio ao Agente ganha janela propria por fala - silencio 1500ms (AGENTE_PHRASE_QUIET_MS), teto 5000ms (AGENTE_PHRASE_MAX_WAIT_MS), envio imediato ao sair de 'recording'; a parte estrutural do D-06 (alimentado so por flushState()) continua valendo
+- [Phase 07]: Chamar onSessionFlushed()/step() enquanto o streaming esta desligado reseta o cursor do wordDelta para null (comportamento pre-existente) - o primeiro flush pos-religar sempre re-ancora (prime) antes de qualquer envio novo
 
 ### Pending Todos
 
@@ -159,6 +162,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-26T11:49:15.959Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-09-27T01:11:12.469Z
+Stopped at: Completed 07-04-PLAN.md (gap closure G-07-1/G-07-2)
 Resume file: None
