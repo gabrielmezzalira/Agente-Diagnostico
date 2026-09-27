@@ -32,6 +32,7 @@ import {
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
 import { logger } from '@/shared/services/log';
+import { createAgenteSender } from './agenteSender';
 
 export interface AgenteStreamerDeps {
   loadConfig: () => Promise<AgenteConfig>;
@@ -64,6 +65,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
    * rearma timer ou envia com o `deps` desta instância descartada.
    */
   let disposed = false;
+  /** Fila de envio ordenada, com novas tentativas (WR-01). */
+  const sender = createAgenteSender({ send: deps.send });
 
   /** Fila serializada única — flush e timer da janela SEMPRE passam por aqui. */
   function enqueue(run: () => Promise<void>): Promise<void> {
@@ -74,27 +77,23 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   }
 
   function sendPhrases(config: AgenteConfig, phrases: readonly PendingPhrase[]): void {
-    for (const phrase of phrases) {
-      const request = buildExtensionChunkRequest(
-        { ...config, agenteSessionId: phrase.sessionId },
-        { text: phrase.text, speaker: phrase.speaker },
-      );
-      void deps
-        .send(request)
-        .then((response) => {
-          if (!response.ok) {
-            logger.warn('Agente recusou o trecho', { status: response.status });
-          }
-        })
-        .catch((error: unknown) => {
-          logger.error('envio ao Agente falhou', error);
-        });
-    }
+    sender.submit(
+      phrases.map((phrase) =>
+        buildExtensionChunkRequest(
+          { ...config, agenteSessionId: phrase.sessionId },
+          { text: phrase.text, speaker: phrase.speaker },
+        ),
+      ),
+    );
   }
 
-  /** Desliga na hora: nada sai depois disto, inclusive o que estava pendente (D-09). */
+  /**
+   * Desliga na hora: nada sai depois disto, inclusive o que estava pendente
+   * na janela e o que esperava nova tentativa na fila de envio (D-09).
+   */
   function discard(): void {
     pending = EMPTY_PHRASE_BUFFER;
+    sender.cancelAll();
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
@@ -183,6 +182,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function dispose(): void {
     disposed = true;
     discard();
+    sender.dispose();
   }
 
   return { onSessionFlushed, dispose, whenIdle };

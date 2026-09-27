@@ -325,6 +325,47 @@ describe('não bloqueante em erro de rede', () => {
     // .catch() de sendPhrases nunca roda dentro deste teste.
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+
+    // WR-01: a fala não se perde na primeira falha — sai de novo após 1 s,
+    // 2 s e 4 s (total de 4 envios) e depois a fila desiste.
+    await vi.advanceTimersByTimeAsync(1_000 + 2_000 + 4_000);
+    expect(send).toHaveBeenCalledTimes(4);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(send).toHaveBeenCalledTimes(4);
+  });
+
+  it('WR-01: desligar o streaming durante o retry interrompe as novas tentativas (D-09)', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const send = vi.fn(() => Promise.resolve({ ok: false, status: 503 } as Response));
+    let currentConfig = { ...READY_CONFIG };
+    agenteStreamer.configureAgenteStreamer({
+      loadConfig: () => Promise.resolve(currentConfig),
+      send,
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'isso é confidencial', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+
+    // Desliga e um flush acontece antes da 1ª nova tentativa (1 s).
+    currentConfig = { ...currentConfig, streamingEnabled: false };
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });
 
