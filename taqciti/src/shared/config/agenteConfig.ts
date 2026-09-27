@@ -63,17 +63,42 @@ export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
 };
 
 /**
+ * Hosts onde `http:` sem TLS é aceitável — só loopback (dev local). Em
+ * qualquer outro host, `http:` expõe a chave `x-agente-key` e a transcrição
+ * da reunião em texto puro na rede (WR-06).
+ */
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/** Extrai o hostname de um trecho "host[:porta]" sem protocolo. */
+function extractHostname(hostAndMaybePort: string): string {
+  try {
+    return new URL(`http://${hostAndMaybePort}`).hostname;
+  } catch {
+    return '';
+  }
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAMES.has(hostname);
+}
+
+/**
  * Normaliza a URL do backend do Agente — mesmo padrão de
  * `extension/background.js::normalizeUrl` (trim, remove barras finais,
- * prefixa `https://` quando falta protocolo). String vazia continua vazia
- * (quem chama decide o fallback — ver `normalizeAgenteConfig`).
+ * prefixa protocolo quando falta). String vazia continua vazia (quem chama
+ * decide o fallback — ver `normalizeAgenteConfig`).
+ *
+ * WR-06: o prefixo é `http://` só para host de loopback (para não quebrar o
+ * dev local digitando `localhost:8000`) — qualquer outro host sem protocolo
+ * vira `https://`, para não mandar credencial em texto puro por engano.
  */
 export function normalizeAgenteBackendUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
-  if (trimmed.length > 0 && !/^https?:\/\//i.test(trimmed)) {
-    return `https://${trimmed}`;
+  if (trimmed.length === 0 || /^https?:\/\//i.test(trimmed)) {
+    return trimmed;
   }
-  return trimmed;
+  const scheme = isLoopbackHostname(extractHostname(trimmed)) ? 'http://' : 'https://';
+  return `${scheme}${trimmed}`;
 }
 
 /**
@@ -112,10 +137,15 @@ export function isValidAgenteSessionId(value: string): boolean {
   return AGENTE_SESSION_ID_PATTERN.test(value);
 }
 
+/**
+ * WR-06: `http:` só é válido para loopback — em qualquer outro host, a
+ * chave `x-agente-key` e a transcrição da reunião trafegariam sem TLS.
+ */
 function isValidAgenteBackendUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    if (parsed.protocol === 'https:') return true;
+    return parsed.protocol === 'http:' && isLoopbackHostname(parsed.hostname);
   } catch {
     return false;
   }

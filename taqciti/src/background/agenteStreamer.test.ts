@@ -17,7 +17,13 @@ import { STATE_FLUSH_INTERVAL_MS, STORAGE_KEYS } from '@/shared/config/constants
 import { AGENTE_PHRASE_MAX_WAIT_MS, AGENTE_PHRASE_QUIET_MS } from '@/shared/config/agenteConfig';
 import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 
-const AGENTE_URL = 'http://agente.test';
+/*
+ * https:// (não http://): desde o WR-06, `isValidAgenteBackendUrl` só aceita
+ * http: para host de loopback — um host de teste comum como "agente.test"
+ * com http: vira invalid-url e nenhum destes testes de streaming chegaria a
+ * "ready". O protocolo em si não é o que estes testes exercitam.
+ */
+const AGENTE_URL = 'https://agente.test';
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
 const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
 /** Cruza o flush de 250 ms da Taqciti (STATE_FLUSH_INTERVAL_MS) sem se confundir com ele —

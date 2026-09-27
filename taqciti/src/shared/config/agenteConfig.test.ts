@@ -55,6 +55,22 @@ describe('normalizeAgenteBackendUrl', () => {
   it('string vazia (ou só espaço) continua vazia — quem chama decide o fallback', () => {
     expect(normalizeAgenteBackendUrl('   ')).toBe('');
   });
+
+  /*
+   * WR-06: sem protocolo, o padrão é https:// — MAS para host de loopback
+   * (dev local) o prefixo tem que ser http://, senão `localhost:8000` vira
+   * `https://localhost:8000`, o envio falha por TLS e a tela mostra "Ligado".
+   */
+  it('host de loopback sem protocolo recebe prefixo http://, não https://', () => {
+    expect(normalizeAgenteBackendUrl('localhost:8000')).toBe('http://localhost:8000');
+    expect(normalizeAgenteBackendUrl('127.0.0.1:8000')).toBe('http://127.0.0.1:8000');
+  });
+
+  it('host que não é loopback continua recebendo https://, mesmo parecendo local', () => {
+    expect(normalizeAgenteBackendUrl('meu-servidor-local:8000')).toBe(
+      'https://meu-servidor-local:8000',
+    );
+  });
 });
 
 describe('normalizeAgenteConfig — invariante "campo salvo vence / campo ausente cai no padrão"', () => {
@@ -132,6 +148,22 @@ describe('getStreamingReadiness — ordem de precedência disabled > invalid-url
   it('ready quando tudo é válido', () => {
     expect(getStreamingReadiness(READY)).toBe('ready');
     expect(isStreamingReady(READY)).toBe(true);
+  });
+
+  /*
+   * WR-06: http: só é aceitável em loopback — em qualquer outro host, a
+   * chave x-agente-key e a transcrição trafegariam sem TLS.
+   */
+  it('invalid-url quando o protocolo é http: e o host não é loopback', () => {
+    expect(getStreamingReadiness({ ...READY, agenteBackendUrl: 'http://agente.empresa.com' })).toBe(
+      'invalid-url',
+    );
+  });
+
+  it('ready com http: quando o host é loopback (dev local)', () => {
+    expect(getStreamingReadiness({ ...READY, agenteBackendUrl: 'http://localhost:8000' })).toBe(
+      'ready',
+    );
   });
 });
 
