@@ -67,6 +67,22 @@ describe('patchAgenteConfig', () => {
     });
   });
 
+  /*
+   * WR-03: sem `.catch` na fila, um `writeLocal` que rejeita uma vez deixava
+   * `queue` permanentemente rejeitada — todo patch seguinte também rejeitava.
+   */
+  it('uma falha de escrita não envenena a fila: o próximo patch continua funcionando', async () => {
+    const { patchAgenteConfig, mock } = await fresh();
+
+    mock.local.set.mockImplementationOnce(() => Promise.reject(new Error('quota excedida')));
+    await expect(patchAgenteConfig({ agenteBackendUrl: 'https://agente.exemplo' })).rejects.toThrow(
+      'quota excedida',
+    );
+
+    const next = await patchAgenteConfig({ agenteSessionId: SAVED_SESSION_ID });
+    expect(next.agenteSessionId).toBe(SAVED_SESSION_ID);
+  });
+
   it('normaliza na escrita: lixo não entra no storage', async () => {
     const { patchAgenteConfig, mock } = await fresh();
     await patchAgenteConfig({

@@ -36,12 +36,13 @@ export async function loadAgenteConfig(): Promise<AgenteConfig> {
  * trabalho de outra superfície.
  */
 export function patchAgenteConfig(patch: Partial<AgenteConfig>): Promise<AgenteConfig> {
-  queue = queue.then(async () => {
+  const run = queue.catch(() => undefined).then(async () => {
     const next = normalizeAgenteConfig({ ...(await loadAgenteConfig()), ...patch });
     await writeLocal(STORAGE_KEYS.agenteConfig, next);
     return next;
   });
-  return queue;
+  queue = run;
+  return run;
 }
 
 /**
