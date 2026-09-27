@@ -24,8 +24,17 @@ const READINESS_LABELS: Record<StreamingReadiness, string> = {
 };
 
 export function AgenteConfigScreen() {
-  const { config, drafts, readiness, saving, justSaved, setField, save, setStreamingEnabled } =
-    useAgenteConfigForm();
+  const {
+    config,
+    drafts,
+    readiness,
+    saving,
+    justSaved,
+    error,
+    setField,
+    save,
+    setStreamingEnabled,
+  } = useAgenteConfigForm();
 
   return (
     <AppShell
@@ -120,6 +129,11 @@ export function AgenteConfigScreen() {
         <p aria-live="polite" className="text-caption text-muted">
           {readiness ? READINESS_LABELS[readiness] : ''}
         </p>
+        {error ? (
+          <p aria-live="assertive" className="text-caption text-danger">
+            {error}
+          </p>
+        ) : null}
       </section>
     </AppShell>
   );

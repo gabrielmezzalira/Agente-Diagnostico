@@ -175,4 +175,49 @@ describe('AgenteConfigScreen', () => {
     await renderScreen({ ...DEFAULT_AGENTE_CONFIG, streamingEnabled: true });
     expect(statusText()).toBe('Falta o ID da sessão do Agente — nada é enviado.');
   });
+
+  /*
+   * WR-04: antes, uma falha de escrita virava uma unhandled rejection e o
+   * botão só voltava para "Salvar" sem dizer que nada foi gravado.
+   */
+  it('(7) uma falha ao salvar mostra mensagem de erro para a pessoa', async () => {
+    const mock = await renderScreen();
+    const { sessionId, saveButton } = fields();
+
+    typeInto(sessionId, '11111111-1111-1111-1111-111111111111');
+    (mock.local.set as ReturnType<typeof vi.fn>).mockImplementationOnce(() =>
+      Promise.reject(new Error('falhou')),
+    );
+
+    await act(async () => {
+      saveButton.click();
+    });
+    await flushUntil(
+      () => (host.querySelector('[aria-live="assertive"]')?.textContent ?? '') !== '',
+    );
+
+    expect(host.querySelector('[aria-live="assertive"]')?.textContent).toBe(
+      'Não foi possível salvar a configuração. Tente de novo.',
+    );
+  });
+
+  it('(8) uma falha ao alternar o toggle mostra mensagem de erro para a pessoa', async () => {
+    const mock = await renderScreen();
+    const { toggle } = fields();
+
+    (mock.local.set as ReturnType<typeof vi.fn>).mockImplementationOnce(() =>
+      Promise.reject(new Error('falhou')),
+    );
+
+    await act(async () => {
+      toggle.click();
+    });
+    await flushUntil(
+      () => (host.querySelector('[aria-live="assertive"]')?.textContent ?? '') !== '',
+    );
+
+    expect(host.querySelector('[aria-live="assertive"]')?.textContent).toBe(
+      'Não foi possível salvar a configuração. Tente de novo.',
+    );
+  });
 });
