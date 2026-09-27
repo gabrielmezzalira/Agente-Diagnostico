@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 07-taqciti-config-background-streamer
 source: [07-VERIFICATION.md]
 started: 2026-09-26T13:40:00Z
-updated: 2026-09-26T15:20:00Z
+updated: 2026-09-27T00:15:00Z
 ---
 
 ## Current Test
@@ -14,16 +14,21 @@ updated: 2026-09-26T15:20:00Z
 
 ### 1. SC1 — Streaming ao vivo numa chamada real do Google Meet
 expected: |
-  Linhas novas aparecem em transcript_chunks / na tela de monitoramento do Agente em poucos segundos
-  (não só no fim da chamada), sem a mesma frase repetida; desligar o toggle interrompe o envio na hora.
-result: issue
-reported: "Transcrição chegando ao vivo e o toggle desligando interrompe o envio na hora (ambos OK).
-  Dois problemas encontrados: (1) as falas aparecem fragmentadas em várias linhas separadas na tela de
-  monitoramento (ex.: 'Olá, boa noite!' vira duas linhas: 'Você: Olá' e 'Você: boa noite!') em vez de
-  uma linha coerente por fala; (2) dizer a mesma frase 3 vezes de verdade ('boa noite' x3) gerou MAIS de
-  3 linhas na tela de monitoramento — o streamer está reenviando/duplicando texto já enviado, não só
-  refletindo o que foi realmente falado."
-severity: major
+  Numa chamada real do Google Meet, com o toggle de streaming ligado:
+  (1) dizer "Olá, boa noite!" em ritmo normal deve virar 1 linha coerente na tela de monitoramento
+      do Agente (não mais fragmentada em "Você: Olá" / "Você: boa noite!");
+  (2) dizer "boa noite" 3x seguidas SEM pausa deve virar 1 linha só; com pausa perceptível entre as
+      repetições, cada repetição vira sua própria linha (no máximo 3 linhas, uma por fala real —
+      nunca mais linhas do que falas);
+  (3) falar sem parar por uns 15s deve fatiar em linhas de no máximo ~5s (teto de fala contínua),
+      sem perder nem repetir palavra;
+  (4) desligar o toggle no meio de uma fala interrompe o envio na hora, sem nada chegando depois.
+result: pass
+note: |
+  Reteste pós gap-closure (plano 07-04, phraseBatcher.ts — janela de silêncio 1500ms / teto 5000ms).
+  Primeira rodada (2026-09-26) encontrou G-07-1 e G-07-2, ambos com plano de correção executado
+  e coberto por 20 testes automatizados (agenteStreamer.test.ts). Reteste humano ao vivo no Meet
+  confirmado OK pelo usuário em 2026-09-27.
 
 ### 2. SC2 — Fluxo em lote ("Gerar Documento") sem regressão
 expected: |
@@ -34,8 +39,8 @@ result: pass
 ## Summary
 
 total: 2
-passed: 1
-issues: 1
+passed: 2
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -44,7 +49,9 @@ blocked: 0
 
 - gap_id: G-07-1
   truth: "Linhas novas aparecem em transcript_chunks / na tela de monitoramento do Agente sem a mesma frase repetida"
-  status: failed
+  status: resolved
+  resolved_by: 07-04-PLAN.md
+  resolved_at: 2026-09-27
   reason: "User reported: falas chegam fragmentadas em várias linhas separadas na tela de monitoramento (ex.: 'Olá, boa noite!' vira duas linhas: 'Você: Olá' e 'Você: boa noite!') em vez de uma linha coerente por fala"
   severity: minor
   test: 1
@@ -63,7 +70,9 @@ blocked: 0
 
 - gap_id: G-07-2
   truth: "Linhas novas aparecem em transcript_chunks / na tela de monitoramento do Agente em poucos segundos, sem a mesma frase repetida"
-  status: failed
+  status: resolved
+  resolved_by: 07-04-PLAN.md
+  resolved_at: 2026-09-27
   reason: "User reported: dizer 'boa noite' 3x virou 6 linhas separadas, uma por PALAVRA (Boa / noite / boa / noite / boa / noite) — CORRIGIDO após esclarecimento do usuário: não é palavra fantasma nem reenvio de texto já mandado (contagem bate exatamente com o que foi falado, 2 palavras x 3 repetições = 6), é o MESMO mecanismo de G-07-1 (granularidade de envio), só observado num grau mais extremo porque as palavras desta reprodução ficaram espaçadas mais que 250ms"
   severity: major
   test: 1
