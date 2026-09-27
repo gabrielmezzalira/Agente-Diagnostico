@@ -8,6 +8,9 @@
 import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
+import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
+import { patchAgenteStatus } from '@/shared/config/agenteStatusStore';
+import { logger } from '@/shared/services/log';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 import { sessionSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -17,6 +20,13 @@ function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
   return fetch(request.url, {
     ...request.init,
     signal: AbortSignal.timeout(AGENTE_REQUEST_TIMEOUT_MS),
+  });
+}
+
+/** Grava o status de runtime sem nunca travar o streamer (WR-07). */
+function reportStatus(patch: Partial<AgenteStreamingStatus>): void {
+  patchAgenteStatus(patch).catch((error: unknown) => {
+    logger.error('gravar o status do Agente falhou', error);
   });
 }
 
@@ -33,6 +43,7 @@ let activeDeps: AgenteStreamerDeps = {
   send: defaultSend,
   onConfigChange: onAgenteConfigChange,
   snapshot: sessionSnapshotStore,
+  reportStatus,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 

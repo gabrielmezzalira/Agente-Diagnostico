@@ -52,6 +52,44 @@ describe('agenteSender / novas tentativas', () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
 
+  it('WR-07: reporta cada tentativa — retrying, retrying, sent', async () => {
+    const send = vi
+      .fn<(req: ExtensionChunkRequest) => Promise<Response>>()
+      .mockRejectedValueOnce(new Error('rede caiu'))
+      .mockResolvedValueOnce(response(503))
+      .mockResolvedValue(response(202));
+    const onOutcome = vi.fn();
+    const sender = createAgenteSender({ send, onOutcome });
+
+    sender.submit([request('olá')]);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(onOutcome.mock.calls).toEqual([
+      ['retrying', null],
+      ['retrying', 503],
+      ['sent', 202],
+    ]);
+  });
+
+  it('WR-07: 401 reporta rejected; cancelado não reporta nada', async () => {
+    const onOutcome = vi.fn();
+    const rejecting = createAgenteSender({ send: () => Promise.resolve(response(401)), onOutcome });
+    rejecting.submit([request('olá')]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onOutcome.mock.calls).toEqual([['rejected', 401]]);
+
+    onOutcome.mockClear();
+    let release!: (res: Response) => void;
+    const slow = createAgenteSender({
+      send: () => new Promise<Response>((resolve) => (release = resolve)),
+      onOutcome,
+    });
+    slow.submit([request('olá')]);
+    slow.cancelAll();
+    release(response(202));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onOutcome).not.toHaveBeenCalled();
+  });
+
   it('401 é definitivo: nenhuma nova tentativa', async () => {
     const send = vi.fn(() => Promise.resolve(response(401)));
     const sender = createAgenteSender({ send });

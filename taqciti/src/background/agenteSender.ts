@@ -8,6 +8,7 @@
  * (cada tentativa confere a "geração" antes de sair).
  */
 import type { ExtensionChunkRequest } from '@/shared/config/agenteConfig';
+import type { AgenteSendOutcome } from '@/shared/config/agenteStatus';
 import {
   AGENTE_SEND_MAX_QUEUED,
   AGENTE_SEND_MAX_RETRIES,
@@ -21,6 +22,8 @@ export interface AgenteSenderDeps {
   send: (request: ExtensionChunkRequest) => Promise<Response>;
   /** Injetável só para teste; o padrão é `setTimeout`. */
   sleep?: (ms: number) => Promise<void>;
+  /** Resultado de cada tentativa, para a tela mostrar a verdade (WR-07). `null` = erro de rede. */
+  onOutcome?: (outcome: AgenteSendOutcome, httpStatus: number | null) => void;
 }
 
 function defaultSleep(ms: number): Promise<void> {
@@ -29,6 +32,8 @@ function defaultSleep(ms: number): Promise<void> {
 
 export function createAgenteSender(deps: AgenteSenderDeps) {
   const sleep = deps.sleep ?? defaultSleep;
+  const report = (outcome: AgenteSendOutcome, httpStatus: number | null) =>
+    deps.onOutcome?.(outcome, httpStatus);
   const waiting: ExtensionChunkRequest[] = [];
   let running = false;
   let idle: Promise<void> = Promise.resolve();
@@ -55,15 +60,21 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
       if (!isCurrent(gen)) return;
       const verdict = classifySendAttempt(result);
       const status = result.kind === 'response' ? result.status : null;
-      if (verdict === 'delivered') return;
+      if (verdict === 'delivered') {
+        report('sent', status);
+        return;
+      }
       if (verdict === 'rejected') {
         logger.warn('Agente recusou o trecho', { status });
+        report('rejected', status);
         return;
       }
       if (retry >= AGENTE_SEND_MAX_RETRIES) {
         logger.error('envio ao Agente falhou depois das novas tentativas', { status });
+        report('failed', status);
         return;
       }
+      report('retrying', status);
       await sleep(retryDelayMs(retry));
     }
   }

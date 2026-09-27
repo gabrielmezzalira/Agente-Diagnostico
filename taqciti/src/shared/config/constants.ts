@@ -20,6 +20,8 @@ export const STORAGE_KEYS = {
   agenteConfig: 'taq:agenteConfig',
   /** chrome.storage.session — cursor + falas pendentes do streamer do Agente (sobrevive a restart do service worker, WR-02). */
   agenteStreamer: 'taq:agenteStreamer',
+  /** chrome.storage.session — resultado do último envio ao Agente, para a tela mostrar a verdade (WR-07). */
+  agenteStatus: 'taq:agenteStatus',
 } as const;
 
 /** Chaves da era "CITi Flow Companion" — migradas uma única vez no boot. */

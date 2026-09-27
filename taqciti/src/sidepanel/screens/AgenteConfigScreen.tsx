@@ -8,19 +8,19 @@
  * Aberta por `?view=agente` (ver src/sidepanel/route.ts), alcançável a partir
  * da tela inicial — não pelo painel injetado dentro do Meet.
  */
-import { AGENTE_BACKEND_URL_DEFAULT, type StreamingReadiness } from '@/shared/config/agenteConfig';
+import { AGENTE_BACKEND_URL_DEFAULT } from '@/shared/config/agenteConfig';
+import type { StreamingStatusTone } from '@/shared/config/agenteStatus';
 import { useAgenteConfigForm } from '@/shared/hooks/useAgenteConfigForm';
+import { useAgenteStreamingStatus } from '@/shared/hooks/useAgenteStreamingStatus';
 import { AppShell } from '@/shared/ui/AppShell';
 import { Button } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/Field';
 import { Wordmark } from '@/shared/ui/Wordmark';
 
-const READINESS_LABELS: Record<StreamingReadiness, string> = {
-  ready: 'Ligado — a transcrição ao vivo está sendo enviada ao Agente.',
-  disabled: 'Desligado — nada é enviado ao Agente.',
-  'invalid-url': 'A URL do backend não é válida — nada é enviado.',
-  'missing-session': 'Falta o ID da sessão do Agente — nada é enviado.',
-  'invalid-session': 'O ID da sessão não parece válido (esperado um UUID) — nada é enviado.',
+const TONE_CLASS: Record<StreamingStatusTone, string> = {
+  muted: 'text-muted',
+  warning: 'text-foreground',
+  danger: 'text-danger',
 };
 
 export function AgenteConfigScreen() {
@@ -35,6 +35,7 @@ export function AgenteConfigScreen() {
     save,
     setStreamingEnabled,
   } = useAgenteConfigForm();
+  const status = useAgenteStreamingStatus(readiness);
 
   return (
     <AppShell
@@ -129,8 +130,8 @@ export function AgenteConfigScreen() {
           {justSaved ? 'Salvo!' : 'Salvar'}
         </Button>
 
-        <p aria-live="polite" className="text-caption text-muted">
-          {readiness ? READINESS_LABELS[readiness] : ''}
+        <p aria-live="polite" className={`text-caption ${TONE_CLASS[status?.tone ?? 'muted']}`}>
+          {status?.text ?? ''}
         </p>
         {error ? (
           <p aria-live="assertive" className="text-caption text-danger">

@@ -81,9 +81,10 @@ describe('AgenteConfigScreen', () => {
     };
   }
 
-  async function renderScreen(saved?: Partial<AgenteConfig>) {
+  async function renderScreen(saved?: Partial<AgenteConfig>, session: Record<string, unknown> = {}) {
     const mock = installChromeStorageMock({
       local: saved === undefined ? {} : { [STORAGE_KEYS.agenteConfig]: saved },
+      session,
       extra: { runtime: RUNTIME_STUB },
     });
     const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
@@ -243,5 +244,42 @@ describe('AgenteConfigScreen', () => {
     await flushUntil(() => patchSpy.mock.calls.length > 0);
 
     expect(patchSpy).toHaveBeenCalledWith({ agenteBackendUrl: 'https://novo.exemplo' });
+  });
+
+  /*
+   * WR-07: antes, com a config pronta, a tela dizia "está sendo enviada"
+   * mesmo com 100% dos envios falhando — o status vinha só da config salva.
+   */
+  const READY = {
+    ...DEFAULT_AGENTE_CONFIG,
+    agenteBackendUrl: 'https://agente.test',
+    streamingEnabled: true,
+    agenteSessionId: '11111111-1111-1111-1111-111111111111',
+  };
+
+  it('(10) pronto e nada enviado ainda: "pronto para enviar", sem prometer entrega', async () => {
+    await renderScreen(READY);
+    expect(statusText()).toBe('Ligado — pronto para enviar. O envio começa quando alguém falar.');
+  });
+
+  it('(11) último envio recusado com 401: a tela mostra a chave recusada', async () => {
+    await renderScreen(READY, {
+      [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
+    });
+    await flushUntil(() => statusText().includes('401'));
+    expect(statusText()).toBe(
+      'Último envio recusado: a chave de autenticação não foi aceita (HTTP 401).',
+    );
+  });
+
+  it('(12) o status acompanha o service worker ao vivo (storage.session onChanged)', async () => {
+    const mock = await renderScreen(READY);
+    await act(async () => {
+      await mock.session.set({
+        [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'retrying', lastHttpStatus: null, lastAttemptAt: 1 },
+      });
+    });
+    await flushUntil(() => statusText().includes('tentando de novo'));
+    expect(statusText()).toBe('Falha ao enviar (sem conexão com o backend) — tentando de novo…');
   });
 });

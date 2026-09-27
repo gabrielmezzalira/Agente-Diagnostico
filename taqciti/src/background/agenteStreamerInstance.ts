@@ -24,6 +24,7 @@ import {
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
+import { EMPTY_AGENTE_STATUS } from '@/shared/config/agenteStatus';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
@@ -56,7 +57,11 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let lastSession: MeetingSessionState | null = null;
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
-  const sender = createAgenteSender({ send: deps.send });
+  const sender = createAgenteSender({
+    send: deps.send,
+    onOutcome: (lastOutcome, lastHttpStatus) =>
+      deps.reportStatus?.({ lastOutcome, lastHttpStatus, lastAttemptAt: Date.now() }),
+  });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
@@ -152,6 +157,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
+    // WR-07: o resultado do último envio era da config anterior (ex.: 401 com a chave velha).
+    deps.reportStatus?.(EMPTY_AGENTE_STATUS);
     if (!isStreamingReady(config)) {
       stopStreaming();
       return;

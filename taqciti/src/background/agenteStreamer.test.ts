@@ -334,6 +334,54 @@ describe('não bloqueante em erro de rede', () => {
     expect(send).toHaveBeenCalledTimes(4);
   });
 
+  it('WR-07: um 401 fica gravado no status de runtime, e mudar a config zera o status', async () => {
+    const { sessionController, agenteStreamer, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: false, status: 401 } as Response)),
+    );
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+      agenteApiKey: 'chave-errada',
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+        lastOutcome: 'rejected',
+        lastHttpStatus: 401,
+      }),
+    );
+
+    // A pessoa corrige a chave: o 401 era da config anterior e sai da tela.
+    await patchAgenteConfig({ agenteApiKey: 'chave-certa' });
+    await agenteStreamer.whenAgenteStreamerIdle();
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+        lastOutcome: null,
+        lastHttpStatus: null,
+      }),
+    );
+  });
+
   it('WR-01: desligar o streaming durante o retry interrompe as novas tentativas (D-09)', async () => {
     const { sessionController, agenteStreamer } = await fresh();
     const send = vi.fn(() => Promise.resolve({ ok: false, status: 503 } as Response));
