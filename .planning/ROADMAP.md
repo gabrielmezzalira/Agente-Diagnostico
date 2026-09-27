@@ -213,7 +213,7 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: 3/4 plans executed (07-04 é fechamento de gaps, aguardando execução)
+**Plans**: 4/4 plans executed (07-04 é fechamento de gaps, aguardando execução)
 
 **Wave 1**
 
@@ -229,7 +229,7 @@ Plans:
 
 **Gap closure** *(fecha G-07-1/G-07-2 do 07-UAT.md — linhas fragmentadas palavra a palavra na tela de monitoramento)*
 
-- [ ] 07-04-PLAN.md — GAP G-07-1/G-07-2: envio ao Agente agrupado por fala (janela de silêncio de 1,5 s + teto de 5 s + envio imediato no fim/pausa) em `phraseBatcher.ts` puro + timer único no `agenteStreamer.ts`; cadência local de 250 ms, `sessionController.ts` e `wordDelta.ts` intocados; abre com checkpoint de refinamento do D-06 — **autonomous:false** (TAQ-01)
+- [x] 07-04-PLAN.md — GAP G-07-1/G-07-2: envio ao Agente agrupado por fala (janela de silêncio de 1,5 s + teto de 5 s + envio imediato no fim/pausa) em `phraseBatcher.ts` puro + timer único no `agenteStreamer.ts`; cadência local de 250 ms, `sessionController.ts` e `wordDelta.ts` intocados; abre com checkpoint de refinamento do D-06 — **autonomous:false** (TAQ-01)
 
 ### Phase 8: Taqciti Session Association
 
@@ -287,7 +287,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
-| 7. Taqciti Config + Background Streamer | 3/3 | In Progress|  |
+| 7. Taqciti Config + Background Streamer | 4/4 | In Progress|  |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
