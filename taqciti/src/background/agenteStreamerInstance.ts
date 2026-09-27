@@ -33,6 +33,7 @@ import {
 } from '@/features/agente/phraseBatcher';
 import { logger } from '@/shared/services/log';
 import { createAgenteSender } from './agenteSender';
+import { createPhraseWindowTimer } from './phraseWindowTimer';
 
 export interface AgenteStreamerDeps {
   loadConfig: () => Promise<AgenteConfig>;
@@ -65,7 +66,6 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let cursor: StreamCursor | null = null;
   let queue: Promise<void> = Promise.resolve();
   let pending: PhraseBuffer = EMPTY_PHRASE_BUFFER;
-  let timer: ReturnType<typeof setTimeout> | null = null;
   /*
    * WR-13: um `step`/`tick` já enfileirado (ex.: esperando `loadConfig`)
    * quando `dispose()` roda NÃO para sozinho — sem este flag, ele continua,
@@ -74,6 +74,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let disposed = false;
   /** Fila de envio ordenada, com novas tentativas (WR-01). */
   const sender = createAgenteSender({ send: deps.send });
+  const windowTimer = createPhraseWindowTimer(() => void enqueue(tick));
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
 
@@ -103,10 +104,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function discard(): void {
     pending = EMPTY_PHRASE_BUFFER;
     sender.cancelAll();
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
+    windowTimer.cancel();
   }
 
   /** Streaming desligado: descarta tudo e esquece o cursor (step, tick e mudança de config iguais). */
@@ -118,17 +116,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
   function rearm(now: number): void {
     if (disposed) return;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    const deadline = nextPhraseDeadline(pending, PHRASE_TIMING);
-    if (deadline !== null) {
-      timer = setTimeout(() => {
-        timer = null;
-        void enqueue(tick);
-      }, Math.max(0, deadline - now));
-    }
+    windowTimer.armAt(nextPhraseDeadline(pending, PHRASE_TIMING), now);
   }
 
   function drain(config: AgenteConfig, now: number, flushAll: boolean): void {
@@ -173,12 +161,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
       // isto, uma fala pendente ficava sem timer até alguém falar de novo
       // (ou se perdia). Atraso mínimo pra não virar laço apertado.
-      if (!disposed && timer === null && pending.length > 0) {
-        timer = setTimeout(() => {
-          timer = null;
-          void enqueue(tick);
-        }, RETRY_MIN_MS);
-      }
+      if (!disposed && pending.length > 0) windowTimer.armIfIdle(RETRY_MIN_MS);
     }
   }
 
