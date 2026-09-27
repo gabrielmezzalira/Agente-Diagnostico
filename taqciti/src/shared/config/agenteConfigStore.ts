@@ -73,6 +73,23 @@ export function subscribeAgenteConfig(onConfig: (config: AgenteConfig) => void):
 }
 
 /**
+ * Só as mudanças (sem entrega inicial): o service worker usa para reagir na
+ * hora ao toggle (WR-11), sem esperar o próximo flush ou tick.
+ */
+export function onAgenteConfigChange(onConfig: (config: AgenteConfig) => void): Unsubscribe {
+  const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+    if (area !== 'local' || !(STORAGE_KEYS.agenteConfig in changes)) return;
+    onConfig(
+      normalizeAgenteConfig(
+        (changes[STORAGE_KEYS.agenteConfig]?.newValue as Partial<AgenteConfig> | undefined) ?? null,
+      ),
+    );
+  };
+  chrome.storage.onChanged.addListener(listener);
+  return () => chrome.storage.onChanged.removeListener(listener);
+}
+
+/**
  * Leitor com cache para o service worker: a primeira chamada lê o storage
  * (uma única vez); as seguintes devolvem a promessa guardada, atualizada só
  * por `onChanged` — nunca relê a cada flush (D-09: custo zero para quem

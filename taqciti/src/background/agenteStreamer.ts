@@ -7,7 +7,7 @@
  */
 import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
-import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
+import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 
 export { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
@@ -30,6 +30,7 @@ function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
 let activeDeps: AgenteStreamerDeps = {
   loadConfig: createAgenteConfigReader(),
   send: defaultSend,
+  onConfigChange: onAgenteConfigChange,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 

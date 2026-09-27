@@ -480,6 +480,46 @@ describe('configuração vinda do storage (D-08)', () => {
     expect(JSON.parse(init.body as string)).toMatchObject({ text: 'sim' });
   });
 
+  it('WR-11: desligar e religar dentro da janela, sem ninguém falar, não envia a fala pendente', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'isso é confidencial', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    // A sequência do WR-11: desliga, ninguém fala, religa — tudo antes do silêncio bater.
+    await vi.advanceTimersByTimeAsync(500);
+    await patchAgenteConfig({ streamingEnabled: false });
+    await vi.advanceTimersByTimeAsync(500);
+    await patchAgenteConfig({ streamingEnabled: true });
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.whenAgenteStreamerIdle();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('reinício do service worker: primeiro flush pós-reinício não reenvia texto antigo', async () => {
     const { sessionController } = await fresh();
     const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');

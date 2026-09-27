@@ -37,6 +37,13 @@ import { createAgenteSender } from './agenteSender';
 export interface AgenteStreamerDeps {
   loadConfig: () => Promise<AgenteConfig>;
   send: (request: ExtensionChunkRequest) => Promise<Response>;
+  /**
+   * Assinatura das mudanças de config (WR-11): sem ela, o streamer só nota
+   * que o toggle foi desligado no próximo flush ou tick — e desligar e religar
+   * dentro da janela deixava a fala pendente sair. Opcional para os testes que
+   * injetam só `loadConfig`.
+   */
+  onConfigChange?: (listener: (config: AgenteConfig) => void) => () => void;
 }
 
 const PHRASE_TIMING: PhraseTiming = {
@@ -67,6 +74,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let disposed = false;
   /** Fila de envio ordenada, com novas tentativas (WR-01). */
   const sender = createAgenteSender({ send: deps.send });
+  /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
+  let unsubscribeConfig: (() => void) | null = null;
 
   /** Fila serializada única — flush e timer da janela SEMPRE passam por aqui. */
   function enqueue(run: () => Promise<void>): Promise<void> {
@@ -100,6 +109,12 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     }
   }
 
+  /** Streaming desligado: descarta tudo e esquece o cursor (step, tick e mudança de config iguais). */
+  function stopStreaming(): void {
+    discard();
+    cursor = null;
+  }
+
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
   function rearm(now: number): void {
     if (disposed) return;
@@ -130,13 +145,13 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       ? { sessionId: config.agenteSessionId }
       : null;
 
-    const result = planStreamStep(cursor, state.session, binding);
-    cursor = result.cursor;
-
     if (binding === null) {
-      discard();
+      stopStreaming();
       return;
     }
+
+    const result = planStreamStep(cursor, state.session, binding);
+    cursor = result.cursor;
 
     const now = Date.now();
     pending = appendDeltas(pending, result.deltas, binding.sessionId, now);
@@ -150,7 +165,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       const config = await deps.loadConfig();
       if (disposed) return; // descartada enquanto esperava loadConfig (WR-13)
       if (!isStreamingReady(config)) {
-        discard();
+        stopStreaming();
         return;
       }
       drain(config, Date.now(), false);
@@ -167,7 +182,22 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     }
   }
 
+  /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
+  async function applyConfigChange(config: AgenteConfig): Promise<void> {
+    if (disposed) return;
+    if (!isStreamingReady(config)) stopStreaming();
+  }
+
+  /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */
+  function ensureSubscribed(): void {
+    if (unsubscribeConfig !== null || disposed || !deps.onConfigChange) return;
+    unsubscribeConfig = deps.onConfigChange((config) => {
+      void enqueue(() => applyConfigChange(config));
+    });
+  }
+
   function onSessionFlushed(state: MeetingState): Promise<void> {
+    ensureSubscribed();
     return enqueue(() => step(state));
   }
 
@@ -183,6 +213,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     disposed = true;
     discard();
     sender.dispose();
+    unsubscribeConfig?.();
+    unsubscribeConfig = null;
   }
 
   return { onSessionFlushed, dispose, whenIdle };
