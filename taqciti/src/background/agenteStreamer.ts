@@ -156,7 +156,13 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     return enqueue(() => step(state));
   }
 
-  return { onSessionFlushed, dispose: discard };
+  /** Observador sem efeito colateral (WR-10): espera a fila terminar, sem
+   * enfileirar nenhum passo novo — só para asserções de ausência em teste. */
+  function whenIdle(): Promise<void> {
+    return queue;
+  }
+
+  return { onSessionFlushed, dispose: discard, whenIdle };
 }
 
 /**
@@ -187,4 +193,9 @@ export function configureAgenteStreamer(partial: Partial<AgenteStreamerDeps>): v
 /** Delegação para a instância ativa — é isto que `sessionController.ts` chama. */
 export function onSessionFlushed(state: MeetingState): Promise<void> {
   return activeStreamer.onSessionFlushed(state);
+}
+
+/** Só para testes (WR-10) — ver comentário de `whenIdle` acima. */
+export function whenAgenteStreamerIdle(): Promise<void> {
+  return activeStreamer.whenIdle();
 }

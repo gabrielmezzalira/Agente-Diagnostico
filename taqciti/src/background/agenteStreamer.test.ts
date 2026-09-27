@@ -290,9 +290,13 @@ describe('D-10: header x-agente-key condicional', () => {
 describe('não bloqueante em erro de rede', () => {
   it('fetch rejeitando não impede dispatch de resolver nem a gravação do estado', async () => {
     const { sessionController, agenteStreamer, mock } = await fresh();
+    // WR-10 item 3: `send` precisa ser um spy com asserção própria — antes,
+    // nenhum `expect` verificava que o envio de fato aconteceu, e um `send`
+    // que nunca fosse chamado passaria no teste igual.
+    const send = vi.fn(() => Promise.reject(new Error('rede falhou')));
     agenteStreamer.configureAgenteStreamer({
       loadConfig: () => Promise.resolve(READY_CONFIG),
-      send: () => Promise.reject(new Error('rede falhou')),
+      send,
     });
 
     await sessionController.dispatch({
@@ -320,6 +324,7 @@ describe('não bloqueante em erro de rede', () => {
     // Avança a janela para o envio (rejeitado) de fato acontecer — sem isto o
     // .catch() de sendPhrases nunca roda dentro deste teste.
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
   });
 });
 
@@ -727,12 +732,18 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'até logo', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    /*
+     * WR-10 item 2: espera a fila do streamer terminar SEM chamar
+     * `onSessionFlushed` de novo manualmente — chamar de novo é um passo
+     * real, e mascarava se `flushState` (sessionController.ts) de fato
+     * chama o streamer. `whenAgenteStreamerIdle()` só observa.
+     */
+    await agenteStreamer.whenAgenteStreamerIdle();
     // A fala está pendente (silêncio ainda não bateu) — nenhum envio ainda.
-    await agenteStreamer.onSessionFlushed(sessionController.getState());
     expect(fetchMock).not.toHaveBeenCalled();
 
     await sessionController.dispatch({ type: 'MEETING_FINISHED', at: 2000 });
-    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    await agenteStreamer.whenAgenteStreamerIdle();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0]!;
@@ -760,11 +771,12 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'vou pausar aqui', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    // WR-10 item 2: ver comentário equivalente no teste "fim" acima.
+    await agenteStreamer.whenAgenteStreamerIdle();
     expect(fetchMock).not.toHaveBeenCalled();
 
     await sessionController.dispatch({ type: 'PAUSE' });
-    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    await agenteStreamer.whenAgenteStreamerIdle();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0]!;
@@ -879,9 +891,16 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
   });
 
   it('cadência local intacta: o estado é gravado e retransmitido em 250ms, independente do envio ao Agente', async () => {
-    const { sessionController, mock } = await fresh();
+    const { sessionController, agenteStreamer, mock } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
+    /*
+     * WR-10 item 4: sem configurar o streaming, `expect(fetchMock).not
+     * .toHaveBeenCalled()` era verdade só porque nada estava ligado — não
+     * provava a independência das duas cadências, que é o que o nome do
+     * teste afirma.
+     */
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
 
     const chromeExtra = mock.chrome as unknown as {
       runtime: { sendMessage: ReturnType<typeof vi.fn> };
@@ -911,7 +930,15 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     expect(chromeExtra.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'state/updated' }),
     );
+    // A cadência de 250ms já rodou (acima) — a janela do Agente (1500ms)
+    // ainda não, então nada foi enviado ainda.
+    await agenteStreamer.whenAgenteStreamerIdle();
     expect(fetchMock).not.toHaveBeenCalled();
+
+    // Só depois da janela do Agente o envio finalmente acontece — prova de
+    // que as duas cadências são independentes, não que o envio nunca ocorre.
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   });
 
   it('reprocessamento: repetir o passo do streamer depois do envio não gera fetch novo', async () => {
