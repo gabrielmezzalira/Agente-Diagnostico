@@ -30,6 +30,22 @@ export const AGENTE_WEBHOOK_PATH = '/webhook/extension';
 /** Timeout do fetch de streaming — nunca deixa uma chamada lenta acumular. */
 export const AGENTE_REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * Janela do envio ao Agente, desacoplada do agrupamento de 250 ms da Taqciti
+ * (que existe só para custo de gravação local — ver STATE_FLUSH_INTERVAL_MS em
+ * constants.ts). Uma fala só é enviada depois de ficar este tempo sem palavra
+ * nova (G-07-1/G-07-2, D-06 refinado na Task 1 do plano 07-04).
+ */
+export const AGENTE_PHRASE_QUIET_MS = 1500;
+
+/**
+ * Teto de espera: mesmo em fala contínua (sem silêncio), o texto pendente sai
+ * no máximo depois deste tempo — garante que a tela continue "ao vivo" (SC1)
+ * mesmo quando a pessoa fala sem pausar (G-07-2, D-06 refinado na Task 1 do
+ * plano 07-04).
+ */
+export const AGENTE_PHRASE_MAX_WAIT_MS = 5_000;
+
 export interface AgenteConfig {
   agenteBackendUrl: string;
   streamingEnabled: boolean;

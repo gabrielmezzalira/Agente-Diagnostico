@@ -9,10 +9,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
 import { STATE_FLUSH_INTERVAL_MS, STORAGE_KEYS } from '@/shared/config/constants';
+import { AGENTE_PHRASE_MAX_WAIT_MS, AGENTE_PHRASE_QUIET_MS } from '@/shared/config/agenteConfig';
 import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 
 const AGENTE_URL = 'http://agente.test';
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
+/** Cruza o flush de 250 ms da Taqciti (STATE_FLUSH_INTERVAL_MS) sem se confundir com ele —
+ *  representa duas palavras da mesma fala chegando em ciclos de flush diferentes. */
+const WORD_GAP_MS = STATE_FLUSH_INTERVAL_MS + 50;
 
 const READY_CONFIG = {
   agenteBackendUrl: AGENTE_URL,
@@ -153,6 +157,57 @@ describe('streaming ponta a ponta via dispatch real (D-06/D-07)', () => {
 
     const [, init] = fetchMock.mock.calls[1]!;
     expect(JSON.parse(init.body as string)).toMatchObject({ text: 'como vai' });
+  });
+});
+
+describe('G-07-1: uma fala vira um envio (janela de agrupamento por fala)', () => {
+  it('duas palavras da mesma fala, chegando em ciclos de flush diferentes, geram 1 POST só depois do silêncio', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Você', text: 'Olá,', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(WORD_GAP_MS);
+    // Drena a fila (passo idempotente) antes de afirmar ausência — WR-09.
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Você', text: 'Olá, boa noite!', atMs: 1100 + WORD_GAP_MS + 50 },
+    });
+    await vi.advanceTimersByTimeAsync(WORD_GAP_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toEqual({
+      session_id: SESSION_ID,
+      text: 'Olá, boa noite!',
+      speaker: 'Você',
+    });
+
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
