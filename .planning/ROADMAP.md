@@ -34,7 +34,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
 - [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
-- [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
+- [x] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call (completed 2026-09-27)
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
 - [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
 - [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
@@ -213,7 +213,7 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: 4/4 plans executed (07-04 é fechamento de gaps, aguardando execução)
+**Plans**: 4/4 plans complete (07-04 é fechamento de gaps, aguardando execução)
 
 **Wave 1**
 
@@ -287,7 +287,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
-| 7. Taqciti Config + Background Streamer | 4/4 | In Progress|  |
+| 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
