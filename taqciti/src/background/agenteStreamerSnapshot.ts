@@ -39,10 +39,14 @@ export const sessionSnapshotStore: AgenteStreamerSnapshotStore = {
  * voltar ao comportamento antigo, nunca travar o streamer.
  */
 export function createSnapshotPersister(store: AgenteStreamerSnapshotStore) {
-  /** `false` enquanto não se sabe se há algo gravado (antes do `restore`). */
+  /** `false` enquanto não se sabe se há algo gravado (antes do `restoreOnce`). */
   let storedEmpty = false;
+  let restored = false;
 
-  async function restore(): Promise<AgenteStreamerSnapshot | null> {
+  /** Lê o snapshot só na primeira chamada; as seguintes devolvem `null` sem tocar o storage. */
+  async function restoreOnce(): Promise<AgenteStreamerSnapshot | null> {
+    if (restored) return null;
+    restored = true;
     try {
       const snapshot = await store.load();
       storedEmpty = snapshot === null;
@@ -68,5 +72,5 @@ export function createSnapshotPersister(store: AgenteStreamerSnapshotStore) {
     }
   }
 
-  return { restore, persist };
+  return { restoreOnce, persist };
 }

@@ -11,39 +11,26 @@ import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 import {
   AGENTE_PHRASE_MAX_WAIT_MS,
   AGENTE_PHRASE_QUIET_MS,
-  buildExtensionChunkRequest,
   isStreamingReady,
   type AgenteConfig,
-  type ExtensionChunkRequest,
 } from '@/shared/config/agenteConfig';
-import {
-  planStreamStep,
-  primeCursor,
-  type StreamBinding,
-  type StreamCursor,
-} from '@/features/agente/wordDelta';
+import { planStreamStep, primeCursor, type StreamCursor } from '@/features/agente/wordDelta';
 import {
   appendDeltas,
+  buildPhraseRequests,
   EMPTY_PHRASE_BUFFER,
   nextPhraseDeadline,
   takeReadyPhrases,
-  type PendingPhrase,
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
 import { logger } from '@/shared/services/log';
+import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
-import { createSnapshotPersister, type AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
+import { createSnapshotPersister } from './agenteStreamerSnapshot';
 
-export interface AgenteStreamerDeps {
-  loadConfig: () => Promise<AgenteConfig>;
-  send: (request: ExtensionChunkRequest) => Promise<Response>;
-  /** Mudanças de config, para reagir na hora ao toggle (WR-11). */
-  onConfigChange?: (listener: (config: AgenteConfig) => void) => () => void;
-  /** Onde cursor e falas pendentes sobrevivem ao reinício do service worker (WR-02). */
-  snapshot?: AgenteStreamerSnapshotStore;
-}
+export type { AgenteStreamerDeps } from './agenteStreamerDeps';
 
 const PHRASE_TIMING: PhraseTiming = {
   quietMs: AGENTE_PHRASE_QUIET_MS,
@@ -54,33 +41,26 @@ const PHRASE_TIMING: PhraseTiming = {
 const RETRY_MIN_MS = 1_000;
 
 /**
- * Cria uma instância do streamer: cursor em memória + buffer de falas
- * pendentes + timer único da janela + fila de promessas (cada passo espera o
- * anterior terminar antes de reler o cursor — sem isso, dois flushes
- * concorrentes calculariam o delta a partir do MESMO estado anterior e
- * enviariam as mesmas palavras duas vezes).
+ * Cria uma instância do streamer: cursor + falas pendentes + timer único da
+ * janela + fila de promessas (cada passo espera o anterior terminar antes de
+ * reler o cursor — sem isso, dois flushes concorrentes calculariam o delta a
+ * partir do MESMO estado anterior e enviariam as mesmas palavras duas vezes).
  */
 export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let cursor: StreamCursor | null = null;
   let queue: Promise<void> = Promise.resolve();
   let pending: PhraseBuffer = EMPTY_PHRASE_BUFFER;
-  /*
-   * WR-13: um `step`/`tick` já enfileirado (ex.: esperando `loadConfig`)
-   * quando `dispose()` roda NÃO para sozinho — sem este flag, ele continua,
-   * rearma timer ou envia com o `deps` desta instância descartada.
-   */
+  /** WR-13: um passo já enfileirado quando `dispose()` roda vira no-op em vez de continuar. */
   let disposed = false;
-  /** Fila de envio ordenada, com novas tentativas (WR-01). */
-  const sender = createAgenteSender({ send: deps.send });
-  const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
-  /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
-  let unsubscribeConfig: (() => void) | null = null;
-  const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
-  let restored = false;
   /** Última sessão vista num flush — é dali que religar o toggle começa a contar (WR-02). */
   let lastSession: MeetingSessionState | null = null;
+  /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
+  let unsubscribeConfig: (() => void) | null = null;
+  const sender = createAgenteSender({ send: deps.send });
+  const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
+  const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
-  /** Fila serializada única — flush e timer da janela SEMPRE passam por aqui. */
+  /** Fila serializada única — flush, timer e mudança de config SEMPRE passam por aqui. */
   function enqueue(run: () => Promise<void>): Promise<void> {
     queue = queue.then(run).catch((error: unknown) => {
       logger.error('passo do streamer do Agente falhou', error);
@@ -88,38 +68,19 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     return queue;
   }
 
-  /**
-   * Todo passo (flush, timer, mudança de config) restaura o snapshot na
-   * primeira vez e persiste o resultado depois (WR-02).
-   */
+  /** Todo passo restaura o snapshot na primeira vez e persiste o resultado depois (WR-02). */
   function enqueueStep(run: () => Promise<void>): Promise<void> {
     return enqueue(async () => {
-      await restoreOnce();
+      const snapshot = await persister?.restoreOnce();
       if (disposed) return;
+      if (snapshot) {
+        cursor = snapshot.cursor;
+        pending = snapshot.pending;
+        rearm(Date.now());
+      }
       await run();
       if (!disposed) await persister?.persist(cursor, pending);
     });
-  }
-
-  async function restoreOnce(): Promise<void> {
-    if (restored || persister === null) return;
-    restored = true;
-    const snapshot = await persister.restore();
-    if (disposed || snapshot === null) return;
-    cursor = snapshot.cursor;
-    pending = snapshot.pending;
-    rearm(Date.now());
-  }
-
-  function sendPhrases(config: AgenteConfig, phrases: readonly PendingPhrase[]): void {
-    sender.submit(
-      phrases.map((phrase) =>
-        buildExtensionChunkRequest(
-          { ...config, agenteSessionId: phrase.sessionId },
-          { text: phrase.text, speaker: phrase.speaker },
-        ),
-      ),
-    );
   }
 
   /**
@@ -147,7 +108,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function drain(config: AgenteConfig, now: number, flushAll: boolean): void {
     const result = takeReadyPhrases(pending, now, PHRASE_TIMING, flushAll);
     pending = result.buffer;
-    sendPhrases(config, result.ready);
+    sender.submit(buildPhraseRequests(config, result.ready));
     rearm(now);
   }
 
@@ -155,15 +116,12 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     const config = await deps.loadConfig();
     if (disposed) return; // instância descartada enquanto esperava (WR-13)
     lastSession = state.session;
-    const binding: StreamBinding | null = isStreamingReady(config)
-      ? { sessionId: config.agenteSessionId }
-      : null;
-
-    if (binding === null) {
+    if (!isStreamingReady(config)) {
       stopStreaming();
       return;
     }
 
+    const binding = { sessionId: config.agenteSessionId };
     const result = planStreamStep(cursor, state.session, binding);
     cursor = result.cursor;
 
@@ -218,23 +176,18 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     return enqueueStep(() => step(state));
   }
 
-  /**
-   * Boot do service worker (WR-02): restaura o snapshot sem esperar o
-   * próximo flush — uma fala que estava na janela volta a ter timer.
-   */
+  /** Boot do service worker (WR-02): restaura o snapshot sem esperar o próximo flush. */
   function resume(): Promise<void> {
     ensureSubscribed();
     return enqueueStep(() => Promise.resolve());
   }
 
-  /** Observador sem efeito colateral (WR-10): espera a fila terminar, sem
-   * enfileirar nenhum passo novo — só para asserções de ausência em teste. */
+  /** Só para asserções de ausência em teste (WR-10): espera a fila, sem enfileirar nada. */
   function whenIdle(): Promise<void> {
     return queue;
   }
 
-  /** Terminal (WR-13): marca a instância como descartada ANTES de limpar —
-   * todo ponto de entrada (`step`/`tick`/`rearm`) passa a virar no-op. */
+  /** Terminal (WR-13): todo ponto de entrada (`step`/`tick`/`rearm`) passa a virar no-op. */
   function dispose(): void {
     disposed = true;
     discard();

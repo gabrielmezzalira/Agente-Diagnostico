@@ -13,6 +13,11 @@
  * `chrome`, `fetch`, `setTimeout` nem `Date.now` — só funções puras, testáveis
  * sem mock nenhum.
  */
+import {
+  buildExtensionChunkRequest,
+  type AgenteConfig,
+  type ExtensionChunkRequest,
+} from '@/shared/config/agenteConfig';
 import type { SegmentDelta } from './wordDelta';
 
 /** Uma fala em formação: texto acumulado de um segmento até ser liberada. */
@@ -124,4 +129,20 @@ export function nextPhraseDeadline(buffer: PhraseBuffer, timing: PhraseTiming): 
     }
   }
   return earliest;
+}
+
+/**
+ * Monta uma requisição `ExtensionChunk` por fala liberada, cada uma sob o
+ * session_id em que foi acumulada (D-04) — nunca o da config atual.
+ */
+export function buildPhraseRequests(
+  config: AgenteConfig,
+  phrases: readonly PendingPhrase[],
+): ExtensionChunkRequest[] {
+  return phrases.map((phrase) =>
+    buildExtensionChunkRequest(
+      { ...config, agenteSessionId: phrase.sessionId },
+      { text: phrase.text, speaker: phrase.speaker },
+    ),
+  );
 }
