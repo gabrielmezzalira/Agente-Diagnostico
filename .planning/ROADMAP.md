@@ -213,7 +213,7 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/4 plans executed (07-04 é fechamento de gaps, aguardando execução)
 
 **Wave 1**
 
@@ -226,6 +226,10 @@ Plans:
 **Wave 3** *(bloqueada na conclusão da Wave 2)*
 
 - [x] 07-03-PLAN.md — Tela "Agente Diagnóstico" na saída larga (`?view=agente`, link na tela inicial, sem `default_popup`): toggle, session_id manual, URL e chave mascarada + verificação final (typecheck/lint/test/build da Taqciti, pytest do backend, nada fora do escopo alterado) (D-04/D-05/D-08/D-09/D-10, TAQ-01)
+
+**Gap closure** *(fecha G-07-1/G-07-2 do 07-UAT.md — linhas fragmentadas palavra a palavra na tela de monitoramento)*
+
+- [ ] 07-04-PLAN.md — GAP G-07-1/G-07-2: envio ao Agente agrupado por fala (janela de silêncio de 1,5 s + teto de 5 s + envio imediato no fim/pausa) em `phraseBatcher.ts` puro + timer único no `agenteStreamer.ts`; cadência local de 250 ms, `sessionController.ts` e `wordDelta.ts` intocados; abre com checkpoint de refinamento do D-06 — **autonomous:false** (TAQ-01)
 
 ### Phase 8: Taqciti Session Association
 
