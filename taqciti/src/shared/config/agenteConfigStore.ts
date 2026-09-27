@@ -83,9 +83,17 @@ export function subscribeAgenteConfig(onConfig: (config: AgenteConfig) => void):
  */
 export function createAgenteConfigReader(): () => Promise<AgenteConfig> {
   let cached: Promise<AgenteConfig> | null = null;
+  /*
+   * WR-08: registrar o listener é separado de ter um `cached` pendente — se
+   * a leitura inicial rejeitar, `cached` volta a `null` para a próxima
+   * chamada tentar de novo, mas o listener de `onChanged` só pode ser
+   * registrado uma vez, senão a segunda tentativa duplicaria o listener.
+   */
+  let listening = false;
 
   return function readAgenteConfig(): Promise<AgenteConfig> {
-    if (cached === null) {
+    if (!listening) {
+      listening = true;
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== 'local' || !(STORAGE_KEYS.agenteConfig in changes)) return;
         cached = Promise.resolve(
@@ -94,7 +102,12 @@ export function createAgenteConfigReader(): () => Promise<AgenteConfig> {
           ),
         );
       });
-      cached = loadAgenteConfig();
+    }
+    if (cached === null) {
+      cached = loadAgenteConfig().catch((error: unknown) => {
+        cached = null; // próxima chamada tenta de novo
+        throw error;
+      });
     }
     return cached;
   };

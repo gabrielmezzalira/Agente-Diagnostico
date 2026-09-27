@@ -186,4 +186,37 @@ describe('createAgenteConfigReader', () => {
 
     expect(mock.local.get).toHaveBeenCalledTimes(1);
   });
+
+  /*
+   * WR-08: antes, uma rejeição de `chrome.storage.local.get` na primeira
+   * chamada ficava guardada para sempre — toda chamada seguinte devolvia a
+   * mesma rejeição, e o streamer parava até uma escrita disparar `onChanged`.
+   */
+  it('se a primeira leitura falhar, a próxima chamada tenta de novo (não fica presa na rejeição)', async () => {
+    const { createAgenteConfigReader, mock } = await fresh({
+      ...DEFAULT_AGENTE_CONFIG,
+      agenteBackendUrl: 'https://agente.exemplo',
+    });
+    const readConfig = createAgenteConfigReader();
+
+    mock.local.get.mockImplementationOnce(() => Promise.reject(new Error('falhou')));
+    await expect(readConfig()).rejects.toThrow('falhou');
+
+    const config = await readConfig();
+    expect(config.agenteBackendUrl).toBe('https://agente.exemplo');
+  });
+
+  it('mesmo depois de uma leitura inicial falhar e tentar de novo, o listener de onChanged não duplica', async () => {
+    const { createAgenteConfigReader, patchAgenteConfig, mock } = await fresh();
+    const readConfig = createAgenteConfigReader();
+
+    mock.local.get.mockImplementationOnce(() => Promise.reject(new Error('falhou')));
+    await expect(readConfig()).rejects.toThrow('falhou');
+    await readConfig();
+
+    expect(mock.chrome.storage.onChanged.addListener).toHaveBeenCalledTimes(1);
+
+    await patchAgenteConfig({ streamingEnabled: true });
+    expect((await readConfig()).streamingEnabled).toBe(true);
+  });
 });
