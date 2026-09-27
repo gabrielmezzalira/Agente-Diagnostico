@@ -26,9 +26,9 @@ branch temporária `gsd-reviewfix/07-4871`), com `npm ci` local e a suíte compl
 avançada por fast-forward sobre `feat/fase-07-taqciti-config-background-streamer` e removida — ver
 seção "Verificação" abaixo para os números finais.
 
-## Correções aplicadas
+## Fixed Issues
 
-### WR-03: A fila de patches ficava envenenada para sempre depois de uma única falha de escrita
+### WR-03: A fila de patches fica envenenada para sempre depois de uma única falha de escrita
 
 **Arquivos modificados:** `taqciti/src/shared/config/agenteConfigStore.ts`, `taqciti/src/shared/config/agenteConfigStore.test.ts`
 **Commit:** `aee15a6`
@@ -37,7 +37,7 @@ em vez de `queue.then(...)` direto — uma rejeição de `writeLocal` (quota, co
 deixa mais a fila presa numa promessa rejeitada para sempre. Adicionado teste cobrindo uma falha de
 escrita seguida de um patch bem-sucedido.
 
-### WR-04: Erros de gravação não eram tratados na tela (unhandled rejection, sem aviso)
+### WR-04: Erros de gravação não são tratados na tela: rejeição sem tratamento e nenhum retorno para a pessoa
 
 **Arquivos modificados:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts`,
 `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.test.tsx`
@@ -46,7 +46,7 @@ escrita seguida de um patch bem-sucedido.
 `setStreamingEnabled`. A tela mostra a mensagem num `<p aria-live="assertive">` separado do status de
 prontidão. Adicionados dois testes (falha ao salvar, falha ao alternar o toggle).
 
-### WR-05: `save()` mandava o objeto inteiro, contrariando o contrato do store
+### WR-05: `save()` manda o objeto inteiro, contrariando o contrato do store, grava o padrão da build no storage e descarta o que foi digitado durante o salvamento
 
 **Arquivos modificados:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts`,
 `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.test.tsx`
@@ -56,7 +56,7 @@ prontidão. Adicionados dois testes (falha ao salvar, falha ao alternar o toggle
 no primeiro "Salvar". Os três campos de texto ficam `disabled` enquanto `saving` é verdadeiro.
 Adicionado teste com spy em `patchAgenteConfig` provando que só o campo editado é enviado.
 
-### WR-06: `http:` era aceito para qualquer host, e "localhost:8000" virava `https://`
+### WR-06: A chave `x-agente-key` pode ir em texto puro por `http://` para qualquer host, e digitar "localhost:8000" vira https e quebra o dev local
 
 **Arquivos modificados:** `taqciti/src/shared/config/agenteConfig.ts`,
 `taqciti/src/shared/config/agenteConfig.test.ts`, `taqciti/src/background/agenteStreamer.test.ts`
@@ -68,7 +68,7 @@ não envia (a chave e a transcrição não trafegam sem TLS). `normalizeAgenteBa
 dev local. Ajustado o fixture `AGENTE_URL` de `agenteStreamer.test.ts` de `http://agente.test` para
 `https://agente.test`, já que o protocolo em si não era o que aqueles testes exercitavam.
 
-### WR-08: Uma falha na primeira leitura da config deixava o leitor preso para sempre
+### WR-08: Se a primeira leitura falhar, `createAgenteConfigReader` guarda a promessa rejeitada e o streamer para até a config mudar
 
 **Arquivos modificados:** `taqciti/src/shared/config/agenteConfigStore.ts`,
 `taqciti/src/shared/config/agenteConfigStore.test.ts`
@@ -78,7 +78,7 @@ rejeita, permitindo que a próxima chamada tente de novo, em vez de repetir a me
 sempre. Um flag `listening` separado garante que o listener de `onChanged` não seja registrado duas
 vezes entre tentativas. Adicionados dois testes (recuperação após falha; listener não duplica).
 
-### WR-10: Testes da janela por fala passavam por construção (drain como "passo idempotente")
+### WR-10: Testes da janela por fala que passam por construção: o "drain" é um passo real com efeito colateral
 
 **Arquivos modificados:** `taqciti/src/background/agenteStreamer.ts`, `taqciti/src/background/agenteStreamer.test.ts`
 **Commit:** `83cf2a3`
@@ -94,7 +94,7 @@ trivial) e prova que a cadência de 250ms é independente da janela do Agente de
 `onSessionFlushed` manualmente — o comportamento correto ao religar depende da decisão de time
 registrada em WR-02/WR-11 (ver seção de achados pulados).
 
-### WR-12: Se `loadConfig` falhasse no tick, a fala pendente ficava sem timer
+### WR-12: Se o `loadConfig` falhar no tick, a fala pendente fica sem timer e só sai quando alguém voltar a falar
 
 **Arquivos modificados:** `taqciti/src/background/agenteStreamer.ts`, `taqciti/src/background/agenteStreamer.test.ts`
 **Commit:** `adc8a7f`
@@ -103,7 +103,7 @@ falha), um buffer não vazio sempre tenha um timer armado — com atraso mínimo
 para não virar laço apertado se a falha se repetir. Adicionado teste com `loadConfig` falhando uma vez
 (3ª chamada) e confirmando que o retry manda a fala depois.
 
-### WR-13: `dispose()` não era terminal — um passo em voo da instância antiga continuava rodando
+### WR-13: `dispose()` não é terminal: um passo já enfileirado na instância antiga rearma timer e envia com as deps antigas
 
 **Arquivos modificados:** `taqciti/src/background/agenteStreamer.ts`, `taqciti/src/background/agenteStreamer.test.ts`
 **Commit:** `6213569`
@@ -114,13 +114,13 @@ descarta a instância no meio, resolve o `loadConfig` depois — e confirma que 
 timer órfão dispara depois. **Validação da força do teste:** removi os três guards temporariamente e
 confirmei que o teste falha (captura a regressão de verdade) antes de restaurar o fix.
 
-## Achados pulados (decisão do time)
+## Skipped Issues
 
 Todos os cinco abaixo envolvem uma decisão de estratégia/design/contrato explicitamente marcada como
 **DECISÃO EM ABERTO** no `07-REVIEW.md`, ou mudam comportamento hoje fixado por teste — por instrução
 deste fixer, não decidi por conta própria; documentei a escolha que falta.
 
-### CR-01: Reunião nova com o mesmo session_id trava o streaming em silêncio
+### CR-01: Reunião nova com o mesmo session_id trava o streaming em silêncio, enquanto a UI diz "Ligado"
 
 **Status:** `skipped: DECISÃO EM ABERTO do time`
 **Arquivos:** `taqciti/src/features/agente/wordDelta.ts:115-118`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:19`, `taqciti/src/shared/config/agenteConfig.ts:131-142`
@@ -130,7 +130,7 @@ worker) ou (b) manter a espera atual, mas sinalizar isso na tela (status de runt
 nova detectada — salve o ID de novo") em vez de mostrar "Ligado — está sendo enviada" enquanto nada
 sai.
 
-### WR-01: O cursor avança antes do envio ser confirmado — falha de rede perde até 5s de fala
+### WR-01: O cursor avança antes do envio ser confirmado: falha de rede perde palavras de vez (agora até 5 s de fala), e a ordem de chegada não é garantida
 
 **Status:** `skipped: DECISÃO EM ABERTO do time`
 **Arquivo:** `taqciti/src/background/agenteStreamer.ts:76-93, 119-124, 133`
@@ -138,7 +138,7 @@ sai.
 com retry limitado, ou um "buffer confirmado" que só avança o cursor após `response.ok`. O REVIEW.md é
 explícito que isto é "uma decisão de desenho" e pede a versão inteira, não uma parcial.
 
-### WR-02: Palavras são descartadas após reiniciar o service worker ou religar o toggle
+### WR-02: Depois de reiniciar o service worker ou religar o toggle, palavras são descartadas (agora também tudo o que estava pendente na janela)
 
 **Status:** `skipped: DECISÃO EM ABERTO do time`
 **Arquivos:** `taqciti/src/features/agente/wordDelta.ts:112-113`, `taqciti/src/background/agenteStreamer.ts:63-66`, `taqciti/src/background/agenteStreamer.test.ts:401-411, 470-477`
@@ -148,7 +148,7 @@ explícito que isto é "uma decisão de desenho" e pede a versão inteira, não 
 (`agenteStreamer.test.ts:401-411, 470-477`) fixam hoje como esperado (perder "e mais isso"/"e agora") —
 mudar isso exige realinhar esses testes junto com a decisão, não só o código.
 
-### WR-07: O status "Ligado — está sendo enviada" não reflete a entrega real (401/404/erro de rede)
+### WR-07: O status "Ligado — está sendo enviada" não reflete a entrega real (401, 404 e erros de rede ficam invisíveis)
 
 **Status:** `skipped: DECISÃO EM ABERTO do time`
 **Arquivos:** `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:19, 120-122`, `taqciti/src/background/agenteStreamer.ts:76-93`
@@ -157,7 +157,7 @@ mudar isso exige realinhar esses testes junto com a decisão, não só o código
 isso é uma decisão de produto sobre o que e como comunicar ao comercial/soluções, não só uma correção
 técnica.
 
-### WR-11: Desligar e religar o toggle dentro da janela ainda envia a fala pendente (D-09 não é reativo)
+### WR-11: Desligar e religar o toggle dentro da janela envia a fala pendente (D-09 não é reativo)
 
 **Status:** `skipped: DECISÃO EM ABERTO do time`
 **Arquivo:** `taqciti/src/background/agenteStreamer.ts:105-117, 135-138, 146-153`
