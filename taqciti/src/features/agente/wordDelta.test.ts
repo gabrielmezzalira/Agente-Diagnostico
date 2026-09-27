@@ -235,3 +235,19 @@ describe('planStreamStep — prime, reunião nova, troca de sessão', () => {
     expect(step.cursor?.sessionId).toBe(newSessionId);
   });
 });
+
+describe('contrato com o agrupador (phraseBatcher, plano 07-04) — sem mudar wordDelta.ts', () => {
+  it('deltas de um segmento que cresce em passos (1, 3, 4, 6 palavras), unidos por espaço, são exatamente o texto final, sem repetir nem pular', () => {
+    let cursor: StreamCursor = { meetingId: 'm1', sessionId: SESSION_ID, sent: {} };
+    const passos = ['um', 'um dois três', 'um dois três quatro', 'um dois três quatro cinco seis'];
+    const coletado: string[] = [];
+
+    for (const texto of passos) {
+      const { deltas, cursor: proximo } = computeSegmentDeltas(cursor, [segment({ text: texto })]);
+      cursor = proximo;
+      for (const d of deltas) coletado.push(d.text);
+    }
+
+    expect(coletado.join(' ')).toBe('um dois três quatro cinco seis');
+  });
+});

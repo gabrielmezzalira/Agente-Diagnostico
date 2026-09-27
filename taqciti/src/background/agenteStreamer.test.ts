@@ -19,6 +19,7 @@ import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 
 const AGENTE_URL = 'http://agente.test';
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
+const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
 /** Cruza o flush de 250 ms da Taqciti (STATE_FLUSH_INTERVAL_MS) sem se confundir com ele —
  *  representa duas palavras da mesma fala chegando em ciclos de flush diferentes. */
 const WORD_GAP_MS = STATE_FLUSH_INTERVAL_MS + 50;
@@ -558,6 +559,383 @@ describe('idempotência e concorrência (fila serializada)', () => {
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     await agenteStreamer.onSessionFlushed(withSegment);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
+  it('G-07-2a: "boa noite" repetido 3x sem pausa longa vira 1 envio com as 6 palavras', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+
+    const palavras = ['Boa', 'noite', 'boa', 'noite', 'boa', 'noite'];
+    let texto = '';
+    let atMs = 1100;
+    for (const palavra of palavras) {
+      texto = texto.length === 0 ? palavra : `${texto} ${palavra}`;
+      await sessionController.dispatch({
+        type: 'CAPTION_CHUNK',
+        chunk: { captionId: 'c1', speaker: 'Você', text: texto, atMs },
+      });
+      atMs += WORD_GAP_MS;
+      await vi.advanceTimersByTimeAsync(WORD_GAP_MS);
+    }
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toEqual({
+      session_id: SESSION_ID,
+      text: 'Boa noite boa noite boa noite',
+      speaker: 'Você',
+    });
+  });
+
+  it('G-07-2b: repetições da mesma fala com pausa longa entre elas viram 3 envios; total enviado bate com o total falado (6 palavras)', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+
+    let atMs = 1100;
+    const dispatchChunk = async (texto: string) => {
+      await sessionController.dispatch({
+        type: 'CAPTION_CHUNK',
+        chunk: { captionId: 'c1', speaker: 'Você', text: texto, atMs },
+      });
+      atMs += WORD_GAP_MS;
+      await vi.advanceTimersByTimeAsync(WORD_GAP_MS);
+    };
+
+    await dispatchChunk('Boa');
+    await dispatchChunk('Boa noite');
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await dispatchChunk('Boa noite boa');
+    await dispatchChunk('Boa noite boa noite');
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    await dispatchChunk('Boa noite boa noite boa');
+    await dispatchChunk('Boa noite boa noite boa noite');
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+
+    const textos = fetchMock.mock.calls.map(
+      ([, init]) => (JSON.parse(init.body as string) as { text: string }).text,
+    );
+    expect(textos).toEqual(['Boa noite', 'boa noite', 'boa noite']);
+    expect(textos.join(' ').split(/\s+/).filter(Boolean)).toHaveLength(6);
+  });
+
+  it('teto em fala contínua: pelo menos 1 envio ocorre antes da 20ª palavra ser despachada, sem perder nem repetir nenhuma', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+
+    const palavras = Array.from({ length: 20 }, (_, i) => `p${i + 1}`);
+    let texto = '';
+    let atMs = 1100;
+    let fetchesAntesDaUltima = -1;
+    for (let i = 0; i < palavras.length; i += 1) {
+      if (i === palavras.length - 1) {
+        fetchesAntesDaUltima = fetchMock.mock.calls.length;
+      }
+      texto = texto.length === 0 ? palavras[i]! : `${texto} ${palavras[i]}`;
+      await sessionController.dispatch({
+        type: 'CAPTION_CHUNK',
+        chunk: { captionId: 'c1', speaker: 'Você', text: texto, atMs },
+      });
+      atMs += WORD_GAP_MS;
+      await vi.advanceTimersByTimeAsync(WORD_GAP_MS);
+    }
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+
+    expect(fetchesAntesDaUltima).toBeGreaterThanOrEqual(1);
+
+    const enviado = fetchMock.mock.calls
+      .map(([, init]) => (JSON.parse(init.body as string) as { text: string }).text)
+      .join(' ');
+    expect(enviado.split(/\s+/).filter(Boolean)).toEqual(palavras);
+  });
+
+  it('fim: fala pendente + MEETING_FINISHED envia na hora, sem esperar a janela', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'até logo', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    // A fala está pendente (silêncio ainda não bateu) — nenhum envio ainda.
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await sessionController.dispatch({ type: 'MEETING_FINISHED', at: 2000 });
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'até logo' });
+  });
+
+  it('pausa: fala pendente + PAUSE envia na hora, sem esperar a janela', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'vou pausar aqui', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await sessionController.dispatch({ type: 'PAUSE' });
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'vou pausar aqui' });
+  });
+
+  it('toggle com fala pendente: desligar descarta o que estava esperando; religar só envia o que vem depois (D-09)', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    let currentConfig = { ...READY_CONFIG };
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(currentConfig) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'isso vai ficar pendente', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Desliga sem novo dispatch — o timer interno da janela é quem descobre
+    // a mudança (tick relê a config) e descarta o pendente (D-09).
+    currentConfig = { ...currentConfig, streamingEnabled: false };
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Religa: o cursor foi resetado enquanto desligado (mesmo mecanismo do
+    // D-09 já provado no Task 2), então o PRIMEIRO flush pós-religar só
+    // re-ancora (prime) — nada do texto descartado é reenviado aqui.
+    currentConfig = { ...currentConfig, streamingEnabled: true };
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'isso vai ficar pendente e', atMs: 1300 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Só o texto realmente novo dali para frente é enviado.
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'isso vai ficar pendente e isso é novo', atMs: 1500 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body as string)).toMatchObject({ text: 'isso é novo' });
+  });
+
+  it('troca de sessão: a fala pendente sai sob o session_id em que foi acumulada; a próxima sai sob o novo', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    let currentConfig = { ...READY_CONFIG };
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(currentConfig) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'palavras antigas aqui', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Troca de sessão SEM novo dispatch — a fala pendente já foi acumulada
+    // sob a sessão antiga e deve sair sob ela quando o silêncio bater.
+    currentConfig = { ...currentConfig, agenteSessionId: OTHER_SESSION_ID };
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'palavras antigas aqui',
+    });
+
+    // Palavras novas no MESMO segmento, já com a sessão trocada, saem sob a nova.
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'palavras antigas aqui e novas', atMs: 1600 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      session_id: OTHER_SESSION_ID,
+      text: 'e novas',
+    });
+  });
+
+  it('cadência local intacta: o estado é gravado e retransmitido em 250ms, independente do envio ao Agente', async () => {
+    const { sessionController, mock } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const chromeExtra = mock.chrome as unknown as {
+      runtime: { sendMessage: ReturnType<typeof vi.fn> };
+    };
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+
+    const saved = mock.session.values['taq:state'] as MeetingState | undefined;
+    expect(saved?.session?.segments).toEqual([
+      expect.objectContaining({ captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem' }),
+    ]);
+    expect(chromeExtra.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'state/updated' }),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reprocessamento: repetir o passo do streamer depois do envio não gera fetch novo', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
