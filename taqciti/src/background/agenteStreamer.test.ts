@@ -3,8 +3,13 @@
  * de estados -> flush agrupado de sessionController.ts -> agenteStreamer.ts
  * -> fetch para /webhook/extension. Cobre o caminho feliz (D-06/D-07), o
  * gate desligado por padrão (D-09), o header condicional (D-10), o
- * comportamento não-bloqueante em erro de rede, e a idempotência/
- * concorrência da fila do streamer.
+ * comportamento não-bloqueante em erro de rede, a idempotência/concorrência
+ * da fila do streamer, e a janela de agrupamento por fala (G-07-1, plano
+ * 07-04, D-06 refinado): o envio ao Agente só sai depois de
+ * `AGENTE_PHRASE_QUIET_MS` sem palavra nova, além do flush de 250 ms da
+ * Taqciti (`STATE_FLUSH_INTERVAL_MS`) — por isso toda asserção de envio avança
+ * as duas janelas, e toda asserção de ausência drena a fila do streamer com
+ * um passo idempotente antes de afirmar (WR-09).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
@@ -109,6 +114,7 @@ describe('streaming ponta a ponta via dispatch real (D-06/D-07)', () => {
     });
 
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -146,6 +152,7 @@ describe('streaming ponta a ponta via dispatch real (D-06/D-07)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     await sessionController.dispatch({
@@ -153,6 +160,7 @@ describe('streaming ponta a ponta via dispatch real (D-06/D-07)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem como vai', atMs: 1300 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
     const [, init] = fetchMock.mock.calls[1]!;
@@ -213,7 +221,7 @@ describe('G-07-1: uma fala vira um envio (janela de agrupamento por fala)', () =
 
 describe('D-09: streaming desligado por padrão', () => {
   it('sem configurar o streamer (padrão da build), nenhum fetch é disparado', async () => {
-    const { sessionController } = await fresh();
+    const { sessionController, agenteStreamer } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -232,8 +240,9 @@ describe('D-09: streaming desligado por padrão', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    // Dá tempo real para qualquer envio indevido aparecer antes de afirmar ausência.
-    await vi.waitFor(() => expect(true).toBe(true));
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    // Drena a fila (passo idempotente) antes de afirmar ausência — WR-09.
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -263,6 +272,7 @@ describe('D-10: header x-agente-key condicional', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     const [, init] = fetchMock.mock.calls[0]!;
@@ -299,6 +309,10 @@ describe('não bloqueante em erro de rede', () => {
       const saved = mock.session.values['taq:state'] as MeetingState | undefined;
       expect(saved?.session?.segments).toHaveLength(1);
     });
+
+    // Avança a janela para o envio (rejeitado) de fato acontecer — sem isto o
+    // .catch() de sendPhrases nunca roda dentro deste teste.
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
   });
 });
 
@@ -331,6 +345,7 @@ describe('configuração vinda do storage (D-08)', () => {
     });
 
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -342,7 +357,7 @@ describe('configuração vinda do storage (D-08)', () => {
   });
 
   it('desligar para o envio na hora; religar não reenvia o que foi falado desligado (D-09)', async () => {
-    const { sessionController } = await fresh();
+    const { sessionController, agenteStreamer } = await fresh();
     const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
@@ -368,6 +383,7 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     // Desliga pelo storage: nenhum fetch novo a partir do próximo flush.
@@ -377,7 +393,8 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem pausa aqui', atMs: 1300 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await vi.waitFor(() => expect(true).toBe(true));
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     // Religa: o primeiro flush pós-religar só re-ancora o cursor (prime) —
@@ -388,7 +405,8 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem pausa aqui e agora', atMs: 1500 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await vi.waitFor(() => expect(true).toBe(true));
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     // Só o texto realmente novo dali para frente é enviado — nunca "pausa aqui".
@@ -402,6 +420,7 @@ describe('configuração vinda do storage (D-08)', () => {
       },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
     const [, init] = fetchMock.mock.calls[1]!;
@@ -435,12 +454,16 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     // Reinício do service worker: módulos recarregados (cursor/queue em memória
     // somem), estado reidratado do storage — igual ao Meet em produção.
     vi.resetModules();
     const restarted = await import('./sessionController');
+    // Reimporta o agenteStreamer depois do reset para pegar a MESMA instância
+    // (cursor/buffer/timer novos) que o sessionController reiniciado usa.
+    const restartedStreamer = await import('./agenteStreamer');
     await restarted.hydrate();
 
     await restarted.dispatch({
@@ -448,7 +471,8 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem e mais isso', atMs: 1600 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await vi.waitFor(() => expect(true).toBe(true));
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await restartedStreamer.onSessionFlushed(restarted.getState());
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     await restarted.dispatch({
@@ -456,6 +480,7 @@ describe('configuração vinda do storage (D-08)', () => {
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem e mais isso ok', atMs: 1800 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
     const [, init] = fetchMock.mock.calls[1]!;
@@ -498,6 +523,7 @@ describe('configuração vinda do storage (D-08)', () => {
         chunk: { captionId: 'c1', speaker: 'Ana', text: texto, atMs: 1100 + i * 300 },
       });
       await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+      await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(i + 1));
     }
 
@@ -528,7 +554,8 @@ describe('idempotência e concorrência (fila serializada)', () => {
       agenteStreamer.onSessionFlushed(withSegment),
       agenteStreamer.onSessionFlushed(withSegment),
     ]);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     await agenteStreamer.onSessionFlushed(withSegment);
     expect(fetchMock).toHaveBeenCalledTimes(1);
