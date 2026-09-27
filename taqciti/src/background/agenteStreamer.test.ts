@@ -1020,3 +1020,66 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('WR-13: dispose() é terminal', () => {
+  it('um passo já em voo na instância antiga não envia nem rearma timer depois do dispose', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    let callCount = 0;
+    let resolveSecondLoad!: (config: typeof READY_CONFIG) => void;
+    const loadConfig = vi.fn(() => {
+      callCount += 1;
+      // Só a 2ª chamada (o passo com texto novo) fica presa — é o "passo em
+      // voo esperando loadConfig" do WR-13. As demais (1ª, a de prime; e
+      // qualquer chamada de um timer órfão que sobreviva) resolvem na hora —
+      // sem isso, um timer órfão ficaria preso pra sempre esperando
+      // loadConfig() e o teste "passaria" mesmo com o bug do WR-13 de volta.
+      if (callCount === 2) {
+        return new Promise<typeof READY_CONFIG>((resolve) => {
+          resolveSecondLoad = resolve;
+        });
+      }
+      return Promise.resolve(READY_CONFIG);
+    });
+    agenteStreamer.configureAgenteStreamer({ loadConfig });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'texto sensível', atMs: 1100 },
+    });
+    // Dispara o flush -> o passo 2 chama loadConfig() (2ª chamada) e fica
+    // preso, esperando a promessa que ainda não resolvemos.
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+
+    // A instância é descartada ENQUANTO o passo 2 ainda espera loadConfig —
+    // o cenário real seria a Fase 8 trocando o binding no meio de um passo.
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    // Só agora o loadConfig() do passo 2 (da instância JÁ DESCARTADA) resolve.
+    resolveSecondLoad(READY_CONFIG);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Sem o WR-13, o passo continuaria e enviaria "texto sensível" com o
+    // `deps` antigo, ou armaria um timer órfão que dispararia mais tarde.
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Nenhum timer órfão dispara depois — avança bastante e confirma.
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_MAX_WAIT_MS + 1_000);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

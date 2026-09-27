@@ -67,6 +67,12 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let queue: Promise<void> = Promise.resolve();
   let pending: PhraseBuffer = EMPTY_PHRASE_BUFFER;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  /*
+   * WR-13: um `step`/`tick` já enfileirado (ex.: esperando `loadConfig`)
+   * quando `dispose()` roda NÃO para sozinho — sem este flag, ele continua,
+   * rearma timer ou envia com o `deps` desta instância descartada.
+   */
+  let disposed = false;
 
   /** Fila serializada única — flush e timer da janela SEMPRE passam por aqui. */
   function enqueue(run: () => Promise<void>): Promise<void> {
@@ -106,6 +112,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
   function rearm(now: number): void {
+    if (disposed) return;
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
@@ -128,6 +135,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
 
   async function step(state: MeetingState): Promise<void> {
     const config = await deps.loadConfig();
+    if (disposed) return; // instância descartada enquanto esperava (WR-13)
     const binding: StreamBinding | null = isStreamingReady(config)
       ? { sessionId: config.agenteSessionId }
       : null;
@@ -147,8 +155,10 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
 
   /** Callback do timer da janela: relê a config (pode ter mudado) antes de mandar. */
   async function tick(): Promise<void> {
+    if (disposed) return; // instância já descartada (WR-13) — nada a fazer
     try {
       const config = await deps.loadConfig();
+      if (disposed) return; // descartada enquanto esperava loadConfig (WR-13)
       if (!isStreamingReady(config)) {
         discard();
         return;
@@ -158,7 +168,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
       // isto, uma fala pendente ficava sem timer até alguém falar de novo
       // (ou se perdia). Atraso mínimo pra não virar laço apertado.
-      if (timer === null && pending.length > 0) {
+      if (!disposed && timer === null && pending.length > 0) {
         timer = setTimeout(() => {
           timer = null;
           void enqueue(tick);
@@ -177,7 +187,14 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     return queue;
   }
 
-  return { onSessionFlushed, dispose: discard, whenIdle };
+  /** Terminal (WR-13): marca a instância como descartada ANTES de limpar —
+   * todo ponto de entrada (`step`/`tick`/`rearm`) passa a virar no-op. */
+  function dispose(): void {
+    disposed = true;
+    discard();
+  }
+
+  return { onSessionFlushed, dispose, whenIdle };
 }
 
 /**
@@ -197,7 +214,9 @@ let activeStreamer = createAgenteStreamer(activeDeps);
 /**
  * Seam de composição/teste: mescla deps parciais nas atuais e recria a
  * instância ativa (cursor novo, fila nova, buffer/timer novos) — descarta a
- * instância anterior antes (nenhum timer órfão continua vivo).
+ * instância anterior antes. `dispose()` é terminal (WR-13): um passo já
+ * enfileirado na instância antiga vira no-op em vez de rearmar timer ou
+ * enviar com o `deps` descartado.
  */
 export function configureAgenteStreamer(partial: Partial<AgenteStreamerDeps>): void {
   activeDeps = { ...activeDeps, ...partial };
