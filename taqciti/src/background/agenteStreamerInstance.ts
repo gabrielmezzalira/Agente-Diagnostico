@@ -1,18 +1,13 @@
 /**
- * Instância do streamer ao vivo para o backend do Agente Diagnóstico (Fase 7,
- * TAQ-01; janela por fala do gap G-07-1/G-07-2, plano 07-04, D-06 refinado).
- * Cada flush agrupado de `flushState()` (sessionController.ts) passa por aqui,
- * que decide (via `planStreamStep`) o texto novo por segmento, acumula numa
- * fala (via `phraseBatcher.ts`) e só dispara o envio quando a fala fica em
- * silêncio, atinge o teto de espera, ou a reunião sai de 'recording' —
- * fire-and-forget, nunca atrasa `writeSession`/`broadcast()` nem trava a
- * captura do Meet.
- *
- * Injeção de dependência (`AgenteStreamerDeps`): o módulo nunca fala com
- * `fetch`/config diretamente fora do `send`/`loadConfig` injetados. A raiz de
- * composição (deps de produção + instância ativa) mora em `agenteStreamer.ts`.
+ * Instância do streamer ao vivo para o Agente Diagnóstico (Fase 7, TAQ-01;
+ * janela por fala do plano 07-04). Cada flush de `flushState()` passa por
+ * aqui: `planStreamStep` decide o texto novo por segmento, `phraseBatcher`
+ * acumula numa fala, e o envio só sai no silêncio, no teto de espera ou quando
+ * a reunião sai de 'recording' — sem nunca atrasar a gravação local. Tudo que
+ * toca rede/storage vem injetado (`AgenteStreamerDeps`); a raiz de composição
+ * mora em `agenteStreamer.ts`.
  */
-import type { MeetingState } from '@/shared/types/domain';
+import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 import {
   AGENTE_PHRASE_MAX_WAIT_MS,
   AGENTE_PHRASE_QUIET_MS,
@@ -21,7 +16,12 @@ import {
   type AgenteConfig,
   type ExtensionChunkRequest,
 } from '@/shared/config/agenteConfig';
-import { planStreamStep, type StreamBinding, type StreamCursor } from '@/features/agente/wordDelta';
+import {
+  planStreamStep,
+  primeCursor,
+  type StreamBinding,
+  type StreamCursor,
+} from '@/features/agente/wordDelta';
 import {
   appendDeltas,
   EMPTY_PHRASE_BUFFER,
@@ -34,17 +34,15 @@ import {
 import { logger } from '@/shared/services/log';
 import { createAgenteSender } from './agenteSender';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
+import { createSnapshotPersister, type AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
 
 export interface AgenteStreamerDeps {
   loadConfig: () => Promise<AgenteConfig>;
   send: (request: ExtensionChunkRequest) => Promise<Response>;
-  /**
-   * Assinatura das mudanças de config (WR-11): sem ela, o streamer só nota
-   * que o toggle foi desligado no próximo flush ou tick — e desligar e religar
-   * dentro da janela deixava a fala pendente sair. Opcional para os testes que
-   * injetam só `loadConfig`.
-   */
+  /** Mudanças de config, para reagir na hora ao toggle (WR-11). */
   onConfigChange?: (listener: (config: AgenteConfig) => void) => () => void;
+  /** Onde cursor e falas pendentes sobrevivem ao reinício do service worker (WR-02). */
+  snapshot?: AgenteStreamerSnapshotStore;
 }
 
 const PHRASE_TIMING: PhraseTiming = {
@@ -74,9 +72,13 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let disposed = false;
   /** Fila de envio ordenada, com novas tentativas (WR-01). */
   const sender = createAgenteSender({ send: deps.send });
-  const windowTimer = createPhraseWindowTimer(() => void enqueue(tick));
+  const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
+  const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
+  let restored = false;
+  /** Última sessão vista num flush — é dali que religar o toggle começa a contar (WR-02). */
+  let lastSession: MeetingSessionState | null = null;
 
   /** Fila serializada única — flush e timer da janela SEMPRE passam por aqui. */
   function enqueue(run: () => Promise<void>): Promise<void> {
@@ -84,6 +86,29 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       logger.error('passo do streamer do Agente falhou', error);
     });
     return queue;
+  }
+
+  /**
+   * Todo passo (flush, timer, mudança de config) restaura o snapshot na
+   * primeira vez e persiste o resultado depois (WR-02).
+   */
+  function enqueueStep(run: () => Promise<void>): Promise<void> {
+    return enqueue(async () => {
+      await restoreOnce();
+      if (disposed) return;
+      await run();
+      if (!disposed) await persister?.persist(cursor, pending);
+    });
+  }
+
+  async function restoreOnce(): Promise<void> {
+    if (restored || persister === null) return;
+    restored = true;
+    const snapshot = await persister.restore();
+    if (disposed || snapshot === null) return;
+    cursor = snapshot.cursor;
+    pending = snapshot.pending;
+    rearm(Date.now());
   }
 
   function sendPhrases(config: AgenteConfig, phrases: readonly PendingPhrase[]): void {
@@ -129,6 +154,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   async function step(state: MeetingState): Promise<void> {
     const config = await deps.loadConfig();
     if (disposed) return; // instância descartada enquanto esperava (WR-13)
+    lastSession = state.session;
     const binding: StreamBinding | null = isStreamingReady(config)
       ? { sessionId: config.agenteSessionId }
       : null;
@@ -168,20 +194,37 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
-    if (!isStreamingReady(config)) stopStreaming();
+    if (!isStreamingReady(config)) {
+      stopStreaming();
+      return;
+    }
+    // WR-02: religar começa a contar DESTE instante. Sem isto, o próximo
+    // flush fazia o prime já com o trecho novo aplicado, e ele se perdia.
+    if (cursor === null && lastSession !== null) {
+      cursor = primeCursor(lastSession, config.agenteSessionId);
+    }
   }
 
   /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */
   function ensureSubscribed(): void {
     if (unsubscribeConfig !== null || disposed || !deps.onConfigChange) return;
     unsubscribeConfig = deps.onConfigChange((config) => {
-      void enqueue(() => applyConfigChange(config));
+      void enqueueStep(() => applyConfigChange(config));
     });
   }
 
   function onSessionFlushed(state: MeetingState): Promise<void> {
     ensureSubscribed();
-    return enqueue(() => step(state));
+    return enqueueStep(() => step(state));
+  }
+
+  /**
+   * Boot do service worker (WR-02): restaura o snapshot sem esperar o
+   * próximo flush — uma fala que estava na janela volta a ter timer.
+   */
+  function resume(): Promise<void> {
+    ensureSubscribed();
+    return enqueueStep(() => Promise.resolve());
   }
 
   /** Observador sem efeito colateral (WR-10): espera a fila terminar, sem
@@ -200,5 +243,5 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     unsubscribeConfig = null;
   }
 
-  return { onSessionFlushed, dispose, whenIdle };
+  return { onSessionFlushed, resume, dispose, whenIdle };
 }

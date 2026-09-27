@@ -22,6 +22,7 @@ import { migrateLocalStorage } from './storageMigrations';
 import { backfillOpenTabs, canInject, ensurePanelInTab } from './injectPanel';
 import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
+import { resumeAgenteStreamer } from './agenteStreamer';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
 /**
@@ -39,6 +40,8 @@ import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
  */
 const ready: Promise<void> = migrateLocalStorage()
   .then(() => hydrate())
+  // Sem await: o streamer do Agente nunca atrasa os handlers de mensagem (WR-02).
+  .then(() => void resumeAgenteStreamer())
   .then(() => recoverInterruptedMeetings())
   .then(() => ensurePanelPrefs())
   .then(() => undefined)

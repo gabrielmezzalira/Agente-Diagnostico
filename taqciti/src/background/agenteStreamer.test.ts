@@ -409,7 +409,7 @@ describe('configuração vinda do storage (D-08)', () => {
     });
   });
 
-  it('desligar para o envio na hora; religar não reenvia o que foi falado desligado (D-09)', async () => {
+  it('desligar para o envio na hora; religar não reenvia o que foi falado desligado, mas envia o que vem logo depois (D-09/WR-02)', async () => {
     const { sessionController, agenteStreamer } = await fresh();
     const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
     const fetchMock = createFetchMock();
@@ -450,19 +450,22 @@ describe('configuração vinda do storage (D-08)', () => {
     await agenteStreamer.onSessionFlushed(sessionController.getState());
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // Religa: o primeiro flush pós-religar só re-ancora o cursor (prime) —
-    // nada do que foi falado desligado é enviado (D-09).
+    // Religa: o cursor é ancorado no instante do religar (WR-02) — nada do que
+    // foi falado desligado sai ("pausa aqui", D-09), mas o 1º trecho dito
+    // depois de religar ("e agora") não se perde mais.
     await patchAgenteConfig({ streamingEnabled: true });
     await sessionController.dispatch({
       type: 'CAPTION_CHUNK',
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem pausa aqui e agora', atMs: 1500 },
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
-    await agenteStreamer.onSessionFlushed(sessionController.getState());
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      text: 'e agora',
+    });
 
-    // Só o texto realmente novo dali para frente é enviado — nunca "pausa aqui".
+    // Daí em diante, só o texto realmente novo — nunca "pausa aqui".
     await sessionController.dispatch({
       type: 'CAPTION_CHUNK',
       chunk: {
@@ -474,10 +477,12 @@ describe('configuração vinda do storage (D-08)', () => {
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
-    const [, init] = fetchMock.mock.calls[1]!;
+    const [, init] = fetchMock.mock.calls[2]!;
     expect(JSON.parse(init.body as string)).toMatchObject({ text: 'sim' });
+    const enviados = fetchMock.mock.calls.map(([, i]) => JSON.parse(i.body as string).text);
+    expect(enviados.join(' ')).not.toContain('pausa aqui');
   });
 
   it('WR-11: desligar e religar dentro da janela, sem ninguém falar, não envia a fala pendente', async () => {
@@ -520,7 +525,7 @@ describe('configuração vinda do storage (D-08)', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('reinício do service worker: primeiro flush pós-reinício não reenvia texto antigo', async () => {
+  it('reinício do service worker: não reenvia texto antigo nem perde o que vem depois (WR-02)', async () => {
     const { sessionController } = await fresh();
     const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
     const fetchMock = createFetchMock();
@@ -563,10 +568,15 @@ describe('configuração vinda do storage (D-08)', () => {
       type: 'CAPTION_CHUNK',
       chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem e mais isso', atMs: 1600 },
     });
+    // O cursor sobreviveu ao reinício (taq:agenteStreamer, WR-02): "e mais
+    // isso" sai sozinho, e "olá tudo bem" (já enviado antes) não se repete.
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
-    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
-    await restartedStreamer.onSessionFlushed(restarted.getState());
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      text: 'e mais isso',
+    });
+    await restartedStreamer.whenAgenteStreamerIdle();
 
     await restarted.dispatch({
       type: 'CAPTION_CHUNK',
@@ -574,10 +584,103 @@ describe('configuração vinda do storage (D-08)', () => {
     });
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
-    const [, init] = fetchMock.mock.calls[1]!;
+    const [, init] = fetchMock.mock.calls[2]!;
     expect(JSON.parse(init.body as string)).toMatchObject({ text: 'ok' });
+  });
+
+  it('WR-02: fala ainda na janela quando o service worker reinicia sai depois do reinício', async () => {
+    const { sessionController } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'olá tudo bem', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    const firstStreamer = await import('./agenteStreamer');
+    await firstStreamer.whenAgenteStreamerIdle();
+    expect(fetchMock).not.toHaveBeenCalled(); // ainda na janela
+
+    // O service worker morre com a fala na janela e renasce (boot: hydrate + resume).
+    // Morrer mata os timers da instância antiga — `resetModules` sozinho não mata.
+    vi.clearAllTimers();
+    vi.resetModules();
+    const restarted = await import('./sessionController');
+    const restartedStreamer = await import('./agenteStreamer');
+    await restarted.hydrate();
+    await restartedStreamer.resumeAgenteStreamer();
+
+    // Ninguém fala depois do reinício — o timer restaurado manda a fala sozinho.
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body as string)).toMatchObject({
+      text: 'olá tudo bem',
+    });
+  });
+
+  it('WR-02: com o streaming desligado, o snapshot antigo é apagado e nada é gravado a cada flush', async () => {
+    const { sessionController, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    vi.stubGlobal('fetch', createFetchMock());
+
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    const streamer = await import('./agenteStreamer');
+    await streamer.whenAgenteStreamerIdle();
+    expect(mock.session.values[STORAGE_KEYS.agenteStreamer]).toBeDefined();
+
+    await patchAgenteConfig({ streamingEnabled: false });
+    await streamer.whenAgenteStreamerIdle();
+    expect(mock.session.values[STORAGE_KEYS.agenteStreamer]).toBeUndefined();
+
+    const writesBefore = mock.session.set.mock.calls.filter(
+      ([items]) => STORAGE_KEYS.agenteStreamer in (items as Record<string, unknown>),
+    ).length;
+    for (let i = 0; i < 3; i += 1) {
+      await sessionController.dispatch({
+        type: 'CAPTION_CHUNK',
+        chunk: { captionId: 'c1', speaker: 'Ana', text: `fala desligada ${i}`, atMs: 1100 + i * 300 },
+      });
+      await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    }
+    await streamer.whenAgenteStreamerIdle();
+    const writesAfter = mock.session.set.mock.calls.filter(
+      ([items]) => STORAGE_KEYS.agenteStreamer in (items as Record<string, unknown>),
+    ).length;
+    expect(writesAfter).toBe(writesBefore);
+    expect(mock.session.values[STORAGE_KEYS.agenteStreamer]).toBeUndefined();
   });
 
   it('custo: chrome.storage.local.get da chave taq:agenteConfig é chamado uma única vez em vários flushes', async () => {

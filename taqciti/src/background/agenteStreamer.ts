@@ -9,6 +9,7 @@ import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
+import { sessionSnapshotStore } from './agenteStreamerSnapshot';
 
 export { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 
@@ -31,6 +32,7 @@ let activeDeps: AgenteStreamerDeps = {
   loadConfig: createAgenteConfigReader(),
   send: defaultSend,
   onConfigChange: onAgenteConfigChange,
+  snapshot: sessionSnapshotStore,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 
@@ -50,6 +52,11 @@ export function configureAgenteStreamer(partial: Partial<AgenteStreamerDeps>): v
 /** Delegação para a instância ativa — é isto que `sessionController.ts` chama. */
 export function onSessionFlushed(state: MeetingState): Promise<void> {
   return activeStreamer.onSessionFlushed(state);
+}
+
+/** Boot do service worker: restaura cursor e falas pendentes (WR-02). */
+export function resumeAgenteStreamer(): Promise<void> {
+  return activeStreamer.resume();
 }
 
 /** Só para testes (WR-10) — ver `whenIdle` em agenteStreamerInstance.ts. */
