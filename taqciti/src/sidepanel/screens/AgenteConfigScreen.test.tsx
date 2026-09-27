@@ -128,6 +128,7 @@ describe('AgenteConfigScreen', () => {
       agenteSessionId: uuid,
       agenteApiKey: 's3cr3t',
       streamingEnabled: false,
+      confirmedMeetingId: '', // CR-01: nenhuma reunião nova confirmada
     });
   });
 
@@ -281,5 +282,44 @@ describe('AgenteConfigScreen', () => {
     });
     await flushUntil(() => statusText().includes('tentando de novo'));
     expect(statusText()).toBe('Falha ao enviar (sem conexão com o backend) — tentando de novo…');
+  });
+
+  /*
+   * CR-01: antes, reunião nova com o mesmo session_id travava o envio em
+   * silêncio e a tela dizia "Ligado". Agora avisa e oferece a confirmação.
+   */
+  it('(13) reunião nova esperando: a tela avisa, e confirmar grava a reunião na config', async () => {
+    const mock = await renderScreen(READY, {
+      [STORAGE_KEYS.agenteStatus]: {
+        lastOutcome: 'sent',
+        lastHttpStatus: 202,
+        lastAttemptAt: 1,
+        waitingMeetingId: 'm2',
+      },
+    });
+    await flushUntil(() => statusText().includes('Reunião nova detectada'));
+    expect(statusText()).toContain('nada está sendo enviado');
+
+    const confirm = [...host.querySelectorAll('button')].find((b) =>
+      /continuar enviando/i.test(b.textContent ?? ''),
+    );
+    expect(confirm).toBeDefined();
+
+    await act(async () => {
+      confirm!.click();
+    });
+    await flushUntil(
+      () =>
+        (mock.local.values[STORAGE_KEYS.agenteConfig] as AgenteConfig | undefined)
+          ?.confirmedMeetingId === 'm2',
+    );
+  });
+
+  it('(14) sem espera, o botão de confirmar não aparece', async () => {
+    await renderScreen(READY);
+    const confirm = [...host.querySelectorAll('button')].find((b) =>
+      /continuar enviando/i.test(b.textContent ?? ''),
+    );
+    expect(confirm).toBeUndefined();
   });
 });

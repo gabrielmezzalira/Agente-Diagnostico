@@ -53,6 +53,8 @@ export interface AgenteConfig {
   agenteSessionId: string;
   /** Vazio = nenhum header x-agente-key enviado (D-10). Nunca tem padrão de build. */
   agenteApiKey: string;
+  /** Reunião nova confirmada como continuação da mesma sessão (CR-01). Vazio = nenhuma. */
+  confirmedMeetingId: string;
 }
 
 export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
@@ -60,6 +62,7 @@ export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
   streamingEnabled: AGENTE_STREAMING_ENABLED_DEFAULT,
   agenteSessionId: '',
   agenteApiKey: '',
+  confirmedMeetingId: '',
 };
 
 /**
@@ -126,7 +129,10 @@ export function normalizeAgenteConfig(
   const agenteApiKey =
     typeof source.agenteApiKey === 'string' ? source.agenteApiKey.trim() : '';
 
-  return { agenteBackendUrl, streamingEnabled, agenteSessionId, agenteApiKey };
+  const confirmedMeetingId =
+    typeof source.confirmedMeetingId === 'string' ? source.confirmedMeetingId : '';
+
+  return { agenteBackendUrl, streamingEnabled, agenteSessionId, agenteApiKey, confirmedMeetingId };
 }
 
 const AGENTE_SESSION_ID_PATTERN =

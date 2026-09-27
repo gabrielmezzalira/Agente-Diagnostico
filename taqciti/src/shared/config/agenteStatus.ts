@@ -19,12 +19,20 @@ export interface AgenteStreamingStatus {
   lastHttpStatus: number | null;
   /** epoch ms da última tentativa. */
   lastAttemptAt: number | null;
+  /** CR-01: reunião nova com o mesmo session_id, parada até a pessoa confirmar. */
+  waitingMeetingId: string | null;
 }
 
-export const EMPTY_AGENTE_STATUS: AgenteStreamingStatus = {
+/** Zera só o resultado do último envio — a espera do CR-01 é do streamer, não da config. */
+export const NO_SEND_OUTCOME = {
   lastOutcome: null,
   lastHttpStatus: null,
   lastAttemptAt: null,
+} as const satisfies Partial<AgenteStreamingStatus>;
+
+export const EMPTY_AGENTE_STATUS: AgenteStreamingStatus = {
+  ...NO_SEND_OUTCOME,
+  waitingMeetingId: null,
 };
 
 const OUTCOMES: readonly AgenteSendOutcome[] = ['sent', 'retrying', 'failed', 'rejected'];
@@ -40,6 +48,7 @@ export function normalizeAgenteStatus(
       : null,
     lastHttpStatus: numberOrNull(source.lastHttpStatus),
     lastAttemptAt: numberOrNull(source.lastAttemptAt),
+    waitingMeetingId: typeof source.waitingMeetingId === 'string' ? source.waitingMeetingId : null,
   };
 }
 
@@ -48,6 +57,8 @@ export type StreamingStatusTone = 'muted' | 'warning' | 'danger';
 export interface StreamingStatusView {
   tone: StreamingStatusTone;
   text: string;
+  /** CR-01: a reunião que a pessoa pode confirmar como continuação da sessão. */
+  confirmableMeetingId?: string;
 }
 
 const READINESS_LABELS: Record<Exclude<StreamingReadiness, 'ready'>, string> = {
@@ -78,6 +89,13 @@ export function describeAgenteStreaming(
   formatTime: (epochMs: number) => string,
 ): StreamingStatusView {
   if (readiness !== 'ready') return { tone: 'muted', text: READINESS_LABELS[readiness] };
+  if (status.waitingMeetingId !== null) {
+    return {
+      tone: 'warning',
+      text: 'Reunião nova detectada — nada está sendo enviado. Se ela continua a mesma sessão do Agente, confirme abaixo; se for outra sessão, cole o ID novo e salve.',
+      confirmableMeetingId: status.waitingMeetingId,
+    };
+  }
 
   switch (status.lastOutcome) {
     case 'sent':

@@ -215,6 +215,31 @@ describe('planStreamStep — prime, reunião nova, troca de sessão', () => {
     const step = planStreamStep(prev, newMeeting, { sessionId: SESSION_ID });
     expect(step.deltas).toEqual([]);
     expect(step.cursor).toBe(prev);
+    // CR-01: a espera deixa de ser silenciosa — o streamer avisa a tela.
+    expect(step.waitingForNewMeeting).toBe(true);
+  });
+
+  it('CR-01: reunião nova confirmada com o MESMO session_id sai desde o início dela', () => {
+    const prev: StreamCursor = { meetingId: 'm1', sessionId: SESSION_ID, sent: { '0:c1': 2 } };
+    const newMeeting = session({ meetingId: 'm2', segments: [segment({ text: 'fala nova aqui' })] });
+    const step = planStreamStep(prev, newMeeting, {
+      sessionId: SESSION_ID,
+      confirmedMeetingId: 'm2',
+    });
+    expect(step.waitingForNewMeeting).toBeUndefined();
+    expect(step.deltas.map((d) => d.text)).toEqual(['fala nova aqui']);
+    expect(step.cursor).toEqual({ meetingId: 'm2', sessionId: SESSION_ID, sent: { '0:c1': 3 } });
+  });
+
+  it('CR-01: confirmação de OUTRA reunião não libera a atual', () => {
+    const prev: StreamCursor = { meetingId: 'm1', sessionId: SESSION_ID, sent: { '0:c1': 2 } };
+    const newMeeting = session({ meetingId: 'm3', segments: [segment({ text: 'outra reunião' })] });
+    const step = planStreamStep(prev, newMeeting, {
+      sessionId: SESSION_ID,
+      confirmedMeetingId: 'm2',
+    });
+    expect(step.deltas).toEqual([]);
+    expect(step.waitingForNewMeeting).toBe(true);
   });
 
   it('meetingId novo com session_id NOVO: prime para a reunião nova', () => {

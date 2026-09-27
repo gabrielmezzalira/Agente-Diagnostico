@@ -35,7 +35,7 @@ export function AgenteConfigScreen() {
     save,
     setStreamingEnabled,
   } = useAgenteConfigForm();
-  const status = useAgenteStreamingStatus(readiness);
+  const { view: status, confirmError, confirmNewMeeting } = useAgenteStreamingStatus(readiness);
 
   return (
     <AppShell
@@ -83,8 +83,8 @@ export function AgenteConfigScreen() {
             disabled={saving}
           />
           <p className="text-caption text-muted">
-            Copie o ID da sessão ativa no web app do Agente. O vínculo vale para esta reunião: numa
-            reunião nova, salve o ID da nova sessão.
+            Copie o ID da sessão ativa no web app do Agente. Numa reunião nova, salve o ID da nova
+            sessão — ou, se for a mesma sessão, confirme quando o aviso aparecer.
           </p>
         </div>
 
@@ -133,6 +133,16 @@ export function AgenteConfigScreen() {
         <p aria-live="polite" className={`text-caption ${TONE_CLASS[status?.tone ?? 'muted']}`}>
           {status?.text ?? ''}
         </p>
+        {status?.confirmableMeetingId ? (
+          <Button variant="secondary" onClick={confirmNewMeeting}>
+            Continuar enviando para esta sessão
+          </Button>
+        ) : null}
+        {confirmError ? (
+          <p aria-live="assertive" className="text-caption text-danger">
+            {confirmError}
+          </p>
+        ) : null}
         {error ? (
           <p aria-live="assertive" className="text-caption text-danger">
             {error}

@@ -27,11 +27,15 @@ export interface SegmentDelta {
 
 export interface StreamBinding {
   sessionId: string;
+  /** Reunião nova que a pessoa confirmou como parte desta mesma sessão (CR-01). */
+  confirmedMeetingId?: string;
 }
 
 export interface StreamStep {
   cursor: StreamCursor | null;
   deltas: SegmentDelta[];
+  /** Reunião nova com o mesmo session_id, esperando confirmação (CR-01). */
+  waitingForNewMeeting?: boolean;
 }
 
 /** Split em whitespace Unicode; descarta tokens vazios. Sem re-normalização NFC/NFD. */
@@ -91,9 +95,9 @@ export function computeSegmentDeltas(
  * 1. binding nulo (desligado/incompleto) -> cursor null, sem deltas.
  * 2. sem sessão -> mantém o cursor anterior, sem deltas.
  * 3. cursor nulo (primeira vez) -> prime (envio só dali para frente, D-09).
- * 4. reunião mudou: mesmo session_id do binding -> ESPERA (nada vai para a
- *    sessão da reunião anterior); session_id mudou -> prime para a reunião
- *    nova.
+ * 4. reunião mudou: session_id mudou -> prime para a reunião nova; mesmo
+ *    session_id -> ESPERA sinalizada (`waitingForNewMeeting`, CR-01) até a
+ *    pessoa confirmar — confirmada, a reunião nova sai desde o início dela.
  * 5. mesma reunião -> calcula os deltas, com o session_id atualizado para o
  *    do binding (trocar de sessão no meio só afeta o texto novo dali pra
  *    frente — nada já contado é reenviado).
@@ -114,7 +118,11 @@ export function planStreamStep(
   }
   if (prev.meetingId !== session.meetingId) {
     if (binding.sessionId === prev.sessionId) {
-      return { cursor: prev, deltas: [] };
+      if (binding.confirmedMeetingId === session.meetingId) {
+        const fromStart = { meetingId: session.meetingId, sessionId: binding.sessionId, sent: {} };
+        return computeSegmentDeltas(fromStart, session.segments);
+      }
+      return { cursor: prev, deltas: [], waitingForNewMeeting: true };
     }
     return { cursor: primeCursor(session, binding.sessionId), deltas: [] };
   }

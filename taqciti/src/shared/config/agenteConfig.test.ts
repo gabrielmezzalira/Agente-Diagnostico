@@ -125,6 +125,7 @@ describe('getStreamingReadiness — ordem de precedência disabled > invalid-url
     streamingEnabled: true,
     agenteSessionId: '11111111-1111-1111-1111-111111111111',
     agenteApiKey: 'chave',
+    confirmedMeetingId: '',
   };
 
   it('disabled quando streamingEnabled=false, mesmo com o resto inválido', () => {
@@ -173,6 +174,7 @@ describe('buildExtensionChunkRequest', () => {
     streamingEnabled: true,
     agenteSessionId: '11111111-1111-1111-1111-111111111111',
     agenteApiKey: '',
+    confirmedMeetingId: '',
   };
 
   it('monta URL = base + /webhook/extension, método POST', () => {

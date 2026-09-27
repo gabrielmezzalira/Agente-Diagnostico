@@ -7,7 +7,7 @@
  * toca rede/storage vem injetado (`AgenteStreamerDeps`); a raiz de composição
  * mora em `agenteStreamer.ts`.
  */
-import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
+import type { MeetingState } from '@/shared/types/domain';
 import {
   AGENTE_PHRASE_MAX_WAIT_MS,
   AGENTE_PHRASE_QUIET_MS,
@@ -24,7 +24,7 @@ import {
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
-import { EMPTY_AGENTE_STATUS } from '@/shared/config/agenteStatus';
+import { NO_SEND_OUTCOME } from '@/shared/config/agenteStatus';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
@@ -53,8 +53,10 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let pending: PhraseBuffer = EMPTY_PHRASE_BUFFER;
   /** WR-13: um passo já enfileirado quando `dispose()` roda vira no-op em vez de continuar. */
   let disposed = false;
-  /** Última sessão vista num flush — é dali que religar o toggle começa a contar (WR-02). */
-  let lastSession: MeetingSessionState | null = null;
+  /** Último estado visto num flush — é dali que religar o toggle começa a contar (WR-02). */
+  let lastState: MeetingState | null = null;
+  /** Última espera do CR-01 gravada no status; `undefined` = ainda não gravada neste boot. */
+  let reportedWaiting: string | null | undefined;
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
   const sender = createAgenteSender({
@@ -102,6 +104,14 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function stopStreaming(): void {
     discard();
     cursor = null;
+    reportWaiting(null);
+  }
+
+  /** CR-01: grava a espera por confirmação só quando ela muda — nunca a cada flush. */
+  function reportWaiting(meetingId: string | null): void {
+    if (meetingId === reportedWaiting) return;
+    reportedWaiting = meetingId;
+    deps.reportStatus?.({ waitingMeetingId: meetingId });
   }
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
@@ -120,15 +130,22 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   async function step(state: MeetingState): Promise<void> {
     const config = await deps.loadConfig();
     if (disposed) return; // instância descartada enquanto esperava (WR-13)
-    lastSession = state.session;
+    lastState = state;
     if (!isStreamingReady(config)) {
       stopStreaming();
       return;
     }
+    advance(config, state);
+  }
 
-    const binding = { sessionId: config.agenteSessionId };
+  function advance(config: AgenteConfig, state: MeetingState): void {
+    const binding = {
+      sessionId: config.agenteSessionId,
+      confirmedMeetingId: config.confirmedMeetingId,
+    };
     const result = planStreamStep(cursor, state.session, binding);
     cursor = result.cursor;
+    reportWaiting(result.waitingForNewMeeting ? (state.session?.meetingId ?? null) : null);
 
     const now = Date.now();
     pending = appendDeltas(pending, result.deltas, binding.sessionId, now);
@@ -158,16 +175,21 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
     // WR-07: o resultado do último envio era da config anterior (ex.: 401 com a chave velha).
-    deps.reportStatus?.(EMPTY_AGENTE_STATUS);
+    deps.reportStatus?.(NO_SEND_OUTCOME);
     if (!isStreamingReady(config)) {
       stopStreaming();
       return;
     }
-    // WR-02: religar começa a contar DESTE instante. Sem isto, o próximo
-    // flush fazia o prime já com o trecho novo aplicado, e ele se perdia.
-    if (cursor === null && lastSession !== null) {
-      cursor = primeCursor(lastSession, config.agenteSessionId);
+    if (lastState === null) return;
+    if (cursor === null) {
+      // WR-02: religar começa a contar DESTE instante. Sem isto, o próximo
+      // flush fazia o prime já com o trecho novo aplicado, e ele se perdia.
+      if (lastState.session !== null) cursor = primeCursor(lastState.session, config.agenteSessionId);
+      return;
     }
+    // CR-01: confirmar a reunião nova (ou trocar o session_id) libera na hora,
+    // sem esperar alguém voltar a falar.
+    advance(config, lastState);
   }
 
   /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */

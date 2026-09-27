@@ -13,7 +13,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
-import { STATE_FLUSH_INTERVAL_MS, STORAGE_KEYS } from '@/shared/config/constants';
+import {
+  REJOIN_RESUME_WINDOW_MS,
+  STATE_FLUSH_INTERVAL_MS,
+  STORAGE_KEYS,
+} from '@/shared/config/constants';
 import { AGENTE_PHRASE_MAX_WAIT_MS, AGENTE_PHRASE_QUIET_MS } from '@/shared/config/agenteConfig';
 import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 
@@ -35,6 +39,7 @@ const READY_CONFIG = {
   streamingEnabled: true,
   agenteSessionId: SESSION_ID,
   agenteApiKey: 's3cr3t',
+  confirmedMeetingId: '',
 };
 
 function baseSession(overrides: Partial<MeetingSessionState> = {}): MeetingSessionState {
@@ -772,6 +777,138 @@ describe('configuração vinda do storage (D-08)', () => {
     }
 
     expect(countAgenteConfigReads() - readsBeforeFlushes).toBe(1);
+  });
+});
+
+describe('CR-01: reunião nova com o mesmo session_id', () => {
+  const meeting = (meetingId: string, at: number, meetingCode = 'abc-defg-hij') => ({
+    type: 'MEETING_DETECTED' as const,
+    meetingId,
+    meetingCode,
+    provider: 'google-meet' as const,
+    tabId: 1,
+    title: 'Reunião de teste',
+    captionsEnabled: true,
+    at,
+  });
+
+  it('espera avisando a tela, sobrevive ao reinício, e confirmar envia a reunião nova desde o início', async () => {
+    const { sessionController, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    await sessionController.dispatch(meeting('m1', 1000));
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'reunião antiga', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // A reunião termina e a pessoa volta para a MESMA sala depois da janela de
+    // retomada: a máquina abre uma reunião nova (m2); a sessão do Agente é a mesma.
+    await sessionController.dispatch({ type: 'MEETING_FINISHED', at: 2000 });
+    await sessionController.dispatch(meeting('m2', 2000 + REJOIN_RESUME_WINDOW_MS + 1));
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c9', speaker: 'Bia', text: 'começo da reunião nova', atMs: 5100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    const streamer = await import('./agenteStreamer');
+    await streamer.whenAgenteStreamerIdle();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+    );
+
+    // Reinício do service worker no meio da espera: continua esperando (antes,
+    // o cursor zerado fazia a reunião nova ir direto para a sessão antiga).
+    // Morrer mata timers e listeners da instância antiga — o mock não mata sozinho.
+    vi.clearAllTimers();
+    mock.listeners.clear();
+    vi.resetModules();
+    const restarted = await import('./sessionController');
+    const restartedStreamer = await import('./agenteStreamer');
+    await restarted.hydrate();
+    await restartedStreamer.resumeAgenteStreamer();
+    await restarted.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c9', speaker: 'Bia', text: 'começo da reunião nova e mais', atMs: 5300 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS + AGENTE_PHRASE_MAX_WAIT_MS);
+    await restartedStreamer.whenAgenteStreamerIdle();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // A pessoa confirma na tela: sai a reunião nova INTEIRA, sem ninguém falar de novo.
+    await patchAgenteConfig({ confirmedMeetingId: 'm2' });
+    await restartedStreamer.whenAgenteStreamerIdle();
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'começo da reunião nova e mais',
+    });
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: null }),
+    );
+  });
+
+  it('salvar o ID de uma sessão nova libera sozinho, a partir dali', async () => {
+    const { sessionController, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+
+    await sessionController.dispatch(meeting('m1', 1000));
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'reunião antiga', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // Outra sala (outro meetingCode), a sessão do Agente ainda é a antiga.
+    await sessionController.dispatch(meeting('m2', 5000, 'xyz-wxyz-xyz'));
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c9', speaker: 'Bia', text: 'antes de trocar', atMs: 5100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    const streamer = await import('./agenteStreamer');
+    await streamer.whenAgenteStreamerIdle();
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+    );
+
+    await patchAgenteConfig({ agenteSessionId: OTHER_SESSION_ID });
+    await streamer.whenAgenteStreamerIdle();
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c9', speaker: 'Bia', text: 'antes de trocar e depois', atMs: 5300 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      session_id: OTHER_SESSION_ID,
+      text: 'e depois',
+    });
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: null });
   });
 });
 
