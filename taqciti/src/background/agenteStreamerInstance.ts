@@ -24,12 +24,12 @@ import {
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
-import { NO_SEND_OUTCOME } from '@/shared/config/agenteStatus';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
 import { createSnapshotPersister } from './agenteStreamerSnapshot';
+import { createStatusReporter } from './agenteStatusReporter';
 
 export type { AgenteStreamerDeps } from './agenteStreamerDeps';
 
@@ -55,15 +55,10 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let disposed = false;
   /** Último estado visto num flush — é dali que religar o toggle começa a contar (WR-02). */
   let lastState: MeetingState | null = null;
-  /** Última espera do CR-01 gravada no status; `undefined` = ainda não gravada neste boot. */
-  let reportedWaiting: string | null | undefined;
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
-  const sender = createAgenteSender({
-    send: deps.send,
-    onOutcome: (lastOutcome, lastHttpStatus) =>
-      deps.reportStatus?.({ lastOutcome, lastHttpStatus, lastAttemptAt: Date.now() }),
-  });
+  const status = createStatusReporter(deps.reportStatus);
+  const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
@@ -104,14 +99,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function stopStreaming(): void {
     discard();
     cursor = null;
-    reportWaiting(null);
-  }
-
-  /** CR-01: grava a espera por confirmação só quando ela muda — nunca a cada flush. */
-  function reportWaiting(meetingId: string | null): void {
-    if (meetingId === reportedWaiting) return;
-    reportedWaiting = meetingId;
-    deps.reportStatus?.({ waitingMeetingId: meetingId });
+    status.waitingForMeeting(null);
   }
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
@@ -145,7 +133,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     };
     const result = planStreamStep(cursor, state.session, binding);
     cursor = result.cursor;
-    reportWaiting(result.waitingForNewMeeting ? (state.session?.meetingId ?? null) : null);
+    status.waitingForMeeting(result.waitingForNewMeeting ? (state.session?.meetingId ?? null) : null);
 
     const now = Date.now();
     pending = appendDeltas(pending, result.deltas, binding.sessionId, now);
@@ -174,8 +162,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
-    // WR-07: o resultado do último envio era da config anterior (ex.: 401 com a chave velha).
-    deps.reportStatus?.(NO_SEND_OUTCOME);
+    status.resetSendOutcome(); // WR-07
     if (!isStreamingReady(config)) {
       stopStreaming();
       return;
