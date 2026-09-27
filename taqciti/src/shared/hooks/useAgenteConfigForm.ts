@@ -88,23 +88,33 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
   }
 
   async function save(): Promise<void> {
+    /*
+     * WR-05: manda só os campos marcados como editados — o contrato de
+     * `patchAgenteConfig` (agenteConfigStore.ts) é "só o campo que está
+     * mudando, nunca o objeto inteiro". Mandar sempre os três campos, mesmo
+     * os não editados, sobrescrevia um valor gravado por outra superfície
+     * entre o clique e a leitura do rascunho (ex.: auto-detect da Fase 8) e
+     * também gravava o padrão da build no storage assim que a pessoa salvasse
+     * qualquer coisa, mesmo sem ter mexido nos outros campos.
+     */
+    const editedFields = (Object.keys(editedRef.current) as AgenteConfigField[]).filter(
+      (field) => editedRef.current[field],
+    );
+    if (editedFields.length === 0) return;
+
     setSaving(true);
     setError(null);
     try {
-      const next = await patchAgenteConfig({
-        agenteBackendUrl: drafts.agenteBackendUrl,
-        agenteSessionId: drafts.agenteSessionId,
-        agenteApiKey: drafts.agenteApiKey,
-      });
-      editedRef.current = {
-        agenteBackendUrl: false,
-        agenteSessionId: false,
-        agenteApiKey: false,
-      };
-      setDrafts({
-        agenteBackendUrl: next.agenteBackendUrl,
-        agenteSessionId: next.agenteSessionId,
-        agenteApiKey: next.agenteApiKey,
+      const patch: Partial<AgenteConfig> = {};
+      for (const field of editedFields) patch[field] = drafts[field];
+
+      const next = await patchAgenteConfig(patch);
+
+      for (const field of editedFields) editedRef.current[field] = false;
+      setDrafts((prev) => {
+        const updated = { ...prev };
+        for (const field of editedFields) updated[field] = next[field];
+        return updated;
       });
       setJustSaved(true);
       if (justSavedTimer.current) clearTimeout(justSavedTimer.current);

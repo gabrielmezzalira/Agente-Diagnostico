@@ -220,4 +220,28 @@ describe('AgenteConfigScreen', () => {
       'Não foi possível salvar a configuração. Tente de novo.',
     );
   });
+
+  /*
+   * WR-05: antes, `save()` mandava sempre os três campos, mesmo os não
+   * editados — isso corria com uma escrita externa (ex.: auto-detect da
+   * Fase 8 gravando `agenteSessionId`) e também gravava o padrão da build
+   * assim que a pessoa salvasse qualquer coisa.
+   */
+  it('(9) salvar manda ao store só o campo editado, não os três sempre', async () => {
+    const savedSessionId = '22222222-2222-2222-2222-222222222222';
+    await renderScreen({ ...DEFAULT_AGENTE_CONFIG, agenteSessionId: savedSessionId });
+    const { backendUrl, saveButton } = fields();
+
+    const configStore = await import('@/shared/config/agenteConfigStore');
+    const patchSpy = vi.spyOn(configStore, 'patchAgenteConfig');
+
+    typeInto(backendUrl, 'https://novo.exemplo');
+
+    await act(async () => {
+      saveButton.click();
+    });
+    await flushUntil(() => patchSpy.mock.calls.length > 0);
+
+    expect(patchSpy).toHaveBeenCalledWith({ agenteBackendUrl: 'https://novo.exemplo' });
+  });
 });

@@ -79,6 +79,7 @@ export function AgenteConfigScreen() {
             value={drafts.agenteSessionId}
             onChange={(event) => setField('agenteSessionId', event.target.value)}
             placeholder="cole aqui o ID (UUID) da sessão ativa"
+            disabled={saving}
           />
           <p className="text-caption text-muted">
             Copie o ID da sessão ativa no web app do Agente. O vínculo vale para esta reunião: numa
@@ -98,6 +99,7 @@ export function AgenteConfigScreen() {
             value={drafts.agenteBackendUrl}
             onChange={(event) => setField('agenteBackendUrl', event.target.value)}
             placeholder={AGENTE_BACKEND_URL_DEFAULT}
+            disabled={saving}
           />
         </div>
 
@@ -115,6 +117,7 @@ export function AgenteConfigScreen() {
             value={drafts.agenteApiKey}
             onChange={(event) => setField('agenteApiKey', event.target.value)}
             placeholder="deixe em branco para não usar"
+            disabled={saving}
           />
         </div>
 
