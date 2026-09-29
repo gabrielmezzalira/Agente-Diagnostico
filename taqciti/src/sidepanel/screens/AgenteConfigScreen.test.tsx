@@ -74,7 +74,7 @@ describe('AgenteConfigScreen', () => {
       sessionId: host.querySelector<HTMLInputElement>('#agente-session-id')!,
       backendUrl: host.querySelector<HTMLInputElement>('#agente-backend-url')!,
       apiKey: host.querySelector<HTMLInputElement>('#agente-api-key')!,
-      toggle: host.querySelector<HTMLInputElement>('input[type="checkbox"]')!,
+      toggle: host.querySelector<HTMLButtonElement>('[role="switch"]')!,
       saveButton: [...host.querySelectorAll('button')].find((b) =>
         /salv/i.test(b.textContent ?? ''),
       )!,
@@ -131,7 +131,7 @@ describe('AgenteConfigScreen', () => {
     const { sessionId, toggle } = fields();
 
     expect(sessionId.value).toBe('');
-    expect(toggle.checked).toBe(false);
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
     expect(statusText()).toBe('Desligado — nada é enviado ao Agente.');
   });
 
@@ -159,7 +159,7 @@ describe('AgenteConfigScreen', () => {
     });
   });
 
-  it('(3) clicar no checkbox grava streamingEnabled na hora, sem precisar do "Salvar"', async () => {
+  it('(3) clicar no switch grava streamingEnabled na hora, sem precisar do "Salvar"', async () => {
     const mock = await renderScreen();
     const { toggle } = fields();
 
@@ -170,6 +170,7 @@ describe('AgenteConfigScreen', () => {
 
     const saved = mock.local.values[STORAGE_KEYS.agenteConfig] as AgenteConfig;
     expect(saved.streamingEnabled).toBe(true);
+    await flushUntil(() => toggle.getAttribute('aria-checked') === 'true');
   });
 
   it('(4) o campo da chave vem mascarado (type=password)', async () => {

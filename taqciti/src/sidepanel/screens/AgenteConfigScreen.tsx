@@ -18,6 +18,7 @@ import { canGoBackWithinExtension } from '@/sidepanel/backNavigation';
 import { AppShell } from '@/shared/ui/AppShell';
 import { Button } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/Field';
+import { Toggle } from '@/shared/ui/Toggle';
 import { Wordmark } from '@/shared/ui/Wordmark';
 
 /** Aviso do status enquanto a config salva ainda não chegou do storage. */
@@ -78,14 +79,11 @@ export function AgenteConfigScreen() {
       }
     >
       <section className="scroll-region flex min-h-0 flex-1 flex-col gap-4 px-5 py-4">
-        <label className="flex items-center gap-2.5 text-read text-foreground">
-          <input
-            type="checkbox"
-            checked={config?.streamingEnabled ?? false}
-            onChange={(event) => setStreamingEnabled(event.target.checked)}
-          />
-          Enviar a transcrição ao vivo para o Agente
-        </label>
+        <Toggle
+          checked={config?.streamingEnabled ?? false}
+          onChange={setStreamingEnabled}
+          label="Enviar a transcrição ao vivo para o Agente"
+        />
 
         <div className="flex flex-col gap-1.5">
           <label
