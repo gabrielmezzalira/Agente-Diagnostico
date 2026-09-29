@@ -57,49 +57,49 @@ findings:
     title: "`dispose()` não é terminal: um passo já enfileirado na instância antiga rearma timer e envia com as deps antigas"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "`.catch` redundante em `flushState`"
   - id: IN-02
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Corrida entre a leitura inicial e o `onChanged` em `subscribeAgenteConfig`"
   - id: IN-03
     severity: info
-    disposition: open
+    disposition: fixed
     title: "URLs com query, fragmento ou esquema estranho passam na validação"
   - id: IN-04
     severity: info
-    disposition: open
+    disposition: fixed
     title: "\"← Voltar\" usa `href=\"?\"` e perde a view de origem"
   - id: IN-05
     severity: info
-    disposition: open
+    disposition: fixed
     title: "A chave salva volta em texto claro para o `value` do input"
   - id: IN-06
     severity: info
-    disposition: open
+    disposition: fixed
     title: "O runbook não diz que o check da release não valida `VITE_AGENTE_BACKEND_URL`"
   - id: IN-07
     severity: info
-    disposition: open
+    disposition: deferred
     title: "`agenteStreamer.test.ts` tem 941 linhas, com o mesmo bloco de preparação copiado 19 vezes"
   - id: IN-08
     severity: info
-    disposition: open
+    disposition: deferred
     title: "`agenteStreamer.ts` está com 190 linhas e acumula quatro responsabilidades"
   - id: IN-09
     severity: info
-    disposition: open
+    disposition: deferred
     title: "A janela usa relógio de parede (`Date.now`), sensível a ajuste de hora do sistema"
   - id: IN-10
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Um `send` que lança de forma síncrona perde as falas restantes da mesma rodada e não rearma o timer"
   - id: IN-11
     severity: info
-    disposition: open
+    disposition: fixed
     title: "A fala pendente de uma sessão antiga sai com a URL e a chave atuais, não as do momento em que foi acumulada"
-open: 11
+open: 0
 total: 24
 recorded: 2026-09-27T15:39:56.559Z
 ---
@@ -121,17 +121,17 @@ recorded: 2026-09-27T15:39:56.559Z
 | WR-11 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-12 | warning | fixed | 07-REVIEW-FIX.md |
 | WR-13 | warning | fixed | 07-REVIEW-FIX.md |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
-| IN-07 | info | open | - |
-| IN-08 | info | open | - |
-| IN-09 | info | open | - |
-| IN-10 | info | open | - |
-| IN-11 | info | open | - |
+| IN-01 | info | fixed | 16b4bab |
+| IN-02 | info | fixed | fe14f8c |
+| IN-03 | info | fixed | 8e1885c |
+| IN-04 | info | fixed | 5267a37 |
+| IN-05 | info | fixed | 812214d |
+| IN-06 | info | fixed | 7ba1507 |
+| IN-07 | info | deferred | Adiado (D3): refatoração própria dos testes do streamer (941 linhas); não muda comportamento. |
+| IN-08 | info | deferred | Adiado (D3): separar as responsabilidades do streamer é tarefa de refatoração própria, fora do fechamento da fase. |
+| IN-09 | info | deferred | Adiado (D2): as falas pendentes agora sobrevivem ao reinício do service worker e performance.now() zera a cada reinício; a troca criaria um problema mais frequente do que o ajuste de relógio que resolve. |
+| IN-10 | info | fixed | Resolvido pela refatoração do agenteSender: send síncrono que lança vira falha tratada (await dentro do try) e submit só enfileira. |
+| IN-11 | info | fixed | 6676027 + 62812b9 (fala de outro backend é descartada, para a chave nova não ir ao backend antigo) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
