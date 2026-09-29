@@ -457,4 +457,29 @@ describe('AgenteConfigScreen', () => {
       'Não foi possível salvar a configuração. Tente de novo.',
     );
   });
+
+  /*
+   * WR-02: com o service worker dormindo, ninguém ouvia a mudança de config e o
+   * erro antigo (ex.: 401 com a chave errada) continuava na tela depois de a
+   * pessoa colar a chave certa. Quem grava a config zera o status.
+   */
+  it('(22) salvar uma chave nova zera o último resultado de envio, sem depender do service worker', async () => {
+    const mock = await renderScreen(READY, {
+      [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
+    });
+    await flushUntil(() => statusText().includes('401'));
+    const { apiKey, saveButton } = fields();
+
+    typeInto(apiKey, 'chave-certa');
+    await act(async () => {
+      saveButton.click();
+    });
+
+    await flushUntil(() => !statusText().includes('401'));
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+      lastOutcome: null,
+      lastHttpStatus: null,
+    });
+    expect(statusText()).toBe('Ligado — pronto para enviar. O envio começa quando alguém falar.');
+  });
 });

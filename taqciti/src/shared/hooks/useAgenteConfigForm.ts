@@ -18,6 +18,8 @@ import {
   type StreamingReadiness,
 } from '@/shared/config/agenteConfig';
 import { patchAgenteConfig, subscribeAgenteConfig } from '@/shared/config/agenteConfigStore';
+import { NO_SEND_OUTCOME } from '@/shared/config/agenteStatus';
+import { patchAgenteStatus } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
 
 /** Mensagem mostrada quando um patch (salvar ou toggle) falha. */
@@ -119,6 +121,16 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
       for (const field of editedFields) patch[field] = drafts[field];
 
       const next = await patchAgenteConfig(patch);
+
+      /*
+       * WR-02: URL, sessão ou chave mudaram, então o resultado do último envio
+       * era da config anterior. Zerar aqui, do lado de quem grava, não depende
+       * de o service worker estar acordado para ouvir o `onChanged` — o status
+       * fica em storage.session e sobrevive ao sono dele.
+       */
+      await patchAgenteStatus(NO_SEND_OUTCOME).catch((err: unknown) => {
+        logger.error('zerar o status do Agente falhou', err);
+      });
 
       for (const field of editedFields) editedRef.current[field] = false;
       editedRef.current.agenteApiKey = false;
