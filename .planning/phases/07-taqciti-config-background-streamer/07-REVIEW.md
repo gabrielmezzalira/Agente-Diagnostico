@@ -1,445 +1,348 @@
 ---
 phase: 07-taqciti-config-background-streamer
-reviewed: 2026-09-26T00:00:00Z
+reviewed: 2026-09-29T20:30:00Z
 depth: standard
-files_reviewed: 20
+iteration: 2
+diff_base: 43a941c2913cdbeadfd6c68b779717a06e70d32f
+files_reviewed: 37
 files_reviewed_list:
   - taqciti/docs/publicar-release.md
+  - taqciti/src/background/agenteSender.test.ts
+  - taqciti/src/background/agenteSender.ts
+  - taqciti/src/background/agenteStatusReporter.ts
   - taqciti/src/background/agenteStreamer.test.ts
   - taqciti/src/background/agenteStreamer.ts
+  - taqciti/src/background/agenteStreamerDeps.ts
+  - taqciti/src/background/agenteStreamerInstance.ts
+  - taqciti/src/background/agenteStreamerSnapshot.ts
+  - taqciti/src/background/index.ts
+  - taqciti/src/background/phraseWindowTimer.ts
   - taqciti/src/background/sessionController.ts
+  - taqciti/src/document/baixarDocumento.ts
   - taqciti/src/features/agente/phraseBatcher.test.ts
   - taqciti/src/features/agente/phraseBatcher.ts
+  - taqciti/src/features/agente/sendRetryPolicy.test.ts
+  - taqciti/src/features/agente/sendRetryPolicy.ts
   - taqciti/src/features/agente/wordDelta.test.ts
   - taqciti/src/features/agente/wordDelta.ts
   - taqciti/src/shared/config/agenteConfig.test.ts
   - taqciti/src/shared/config/agenteConfig.ts
   - taqciti/src/shared/config/agenteConfigStore.test.ts
   - taqciti/src/shared/config/agenteConfigStore.ts
+  - taqciti/src/shared/config/agenteStatus.test.ts
+  - taqciti/src/shared/config/agenteStatus.ts
+  - taqciti/src/shared/config/agenteStatusStore.ts
   - taqciti/src/shared/config/constants.ts
   - taqciti/src/shared/hooks/useAgenteConfigForm.ts
-  - taqciti/src/sidepanel/App.tsx
-  - taqciti/src/sidepanel/route.test.ts
-  - taqciti/src/sidepanel/route.ts
+  - taqciti/src/shared/hooks/useAgenteStreamingStatus.ts
+  - taqciti/src/shared/ui/Toggle.test.tsx
+  - taqciti/src/shared/ui/Toggle.tsx
+  - taqciti/src/sidepanel/backNavigation.test.ts
+  - taqciti/src/sidepanel/backNavigation.ts
+  - taqciti/src/sidepanel/components/AgenteApiKeyField.tsx
   - taqciti/src/sidepanel/screens/AgenteConfigScreen.test.tsx
   - taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx
-  - taqciti/src/sidepanel/screens/HomeScreen.tsx
+  - taqciti/src/sidepanel/screens/AgenteConfigScreenBack.test.tsx
 findings:
   critical: 1
-  warning: 12
-  info: 11
-  total: 24
+  warning: 5
+  info: 6
+  total: 12
 status: issues_found
 ---
 
-# Fase 7: Relatório de Code Review
+# Fase 7: Relatório de Code Review (re-revisão incremental)
 
-**Revisado em:** 2026-09-26
+**Revisado em:** 2026-09-29T20:30:00Z
 **Profundidade:** standard
-**Arquivos revisados:** 20 (18 da revisão anterior + 2 novos do plano 07-04)
+**Arquivos revisados:** 37
 **Status:** issues_found
 
 ## Resumo
 
-Este relatório é o estado **completo** da fase. Ele junta a revisão original dos 18 arquivos com uma
-re-revisão incremental dos 6 arquivos que o plano 07-04 (janela de envio por fala, G-07-1/G-07-2) mudou
-desde `e4d8fd0`: `phraseBatcher.ts` (novo), `phraseBatcher.test.ts` (novo), `agenteStreamer.ts`,
-`agenteStreamer.test.ts`, `wordDelta.test.ts` e `agenteConfig.ts`.
+Esta é a segunda passada, só sobre o que mudou desde `43a941c`: as correções CR-01, WR-01..WR-13 e
+IN-01..IN-11, os refactors mecânicos e o novo `Toggle`/`AgenteApiKeyField`. Os itens já dispostos em
+`07-REVIEW-DISPOSITION.md` (inclusive os adiados IN-07, IN-08 e IN-09) **não** foram reabertos. Os
+achados abaixo são ou lacunas novas criadas pelas correções, ou casos que a correção prometeu cobrir e
+não cobre.
 
-**Sobre o 07-04.** O módulo puro `phraseBatcher.ts` está bem feito: não muta nada, respeita a ordem,
-isola por `(sessionId, segmentKey)` e tem testes unitários de verdade. Tracei as combinações de timer e
-flush dentro da fila serializada e **não encontrei palavra duplicada**. Também só existe um timer vivo
-por instância enquanto ela não é descartada, e nenhum log expõe texto, `session_id` ou chave (o `logger`
-sanitiza). Os problemas novos estão nas bordas:
+Rodei `npx tsc --noEmit`, `npx eslint` nos arquivos do escopo e `npx vitest run` em `taqciti/`: typecheck
+limpo, lint limpo e **561/561 testes passando**. Os problemas abaixo passam pela suíte porque nenhum teste
+exercita esses caminhos.
 
-- **D-09 não é reativo.** O streamer só descobre que o toggle foi desligado no próximo passo ou tick. Se
-  alguém desligar e religar dentro da janela, e ninguém falar nesse meio-tempo, a fala que estava
-  pendente é enviada. Isso contradiz o "MUST NOT" do próprio plano (WR-11).
-- **Se o `loadConfig` falhar no tick, a fala fica sem timer** e só sai quando alguém voltar a falar
-  (WR-12).
-- **`dispose()` não é terminal.** Um passo que já estava na fila da instância antiga continua rodando,
-  rearma timer e envia com as deps antigas. O comentário "nenhum timer órfão" não é verdade (WR-13).
-- **Vários testes novos passam por construção.** O "drain" dos testes é um passo real, com efeito
-  colateral (zera o cursor, faz `flushAll`, envia). Um teste depende desse efeito para passar, e os
-  testes de fim/pausa passariam mesmo se o `sessionController` não chamasse o streamer (WR-10).
+Sobre a chave de API: não achei vazamento. Ela não vai para o snapshot (`taq:agenteStreamer`), nem para o
+status (`taq:agenteStatus`), nem para o DOM (o teste do IN-05 confere o `innerHTML`), nem para os logs
+(`agenteSender` só loga o erro do `fetch` e o status HTTP). O único caminho teórico está no IN-01 abaixo, e
+hoje ele não é alcançável.
 
-Os achados antigos **WR-01** e **WR-02** continuam valendo e ficaram mais pesados: agora uma falha de
-envio ou um reinício do service worker perde até 5 s de fala de uma vez (o teto da janela), e não mais
-só um flush de 250 ms. O **WR-09** foi resolvido pelo 07-04 (ver abaixo).
-
-Continuam abertos, sem mudança, os achados dos arquivos que o 07-04 não tocou: CR-01 (reunião nova com o
-mesmo session_id trava em silêncio), WR-03 a WR-06, WR-08 e IN-01 a IN-06.
-
-### Resolvidos desde a revisão anterior
-
-- **WR-09** (asserções de ausência com `vi.waitFor(() => expect(true).toBe(true))`): resolvido. O padrão
-  sumiu de `agenteStreamer.test.ts`, e as asserções de ausência agora fazem `await` de um passo
-  enfileirado, que de fato espera a fila serializada terminar. O drain novo, porém, tem efeito colateral.
-  Esse é um problema diferente, registrado como WR-10.
+O problema principal é o **CR-01**: a proteção "nada vai para a sessão errada sem a pessoa confirmar"
+só vale enquanto o cursor em memória/`storage.session` existe. No caso mais comum, que é fechar o navegador
+entre uma reunião e outra, ela não funciona.
 
 ## Critical Issues
 
-### CR-01: Reunião nova com o mesmo session_id trava o streaming em silêncio, enquanto a UI diz "Ligado"
+### CR-01: A confirmação de "reunião nova" some quando o cursor é nulo, e a reunião do dia seguinte vai para a sessão antiga sem ninguém confirmar
 
-**Arquivos:** `taqciti/src/features/agente/wordDelta.ts:115-118`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:19`, `taqciti/src/shared/config/agenteConfig.ts:131-142`
+**Arquivos:** `taqciti/src/features/agente/wordDelta.ts:116-118`, `taqciti/src/background/agenteStreamerInstance.ts:98-103`, `taqciti/src/background/agenteStreamerInstance.ts:172-176`, `taqciti/src/background/agenteStreamerSnapshot.ts:8-10`
 
-**Problema:** Quando `prev.meetingId !== session.meetingId` e `binding.sessionId === prev.sessionId`, `planStreamStep` devolve `{ cursor: prev, deltas: [] }` **para sempre**. O cursor continua preso na reunião antiga, e todo flush seguinte cai no mesmo ramo. Esse caso aparece em situações bem reais:
+**Problema:** o combinado do CR-01 (`07-DECISOES-REVIEW.md`, linha 36) é: "Nada vai para a sessão
+errada sem a pessoa confirmar". A detecção de reunião nova, porém, depende de existir um cursor anterior
+(`prev.meetingId !== session.meetingId`). Quando `prev === null`, `planStreamStep` faz o `primeCursor`
+direto e começa a enviar, sem sinalizar espera. O cursor volta a ser `null` em três situações comuns:
 
-- A pessoa volta para a mesma sala depois da janela de `REJOIN_RESUME_WINDOW_MS` (10 min). A máquina cria um `meetingId` novo, mas a sessão do Agente continua ativa e é a mesma.
-- A pessoa cola o ID novo ainda durante o fim da reunião anterior. O ramo da linha 122-123 "migra" o cursor da reunião antiga para o ID novo, e quando a reunião nova começa cai de novo no ramo de espera.
+1. **O navegador fechou.** O snapshot mora em `chrome.storage.session`, que é apagado quando o navegador
+   fecha (o próprio comentário de `agenteStreamerSnapshot.ts:10` diz isso). Já `streamingEnabled` e
+   `agenteSessionId` ficam em `chrome.storage.local`, que é permanente. Resultado: na segunda-feira a
+   pessoa liga o streaming para a sessão S1 do cliente A. Na terça abre o Chrome e entra na reunião do
+   cliente B. O primeiro flush tem `cursor === null`, faz o prime e manda toda a fala do cliente B para
+   a sessão S1 do cliente A.
+2. **A extensão foi atualizada ou recarregada**, o que também limpa o `storage.session`.
+3. **O toggle foi desligado e religado.** `stopStreaming()` zera o cursor, e `applyConfigChange` faz o
+   prime da reunião atual sem comparar com a reunião anterior.
 
-Nos dois casos:
+O backend não segura isso: `backend/app/routers/webhook.py:40-44` insere em `transcript_chunks` para
+qualquer `session_id`, inclusive de sessão já encerrada. Então a transcrição de um cliente acaba
+misturada no diagnóstico/relatório de outro. Isso é resultado errado e também um problema de
+privacidade/LGPD (dado de um cliente dentro da sessão de outro).
 
-1. `getStreamingReadiness` só olha a config, então a tela mostra `ready` → "Ligado — a transcrição ao vivo está sendo enviada ao Agente." Nada é enviado, e nenhum log ou aviso aparece.
-2. Salvar o mesmo UUID de novo não destrava, porque o binding não muda. A única saída é desligar o toggle, **esperar um flush acontecer** (alguém falar) e religar. Isso não está documentado em lugar nenhum.
-3. A garantia "nada vai para a sessão da reunião anterior" nem sempre vale: se o service worker reiniciar (coisa comum no MV3), `cursor` volta a `null` e a linha 112-113 faz prime da reunião nova direto no session_id antigo. O resultado depende de um detalhe de ciclo de vida que ninguém controla.
-
-Na prática, a transcrição da reunião é perdida sem nenhum aviso, e a tela afirma o contrário.
-
-(Re-verificado depois do 07-04: `wordDelta.ts` não mudou e o ramo de espera continua igual. A janela por fala não altera nada aqui, porque `result.deltas` continua vazio nesse ramo, e o buffer só esvazia o que já estava pendente da reunião anterior.)
-
-**Correção:** Decida explicitamente (DECISÃO EM ABERTO do time) entre dois caminhos. (a) Fazer prime da reunião nova no mesmo session_id, como já acontece depois de um reinício do service worker, o que dá comportamento determinístico. (b) Manter a espera, mas mostrar isso na tela. Em qualquer dos dois, o status não pode dizer "sendo enviada" quando o streamer está esperando. Exemplo de (b):
+**Correção:** guardar a reunião a que a sessão está vinculada num lugar que sobrevive ao fechamento do
+navegador, e tratar "cursor nulo com reunião diferente da vinculada" como espera. Um jeito simples:
+gravar `boundMeetingId` junto da config em `storage.local` (só o id, sem texto) no primeiro prime de
+cada `agenteSessionId`, e limpar esse valor quando o `agenteSessionId` mudar.
 
 ```ts
-// wordDelta.ts — sinalizar o estado de espera
-export interface StreamStep {
-  cursor: StreamCursor | null;
-  deltas: SegmentDelta[];
-  waitingForNewSession?: boolean;
+// wordDelta.ts — planStreamStep
+export interface StreamBinding {
+  sessionId: string;
+  confirmedMeetingId?: string;
+  /** Última reunião enviada para esta sessão (persistida em storage.local). */
+  boundMeetingId?: string;
 }
-// ...
-if (prev.meetingId !== session.meetingId) {
-  if (binding.sessionId === prev.sessionId) {
-    return { cursor: prev, deltas: [], waitingForNewSession: true };
+
+if (prev === null) {
+  const bound = binding.boundMeetingId;
+  if (bound && bound !== session.meetingId && binding.confirmedMeetingId !== session.meetingId) {
+    return { cursor: null, deltas: [], waitingForNewMeeting: true };
   }
   return { cursor: primeCursor(session, binding.sessionId), deltas: [] };
 }
 ```
 
-Depois, `agenteStreamer.ts` grava um status de runtime (por exemplo `taq:agenteStatus` em `chrome.storage.session`) que a tela lê para mostrar "Reunião nova detectada — salve o ID da sessão nova do Agente". Além disso, deixe o salvar (mesmo com o mesmo UUID) liberar a espera, por exemplo gravando um `bindingNonce`/`savedAt` que entre no `StreamBinding`.
+O streamer grava `boundMeetingId` (via `patchAgenteConfig`) quando faz o prime ou a confirmação.
+`patchAgenteConfig({ agenteSessionId })` limpa esse valor. Falta pelo menos um teste: cursor nulo
+(sem snapshot), config com `boundMeetingId = 'M1'`, sessão `M2`: nada é enviado e aparece
+`waitingForNewMeeting`. Como isso muda o contrato da config, é **DECISÃO EM ABERTO** do time pela regra
+do CLAUDE.md, mas o bug precisa ser resolvido antes de mergear a fase.
 
 ## Warnings
 
-### WR-01: O cursor avança antes do envio ser confirmado: falha de rede perde palavras de vez (agora até 5 s de fala), e a ordem de chegada não é garantida
+### WR-01: Trocar a URL (ou a sessão) não limpa a fila de envio: trechos para o backend antigo seguem tentando por minutos, seguram os novos e sobrescrevem o status
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:76-93, 119-124, 133`
+**Arquivos:** `taqciti/src/background/agenteStreamerInstance.ts:164-181`, `taqciti/src/background/agenteSender.ts:57-80`, `taqciti/src/background/agenteSender.ts:94-107`
 
-**Problema:** Continua valendo depois do 07-04, e ficou mais grave. `cursor = result.cursor` (linha 133) conta as palavras como enviadas assim que entram no buffer. Em `drain` (linhas 120-122), `pending = result.buffer` tira a fala do buffer **antes** de `sendPhrases` disparar o envio. `sendPhrases` (76-93) continua fire-and-forget: um 5xx, um timeout de 10 s ou uma queda de Wi-Fi só geram `logger.warn`/`logger.error`, e a fala nunca é reenviada. Antes, uma falha perdia um flush (~250 ms de fala). Agora ela perde **uma fala inteira**, até `AGENTE_PHRASE_MAX_WAIT_MS` (5 s) de palavras de uma vez. Além disso, as falas liberadas no mesmo `drain`, e as falas de drains seguidos (por exemplo, o pedaço do teto e o pedaço seguinte do mesmo segmento), continuam correndo em paralelo, sem ordem garantida.
+**Problema:** `applyConfigChange` só chama `sender.cancelAll()` quando o streaming fica desligado. Se a
+config continua pronta e só muda a URL, a sessão ou a chave, os `ExtensionChunkRequest` que já estão em
+`waiting` foram montados com a URL/chave antiga e continuam sendo enviados em ordem, com até 3 novas
+tentativas cada. O cenário típico é justamente o de consertar o problema: o backend está fora ou a URL
+tem um erro de digitação, a tela mostra "sem conexão", a pessoa corrige a URL e salva. A fila tem até 50
+trechos, e cada um pode segurá-la por cerca de 47 s (4 × 10 s de timeout + 1 + 2 + 4 s de espera). As
+falas novas, já para a URL certa, ficam atrás desses trechos por minutos (no pior caso, dezenas de
+minutos).
 
-**Correção:** Serialize os envios numa fila própria (sem bloquear `flushState`) e só tire a fala do buffer depois de um `response.ok`. Se não der, devolva a fala ao buffer com retry limitado:
+Além disso, `status.resetSendOutcome()` roda na mudança de config, mas o primeiro `report('retrying')`
+ou `report('failed')` de um trecho antigo sobrescreve o reset logo em seguida. A tela volta a mostrar
+"Falha ao enviar… tentando de novo" mesmo com a config nova correta. Isso é o mesmo tipo de status falso
+que o WR-07 tentou eliminar. A regra do IN-11 ("fala de outro backend é descartada") vale para a janela
+(`buildPhraseRequests`), mas não para a fila de envio.
 
-```ts
-let sendQueue: Promise<void> = Promise.resolve();
-function sendPhrases(config: AgenteConfig, phrases: readonly PendingPhrase[]): void {
-  for (const phrase of phrases) {
-    const request = buildExtensionChunkRequest(
-      { ...config, agenteSessionId: phrase.sessionId },
-      { text: phrase.text, speaker: phrase.speaker },
-    );
-    sendQueue = sendQueue.then(async () => {
-      try {
-        const res = await deps.send(request);
-        if (!res.ok) logger.warn('Agente recusou o trecho', { status: res.status });
-      } catch (error) {
-        logger.error('envio ao Agente falhou', error);
-      }
-    });
-  }
-}
-```
-
-(A fila garante a ordem. Para não perder palavras é preciso retry ou um buffer "confirmado", o que é uma decisão de desenho.)
-
-### WR-02: Depois de reiniciar o service worker ou religar o toggle, palavras são descartadas (agora também tudo o que estava pendente na janela)
-
-**Arquivos:** `taqciti/src/features/agente/wordDelta.ts:112-113`, `taqciti/src/background/agenteStreamer.ts:63-66`, `taqciti/src/background/agenteStreamer.test.ts:401-411, 470-477`
-
-**Problema:** Continua valendo. O prime acontece com o estado **do primeiro flush depois do reinício**, que já traz o chunk novo aplicado. No teste de reinício, "e mais isso" é falado depois do reinício e nunca é enviado, e o teste (linhas 470-477) fixa essa perda como comportamento esperado. O mesmo vale para religar o toggle (linhas 401-411): "e agora" é falado com o streaming já ligado e se perde.
-
-O 07-04 criou uma segunda perda no reinício. `pending` e o timer (linhas 65-66) existem só em memória, e o cursor já contou as palavras pendentes como enviadas. Se o service worker morrer com uma fala na janela (até 5 s de texto), essa fala some. Depois do reinício o cursor é `null` e faz prime por cima dela.
-
-**Correção:** Faça o prime com o estado **hidratado** (antes de aplicar o evento novo). Por exemplo, exponha `primeAgenteStreamer(getState())` e chame depois de `hydrate()` no boot do service worker. Outra opção é persistir o `StreamCursor` **e o `PhraseBuffer`** em `chrome.storage.session` junto com `taq:state`. Para religar o toggle, faça o prime no momento em que o `onChanged` do reader detecta `streamingEnabled: false → true`, com o estado atual. Depois ajuste os testes para exigir que "e mais isso" e "e agora" sejam enviados.
-
-### WR-03: A fila de patches fica envenenada para sempre depois de uma única falha de escrita
-
-**Arquivo:** `taqciti/src/shared/config/agenteConfigStore.ts:38-45`
-
-**Problema:** `queue = queue.then(async () => ...)` sem `.catch`. Se um `writeLocal` rejeitar uma vez (quota, contexto invalidado), `queue` vira uma promessa rejeitada, e todo `patchAgenteConfig` seguinte encadeia em `.then` sobre ela: a callback nunca roda e tudo rejeita até recarregar a página. O padrão veio de `prefsStore.ts:58-63`, mas o bug está no código escrito nesta fase também.
-
-**Correção:**
+**Correção:** invalidar a fila quando muda o destino (URL, sessão ou chave), com a mesma regra da janela:
 
 ```ts
-export function patchAgenteConfig(patch: Partial<AgenteConfig>): Promise<AgenteConfig> {
-  const run = queue.catch(() => undefined).then(async () => {
-    const next = normalizeAgenteConfig({ ...(await loadAgenteConfig()), ...patch });
-    await writeLocal(STORAGE_KEYS.agenteConfig, next);
-    return next;
-  });
-  queue = run;
-  return run;
-}
-```
+// agenteStreamerInstance.ts
+let lastDestinationKey: string | null = null;
+const destinationKey = (c: AgenteConfig) => `${c.agenteBackendUrl}\n${c.agenteSessionId}\n${c.agenteApiKey}`;
 
-### WR-04: Erros de gravação não são tratados na tela: rejeição sem tratamento e nenhum retorno para a pessoa
-
-**Arquivos:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts:84-112`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:114`
-
-**Problema:** `save()` tem `try/finally` sem `catch`, e a tela chama `void save()`. Se o patch falhar (ou se a fila estiver envenenada, WR-03), sobra uma unhandled rejection e o botão simplesmente volta a "Salvar", sem dizer que nada foi gravado. `setStreamingEnabled` faz `void patchAgenteConfig(...)`, o mesmo problema: o checkbox não muda e ninguém entende por quê.
-
-**Correção:** Adicione um estado `error: string | null` no hook, com `catch` em `save()` e em `setStreamingEnabled`, e mostre a mensagem no `<p aria-live>`:
-
-```ts
-} catch (error) {
-  setError('Não foi possível salvar a configuração. Tente de novo.');
-  logger.error('salvar config do Agente falhou', error);
-} finally { setSaving(false); }
-```
-
-### WR-05: `save()` manda o objeto inteiro, contrariando o contrato do store, grava o padrão da build no storage e descarta o que foi digitado durante o salvamento
-
-**Arquivo:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts:87-101`
-
-**Problema:** O próprio `agenteConfigStore.ts:33-37` diz "quem chama manda só o campo que está mudando, nunca o objeto inteiro". O hook, porém, manda sempre os três campos, mesmo os que não foram editados. Isso causa três problemas:
-
-1. **Corrida com a Fase 8:** se o auto-detect gravar `agenteSessionId` entre o clique e a leitura do rascunho (a entrega do `onChanged` é assíncrona), o rascunho velho sobrescreve o valor detectado.
-2. **Padrão congelado:** no primeiro "Salvar", o `AGENTE_BACKEND_URL_DEFAULT` vai parar no storage. Se o padrão da build mudar numa release futura, quem já salvou uma vez fica preso no valor antigo, o que contradiz o runbook ("são só valores-padrão para quem nunca abriu a tela").
-3. Os campos não ficam desabilitados enquanto `saving` é verdadeiro. O que a pessoa digitar durante o `await` é apagado pelo `setDrafts(next)`, e `editedRef` é zerado.
-
-**Correção:** Monte o patch só com os campos marcados em `editedRef`, zere só esses e sobrescreva só esses rascunhos:
-
-```ts
-const patch: Partial<AgenteConfig> = {};
-for (const field of Object.keys(editedRef.current) as AgenteConfigField[]) {
-  if (editedRef.current[field]) patch[field] = drafts[field];
-}
-if (Object.keys(patch).length === 0) return;
-const next = await patchAgenteConfig(patch);
-```
-
-Além disso, desabilite os `TextField` enquanto `saving` for verdadeiro.
-
-### WR-06: A chave `x-agente-key` pode ir em texto puro por `http://` para qualquer host, e digitar "localhost:8000" vira https e quebra o dev local
-
-**Arquivo:** `taqciti/src/shared/config/agenteConfig.ts:71-77, 115-122, 160-162`
-
-**Problema:** Continua valendo (o 07-04 só inseriu constantes no arquivo, e as linhas mudaram de lugar). `isValidAgenteBackendUrl` aceita `http:` para qualquer host, e `buildExtensionChunkRequest` anexa a chave sempre que ela existe. Com uma URL `http://agente.empresa.com`, a credencial do gate `EXTENSION_SHARED_KEY` e a transcrição da reunião trafegam sem TLS. No sentido oposto, `normalizeAgenteBackendUrl('localhost:8000')` vira `https://localhost:8000` (mesmo com o placeholder da tela sendo `http://localhost:8000`), o envio falha com erro de TLS e a tela mostra "Ligado".
-
-**Correção:** Só aceite `http:` para loopback (`localhost`, `127.0.0.1`, `[::1]`) e trate `http` em outro host como `invalid-url` (ou pelo menos não mande a chave):
-
-```ts
-function isValidAgenteBackendUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.protocol === 'https:') return true;
-    return u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
-  } catch { return false; }
-}
-```
-
-E em `normalizeAgenteBackendUrl`, use `http://` como prefixo quando o host digitado for loopback.
-
-### WR-07: O status "Ligado — está sendo enviada" não reflete a entrega real (401, 404 e erros de rede ficam invisíveis)
-
-**Arquivos:** `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:19, 120-122`, `taqciti/src/background/agenteStreamer.ts:76-93`
-
-**Problema:** Continua valendo: `sendPhrases` (76-93) só registra falhas no `logger`. O status é calculado só a partir da config salva. Chave errada (401 em todo chunk), session_id de uma sessão já encerrada (4xx), backend fora do ar: tudo isso fica só no `logger` do service worker, que ninguém de produto ou soluções vai abrir. A tela afirma que a transcrição "está sendo enviada" mesmo quando 100% dos envios falham.
-
-**Correção:** Grave em `chrome.storage.session` um status de runtime mínimo (`lastSendAt`, `lastError`, `lastStatus`) a partir de `agenteStreamer.ts`, e faça a tela assiná-lo. Troque o texto de `ready` para algo como "Ligado — pronto para enviar", e mostre "Último envio falhou (401: chave recusada)" quando for o caso.
-
-### WR-08: Se a primeira leitura falhar, `createAgenteConfigReader` guarda a promessa rejeitada e o streamer para até a config mudar
-
-**Arquivo:** `taqciti/src/shared/config/agenteConfigStore.ts:83-100`
-
-**Problema:** `cached = loadAgenteConfig()` é guardado sem tratamento. Se o `chrome.storage.local.get` rejeitar uma vez, toda chamada de `loadConfig` devolve a mesma rejeição, e todo `step` do streamer falha (o erro só vai para o log) até alguma escrita em `taq:agenteConfig` disparar o `onChanged`. Com a config estável, isso significa a reunião inteira sem streaming.
-
-**Correção:**
-
-```ts
-cached = loadAgenteConfig().catch((error) => {
-  cached = null; // próxima chamada tenta de novo
-  throw error;
-});
-```
-
-Com `cached = null`, também é preciso evitar registrar o listener duas vezes (guarde um flag `listening`).
-
-### WR-10: Testes da janela por fala que passam por construção: o "drain" é um passo real com efeito colateral
-
-**Arquivo:** `taqciti/src/background/agenteStreamer.test.ts:11-12, 195-196, 285-317, 703-734, 736-766, 768-823, 875-909`
-
-**Problema:** O cabeçalho (linhas 11-12) e os comentários (195, 245) chamam o drain `await agenteStreamer.onSessionFlushed(getState())` de "passo idempotente", mas ele é um `step` completo. Enquanto desligado, zera o cursor (`planStreamStep` devolve `cursor: null`). Fora de `'recording'`, faz `flushAll`. E sempre libera, com o `Date.now()` do momento, as falas cujo prazo já passou. Na prática:
-
-1. **"toggle com fala pendente" (768-823) depende do próprio drain para passar.** Quem descarta a fala é o tick. Só que o tick **não** zera o cursor (linhas 146-153 de `agenteStreamer.ts`). Quem zera é o drain da linha 797, rodando com a config desligada. Sem esse drain (que é o que acontece em produção quando ninguém fala durante o "desligado"), o cursor continuaria com 4 palavras, "e" seria enviado junto com "isso é novo", e a asserção `{ text: 'isso é novo' }` da linha 822 falharia. O comentário das linhas 800-802 ("o cursor foi resetado enquanto desligado") descreve um efeito do teste, não do código de produção.
-2. **"fim" (703-734) e "pausa" (736-766) não provam o caminho `dispatch → flushState → streamer`.** A chamada manual de `onSessionFlushed` (linhas 729 e 761), com a fase já `'ended'`/`'paused'`, faz o `flushAll` sozinha. Os testes continuariam verdes mesmo se `flushState` nunca chamasse o streamer.
-3. **"não bloqueante em erro de rede" (285-317) não verifica que o envio aconteceu.** O comentário das linhas 314-315 diz que o avanço de relógio serve para "o envio (rejeitado) de fato acontecer", mas não há `expect` sobre o `send`. Um `send` que nunca fosse chamado passaria igual.
-4. **"cadência local intacta" (875-909) roda com o streaming desligado** (não chama `configureAgenteStreamer`). `expect(fetchMock).not.toHaveBeenCalled()` (908) é trivialmente verdadeiro e não prova que a janela do Agente é independente da gravação de 250 ms, que é o que o nome do teste afirma.
-
-**Correção:** Exponha na instância um observador sem efeito colateral e use ele nas asserções de ausência. Nos testes de fim/pausa, não chame `onSessionFlushed` manualmente:
-
-```ts
-// agenteStreamer.ts
-function whenIdle(): Promise<void> { return queue; }
-return { onSessionFlushed, dispose: discard, whenIdle };
-export function whenAgenteStreamerIdle(): Promise<void> { return activeStreamer.whenIdle(); }
-
-// agenteStreamer.test.ts — fim
-await sessionController.dispatch({ type: 'MEETING_FINISHED', at: 2000 });
-await agenteStreamer.whenAgenteStreamerIdle();
-expect(fetchMock).toHaveBeenCalledTimes(1);
-```
-
-No teste de toggle, troque o drain da linha 797 por `whenIdle()` e decida (junto com WR-02/WR-11) qual comportamento é o certo ao religar. No teste de erro de rede, use `const send = vi.fn(() => Promise.reject(...))` e `expect(send).toHaveBeenCalledTimes(1)`. No de cadência, configure `READY_CONFIG` e afirme que `taq:state` foi gravado em 250 ms **e** que o `fetch` ainda não foi chamado antes de `AGENTE_PHRASE_QUIET_MS`.
-
-### WR-11: Desligar e religar o toggle dentro da janela envia a fala pendente (D-09 não é reativo)
-
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:105-117, 135-138, 146-153`
-
-**Problema:** O plano 07-04 diz que o streamer "MUST NOT enviar texto ao Agente depois que o streaming foi desligado — inclusive o texto que estava pendente na janela". O streamer, porém, só nota o desligamento quando roda um `step` (linhas 135-138) ou um `tick` (148-151). Nada reage ao `onChanged` do toggle. Sequência:
-
-1. t=0: "isso é confidencial" entra no buffer, com prazo em t=1,5 s.
-2. t=0,5 s: a pessoa desliga o toggle, arrependida de ter deixado ligado. Ninguém fala, então nenhum flush acontece.
-3. t=1,0 s: ela religa, para continuar a partir dali.
-4. t=1,5 s: o `tick` lê a config (ligada) e envia "isso é confidencial".
-
-A fala que devia ter sido descartada no desligamento sai depois de desligada. Além disso, `tick` e `step` tratam o "desligado" de jeitos diferentes: `step` zera o cursor, e `tick` não. O que acontece ao religar depende de alguém ter falado durante o intervalo (ver WR-10, item 1).
-
-**Correção:** Faça o descarte reagir à mudança de config, dentro da mesma fila. Por exemplo, injete um assinante nas deps (isso muda o contrato `AgenteStreamerDeps`, que o plano quis manter só com `loadConfig`/`send`: **DECISÃO EM ABERTO** do time):
-
-```ts
-export interface AgenteStreamerDeps {
-  loadConfig: () => Promise<AgenteConfig>;
-  send: (request: ExtensionChunkRequest) => Promise<Response>;
-  onConfigChange?: (listener: (config: AgenteConfig) => void) => () => void;
-}
-// createAgenteStreamer
-deps.onConfigChange?.((config) => {
-  if (!isStreamingReady(config)) {
-    void enqueue(async () => { discard(); cursor = null; });
-  }
-});
-```
-
-Uma alternativa sem mudar o contrato é o reader expor uma "revisão" da config. Cada `PendingPhrase` guarda a revisão em que foi acumulada, e o `tick` descarta as falas acumuladas antes de um desligamento. Qualquer que seja a escolha, alinhe `tick` e `step` quanto a zerar ou não o cursor.
-
-### WR-12: Se o `loadConfig` falhar no tick, a fala pendente fica sem timer e só sai quando alguém voltar a falar
-
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:112-115, 146-153`
-
-**Problema:** O callback do timer faz `timer = null` (linha 113) e enfileira `tick`. Se `await deps.loadConfig()` (147) rejeitar, o `enqueue` só registra o erro no log. `rearm` nunca é chamado, e `pending` continua com a fala **sem nenhum timer armado**. Se a pessoa ficou em silêncio (típico no fim de uma frase, que é justamente quando o tick dispara), a fala só sai no próximo flush de legenda ou no `flushAll` do fim da reunião. Se o service worker morrer antes disso, ela se perde (o cursor já contou as palavras). Somado ao WR-08 (cache de rejeição), a fala fica presa até a config mudar. Isso quebra em silêncio a promessa de "quase tempo real" (SC1).
-
-**Correção:** Garanta que, depois de qualquer passo, um buffer não vazio sempre tenha timer armado, com um atraso mínimo para não virar laço apertado quando a falha se repete:
-
-```ts
-const RETRY_MIN_MS = 1_000;
-timer = setTimeout(() => {
-  timer = null;
-  void enqueue(tick).then(() => {
-    if (timer === null && pending.length > 0) {
-      timer = setTimeout(() => { timer = null; void enqueue(tick); }, RETRY_MIN_MS);
-    }
-  });
-}, Math.max(0, deadline - now));
-```
-
-(Ou mova esse rearme defensivo para um `finally` dentro de `tick`.)
-
-### WR-13: `dispose()` não é terminal: um passo já enfileirado na instância antiga rearma timer e envia com as deps antigas
-
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:96-102, 159, 176-185`
-
-**Problema:** `dispose` é só `discard`: limpa `pending` e o timer, mas a instância continua funcionando normalmente. Se houver um `step` na fila da instância antiga (por exemplo, esperando `loadConfig`) quando `configureAgenteStreamer` roda, esse passo continua. Ele calcula deltas a partir do cursor antigo, preenche `pending`, envia (com `flushAll`) ou **arma um timer novo** na instância descartada, que depois dispara um `tick` com o `send`/`loadConfig` antigos. O comentário das linhas 178-179 ("nenhum timer órfão continua vivo") e a mitigação T-07-19 do plano afirmam uma garantia que não existe. Hoje `configureAgenteStreamer` só é chamado em testes, logo antes de qualquer `dispatch`, então o efeito não aparece. Mas ele é exportado como "seam de composição", e a Fase 8 (session binding) é a candidata natural a usá-lo em produção.
-
-**Correção:** Marque a instância como descartada e faça todo ponto de entrada respeitar isso:
-
-```ts
-let disposed = false;
-function dispose(): void { disposed = true; discard(); }
-async function step(state: MeetingState): Promise<void> {
-  const config = await deps.loadConfig();
+async function applyConfigChange(config: AgenteConfig): Promise<void> {
   if (disposed) return;
-  // ...
+  const key = destinationKey(config);
+  if (lastDestinationKey !== null && key !== lastDestinationKey) sender.cancelAll();
+  lastDestinationKey = key;
+  status.resetSendOutcome();
+  ...
 }
-async function tick(): Promise<void> {
-  if (disposed) return;
-  // ...
-}
-function rearm(now: number): void {
-  if (disposed) return;
-  // ...
-}
-return { onSessionFlushed, dispose };
 ```
+
+Se o time preferir manter os trechos já liberados para a sessão antiga, então o mínimo é: não reportar
+status de trechos de uma "geração de config" anterior, e não segurar os novos atrás deles. Teste semente:
+URL A fora do ar com 3 trechos na fila, config muda para URL B, o próximo trecho sai para B sem esperar
+os retries de A.
+
+### WR-02: Se a config for corrigida com o service worker dormindo, o erro antigo continua na tela
+
+**Arquivos:** `taqciti/src/background/agenteStreamerInstance.ts:163-189`, `taqciti/src/background/index.ts:41-44`, `taqciti/src/shared/hooks/useAgenteConfigForm.ts:97-140`
+
+**Problema:** quem zera o status (`resetSendOutcome`) é só o listener `onConfigChange` do service worker.
+Esse listener é registrado de forma preguiçosa, em `ensureSubscribed()`, depois da cadeia assíncrona
+`migrateLocalStorage().then(hydrate).then(resume)`. Ele não é registrado no nível de cima do script. O
+fluxo esperado é: a reunião termina com "Último envio recusado: a chave de autenticação não foi aceita
+(HTTP 401)", a pessoa cola a chave certa e salva. Nessa hora não há reunião, então o service worker do
+MV3 provavelmente já dormiu. O `storage.onChanged` dessa gravação não chega ao listener do streamer:
+ou o service worker não acorda, ou acorda e o evento é entregue antes de o listener existir. Como
+`taq:agenteStatus` fica em `storage.session` e sobrevive ao reinício do service worker, a tela continua
+mostrando o 401 com a chave já corrigida, até o próximo envio de verdade.
+
+**Correção:** zerar o resultado do último envio também do lado de quem grava a config. No hook, depois
+de um `patchAgenteConfig` que mexeu em URL, sessão ou chave:
+
+```ts
+// useAgenteConfigForm.ts — dentro de save(), após o patch
+await patchAgenteStatus(NO_SEND_OUTCOME).catch((err) => logger.error('zerar status do Agente falhou', err));
+```
+
+Outra opção é guardar no status um "fingerprint" da config (hash de URL+sessão, sem a chave em claro) e
+fazer `describeAgenteStreaming` ignorar um resultado que seja de outra config.
+
+### WR-03: A URL padrão da build não é normalizada, e o runbook afirma o contrário
+
+**Arquivos:** `taqciti/src/shared/config/agenteConfig.ts:17-18`, `taqciti/src/shared/config/agenteConfig.ts:60-66`, `taqciti/src/shared/config/agenteConfig.ts:123-125`, `taqciti/docs/publicar-release.md:90`
+
+**Problema:** a nota nova do IN-06 no runbook diz que, para `VITE_AGENTE_BACKEND_URL`, "a barra no fim
+é normalizada". Isso não é verdade. `normalizeAgenteConfig` só normaliza o que vem do storage. Quando o
+campo está vazio ou ausente, e esse é justamente o caso de quem nunca abriu a tela e depende do padrão
+da build, o código usa `AGENTE_BACKEND_URL_DEFAULT` cru (linha 125). O `DEFAULT_AGENTE_CONFIG` também
+usa o valor cru (linha 61). Uma build com `VITE_AGENTE_BACKEND_URL=https://agente.up.railway.app/` (ou com
+espaço no fim) manda para `https://agente.up.railway.app//webhook/extension`. O Starlette responde 404
+nesse caminho, e aí a tela mostra "Último envio recusado pelo Agente (HTTP 404) — confira o ID da
+sessão", uma pista errada. Quem ler o runbook vai confiar que a barra é tratada.
+
+**Correção:** normalizar o padrão na origem e ajustar o texto do runbook:
+
+```ts
+export const AGENTE_BACKEND_URL_DEFAULT =
+  normalizeAgenteBackendUrl(import.meta.env.VITE_AGENTE_BACKEND_URL ?? '') || 'http://localhost:8000';
+```
+
+Para isso, `normalizeAgenteBackendUrl` precisa ser declarada antes da constante ou virar `function`
+hoisted, o que ela já é. Vale acrescentar um teste com `vi.stubEnv` e barra no fim.
+
+### WR-04: Trechos que já saíram da janela e estão na fila de reenvio se perdem quando o service worker reinicia, e o status fica "tentando de novo…" para sempre
+
+**Arquivos:** `taqciti/src/background/agenteStreamerInstance.ts:74-86`, `taqciti/src/background/agenteStreamerInstance.ts:111-116`, `taqciti/src/background/agenteSender.ts:37-41`
+
+**Problema:** o WR-02 persiste o cursor e as falas **pendentes na janela**. Só que `drain()` tira a fala
+do `pending` e a entrega ao `sender` (que é só memória). Em seguida o `persist(cursor, pending)` grava um
+snapshot em que aquelas palavras já contam como enviadas. Se o service worker morrer enquanto o trecho
+espera um retry, ele se perde de vez: o cursor avançou e a fila não foi persistida. Isso é bem possível,
+porque os `setTimeout` do backoff não mantêm o service worker do MV3 vivo, e isso acontece exatamente no
+fim da reunião, quando os flushes param. É a mesma perda que o WR-01 e o WR-02 queriam eliminar, só que
+agora no trecho entre a janela e a entrega. De quebra, o último status gravado foi `retrying` em
+`storage.session`, e ninguém o substitui depois do reinício. A tela fica "Falha ao enviar… tentando de
+novo…" sem que exista tentativa nenhuma rodando.
+
+**Correção:** incluir no snapshot os trechos ainda não entregues. Grave só `{ backendUrl, sessionId,
+text, speaker }`, **nunca** o `init` com o header: no restore, remonte o pedido com
+`buildPhraseRequests` e a chave da config atual, aplicando o mesmo descarte do IN-11. Se o time aceitar a
+perda, então pelo menos no boot (`resume`) grave `lastOutcome: 'failed'` quando o status restaurado for
+`retrying`, para a tela não mentir. Nos dois casos, registre a decisão no plano.
+
+### WR-05: "← Voltar" fica sem efeito quando a tela é aberta numa aba nova (Ctrl/Cmd+clique ou clique do meio)
+
+**Arquivos:** `taqciti/src/sidepanel/backNavigation.ts:25-29`, `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:37-41`
+
+**Problema:** `canGoBackWithinExtension` só confere se o `document.referrer` é da mesma extensão. Quando
+a pessoa abre o link "Agente Diagnóstico · streaming ao vivo" (`HomeScreen.tsx:75-80`) numa aba nova, o
+referrer continua sendo a página da extensão, mas o histórico da aba nova só tem uma entrada. O handler
+chama `preventDefault()` e depois `history.back()`, que não faz nada. O botão fica morto e o `href="?"`,
+que funcionaria, nunca roda.
+
+**Correção:** exigir que exista uma entrada anterior no histórico:
+
+```ts
+function handleBackClick(event: MouseEvent<HTMLAnchorElement>): void {
+  if (window.history.length <= 1) return;
+  if (!canGoBackWithinExtension(document.referrer, window.location.href)) return;
+  event.preventDefault();
+  window.history.back();
+}
+```
+
+Pode ser como parâmetro da função pura (`historyLength`), para continuar testável. Vale acrescentar um
+caso em `AgenteConfigScreenBack.test.tsx`.
 
 ## Info
 
-### IN-01: `.catch` redundante em `flushState`
+### IN-01: O caminho de compatibilidade "fala sem `backendUrl`" é código morto, e se algum dia rodar reabre o IN-11
 
-**Arquivo:** `taqciti/src/background/sessionController.ts:175`
-**Problema:** `onSessionFlushed` já termina em `.catch` e nunca rejeita, então o `.catch` externo é código morto e deixa uma segunda mensagem de log que nunca vai aparecer.
-**Correção:** Deixar só `void onSessionFlushed(state);`.
+**Arquivo:** `taqciti/src/features/agente/phraseBatcher.ts:32-37`, `taqciti/src/features/agente/phraseBatcher.ts:162-169`
 
-### IN-02: Corrida entre a leitura inicial e o `onChanged` em `subscribeAgenteConfig`
+**Problema:** o fallback manda uma fala sem `backendUrl` para a URL da config **atual**, com a chave
+atual. Isso é justamente o vazamento que o IN-11 fechou (uma fala acumulada para o backend A saindo com a
+chave de B, para B). Hoje esse caminho não é alcançável: o snapshot fica em `storage.session`, que é
+apagado quando a extensão é atualizada ou recarregada e quando o navegador fecha. Então nunca existe um
+snapshot "do formato antigo" rodando com o código novo.
 
-**Arquivo:** `taqciti/src/shared/config/agenteConfigStore.ts:54-65`
-**Problema:** Se a leitura inicial for resolvida depois de um `onChanged` (por exemplo quando um patch acontece logo na montagem), `onConfig` recebe primeiro o valor novo e depois o valor velho, e a tela fica desatualizada. O padrão é herdado de `prefsStore.ts`.
-**Correção:** Ignorar a entrega inicial se alguma entrega do `onChanged` já tiver acontecido (flag `gotChange`).
+**Correção:** tornar `backendUrl` obrigatório e descartar, no `restoreOnce`, a fala que vier sem esse
+campo, em vez de mandá-la para a URL atual.
 
-### IN-03: URLs com query, fragmento ou esquema estranho passam na validação
+### IN-02: O toggle aceita clique antes de a config carregar e mostra "desligado" mesmo quando o streaming está ligado
 
-**Arquivo:** `taqciti/src/shared/config/agenteConfig.ts:71-77, 158`
-**Problema:** Continua valendo, com as linhas atualizadas. `https://x.com/?a=b` vira `https://x.com/?a=b/webhook/extension`. `ftp://x` recebe o prefixo e vira `https://ftp://x`, que `new URL` aceita (host `ftp`). Nos dois casos o status mostra `ready`.
-**Correção:** Normalizar via `new URL(...)`, recusar `search`/`hash` e checar o esquema antes de colocar o prefixo.
+**Arquivo:** `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:82-86`
 
-### IN-04: "← Voltar" usa `href="?"` e perde a view de origem
+**Problema:** `checked={config?.streamingEnabled ?? false}` sem `disabled`. Por alguns milissegundos o
+toggle aparece desligado e aceita clique, que grava `streamingEnabled: true` sem conhecer o valor real.
+A mensagem "Carregando configuração…" do C11 aparece, mas o controle continua ativo.
 
-**Arquivo:** `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx:43`
-**Problema:** Quem chegou vindo de `?view=history` e voltou cai no roteamento por fase (numa reunião ao vivo, a tela ao vivo), e não no histórico.
-**Correção:** Usar `history.back()` quando `document.referrer` for da própria extensão, ou `?view=history`.
+**Correção:** `disabled={config === null}` no `<Toggle>`.
 
-### IN-05: A chave salva volta em texto claro para o `value` do input
+### IN-03: Salvar só com espaços no campo da chave não faz nada nem avisa
 
-**Arquivo:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts:67, 100`
-**Problema:** O campo é `type="password"`, mas o valor inteiro fica no DOM e aparece em qualquer inspeção. O SDD (F1) adota a política "mascarada depois de salvar; para rever, redigitar".
-**Correção:** Manter o rascunho da chave vazio com um indicador "chave configurada" e só gravar quando for editado.
+**Arquivo:** `taqciti/src/shared/hooks/useAgenteConfigForm.ts:107-113`
 
-### IN-06: O runbook não diz que o check da release não valida `VITE_AGENTE_BACKEND_URL`
+**Problema:** a chave com `trim()` vazio é filtrada do patch. Se ela era o único campo editado, `save()`
+retorna em silêncio: sem "Salvo!", sem erro, e os pontinhos continuam no campo. A pessoa acha que trocou
+a chave.
 
-**Arquivo:** `taqciti/docs/publicar-release.md:79-94`
-**Problema:** Se alguém definir `VITE_AGENTE_BACKEND_URL` com `http://` de produção ou com barra no fim, o `check-release-env.sh` não barra nada. A barra no fim é normalizada em runtime, mas o `http` não (ver WR-06).
-**Correção:** Acrescentar uma linha no runbook (ou estender o script) recomendando `https://` para o padrão de build do Agente.
+**Correção:** nesse caso, limpar o rascunho da chave e marcar o campo como não editado (ou mostrar um
+aviso).
 
-### IN-07: `agenteStreamer.test.ts` tem 941 linhas, com o mesmo bloco de preparação copiado 19 vezes
+### IN-04: A fala descartada por ter outro backend não deixa rastro
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.test.ts:95-941`
-**Problema:** O arquivo dobrou de tamanho no 07-04 e tem quase 5x o limite de 200 linhas do `CLAUDE.md` ("sinal de que está fazendo coisas demais"). O `dispatch` de `MEETING_DETECTED` (oito campos idênticos) e a sequência `fresh()` + `stubGlobal` + `configureAgenteStreamer` se repetem em quase todos os casos. Isso já causou a suposição errada de timing corrigida durante a Task 3 (ver SUMMARY) e dificulta enxergar o que cada teste realmente exercita (ver WR-10).
-**Correção:** Extrair helpers `startMeeting(sessionController)` e `speak(sessionController, text, atMs)` para `src/test/`, e separar o arquivo por responsabilidade: e2e básico/D-10, janela por fala (G-07-1/G-07-2) e config vinda do storage/reinício.
+**Arquivo:** `taqciti/src/features/agente/phraseBatcher.ts:162-163`
 
-### IN-08: `agenteStreamer.ts` está com 190 linhas e acumula quatro responsabilidades
+**Problema:** o `filter` do IN-11 joga texto de reunião fora em silêncio. O descarte por fila cheia é
+logado (`agenteSender.ts:100`), mas este não. Quando alguém reclamar de "trecho que sumiu", não haverá
+pista nenhuma.
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:43-48, 62-160, 170-190`
-**Problema:** O arquivo mistura quatro coisas: transporte HTTP (`defaultSend`), agendamento do timer e buffer da janela (`rearm`/`drain`/`discard`), orquestração do cursor (`step`/`tick`) e raiz de composição com singleton de módulo (`activeDeps`/`activeStreamer`). Ele está a 10 linhas do limite, e qualquer correção de WR-01/WR-11/WR-12/WR-13 vai passar do limite.
-**Correção:** Mover o par timer + buffer para um `phraseScheduler.ts` (com `schedule(now)`/`cancel()`/`dispose()`) e o `defaultSend` + composição para um módulo de wiring. Assim `agenteStreamer.ts` fica só com a orquestração.
+**Correção:** contar os descartados e fazer um `logger.warn`, sem o texto, no chamador (`drain`), já que
+`phraseBatcher` é puro.
 
-### IN-09: A janela usa relógio de parede (`Date.now`), sensível a ajuste de hora do sistema
+### IN-05: Sessão inexistente vira HTTP 500 no backend, é tratada como falha temporária e gera reenvio e mensagem enganosa
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:140, 152`, `taqciti/src/features/agente/phraseBatcher.ts:99-102, 121`
-**Problema:** `firstAt`/`lastAt` e o `now` do corte vêm de `Date.now()`. Se a hora do sistema voltar (sincronização NTP, fuso, retorno de suspensão), `now - firstAt` fica negativo e o teto de 5 s deixa de valer em fala contínua até alguém fazer uma pausa. Se a hora avançar, falas saem cortadas antes do silêncio.
-**Correção:** Usar `performance.now()` (monotônico) no streamer. O `phraseBatcher` já recebe `now` como parâmetro, então não muda nada lá.
+**Arquivos:** `taqciti/src/features/agente/sendRetryPolicy.ts:35-40`, `taqciti/src/shared/config/agenteStatus.ts:114-118`
 
-### IN-10: Um `send` que lança de forma síncrona perde as falas restantes da mesma rodada e não rearma o timer
+**Problema:** um `session_id` com formato de UUID válido, mas que não existe, provavelmente quebra a FK
+de `transcript_chunks` no insert do Supabase (`webhook.py:40-44`) e volta como 500. A política trata isso
+como retryable: 4 envios por trecho, e depois "falhou… (HTTP 500)". A orientação útil ("confira o ID da
+sessão") nunca aparece. A correção é de contrato, do lado do backend: responder 404 para sessão
+desconhecida.
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:76-93, 119-124`
-**Problema:** Em `drain`, `pending = result.buffer` roda antes de `sendPhrases`. Se `deps.send` lançar de forma síncrona (uma implementação injetada qualquer, ou um `buildExtensionChunkRequest` que passe a validar), o laço para no meio: as falas seguintes de `result.ready` não saem, porque já foram tiradas do buffer, e `rearm(now)` não roda. O `defaultSend` atual não lança de forma síncrona, por isso é informativo.
-**Correção:** Envolver cada iteração em `try/catch`, ou montar o envio como `Promise.resolve().then(() => deps.send(request))`.
+**Correção:** registrar como pendência do backend. Do lado do cliente, nada a mudar agora.
 
-### IN-11: A fala pendente de uma sessão antiga sai com a URL e a chave atuais, não as do momento em que foi acumulada
+### IN-06: `baixarDocumento.ts` tem caracteres de controle literais na regex, e por isso o git trata o arquivo como binário
 
-**Arquivo:** `taqciti/src/background/agenteStreamer.ts:76-81, 146-153`
-**Problema:** `sendPhrases` usa `{ ...config, agenteSessionId: phrase.sessionId }` com a config **do tick**. Se alguém trocar o backend (por exemplo, de staging para produção) junto com o session_id, a fala pendente da sessão antiga vai para o backend novo sob o id antigo (404, ou, no pior caso, um id que coincide com outra sessão). Isso contraria a intenção do D-04 ("o texto acumulado sob um session_id só vai para esse destino").
-**Correção:** Guardar em `PendingPhrase` o destino completo (`agenteBackendUrl` junto com `sessionId`), usar isso como parte da chave em `appendDeltas` e montar a requisição a partir dele.
+**Arquivo:** `taqciti/src/document/baixarDocumento.ts:26`
+
+**Problema:** a regex `CONTROLE` foi escrita com os bytes NUL–US e DEL crus. O `git diff` mostra
+`Bin 4265 -> 4220 bytes`, então nenhuma mudança nesse arquivo aparece em revisão ou PR. A remoção do
+`eslint-disable` está correta: o `eslint.config.js` só estende `tseslint.configs.recommended`, que não
+liga a regra `no-control-regex`, então a diretiva não servia para nada. O problema de legibilidade
+continua.
+
+**Correção:** `const CONTROLE = /[\u0000-\u001f\u007f]/g;`. Com a configuração atual do lint, não
+precisa de diretiva.
 
 ---
 
-_Revisado em: 2026-09-26_
+_Revisado: 2026-09-29T20:30:00Z_
 _Revisor: Claude (gsd-code-reviewer)_
 _Profundidade: standard_
