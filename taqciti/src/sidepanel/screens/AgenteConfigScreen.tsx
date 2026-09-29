@@ -20,6 +20,9 @@ import { Button } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/Field';
 import { Wordmark } from '@/shared/ui/Wordmark';
 
+/** Aviso do status enquanto a config salva ainda não chegou do storage. */
+const LOADING_STATUS_TEXT = 'Carregando configuração…';
+
 const TONE_CLASS: Record<StreamingStatusTone, string> = {
   muted: 'text-muted',
   warning: 'text-foreground',
@@ -137,7 +140,7 @@ export function AgenteConfigScreen() {
         </Button>
 
         <p aria-live="polite" className={`text-caption ${TONE_CLASS[status?.tone ?? 'muted']}`}>
-          {status?.text ?? ''}
+          {status?.text ?? (config === null ? LOADING_STATUS_TEXT : '')}
         </p>
         {status?.confirmableMeetingId ? (
           <Button variant="secondary" onClick={confirmNewMeeting}>

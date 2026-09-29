@@ -99,6 +99,33 @@ describe('AgenteConfigScreen', () => {
     return mock;
   }
 
+  /*
+   * Antes, enquanto a config ainda não tinha chegado do storage, o aviso de
+   * status ficava em branco — sem dizer à pessoa que a tela estava carregando.
+   */
+  it('(0) com a leitura da config pendente mostra "Carregando configuração…"; ao resolver, some', async () => {
+    const mock = installChromeStorageMock({ extra: { runtime: RUNTIME_STUB } });
+    const realGet = mock.local.get.getMockImplementation()!;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mock.local.get.mockImplementationOnce(async (keys) => {
+      await gate;
+      return realGet(keys);
+    });
+    const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
+
+    await act(async () => {
+      root.render(<AgenteConfigScreen />);
+    });
+    expect(statusText()).toBe('Carregando configuração…');
+
+    release();
+    await flushUntil(() => statusText() !== 'Carregando configuração…');
+    expect(statusText()).toBe('Desligado — nada é enviado ao Agente.');
+  });
+
   it('(1) sem nada salvo, o ID vem vazio, o toggle desmarcado e o status é "Desligado"', async () => {
     await renderScreen();
     const { sessionId, toggle } = fields();
