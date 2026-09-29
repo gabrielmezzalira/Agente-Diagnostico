@@ -8,11 +8,13 @@
  * Aberta por `?view=agente` (ver src/sidepanel/route.ts), alcançável a partir
  * da tela inicial — não pelo painel injetado dentro do Meet.
  */
+import type { MouseEvent } from 'react';
 import { AGENTE_BACKEND_URL_DEFAULT } from '@/shared/config/agenteConfig';
 import type { StreamingStatusTone } from '@/shared/config/agenteStatus';
 import { useAgenteConfigForm } from '@/shared/hooks/useAgenteConfigForm';
 import { useAgenteStreamingStatus } from '@/shared/hooks/useAgenteStreamingStatus';
 import { AgenteApiKeyField } from '@/sidepanel/components/AgenteApiKeyField';
+import { canGoBackWithinExtension } from '@/sidepanel/backNavigation';
 import { AppShell } from '@/shared/ui/AppShell';
 import { Button } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/Field';
@@ -23,6 +25,16 @@ const TONE_CLASS: Record<StreamingStatusTone, string> = {
   warning: 'text-foreground',
   danger: 'text-danger',
 };
+
+/**
+ * Volta para a tela de origem (ex.: `?view=history`) quando veio de outra página
+ * da extensão; senão deixa o `href="?"` agir (ver `canGoBackWithinExtension`).
+ */
+function handleBackClick(event: MouseEvent<HTMLAnchorElement>): void {
+  if (!canGoBackWithinExtension(document.referrer, window.location.href)) return;
+  event.preventDefault();
+  window.history.back();
+}
 
 export function AgenteConfigScreen() {
   const {
@@ -54,6 +66,7 @@ export function AgenteConfigScreen() {
           </p>
           <a
             href="?"
+            onClick={handleBackClick}
             className="mt-3 inline-block text-caption font-semibold text-muted underline-offset-2 hover:text-foreground hover:underline"
           >
             ← Voltar
