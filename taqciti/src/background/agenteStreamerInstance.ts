@@ -136,7 +136,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     status.waitingForMeeting(result.waitingForNewMeeting ? (state.session?.meetingId ?? null) : null);
 
     const now = Date.now();
-    pending = appendDeltas(pending, result.deltas, binding.sessionId, now);
+    const destination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
+    pending = appendDeltas(pending, result.deltas, destination, now);
     drain(config, now, state.phase !== 'recording');
   }
 

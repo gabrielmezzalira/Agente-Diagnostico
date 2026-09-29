@@ -28,6 +28,7 @@ import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
  * "ready". O protocolo em si não é o que estes testes exercitam.
  */
 const AGENTE_URL = 'https://agente.test';
+const OTHER_URL = 'https://outro-agente.test';
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
 const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
 /** Cruza o flush de 250 ms da Taqciti (STATE_FLUSH_INTERVAL_MS) sem se confundir com ele —
@@ -1256,6 +1257,71 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
       session_id: OTHER_SESSION_ID,
       text: 'e novas',
+    });
+  });
+
+  it('IN-11: fala acumulada com a URL A sai para A mesmo que a config mude para a URL B antes do corte', async () => {
+    const { sessionController, agenteStreamer } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    let currentConfig = { ...READY_CONFIG };
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(currentConfig) });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'fala do backend antigo', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.onSessionFlushed(sessionController.getState());
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Só a URL do backend muda — o session_id continua o mesmo.
+    currentConfig = { ...currentConfig, agenteBackendUrl: OTHER_URL };
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`${AGENTE_URL}/webhook/extension`);
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'fala do backend antigo',
+    });
+  });
+
+  it('IN-11: snapshot antigo (fala pendente sem URL) é restaurado e sai para a URL da config atual', async () => {
+    const { agenteStreamer, mock } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    // Formato gravado antes do IN-11: a fala pendente não carrega o backendUrl.
+    const now = Date.now();
+    mock.session.values[STORAGE_KEYS.agenteStreamer] = {
+      cursor: null,
+      pending: [
+        { sessionId: SESSION_ID, segmentKey: '0:c1', speaker: 'Ana', text: 'fala do snapshot antigo', firstAt: now, lastAt: now },
+      ],
+    };
+
+    await agenteStreamer.resumeAgenteStreamer();
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`${AGENTE_URL}/webhook/extension`);
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'fala do snapshot antigo',
     });
   });
 
