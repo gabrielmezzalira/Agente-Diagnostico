@@ -71,6 +71,15 @@ describe('normalizeAgenteBackendUrl', () => {
       'https://meu-servidor-local:8000',
     );
   });
+
+  /*
+   * IN-03: um esquema explícito que não é http/https não pode ganhar prefixo
+   * (`ftp://x` virava `https://ftp://x`) — fica como foi digitado e a
+   * validação o recusa.
+   */
+  it('esquema explícito diferente de http/https não recebe prefixo', () => {
+    expect(normalizeAgenteBackendUrl('ftp://x')).toBe('ftp://x');
+  });
 });
 
 describe('normalizeAgenteConfig — invariante "campo salvo vence / campo ausente cai no padrão"', () => {
@@ -165,6 +174,34 @@ describe('getStreamingReadiness — ordem de precedência disabled > invalid-url
     expect(getStreamingReadiness({ ...READY, agenteBackendUrl: 'http://localhost:8000' })).toBe(
       'ready',
     );
+  });
+
+  /*
+   * IN-03: os endereços válidos de hoje continuam válidos (passando pela
+   * normalização, como acontece no storage) e os que só "pareciam" URL —
+   * com query, fragmento ou esquema estranho — passam a ser recusados.
+   */
+  const readinessOfTypedUrl = (typed: string) =>
+    getStreamingReadiness({ ...READY, agenteBackendUrl: normalizeAgenteBackendUrl(typed) });
+
+  it.each(['localhost:8000', 'https://agente.exemplo', 'https://agente.exemplo/caminho', 'https://agente.exemplo/'])(
+    'ready com o endereço válido "%s"',
+    (typed) => {
+      expect(readinessOfTypedUrl(typed)).toBe('ready');
+    },
+  );
+
+  it.each([
+    'https://x.com/?a=b',
+    'https://x.com?a=b',
+    'https://x.com/caminho/?a=b',
+    'https://x.com/#trecho',
+    'https://x.com/?',
+    'ftp://x',
+    'ws://agente.exemplo',
+    'file:///etc/passwd',
+  ])('invalid-url com o endereço "%s"', (typed) => {
+    expect(readinessOfTypedUrl(typed)).toBe('invalid-url');
   });
 });
 

@@ -85,6 +85,9 @@ function isLoopbackHostname(hostname: string): boolean {
   return LOOPBACK_HOSTNAMES.has(hostname);
 }
 
+/** Esquema digitado de forma explícita: `algo://`. */
+const EXPLICIT_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
+
 /**
  * Normaliza a URL do backend do Agente — mesmo padrão de
  * `extension/background.js::normalizeUrl` (trim, remove barras finais,
@@ -97,7 +100,10 @@ function isLoopbackHostname(hostname: string): boolean {
  */
 export function normalizeAgenteBackendUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
-  if (trimmed.length === 0 || /^https?:\/\//i.test(trimmed)) {
+  // IN-03: esquema explícito (http, https ou qualquer outro, ex.: ftp://) fica
+  // como foi digitado — nunca ganha prefixo. Quem recusa os esquemas que não
+  // são http/https é `isValidAgenteBackendUrl`. `localhost:8000` não tem "://".
+  if (trimmed.length === 0 || EXPLICIT_SCHEME_PATTERN.test(trimmed)) {
     return trimmed;
   }
   const scheme = isLoopbackHostname(extractHostname(trimmed)) ? 'http://' : 'https://';
@@ -146,8 +152,13 @@ export function isValidAgenteSessionId(value: string): boolean {
 /**
  * WR-06: `http:` só é válido para loopback — em qualquer outro host, a
  * chave `x-agente-key` e a transcrição da reunião trafegariam sem TLS.
+ *
+ * IN-03: a URL é só a base do backend (o caminho do webhook é acrescentado
+ * depois), então query (`?a=b`) e fragmento (`#x`) são recusados — senão o
+ * caminho acabaria colado no meio deles. Só http/https passam.
  */
 function isValidAgenteBackendUrl(url: string): boolean {
+  if (url.includes('?') || url.includes('#')) return false;
   try {
     const parsed = new URL(url);
     if (parsed.protocol === 'https:') return true;
