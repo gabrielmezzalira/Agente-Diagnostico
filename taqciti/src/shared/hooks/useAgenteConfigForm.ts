@@ -6,6 +6,10 @@
  * apagar texto que a pessoa está digitando), agora com rascunho + marca de
  * edição em vez de polling. Salvar normaliza via `patchAgenteConfig`; o
  * toggle grava na hora, sem esperar o botão "Salvar".
+ *
+ * IN-05: a chave salva NUNCA volta para o rascunho (nem para o DOM) — o
+ * rascunho dela só guarda o que a pessoa digitou agora. Vazio ao salvar =
+ * manter a chave atual; `clearApiKey` é o caminho explícito para apagá-la.
  */
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -39,8 +43,11 @@ interface UseAgenteConfigForm {
   saving: boolean;
   justSaved: boolean;
   error: string | null;
+  /** Há uma chave salva (só o fato — o valor nunca sai do store para a tela). */
+  hasApiKey: boolean;
   setField: (field: AgenteConfigField, value: string) => void;
   save: () => Promise<void>;
+  clearApiKey: () => void;
   setStreamingEnabled: (enabled: boolean) => void;
 }
 
@@ -70,7 +77,7 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
         agenteSessionId: editedRef.current.agenteSessionId
           ? prev.agenteSessionId
           : next.agenteSessionId,
-        agenteApiKey: editedRef.current.agenteApiKey ? prev.agenteApiKey : next.agenteApiKey,
+        agenteApiKey: prev.agenteApiKey, // IN-05: a chave salva nunca vira rascunho
       }));
     });
   }, []);
@@ -98,7 +105,10 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
      * qualquer coisa, mesmo sem ter mexido nos outros campos.
      */
     const editedFields = (Object.keys(editedRef.current) as AgenteConfigField[]).filter(
-      (field) => editedRef.current[field],
+      (field) =>
+        editedRef.current[field] &&
+        // IN-05: chave em branco = manter a atual, então não entra no patch.
+        (field !== 'agenteApiKey' || drafts.agenteApiKey.trim().length > 0),
     );
     if (editedFields.length === 0) return;
 
@@ -111,9 +121,11 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
       const next = await patchAgenteConfig(patch);
 
       for (const field of editedFields) editedRef.current[field] = false;
+      editedRef.current.agenteApiKey = false;
       setDrafts((prev) => {
         const updated = { ...prev };
         for (const field of editedFields) updated[field] = next[field];
+        updated.agenteApiKey = ''; // IN-05: depois de salvar, o campo da chave volta vazio
         return updated;
       });
       setJustSaved(true);
@@ -125,6 +137,16 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
     } finally {
       setSaving(false);
     }
+  }
+
+  function clearApiKey(): void {
+    setError(null);
+    editedRef.current.agenteApiKey = false;
+    setDrafts((prev) => ({ ...prev, agenteApiKey: '' }));
+    patchAgenteConfig({ agenteApiKey: '' }).catch((err: unknown) => {
+      setError(SAVE_ERROR_MESSAGE);
+      logger.error('remover chave do Agente falhou', err);
+    });
   }
 
   function setStreamingEnabled(enabled: boolean): void {
@@ -142,8 +164,10 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
     saving,
     justSaved,
     error,
+    hasApiKey: (config?.agenteApiKey.length ?? 0) > 0,
     setField,
     save,
+    clearApiKey,
     setStreamingEnabled,
   };
 }

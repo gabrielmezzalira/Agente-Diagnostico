@@ -12,6 +12,7 @@ import { AGENTE_BACKEND_URL_DEFAULT } from '@/shared/config/agenteConfig';
 import type { StreamingStatusTone } from '@/shared/config/agenteStatus';
 import { useAgenteConfigForm } from '@/shared/hooks/useAgenteConfigForm';
 import { useAgenteStreamingStatus } from '@/shared/hooks/useAgenteStreamingStatus';
+import { AgenteApiKeyField } from '@/sidepanel/components/AgenteApiKeyField';
 import { AppShell } from '@/shared/ui/AppShell';
 import { Button } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/Field';
@@ -31,8 +32,10 @@ export function AgenteConfigScreen() {
     saving,
     justSaved,
     error,
+    hasApiKey,
     setField,
     save,
+    clearApiKey,
     setStreamingEnabled,
   } = useAgenteConfigForm();
   const { view: status, confirmError, confirmNewMeeting } = useAgenteStreamingStatus(readiness);
@@ -104,23 +107,13 @@ export function AgenteConfigScreen() {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="agente-api-key"
-            className="text-caption font-semibold uppercase tracking-wide text-muted"
-          >
-            Chave de autenticação (opcional)
-          </label>
-          <TextField
-            id="agente-api-key"
-            type="password"
-            autoComplete="off"
-            value={drafts.agenteApiKey}
-            onChange={(event) => setField('agenteApiKey', event.target.value)}
-            placeholder="deixe em branco para não usar"
-            disabled={saving}
-          />
-        </div>
+        <AgenteApiKeyField
+          value={drafts.agenteApiKey}
+          hasApiKey={hasApiKey}
+          disabled={saving}
+          onChange={(value) => setField('agenteApiKey', value)}
+          onRemove={clearApiKey}
+        />
 
         <Button
           variant="primary"

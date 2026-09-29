@@ -322,4 +322,111 @@ describe('AgenteConfigScreen', () => {
     );
     expect(confirm).toBeUndefined();
   });
+
+  /*
+   * IN-05 (D1): antes, a chave salva voltava em texto claro no `value` do
+   * <input type="password"> — visível em qualquer inspeção do DOM. Agora o
+   * campo fica vazio, um indicador diz que há chave, campo vazio ao salvar
+   * mantém a chave, digitar troca, e "Remover chave" apaga.
+   */
+  const SAVED_KEY = 'chave-salva-super-secreta';
+  const WITH_KEY = { ...DEFAULT_AGENTE_CONFIG, agenteApiKey: SAVED_KEY };
+
+  function removeKeyButton(): HTMLButtonElement | undefined {
+    return [...host.querySelectorAll('button')].find((b) =>
+      /remover chave/i.test(b.textContent ?? ''),
+    );
+  }
+
+  function storedKey(mock: Awaited<ReturnType<typeof renderScreen>>): string | undefined {
+    return (mock.local.values[STORAGE_KEYS.agenteConfig] as AgenteConfig | undefined)?.agenteApiKey;
+  }
+
+  it('(15) com chave salva, o input fica vazio e a chave não aparece em nenhum lugar do DOM', async () => {
+    await renderScreen(WITH_KEY);
+
+    expect(fields().apiKey.value).toBe('');
+    expect(host.innerHTML).not.toContain(SAVED_KEY);
+    expect(host.textContent).toMatch(/chave configurada/i);
+    expect(removeKeyButton()).toBeDefined();
+  });
+
+  it('(16) sem chave salva, não há indicador nem botão "Remover chave"', async () => {
+    await renderScreen();
+
+    expect(host.textContent).not.toMatch(/chave configurada/i);
+    expect(removeKeyButton()).toBeUndefined();
+  });
+
+  it('(17) salvar sem mexer na chave mantém a chave salva', async () => {
+    const mock = await renderScreen(WITH_KEY);
+    const { backendUrl, saveButton } = fields();
+
+    typeInto(backendUrl, 'https://novo.exemplo');
+    await act(async () => {
+      saveButton.click();
+    });
+    await flushUntil(() => (mock.local.set as ReturnType<typeof vi.fn>).mock.calls.length > 0);
+
+    expect(storedKey(mock)).toBe(SAVED_KEY);
+  });
+
+  it('(18) tocar no campo da chave e deixá-lo vazio ao salvar mantém a chave salva', async () => {
+    const mock = await renderScreen(WITH_KEY);
+    const { apiKey, backendUrl, saveButton } = fields();
+
+    typeInto(apiKey, 'x');
+    typeInto(apiKey, '');
+    typeInto(backendUrl, 'https://novo.exemplo');
+    await act(async () => {
+      saveButton.click();
+    });
+    await flushUntil(() => (mock.local.set as ReturnType<typeof vi.fn>).mock.calls.length > 0);
+
+    expect(storedKey(mock)).toBe(SAVED_KEY);
+  });
+
+  it('(19) digitar uma chave nova substitui a salva e o campo volta vazio', async () => {
+    const mock = await renderScreen(WITH_KEY);
+    const { apiKey, saveButton } = fields();
+
+    typeInto(apiKey, 'chave-nova');
+    await act(async () => {
+      saveButton.click();
+    });
+    await flushUntil(() => storedKey(mock) === 'chave-nova');
+
+    await flushUntil(() => apiKey.value === '');
+    expect(host.innerHTML).not.toContain('chave-nova');
+  });
+
+  it('(20) "Remover chave" apaga a chave salva e o botão some', async () => {
+    const mock = await renderScreen(WITH_KEY);
+
+    await act(async () => {
+      removeKeyButton()!.click();
+    });
+    await flushUntil(() => storedKey(mock) === '');
+
+    await flushUntil(() => removeKeyButton() === undefined);
+    expect(host.textContent).not.toMatch(/chave configurada/i);
+  });
+
+  it('(21) uma falha ao remover a chave mostra mensagem de erro', async () => {
+    const mock = await renderScreen(WITH_KEY);
+
+    (mock.local.set as ReturnType<typeof vi.fn>).mockImplementationOnce(() =>
+      Promise.reject(new Error('falhou')),
+    );
+    await act(async () => {
+      removeKeyButton()!.click();
+    });
+    await flushUntil(
+      () => (host.querySelector('[aria-live="assertive"]')?.textContent ?? '') !== '',
+    );
+
+    expect(host.querySelector('[aria-live="assertive"]')?.textContent).toBe(
+      'Não foi possível salvar a configuração. Tente de novo.',
+    );
+  });
 });
