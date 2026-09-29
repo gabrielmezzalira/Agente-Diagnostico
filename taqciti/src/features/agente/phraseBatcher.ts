@@ -150,22 +150,25 @@ export function nextPhraseDeadline(buffer: PhraseBuffer, timing: PhraseTiming): 
 /**
  * Monta uma requisição `ExtensionChunk` por fala liberada, cada uma para o
  * destino (URL do backend + session_id) em que foi acumulada (D-04, IN-11) —
- * nunca o da config atual. A chave `x-agente-key` continua a da config atual:
- * segredo não é gravado no snapshot. Fala do formato antigo, sem `backendUrl`,
- * usa a URL da config atual.
+ * nunca o da config atual. A chave `x-agente-key` é sempre a da config atual
+ * (segredo não é gravado no snapshot), por isso fala acumulada para OUTRO
+ * backend é descartada: mandá-la ao backend antigo levaria a chave do novo.
+ * Fala do formato antigo, sem `backendUrl`, usa a URL da config atual.
  */
 export function buildPhraseRequests(
   config: AgenteConfig,
   phrases: readonly PendingPhrase[],
 ): ExtensionChunkRequest[] {
-  return phrases.map((phrase) =>
-    buildExtensionChunkRequest(
-      {
-        ...config,
-        agenteBackendUrl: phrase.backendUrl ?? config.agenteBackendUrl,
-        agenteSessionId: phrase.sessionId,
-      },
-      { text: phrase.text, speaker: phrase.speaker },
-    ),
-  );
+  return phrases
+    .filter((phrase) => phrase.backendUrl === undefined || phrase.backendUrl === config.agenteBackendUrl)
+    .map((phrase) =>
+      buildExtensionChunkRequest(
+        {
+          ...config,
+          agenteBackendUrl: phrase.backendUrl ?? config.agenteBackendUrl,
+          agenteSessionId: phrase.sessionId,
+        },
+        { text: phrase.text, speaker: phrase.speaker },
+      ),
+    );
 }

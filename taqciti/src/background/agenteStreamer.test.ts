@@ -1260,7 +1260,7 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     });
   });
 
-  it('IN-11: fala acumulada com a URL A sai para A mesmo que a config mude para a URL B antes do corte', async () => {
+  it('IN-11: fala acumulada com a URL A é descartada se a config mudar para a URL B (e a chave de B) antes do corte — a chave nunca vai para A', async () => {
     const { sessionController, agenteStreamer } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
@@ -1285,17 +1285,14 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     await agenteStreamer.onSessionFlushed(sessionController.getState());
     expect(fetchMock).not.toHaveBeenCalled();
 
-    // Só a URL do backend muda — o session_id continua o mesmo.
-    currentConfig = { ...currentConfig, agenteBackendUrl: OTHER_URL };
+    // Troca de backend: a URL e a chave mudam juntas; o session_id continua o mesmo.
+    currentConfig = { ...currentConfig, agenteBackendUrl: OTHER_URL, agenteApiKey: 'chave-do-backend-b' };
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
 
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe(`${AGENTE_URL}/webhook/extension`);
-    expect(JSON.parse(init.body as string)).toMatchObject({
-      session_id: SESSION_ID,
-      text: 'fala do backend antigo',
-    });
+    // Nada sai: mandar a fala para A levaria a chave de B; mandar para B
+    // quebraria o D-04 (o texto acumulado sob um destino só vai para ele).
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('IN-11: snapshot antigo (fala pendente sem URL) é restaurado e sai para a URL da config atual', async () => {

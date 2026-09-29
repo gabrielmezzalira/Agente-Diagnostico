@@ -219,11 +219,17 @@ describe('phraseBatcher / buildPhraseRequests (IN-11)', () => {
     confirmedMeetingId: '',
   };
 
-  it('a requisição sai para o destino guardado na fala, não para a URL/session da config atual', () => {
+  it('a requisição usa o session_id guardado na fala, não o da config atual', () => {
     const buffer = appendDeltas(EMPTY_PHRASE_BUFFER, [delta({ text: 'olá' })], DEST_A, 1000);
-    const [request] = buildPhraseRequests(CONFIG, buffer);
+    const [request] = buildPhraseRequests({ ...CONFIG, agenteBackendUrl: URL_A }, buffer);
     expect(request?.url).toBe(`${URL_A}/webhook/extension`);
     expect(JSON.parse(request?.init.body as string)).toMatchObject({ session_id: SESSION_ID, text: 'olá' });
+  });
+
+  it('fala acumulada para outro backend é descartada — a chave da config atual não vai para o backend antigo', () => {
+    const buffer = appendDeltas(EMPTY_PHRASE_BUFFER, [delta({ text: 'olá' })], DEST_A, 1000);
+    // CONFIG aponta para URL_B (com a chave de B): a fala de A não pode sair.
+    expect(buildPhraseRequests(CONFIG, buffer)).toEqual([]);
   });
 
   it('fala no formato antigo (sem backendUrl) cai na URL da config atual, mantendo o session_id dela', () => {
