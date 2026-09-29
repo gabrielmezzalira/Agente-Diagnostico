@@ -29,11 +29,11 @@
       "gsd-planner": "xhigh",
       "gsd-executor": "inherit",
       "gsd-assumptions-analyzer": "high",
-      "gsd-code-reviewer": "medium",
-      "gsd-plan-checker": "high",
-      "gsd-ui-researcher": "medium",
-      "gsd-ui-checker": "medium",
-      "gsd-ui-auditor": "medium"
+      "gsd-code-reviewer": "high",
+      "gsd-plan-checker": "xhigh",
+      "gsd-ui-researcher": "high",
+      "gsd-ui-checker": "high",
+      "gsd-ui-auditor": "high"
     }
   }
 }
