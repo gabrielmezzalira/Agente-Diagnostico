@@ -421,6 +421,66 @@ describe('não bloqueante em erro de rede', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(send).toHaveBeenCalledTimes(1);
   });
+
+  it('WR-01 (2ª rev.): trocar a URL descarta os trechos do backend antigo — o trecho novo sai para a URL nova sem esperar os retries e o status não volta a "tentando de novo"', async () => {
+    const { sessionController, agenteStreamer, mock } = await fresh();
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const fetchMock = vi.fn<(input: string, init: RequestInit) => Promise<Response>>((url) =>
+      Promise.resolve(
+        url.startsWith(AGENTE_URL)
+          ? ({ ok: false, status: 503 } as Response)
+          : ({ ok: true, status: 202 } as Response),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+      agenteApiKey: 's3cr3t',
+    });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'fala para o backend fora do ar', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1)); // 1ª tentativa em A (503)
+
+    // A pessoa corrige a URL: o trecho que esperava nova tentativa em A é descartado.
+    await patchAgenteConfig({ agenteBackendUrl: OTHER_URL });
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c2', speaker: 'Ana', text: 'fala para o backend certo', atMs: 5000 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'sent' }),
+    );
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    const urls = fetchMock.mock.calls.map(([url]) => url);
+    // Nenhuma nova tentativa em A depois da troca; o único envio novo foi para B.
+    expect(urls.filter((url) => url.startsWith(AGENTE_URL))).toHaveLength(1);
+    expect(urls.filter((url) => url.startsWith(OTHER_URL))).toEqual([`${OTHER_URL}/webhook/extension`]);
+    const lastBody = JSON.parse(fetchMock.mock.calls.at(-1)![1].body as string) as { text: string };
+    expect(lastBody.text).toContain('backend certo');
+  });
 });
 
 describe('configuração vinda do storage (D-08)', () => {

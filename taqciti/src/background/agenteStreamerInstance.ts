@@ -57,6 +57,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let lastState: MeetingState | null = null;
   /** Cancela a assinatura de config; `null` até o primeiro passo (preguiçosa). */
   let unsubscribeConfig: (() => void) | null = null;
+  /** WR-01: destino (URL + sessão + chave) dos trechos que estão na fila de envio; `null` = nada visto. */
+  let lastDestinationKey: string | null = null;
   const status = createStatusReporter(deps.reportStatus);
   const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
@@ -99,7 +101,21 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   function stopStreaming(): void {
     discard();
     cursor = null;
+    lastDestinationKey = null;
     status.waitingForMeeting(null);
+  }
+
+  /**
+   * WR-01: trocar URL, sessão ou chave invalida a fila de envio — os trechos já
+   * liberados foram montados para o destino antigo e não podem segurar (nem
+   * pintar o status de) os novos. Mesma regra da janela (IN-11).
+   */
+  function syncDestination(config: AgenteConfig): void {
+    const key = `${config.agenteBackendUrl}
+${config.agenteSessionId}
+${config.agenteApiKey}`;
+    if (lastDestinationKey !== null && key !== lastDestinationKey) sender.cancelAll();
+    lastDestinationKey = key;
   }
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
@@ -123,6 +139,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       stopStreaming();
       return;
     }
+    syncDestination(config);
     advance(config, state);
   }
 
@@ -151,6 +168,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
         stopStreaming();
         return;
       }
+      syncDestination(config);
       drain(config, Date.now(), false);
     } finally {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
@@ -163,11 +181,14 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
-    status.resetSendOutcome(); // WR-07
     if (!isStreamingReady(config)) {
+      status.resetSendOutcome(); // WR-07
       stopStreaming();
       return;
     }
+    // WR-01: cancela ANTES de zerar o status — assim um trecho antigo não repinta o erro.
+    syncDestination(config);
+    status.resetSendOutcome(); // WR-07
     if (lastState === null) return;
     if (cursor === null) {
       // WR-02: religar começa a contar DESTE instante. Sem isto, o próximo
