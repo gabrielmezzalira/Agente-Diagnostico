@@ -161,6 +161,10 @@ Regras concretas:
   arquivo.
 - Se o usuário colar ou selecionar um segredo por engano, **não repita o valor** na resposta e avise que
   convém rotacionar a chave.
+- **`taqciti/server/.env.local` contém uma chave real do Gemini** (inserida manualmente pelo usuário em
+  2026-09-26) — nunca abrir, ler, copiar ou exibir esse arquivo por nenhum meio. Se for preciso alterar
+  variáveis ali, peça ao usuário para editar o arquivo ele mesmo, ou peça o novo valor a ele e escreva
+  (Write) sem antes ler o conteúdo atual.
 
 ---
 
@@ -181,17 +185,27 @@ primeiro.
 > (Nota: não existe nível "ultracode" nos agentes GSD — isso é um recurso à parte, a keyword que liga o
 > Workflow tool multi-agente numa sessão, sem relação com o effort de um subagente.)
 
+> **Atualizado em 2026-09-26, com alinhamento do time:** todos os itens que estavam em `medium`
+> (`gsd-code-reviewer`, `gsd-ui-researcher`, `gsd-ui-checker`, `gsd-ui-auditor`) subiram para `high`, e
+> `gsd-plan-checker` subiu de `high` para `xhigh` — ambos continuam **FIXO** nos novos valores. O
+> `gsd-executor` **não mudou**: continua deliberadamente sem esforço gravado (`inherit`), decidido na
+> hora de cada execução — não confundir com "ultracode" (que não é um valor de esforço válido; ver nota
+> acima). Para `/gsd-verify-work`, que não tem trava de modelo/esforço no config (roda inline, sem
+> subagente — ver linha da tabela abaixo), o time definiu como preferência de sessão: modelo `sonnet` e
+> esforço `high` antes de rodar o comando — isso é só uma orientação de uso, não uma chave em
+> `.planning/config.json` (não existe uma para isso).
+
 | Etapa | Comando | Agente GSD | Modelo | Esforço | Status |
 |-------|---------|-----------|--------|---------|--------|
 | Planejar | `/gsd-plan-phase` | `gsd-planner` | `opus` | `xhigh` | **FIXO — não alterar** |
-| Validar plano | `/gsd-plan-phase` (checker interno) | `gsd-plan-checker` | perfil padrão | `high` | Fixo |
+| Validar plano | `/gsd-plan-phase` (checker interno) | `gsd-plan-checker` | perfil padrão | `xhigh` | Fixo |
 | Executar | `/gsd-execute-phase` | `gsd-executor` | `sonnet` (fixo) | **em aberto — escolhido na hora** | **Único item destravado — ver abaixo** |
-| Revisar código | `/gsd-code-review` | `gsd-code-reviewer` | `opus` | `medium` | Fixo |
-| Planejar UI | `/gsd-ui-phase` (pesquisa) | `gsd-ui-researcher` | `sonnet` | `medium` | Fixo |
-| Validar UI-SPEC | `/gsd-ui-phase` (checker interno) | `gsd-ui-checker` | `sonnet` | `medium` | Fixo |
-| Revisar UI implementada | `/gsd-ui-review` | `gsd-ui-auditor` | `sonnet` | `medium` | Fixo |
+| Revisar código | `/gsd-code-review` | `gsd-code-reviewer` | `opus` | `high` | Fixo |
+| Planejar UI | `/gsd-ui-phase` (pesquisa) | `gsd-ui-researcher` | `sonnet` | `high` | Fixo |
+| Validar UI-SPEC | `/gsd-ui-phase` (checker interno) | `gsd-ui-checker` | `sonnet` | `high` | Fixo |
+| Revisar UI implementada | `/gsd-ui-review` | `gsd-ui-auditor` | `sonnet` | `high` | Fixo |
 | Discutir fase | `/gsd-discuss-phase` (modo padrão, interativo) | *nenhum subagente — roda na sessão atual* | o que a sessão Claude Code estiver usando | o que a sessão estiver usando | Sem trava — ver abaixo |
-| Validar trabalho (UAT) | `/gsd-verify-work` (modo padrão, interativo) | *nenhum subagente — roda na sessão atual* | o que a sessão Claude Code estiver usando | o que a sessão estiver usando | Sem trava — ver abaixo |
+| Validar trabalho (UAT) | `/gsd-verify-work` (modo padrão, interativo) | *nenhum subagente — roda na sessão atual* | preferência do time: `sonnet` | preferência do time: `high` | Sem trava no config — preferência de sessão (ver nota 2026-09-26 acima) |
 
 #### Como funciona o esforço "em aberto" do `/gsd-execute-phase`
 
@@ -229,13 +243,13 @@ Esta tabela é a **intenção documentada**; quem aplica de fato é `.planning/c
   "effort": {
     "agent_overrides": {
       "gsd-planner": "xhigh",
-      "gsd-plan-checker": "high",
+      "gsd-plan-checker": "xhigh",
       "gsd-executor": "inherit",
       "gsd-assumptions-analyzer": "high",
-      "gsd-code-reviewer": "medium",
-      "gsd-ui-researcher": "medium",
-      "gsd-ui-checker": "medium",
-      "gsd-ui-auditor": "medium"
+      "gsd-code-reviewer": "high",
+      "gsd-ui-researcher": "high",
+      "gsd-ui-checker": "high",
+      "gsd-ui-auditor": "high"
     }
   }
 }
