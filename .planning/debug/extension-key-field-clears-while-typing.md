@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "O valor do header bateu certinho com o salvo, mas o campo 'Chave de autenticação' no popup apaga sozinho enquanto o usuário digita, antes de dar tempo de salvar. Causa raiz: o polling de status a cada 3s em popup.js (setInterval -> GET_STATE -> render()) reescreve extensionKeyInput.value com o valor salvo no state, mesmo com o campo em edição, apagando o que o usuário estava digitando. Usuário confirmou que é um problema real e urgente."
 created: 2026-09-24T00:00:00Z
 updated: 2026-09-24T00:00:00Z
@@ -95,6 +95,6 @@ started: Descoberto durante o UAT da Fase 06 (2026-09-24), na verificação da f
 ## Resolution
 
 root_cause: "extension/popup.js linhas 98-100: um `setInterval(() => { chrome.runtime.sendMessage({ type: 'GET_STATE' }, render) }, 3000)` chama `render(state)` a cada 3 segundos (código). Combinado com `render()` (linhas 75-77) que faz `extensionKeyInput.value = state.extensionKey || ''` de forma incondicional, sem checar se o elemento está com foco ou em edição (código/lacuna de implementação — falta de guarda). Como `state.extensionKey` no service worker (background.js) só é atualizado pelo handler `SET_EXTENSION_KEY`, disparado exclusivamente pelo clique em 'Salvar' (popup.js linhas 134-140), qualquer digitação do usuário que não termine com um clique em Salvar antes do próximo tick do polling é sobrescrita pelo valor antigo (tipicamente vazio) vindo do state. Categoria única (code) é suficiente — não há componente de config/ambiente/dado contribuindo; o AND-gate é 'não': a falha ocorre com uma única condição (usuário digita por mais tempo do que o intervalo restante até o próximo tick de 3s), sem necessidade de nenhuma outra condição simultânea."
-fix: ""
+fix: "Corrigido em cdb5558 (campo da chave) e 7c9f44e (campo da URL do backend): render() deixa de sobrescrever o campo enquanto ele está em edição."
 verification: ""
 files_changed: []
