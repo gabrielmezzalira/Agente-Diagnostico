@@ -172,7 +172,8 @@ async function flushState(): Promise<void> {
   }
   await writeSession(STORAGE_KEYS.state, state);
   broadcast();
-  void onSessionFlushed(state).catch((error) => logger.error('streamer do Agente falhou', error));
+  // A fila do streamer já engole e loga toda falha de passo — a promise nunca rejeita.
+  void onSessionFlushed(state);
 }
 
 function scheduleFlush(): void {
