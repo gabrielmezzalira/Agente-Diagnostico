@@ -51,13 +51,21 @@ export function patchAgenteConfig(patch: Partial<AgenteConfig>): Promise<AgenteC
  */
 export function subscribeAgenteConfig(onConfig: (config: AgenteConfig) => void): Unsubscribe {
   let live = true;
+  /*
+   * IN-02: a leitura inicial é assíncrona. Se um `onChanged` chegar antes
+   * dela resolver, o valor da leitura já está velho — entregá-lo por cima do
+   * novo deixaria a tela com a config antiga. Sem nenhum `onChanged` antes, a
+   * leitura inicial é entregue normalmente.
+   */
+  let gotChange = false;
 
   void loadAgenteConfig().then((config) => {
-    if (live) onConfig(config);
+    if (live && !gotChange) onConfig(config);
   });
 
   const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
     if (!live || area !== 'local' || !(STORAGE_KEYS.agenteConfig in changes)) return;
+    gotChange = true;
     onConfig(
       normalizeAgenteConfig(
         (changes[STORAGE_KEYS.agenteConfig]?.newValue as Partial<AgenteConfig> | undefined) ?? null,

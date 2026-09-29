@@ -150,6 +150,66 @@ describe('subscribeAgenteConfig', () => {
     expect(seen).toHaveLength(1);
   });
 
+  /*
+   * IN-02: a leitura inicial é assíncrona; se um `onChanged` chegar antes de
+   * ela resolver, a leitura (já velha) não pode entregar por cima do valor
+   * novo — a tela terminaria mostrando a config antiga.
+   */
+  it('se onChanged chega antes da leitura inicial resolver, a leitura velha é ignorada', async () => {
+    const { subscribeAgenteConfig, mock } = await fresh({
+      ...DEFAULT_AGENTE_CONFIG,
+      agenteBackendUrl: 'https://velho.exemplo',
+    });
+    let resolveRead!: (value: Record<string, unknown>) => void;
+    mock.local.get.mockImplementationOnce(
+      () => new Promise<Record<string, unknown>>((resolve) => (resolveRead = resolve)),
+    );
+    const seen: AgenteConfig[] = [];
+    subscribeAgenteConfig((c) => seen.push(c));
+
+    await mock.local.set({
+      [STORAGE_KEYS.agenteConfig]: { ...DEFAULT_AGENTE_CONFIG, agenteBackendUrl: 'https://novo.exemplo' },
+    });
+    resolveRead({
+      [STORAGE_KEYS.agenteConfig]: { ...DEFAULT_AGENTE_CONFIG, agenteBackendUrl: 'https://velho.exemplo' },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(seen.map((c) => c.agenteBackendUrl)).toEqual(['https://novo.exemplo']);
+  });
+
+  it('sem onChanged antes, a leitura inicial é entregue mesmo resolvendo tarde', async () => {
+    const { subscribeAgenteConfig, mock } = await fresh({
+      ...DEFAULT_AGENTE_CONFIG,
+      agenteBackendUrl: 'https://salvo.exemplo',
+    });
+    let resolveRead!: (value: Record<string, unknown>) => void;
+    mock.local.get.mockImplementationOnce(
+      () => new Promise<Record<string, unknown>>((resolve) => (resolveRead = resolve)),
+    );
+    const seen: AgenteConfig[] = [];
+    subscribeAgenteConfig((c) => seen.push(c));
+
+    resolveRead({
+      [STORAGE_KEYS.agenteConfig]: { ...DEFAULT_AGENTE_CONFIG, agenteBackendUrl: 'https://salvo.exemplo' },
+    });
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]?.agenteBackendUrl).toBe('https://salvo.exemplo');
+  });
+
+  it('depois da leitura inicial, as mudanças seguintes continuam sendo entregues', async () => {
+    const { subscribeAgenteConfig, patchAgenteConfig } = await fresh();
+    const seen: AgenteConfig[] = [];
+    subscribeAgenteConfig((c) => seen.push(c));
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+
+    await patchAgenteConfig({ streamingEnabled: true });
+    await patchAgenteConfig({ agenteSessionId: SAVED_SESSION_ID });
+
+    expect(seen).toHaveLength(3);
+    expect(seen.at(-1)?.agenteSessionId).toBe(SAVED_SESSION_ID);
+  });
+
   it('cancelar a assinatura solta o listener', async () => {
     const { subscribeAgenteConfig, patchAgenteConfig } = await fresh();
     const seen: AgenteConfig[] = [];
