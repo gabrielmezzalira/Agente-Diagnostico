@@ -32,10 +32,13 @@ describe('AgenteConfigScreen — botão Voltar', () => {
     host.remove();
     backSpy.mockRestore();
     delete (document as { referrer?: string }).referrer;
+    delete (window.history as { length?: number }).length;
   });
 
-  function setReferrer(value: string): void {
+  function setReferrer(value: string, historyLength = 2): void {
     Object.defineProperty(document, 'referrer', { value, configurable: true });
+    // O jsdom começa a aba com 1 entrada; o padrão aqui (2) simula uma aba com para onde voltar.
+    Object.defineProperty(window.history, 'length', { value: historyLength, configurable: true });
   }
 
   /** Clica no Voltar e devolve se o clique foi cancelado (defaultPrevented). */
@@ -66,6 +69,13 @@ describe('AgenteConfigScreen — botão Voltar', () => {
 
     expect(await clickBack()).toBe(true);
     expect(backSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('aba nova (histórico de 1 entrada) com referrer da extensão: não cancela o href (WR-05)', async () => {
+    setReferrer(`${window.location.origin}/src/sidepanel/index.html?view=history`, 1);
+
+    expect(await clickBack()).toBe(false);
+    expect(backSpy).not.toHaveBeenCalled();
   });
 
   it('referrer vazio: não chama history.back() e deixa o href="?" agir', async () => {

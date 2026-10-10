@@ -21,8 +21,18 @@ function originKey(rawUrl: string): string | null {
   }
 }
 
-/** `true` quando `referrer` é uma página da mesma origem (a mesma extensão) que `currentUrl`. */
-export function canGoBackWithinExtension(referrer: string, currentUrl: string): boolean {
+/**
+ * `true` quando `referrer` é uma página da mesma origem (a mesma extensão) que `currentUrl`
+ * **e** existe uma entrada anterior no histórico da aba. Numa aba nova (Ctrl/Cmd+clique, clique do
+ * meio) o referrer continua sendo da extensão, mas o histórico tem uma entrada só: `history.back()`
+ * não faria nada e o botão ficaria morto — melhor deixar o `href="?"` agir.
+ */
+export function canGoBackWithinExtension(
+  referrer: string,
+  currentUrl: string,
+  historyLength: number,
+): boolean {
+  if (historyLength <= 1) return false;
   const referrerOrigin = originKey(referrer);
   const currentOrigin = originKey(currentUrl);
   return referrerOrigin !== null && referrerOrigin === currentOrigin;

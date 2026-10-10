@@ -35,7 +35,9 @@ const TONE_CLASS: Record<StreamingStatusTone, string> = {
  * da extensão; senão deixa o `href="?"` agir (ver `canGoBackWithinExtension`).
  */
 function handleBackClick(event: MouseEvent<HTMLAnchorElement>): void {
-  if (!canGoBackWithinExtension(document.referrer, window.location.href)) return;
+  if (!canGoBackWithinExtension(document.referrer, window.location.href, window.history.length)) {
+    return;
+  }
   event.preventDefault();
   window.history.back();
 }
