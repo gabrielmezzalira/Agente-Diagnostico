@@ -106,11 +106,19 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
      * também gravava o padrão da build no storage assim que a pessoa salvasse
      * qualquer coisa, mesmo sem ter mexido nos outros campos.
      */
+    /*
+     * IN-05: chave em branco = manter a atual, então não entra no patch.
+     * IN-03: e também não pode ficar "editada" nem com espaços no campo — se era
+     * a única edição, `save()` retornaria em silêncio e a pessoa acharia que
+     * trocou a chave. Limpar o rascunho mostra que nada foi guardado.
+     */
+    const apiKeyIsBlank = editedRef.current.agenteApiKey && drafts.agenteApiKey.trim().length === 0;
+    if (apiKeyIsBlank) {
+      editedRef.current.agenteApiKey = false;
+      setDrafts((prev) => ({ ...prev, agenteApiKey: '' }));
+    }
     const editedFields = (Object.keys(editedRef.current) as AgenteConfigField[]).filter(
-      (field) =>
-        editedRef.current[field] &&
-        // IN-05: chave em branco = manter a atual, então não entra no patch.
-        (field !== 'agenteApiKey' || drafts.agenteApiKey.trim().length > 0),
+      (field) => editedRef.current[field],
     );
     if (editedFields.length === 0) return;
 

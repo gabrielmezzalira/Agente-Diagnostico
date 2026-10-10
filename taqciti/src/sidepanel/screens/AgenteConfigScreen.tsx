@@ -84,6 +84,7 @@ export function AgenteConfigScreen() {
         <Toggle
           checked={config?.streamingEnabled ?? false}
           onChange={setStreamingEnabled}
+          disabled={config === null}
           label="Enviar a transcrição ao vivo para o Agente"
         />
 

@@ -120,10 +120,13 @@ describe('AgenteConfigScreen', () => {
       root.render(<AgenteConfigScreen />);
     });
     expect(statusText()).toBe('Carregando configuração…');
+    // IN-02: sem conhecer o valor real, o toggle não pode aceitar clique.
+    expect(fields().toggle.disabled).toBe(true);
 
     release();
     await flushUntil(() => statusText() !== 'Carregando configuração…');
     expect(statusText()).toBe('Desligado — nada é enviado ao Agente.');
+    expect(fields().toggle.disabled).toBe(false);
   });
 
   it('(1) sem nada salvo, o ID vem vazio, o toggle desmarcado e o status é "Desligado"', async () => {
@@ -481,5 +484,25 @@ describe('AgenteConfigScreen', () => {
       lastHttpStatus: null,
     });
     expect(statusText()).toBe('Ligado — pronto para enviar. O envio começa quando alguém falar.');
+  });
+
+  /*
+   * IN-03: a chave só com espaços era filtrada do patch e, se fosse a única
+   * edição, "Salvar" não fazia nada nem avisava — os espaços ficavam no campo e a
+   * pessoa achava que tinha trocado a chave.
+   */
+  it('(23) salvar só com espaços no campo da chave limpa o campo e mantém a chave salva', async () => {
+    const mock = await renderScreen(WITH_KEY);
+    const { apiKey, saveButton } = fields();
+
+    typeInto(apiKey, '   ');
+    expect(apiKey.value).toBe('   ');
+    await act(async () => {
+      saveButton.click();
+    });
+
+    await flushUntil(() => apiKey.value === '');
+    expect((mock.local.set as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+    expect(storedKey(mock)).toBe(SAVED_KEY);
   });
 });
