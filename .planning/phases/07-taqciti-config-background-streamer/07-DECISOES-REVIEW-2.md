@@ -1,11 +1,22 @@
-# Fase 7 — Decisões em aberto da 2ª revisão (CR-01 e WR-04)
+# Fase 7 — Decisões da 2ª revisão (CR-01 e WR-04)
 
 **Data:** 2026-10-10 · **Branch:** `feat/fase-07-taqciti-config-background-streamer`
 **Origem:** `07-REVIEW.md` (iteração 2). Os códigos CR/WR/IN daqui são os **da 2ª revisão** — o `07-REVIEW-DISPOSITION.md`
 ainda descreve os da 1ª, que têm os mesmos números e outro significado.
 
-> **Status: DECISÃO EM ABERTO — nada abaixo foi implementado.** Pela regra do `CLAUDE.md`, estes itens mudam contrato
-> ou aceitam perda de dado, então só o time decide. A coluna "Recomendação" é do executor e **não vale como decisão**.
+> **Status (2026-10-10): DECIDIDO E IMPLEMENTADO.** O texto das seções abaixo é o plano original, mantido para
+> rastreio. As decisões e o que foi entregue estão na próxima seção. Só o IN-05 (backend) e o seletor de cliente
+> (Fase 8) seguem pendentes.
+
+## Decisões tomadas (usuário, 2026-10-10)
+
+| Achado | Decisão |
+|--------|---------|
+| CR-01 | **Opção A:** guardar a última reunião vinculada em `storage.local`; reunião diferente da vinculada **espera e pergunta** (o aviso bloqueia o envio até a pessoa confirmar). |
+| WR-04 | **Opção 2-B:** aceitar a perda do trecho na fila de reenvio, mas a tela deixa de dizer "tentando de novo…" quando nada está rodando. |
+| IN-05 | **Task de backend**, fora da Fase 7. |
+| Seletor de cliente por reunião | **Fase 8** (ver "Entregue para a Fase 8" abaixo). Na Fase 7 só a correção mínima do CR-01. |
+| "Descartar" a reunião (Fase 8) | **Apaga a reunião também do histórico do Taqciti**, não só deixa de enviar ao Agente. |
 
 ## Onde a fase está agora
 
@@ -17,11 +28,55 @@ ainda descreve os da 1ª, que têm os mesmos números e outro significado.
 | IN-01, IN-04 | corrigidos (`3e4a1dc`) |
 | IN-02, IN-03 | corrigidos (`ff970d0`) |
 | IN-06 | corrigido (`32864ad`) |
-| IN-05 | pendência de **backend** — ver seção 6 |
-| **CR-01** | **DECISÃO EM ABERTO** |
-| **WR-04** | **DECISÃO EM ABERTO** |
+| **CR-01** | **corrigido** em 3 commits: `b3dfcf1` (campo `boundMeetingId` na config), `e28bdac` (regra do cursor nulo em `planStreamStep`), `a66e15d` (o streamer grava o vínculo; o religar do toggle respeita o vínculo) |
+| **WR-04** | **corrigido** (`6404a73`) |
+| IN-05 | pendência de **backend** — ver o fim deste documento |
 
-Typecheck, lint e testes: verdes (570/570) depois desses commits.
+Typecheck, lint e testes: verdes (595/595).
+
+**Desvio da letra da decisão do WR-04, a favor do espírito dela:** em vez de gravar `failed`, o boot grava um valor novo,
+`interrupted`, com texto próprio. O texto do `failed` diz "mesmo depois das novas tentativas", e depois de um reinício as
+tentativas foram **cortadas**, não esgotadas — reusá-lo repetiria a mentira que o WR-04 quer acabar. É um valor a mais
+em `storage.session` (efêmero); reverter é `git revert 6404a73`.
+
+**Mais um achado no caminho do CR-01:** o religar do toggle (`applyConfigChange`) ancorava o cursor direto com
+`primeCursor`, sem consultar nada — era o cenário 3 da revisão ("desligou, trocou de reunião, religou"). Agora passa
+pelo mesmo `planStreamStep`.
+
+**Limites conhecidos da correção do CR-01 (aceitos, não escondidos):**
+- Primeiro uso de uma sessão (sem vínculo) continua livre: o envio começa na reunião em que a pessoa liga o toggle.
+  É o comportamento de sempre e é a pessoa que acabou de colar o ID.
+- Se a pessoa trocar o ID da sessão **para outra sessão** e a reunião seguinte for do mesmo cliente, ela é aceita sem
+  aviso (o vínculo é zerado ao trocar a sessão). É de propósito: trocar o ID é um ato explícito.
+- Falso positivo possível: reiniciar o Chrome no meio da **mesma** reunião NÃO gera aviso (o vínculo é igual); mas
+  entrar de novo na mesma sala depois da janela de retomada gera uma reunião nova (`m2`) e o aviso aparece. Um clique em
+  "Continuar enviando para esta sessão" resolve.
+- `agenteStreamerInstance.ts` foi de 238 para 263 linhas (já passava de 200; é o IN-08, adiado de propósito).
+
+## Entregue para a Fase 8 (seletor de cliente por reunião) — proposta aprovada, ainda sem plano
+
+A ideia do usuário, que substitui a "auto-detecção por `localStorage` + ID manual" do ROADMAP:
+
+1. Ao detectar a reunião, o Taqciti oferece **"Selecionar cliente agora"** ou **"Depois"**.
+2. Em "agora": lista pesquisável de clientes, com opção de **criar cliente novo**.
+3. Em "depois": o Taqciti só grava a reunião localmente. No **fim**, pergunta para qual projeto enviar — ou **descartar**
+   (apaga a reunião também do Taqciti).
+
+O que já existe no backend: `GET /projects`, `POST /sessions` (precisa de `project_id`), `POST /sessions/start` (cria
+projeto + sessão só com nome e cliente; usa a chave do servidor). `POST /projects` **não** serve para criar cliente na
+extensão: exige `gemini_api_key`. O histórico do Taqciti guarda até 100 reuniões com todos os trechos.
+
+**DECISÕES EM ABERTO para a Fase 8 (ninguém decidiu ainda):**
+1. Trocar o mecanismo da Fase 8 no ROADMAP (auto-detect por `localStorage` → seletor)?
+2. Proteger `GET /projects` e `/sessions` com a chave? Hoje **não têm autenticação** e o CORS é `*`: qualquer pessoa com a
+   URL do Railway já lista todos os clientes. A extensão passaria a depender disso.
+3. Cada reunião cria uma sessão nova, ou reaproveita a ativa do projeto?
+4. O "depois" envia a reunião inteira de uma vez ao Agente? **Não foi verificado** como o pipeline reage a uma rajada de
+   trechos (custo de Gemini, ordem). Precisa de teste antes de prometer.
+5. Duas telas novas (aviso ao detectar, diálogo de fim de reunião): passam pelo `/gsd-ui-phase`.
+
+O `boundMeetingId` do CR-01 é a versão simples do que o seletor vai generalizar ("reunião → sessão"), então o trabalho
+da Fase 7 não é descartado.
 
 ---
 
