@@ -33,6 +33,20 @@ export const sessionSnapshotStore: AgenteStreamerSnapshotStore = {
 };
 
 /**
+ * IN-01: fala sem `backendUrl` não tem destino conhecido — descartar é mais seguro
+ * do que mandá-la para a URL da config atual (reabriria o vazamento do IN-11).
+ * Hoje o snapshot nunca vem nesse formato (`storage.session` some ao atualizar a
+ * extensão); a guarda existe para o dia em que vier. Só a contagem vai para o log.
+ */
+function dropPhrasesWithoutBackend(pending: PhraseBuffer | undefined): PhraseBuffer {
+  if (!pending) return EMPTY_PHRASE_BUFFER;
+  const kept = pending.filter((phrase) => typeof phrase.backendUrl === 'string' && phrase.backendUrl !== '');
+  const discarded = pending.length - kept.length;
+  if (discarded > 0) logger.warn('falas do snapshot sem destino descartadas', { discarded });
+  return kept;
+}
+
+/**
  * Envolve o store com a regra de custo do D-09: com o streaming desligado
  * (cursor nulo e nada pendente), só escreve UMA vez para limpar — nunca a
  * cada flush. Falhas de storage só vão para o log: perder o snapshot é
@@ -50,7 +64,8 @@ export function createSnapshotPersister(store: AgenteStreamerSnapshotStore) {
     try {
       const snapshot = await store.load();
       storedEmpty = snapshot === null;
-      return snapshot ? { cursor: snapshot.cursor, pending: snapshot.pending ?? EMPTY_PHRASE_BUFFER } : null;
+      if (!snapshot) return null;
+      return { cursor: snapshot.cursor, pending: dropPhrasesWithoutBackend(snapshot.pending) };
     } catch (error) {
       logger.error('restaurar o streamer do Agente falhou', error);
       return null;

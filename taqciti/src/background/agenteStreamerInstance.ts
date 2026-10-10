@@ -127,7 +127,11 @@ ${config.agenteApiKey}`;
   function drain(config: AgenteConfig, now: number, flushAll: boolean): void {
     const result = takeReadyPhrases(pending, now, PHRASE_TIMING, flushAll);
     pending = result.buffer;
-    sender.submit(buildPhraseRequests(config, result.ready));
+    const requests = buildPhraseRequests(config, result.ready);
+    // IN-04: o descarte por destino diferente (IN-11) não pode ser silencioso. Só a contagem — nunca o texto.
+    const discarded = result.ready.length - requests.length;
+    if (discarded > 0) logger.warn('falas descartadas: destino diferente da config atual', { discarded });
+    sender.submit(requests);
     rearm(now);
   }
 

@@ -30,6 +30,7 @@ const SAFE_LOG_KEYS = new Set([
   'code',
   'retryable',
   'errorType',
+  'discarded',
 ]);
 
 function stamp(level: string): string {

@@ -30,11 +30,12 @@ export interface PhraseDestination {
 export interface PendingPhrase {
   sessionId: string;
   /**
-   * URL do backend em que a fala foi acumulada (IN-11). Opcional só por
-   * compatibilidade: o snapshot gravado antes do IN-11 não tem este campo, e
-   * essa fala sai para a URL da config atual (comportamento anterior).
+   * URL do backend em que a fala foi acumulada (IN-11). Obrigatória (IN-01):
+   * sem ela não dá para saber a que backend a fala pertence, e mandá-la para a
+   * URL da config atual reabriria o vazamento do IN-11. O restore do snapshot
+   * descarta a fala que chegar sem este campo.
    */
-  backendUrl?: string;
+  backendUrl: string;
   segmentKey: string;
   speaker: string | null;
   text: string;
@@ -153,21 +154,18 @@ export function nextPhraseDeadline(buffer: PhraseBuffer, timing: PhraseTiming): 
  * nunca o da config atual. A chave `x-agente-key` é sempre a da config atual
  * (segredo não é gravado no snapshot), por isso fala acumulada para OUTRO
  * backend é descartada: mandá-la ao backend antigo levaria a chave do novo.
- * Fala do formato antigo, sem `backendUrl`, usa a URL da config atual.
+ * Quem chama compara o tamanho da entrada com o da saída para saber quantas
+ * foram descartadas (IN-04) — este módulo é puro e não loga.
  */
 export function buildPhraseRequests(
   config: AgenteConfig,
   phrases: readonly PendingPhrase[],
 ): ExtensionChunkRequest[] {
   return phrases
-    .filter((phrase) => phrase.backendUrl === undefined || phrase.backendUrl === config.agenteBackendUrl)
+    .filter((phrase) => phrase.backendUrl === config.agenteBackendUrl)
     .map((phrase) =>
       buildExtensionChunkRequest(
-        {
-          ...config,
-          agenteBackendUrl: phrase.backendUrl ?? config.agenteBackendUrl,
-          agenteSessionId: phrase.sessionId,
-        },
+        { ...config, agenteSessionId: phrase.sessionId },
         { text: phrase.text, speaker: phrase.speaker },
       ),
     );

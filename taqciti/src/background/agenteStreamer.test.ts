@@ -1324,6 +1324,7 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     const { sessionController, agenteStreamer } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     let currentConfig = { ...READY_CONFIG };
     agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(currentConfig) });
 
@@ -1353,12 +1354,19 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
     // Nada sai: mandar a fala para A levaria a chave de B; mandar para B
     // quebraria o D-04 (o texto acumulado sob um destino só vai para ele).
     expect(fetchMock).not.toHaveBeenCalled();
+
+    // IN-04: o descarte deixa rastro no log — só a contagem, nunca o texto da fala.
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('"discarded":1');
+    expect(logged).not.toContain('fala do backend antigo');
+    warn.mockRestore();
   });
 
-  it('IN-11: snapshot antigo (fala pendente sem URL) é restaurado e sai para a URL da config atual', async () => {
+  it('IN-01: snapshot antigo (fala pendente sem URL) é descartado na restauração — nada sai para a URL atual', async () => {
     const { agenteStreamer, mock } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
 
     // Formato gravado antes do IN-11: a fala pendente não carrega o backendUrl.
@@ -1372,14 +1380,14 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
 
     await agenteStreamer.resumeAgenteStreamer();
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await agenteStreamer.whenAgenteStreamerIdle();
 
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe(`${AGENTE_URL}/webhook/extension`);
-    expect(JSON.parse(init.body as string)).toMatchObject({
-      session_id: SESSION_ID,
-      text: 'fala do snapshot antigo',
-    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    // IN-04: o descarte deixa rastro — só a contagem, nunca o texto da fala.
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('"discarded":1');
+    expect(logged).not.toContain('fala do snapshot antigo');
+    warn.mockRestore();
   });
 
   it('WR-12: se loadConfig falhar no tick, a fala pendente não fica sem timer — o retry manda depois', async () => {

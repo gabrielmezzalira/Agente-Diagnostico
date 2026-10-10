@@ -13,6 +13,7 @@ import {
   buildPhraseRequests,
   nextPhraseDeadline,
   takeReadyPhrases,
+  type PendingPhrase,
   type PhraseBuffer,
   type PhraseDestination,
   type PhraseTiming,
@@ -232,10 +233,26 @@ describe('phraseBatcher / buildPhraseRequests (IN-11)', () => {
     expect(buildPhraseRequests(CONFIG, buffer)).toEqual([]);
   });
 
-  it('fala no formato antigo (sem backendUrl) cai na URL da config atual, mantendo o session_id dela', () => {
-    const legacy = { sessionId: SESSION_ID, segmentKey: '0:c1', speaker: 'Ana', text: 'olá', firstAt: 1, lastAt: 1 };
-    const [request] = buildPhraseRequests(CONFIG, [legacy]);
-    expect(request?.url).toBe(`${URL_B}/webhook/extension`);
-    expect(JSON.parse(request?.init.body as string)).toMatchObject({ session_id: SESSION_ID });
+  it('IN-01/IN-04: num lote misto sai só o que é da URL atual, na ordem, e a diferença é o nº de descartadas', () => {
+    const phrase = (backendUrl: string, text: string) => ({
+      sessionId: SESSION_ID,
+      backendUrl,
+      segmentKey: `0:${text}`,
+      speaker: 'Ana',
+      text,
+      firstAt: 1,
+      lastAt: 1,
+    });
+    const phrases = [phrase(URL_A, 'antiga'), phrase(URL_B, 'primeira'), phrase(URL_B, 'segunda')];
+
+    const requests = buildPhraseRequests(CONFIG, phrases);
+
+    expect(requests.map((r) => JSON.parse(r.init.body as string).text)).toEqual(['primeira', 'segunda']);
+    expect(phrases.length - requests.length).toBe(1);
+  });
+
+  it('IN-01: fala sem backendUrl (dado malformado que escapou do restore) nunca sai para a URL atual', () => {
+    const malformed = { sessionId: SESSION_ID, segmentKey: '0:c1', speaker: 'Ana', text: 'olá', firstAt: 1, lastAt: 1 };
+    expect(buildPhraseRequests(CONFIG, [malformed as unknown as PendingPhrase])).toEqual([]);
   });
 });
