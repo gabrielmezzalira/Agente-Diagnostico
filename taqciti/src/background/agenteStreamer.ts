@@ -13,7 +13,7 @@ import {
   patchAgenteConfig,
 } from '@/shared/config/agenteConfigStore';
 import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
-import { patchAgenteStatus } from '@/shared/config/agenteStatusStore';
+import { markInterruptedSend, patchAgenteStatus } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 import { sessionSnapshotStore } from './agenteStreamerSnapshot';
@@ -54,6 +54,7 @@ let activeDeps: AgenteStreamerDeps = {
   snapshot: sessionSnapshotStore,
   reportStatus,
   bindMeeting,
+  settleStatusAfterRestart: markInterruptedSend,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 

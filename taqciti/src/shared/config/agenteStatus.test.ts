@@ -58,6 +58,26 @@ describe('agenteStatus / describeAgenteStreaming', () => {
   });
 });
 
+describe('agenteStatus / envio interrompido por reinício (WR-04)', () => {
+  it('não afirma que as tentativas se esgotaram, nem inventa um motivo HTTP', () => {
+    const view = describeAgenteStreaming(
+      'ready',
+      status({ lastOutcome: 'interrupted', lastHttpStatus: 503 }),
+      clock,
+    );
+    expect(view.tone).toBe('danger');
+    expect(view.text).toContain('interrompido');
+    expect(view.text).toContain('pode não ter chegado ao Agente');
+    expect(view.text).not.toContain('503');
+    expect(view.text).not.toContain('novas tentativas');
+  });
+
+  it('normalize aceita "interrupted" (e continua recusando valor desconhecido)', () => {
+    expect(normalizeAgenteStatus({ lastOutcome: 'interrupted' }).lastOutcome).toBe('interrupted');
+    expect(normalizeAgenteStatus({ lastOutcome: 'qualquer' as never }).lastOutcome).toBeNull();
+  });
+});
+
 describe('agenteStatus / normalizeAgenteStatus', () => {
   it('ausente ou lixo vira o status vazio', () => {
     expect(normalizeAgenteStatus(null)).toEqual(EMPTY_AGENTE_STATUS);

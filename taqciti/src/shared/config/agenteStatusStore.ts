@@ -37,6 +37,24 @@ export function patchAgenteStatus(
   return run;
 }
 
+/**
+ * WR-04: no boot do service worker, um "tentando de novo…" gravado antes do reinício é falso — a
+ * fila de reenvio era só memória e se perdeu. Troca por `interrupted`, preservando o resto. Só
+ * mexe em `retrying`; qualquer outro resultado já é definitivo. Roda na mesma fila das demais
+ * escritas, então não apaga o campo de ninguém.
+ */
+export function markInterruptedSend(): Promise<void> {
+  const run = queue
+    .catch(() => undefined)
+    .then(async () => {
+      const current = await loadAgenteStatus();
+      if (current.lastOutcome !== 'retrying') return;
+      await writeSession(STORAGE_KEYS.agenteStatus, { ...current, lastOutcome: 'interrupted' });
+    });
+  queue = run;
+  return run;
+}
+
 /** Valor atual logo de cara e depois a cada mudança. */
 export function subscribeAgenteStatus(
   onStatus: (status: AgenteStreamingStatus) => void,

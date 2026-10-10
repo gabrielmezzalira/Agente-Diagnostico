@@ -21,4 +21,6 @@ export interface AgenteStreamerDeps {
    * Sobrevive ao fechamento do navegador, ao contrário do snapshot do cursor.
    */
   bindMeeting?: (meetingId: string) => Promise<void>;
+  /** No boot, troca um status "tentando de novo" herdado do service worker anterior por "interrompido" (WR-04). */
+  settleStatusAfterRestart?: () => Promise<void>;
 }

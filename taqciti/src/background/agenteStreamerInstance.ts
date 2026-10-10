@@ -239,10 +239,18 @@ ${config.agenteApiKey}`;
     return enqueueStep(() => step(state));
   }
 
-  /** Boot do service worker (WR-02): restaura o snapshot sem esperar o próximo flush. */
+  /**
+   * Boot do service worker (WR-02): restaura o snapshot sem esperar o próximo flush.
+   * WR-04: e desfaz o "tentando de novo…" que o service worker anterior deixou gravado — esta
+   * instância acabou de nascer, a fila de envio dela está vazia, então nada está tentando.
+   */
   function resume(): Promise<void> {
     ensureSubscribed();
-    return enqueueStep(() => Promise.resolve());
+    return enqueueStep(async () => {
+      await deps.settleStatusAfterRestart?.().catch((error: unknown) => {
+        logger.error('acertar o status do Agente depois do reinício falhou', error);
+      });
+    });
   }
 
   /** Só para asserções de ausência em teste (WR-10): espera a fila, sem enfileirar nada. */

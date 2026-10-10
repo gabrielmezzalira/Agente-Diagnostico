@@ -1157,6 +1157,87 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
   });
 });
 
+/*
+ * WR-04 (2ª revisão, decisão do time: opção 2-B — aceitar a perda, mas a tela não mente).
+ * A fila de reenvio vive só na memória do service worker. Quando ele reinicia, o último
+ * status gravado em storage.session pode ser "tentando de novo…" sem nenhuma tentativa
+ * rodando. No boot, esse status passa a dizer a verdade: o envio foi interrompido.
+ */
+describe('WR-04: status "tentando de novo" não sobrevive ao reinício do service worker', () => {
+  const STALE_RETRYING = { lastOutcome: 'retrying', lastHttpStatus: null, lastAttemptAt: 1 };
+
+  it('no boot, "retrying" vira "interrupted" e o resto do status é preservado', async () => {
+    const { agenteStreamer, mock } = await fresh();
+    mock.session.values[STORAGE_KEYS.agenteStatus] = { ...STALE_RETRYING, lastHttpStatus: 503 };
+
+    await agenteStreamer.resumeAgenteStreamer();
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+      lastOutcome: 'interrupted',
+      lastHttpStatus: 503,
+      lastAttemptAt: 1,
+    });
+  });
+
+  it.each(['sent', 'failed', 'rejected', 'interrupted'])(
+    'no boot, um status "%s" já definitivo não é mexido',
+    async (lastOutcome) => {
+      const { agenteStreamer, mock } = await fresh();
+      const before = { lastOutcome, lastHttpStatus: 401, lastAttemptAt: 7, waitingMeetingId: null };
+      mock.session.values[STORAGE_KEYS.agenteStatus] = { ...before };
+
+      await agenteStreamer.resumeAgenteStreamer();
+      await agenteStreamer.whenAgenteStreamerIdle();
+
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject(before);
+    },
+  );
+
+  it('sem status gravado, o boot não cria um', async () => {
+    const { agenteStreamer, mock } = await fresh();
+
+    await agenteStreamer.resumeAgenteStreamer();
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toBeUndefined();
+  });
+
+  it('um envio novo depois do boot volta a mandar o status real (não fica preso em "interrupted")', async () => {
+    const { sessionController, agenteStreamer, mock } = await fresh();
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+    mock.session.values[STORAGE_KEYS.agenteStatus] = { ...STALE_RETRYING };
+    agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
+
+    await agenteStreamer.resumeAgenteStreamer();
+    await agenteStreamer.whenAgenteStreamerIdle();
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'interrupted' });
+
+    await sessionController.dispatch({
+      type: 'MEETING_DETECTED',
+      meetingId: 'm1',
+      meetingCode: 'abc-defg-hij',
+      provider: 'google-meet',
+      tabId: 1,
+      title: 'Reunião de teste',
+      captionsEnabled: true,
+      at: 1000,
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await sessionController.dispatch({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c1', speaker: 'Ana', text: 'depois do boot', atMs: 1100 },
+    });
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'sent' }),
+    );
+  });
+});
+
 describe('idempotência e concorrência (fila serializada)', () => {
   it('duas chamadas concorrentes com o mesmo estado novo geram exatamente 1 fetch; a terceira não gera nenhum', async () => {
     const { agenteStreamer } = await fresh();

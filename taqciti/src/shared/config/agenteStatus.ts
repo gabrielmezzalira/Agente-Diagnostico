@@ -11,7 +11,12 @@
  */
 import type { StreamingReadiness } from './agenteConfig';
 
-export type AgenteSendOutcome = 'sent' | 'retrying' | 'failed' | 'rejected';
+/**
+ * `interrupted` (WR-04): o service worker reiniciou enquanto um trecho esperava nova tentativa.
+ * A fila de reenvio vive só na memória, então o trecho se perdeu e nenhuma tentativa está rodando.
+ * Não é `failed` — as tentativas não se esgotaram, foram cortadas — e por isso tem texto próprio.
+ */
+export type AgenteSendOutcome = 'sent' | 'retrying' | 'failed' | 'rejected' | 'interrupted';
 
 export interface AgenteStreamingStatus {
   lastOutcome: AgenteSendOutcome | null;
@@ -35,7 +40,13 @@ export const EMPTY_AGENTE_STATUS: AgenteStreamingStatus = {
   waitingMeetingId: null,
 };
 
-const OUTCOMES: readonly AgenteSendOutcome[] = ['sent', 'retrying', 'failed', 'rejected'];
+const OUTCOMES: readonly AgenteSendOutcome[] = [
+  'sent',
+  'retrying',
+  'failed',
+  'rejected',
+  'interrupted',
+];
 
 export function normalizeAgenteStatus(
   raw: Partial<AgenteStreamingStatus> | null | undefined,
@@ -115,6 +126,11 @@ export function describeAgenteStreaming(
       return {
         tone: 'danger',
         text: `Último envio falhou mesmo depois das novas tentativas (${failureReason(status.lastHttpStatus)}) — o trecho não chegou ao Agente.`,
+      };
+    case 'interrupted':
+      return {
+        tone: 'danger',
+        text: 'O envio foi interrompido quando a extensão reiniciou — o último trecho pode não ter chegado ao Agente.',
       };
     case 'rejected':
       return { tone: 'danger', text: rejectionText(status.lastHttpStatus) };
