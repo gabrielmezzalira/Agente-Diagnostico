@@ -251,6 +251,64 @@ describe('planStreamStep — prime, reunião nova, troca de sessão', () => {
     expect(step.cursor).toEqual({ meetingId: 'm2', sessionId: newSessionId, sent: { '0:c1': 3 } });
   });
 
+  /*
+   * CR-01 (2ª revisão): o cursor some quando o navegador fecha, a extensão é
+   * atualizada ou o toggle é religado — mas a sessão do Agente continua salva. Sem
+   * cursor, a "reunião nova" não era detectável e a fala do cliente B ia para a
+   * sessão do cliente A. `boundMeetingId` (storage.local) é o que resta de memória.
+   */
+  describe('cursor nulo com vínculo persistido (boundMeetingId)', () => {
+    const meeting2 = session({ meetingId: 'm2', segments: [segment({ text: 'fala do cliente B' })] });
+
+    it('reunião diferente da vinculada, sem confirmação: espera — nada vai para a sessão antiga', () => {
+      const step = planStreamStep(null, meeting2, { sessionId: SESSION_ID, boundMeetingId: 'm1' });
+      expect(step.cursor).toBeNull();
+      expect(step.deltas).toEqual([]);
+      expect(step.waitingForNewMeeting).toBe(true);
+    });
+
+    it('a MESMA reunião vinculada (religar o toggle, reiniciar o service worker): prime normal, sem aviso', () => {
+      const step = planStreamStep(null, meeting2, { sessionId: SESSION_ID, boundMeetingId: 'm2' });
+      expect(step.waitingForNewMeeting).toBeUndefined();
+      expect(step.deltas).toEqual([]);
+      expect(step.cursor).toEqual({ meetingId: 'm2', sessionId: SESSION_ID, sent: { '0:c1': 4 } });
+    });
+
+    it('sem vínculo (vazio ou ausente): primeiro uso desta sessão, prime livre como sempre foi', () => {
+      for (const boundMeetingId of ['', undefined]) {
+        const step = planStreamStep(null, meeting2, { sessionId: SESSION_ID, boundMeetingId });
+        expect(step.waitingForNewMeeting).toBeUndefined();
+        expect(step.cursor?.meetingId).toBe('m2');
+      }
+    });
+
+    it('reunião diferente confirmada pela pessoa: sai desde o início dela (mesma regra do cursor existente)', () => {
+      const step = planStreamStep(null, meeting2, {
+        sessionId: SESSION_ID,
+        boundMeetingId: 'm1',
+        confirmedMeetingId: 'm2',
+      });
+      expect(step.waitingForNewMeeting).toBeUndefined();
+      expect(step.deltas.map((d) => d.text)).toEqual(['fala do cliente B']);
+      expect(step.cursor).toEqual({ meetingId: 'm2', sessionId: SESSION_ID, sent: { '0:c1': 4 } });
+    });
+
+    it('confirmação de OUTRA reunião não libera a atual', () => {
+      const step = planStreamStep(null, meeting2, {
+        sessionId: SESSION_ID,
+        boundMeetingId: 'm1',
+        confirmedMeetingId: 'm3',
+      });
+      expect(step.cursor).toBeNull();
+      expect(step.waitingForNewMeeting).toBe(true);
+    });
+
+    it('sem sessão de reunião, o vínculo não muda nada (cursor segue nulo, sem aviso)', () => {
+      const step = planStreamStep(null, null, { sessionId: SESSION_ID, boundMeetingId: 'm1' });
+      expect(step).toEqual({ cursor: null, deltas: [] });
+    });
+  });
+
   it('sessionId trocado na MESMA reunião: nada já enviado é reenviado; cursor.sessionId passa a ser o novo', () => {
     const prev: StreamCursor = { meetingId: 'm1', sessionId: SESSION_ID, sent: { '0:c1': 3 } };
     const newSessionId = '22222222-2222-2222-2222-222222222222';

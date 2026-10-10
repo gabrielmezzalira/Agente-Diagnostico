@@ -29,6 +29,12 @@ export interface StreamBinding {
   sessionId: string;
   /** Reunião nova que a pessoa confirmou como parte desta mesma sessão (CR-01). */
   confirmedMeetingId?: string;
+  /**
+   * Última reunião enviada para esta sessão, vinda de `storage.local` (CR-01). É o que
+   * resta de memória quando o cursor se perde (navegador fechado, extensão atualizada,
+   * toggle religado). Vazio ou ausente = esta sessão ainda não recebeu nenhuma reunião.
+   */
+  boundMeetingId?: string;
 }
 
 export interface StreamStep {
@@ -94,7 +100,11 @@ export function computeSegmentDeltas(
  *
  * 1. binding nulo (desligado/incompleto) -> cursor null, sem deltas.
  * 2. sem sessão -> mantém o cursor anterior, sem deltas.
- * 3. cursor nulo (primeira vez) -> prime (envio só dali para frente, D-09).
+ * 3. cursor nulo (primeira vez, ou perdido) -> prime (envio só dali para frente,
+ *    D-09) — EXCETO se a sessão já está vinculada a OUTRA reunião (`boundMeetingId`):
+ *    aí é a mesma situação do passo 4 (reunião nova, mesmo session_id) e vale a mesma
+ *    espera sinalizada, senão a reunião do dia seguinte ia para a sessão do cliente
+ *    anterior sem ninguém confirmar (CR-01, 2ª revisão).
  * 4. reunião mudou: session_id mudou -> prime para a reunião nova; mesmo
  *    session_id -> ESPERA sinalizada (`waitingForNewMeeting`, CR-01) até a
  *    pessoa confirmar — confirmada, a reunião nova sai desde o início dela.
@@ -114,15 +124,15 @@ export function planStreamStep(
     return { cursor: prev, deltas: [] };
   }
   if (prev === null) {
+    const bound = binding.boundMeetingId;
+    if (bound && bound !== session.meetingId) {
+      return releaseOrWait(null, session, binding);
+    }
     return { cursor: primeCursor(session, binding.sessionId), deltas: [] };
   }
   if (prev.meetingId !== session.meetingId) {
     if (binding.sessionId === prev.sessionId) {
-      if (binding.confirmedMeetingId === session.meetingId) {
-        const fromStart = { meetingId: session.meetingId, sessionId: binding.sessionId, sent: {} };
-        return computeSegmentDeltas(fromStart, session.segments);
-      }
-      return { cursor: prev, deltas: [], waitingForNewMeeting: true };
+      return releaseOrWait(prev, session, binding);
     }
     return { cursor: primeCursor(session, binding.sessionId), deltas: [] };
   }
@@ -130,4 +140,20 @@ export function planStreamStep(
   const cursorForSession =
     prev.sessionId === binding.sessionId ? prev : { ...prev, sessionId: binding.sessionId };
   return computeSegmentDeltas(cursorForSession, session.segments);
+}
+
+/**
+ * Reunião diferente da que a sessão já recebeu: confirmada pela pessoa, sai desde o
+ * início dela; senão ESPERA, mantendo o cursor que havia (`null` quando se perdeu).
+ */
+function releaseOrWait(
+  cursor: StreamCursor | null,
+  session: MeetingSessionState,
+  binding: StreamBinding,
+): StreamStep {
+  if (binding.confirmedMeetingId === session.meetingId) {
+    const fromStart = { meetingId: session.meetingId, sessionId: binding.sessionId, sent: {} };
+    return computeSegmentDeltas(fromStart, session.segments);
+  }
+  return { cursor, deltas: [], waitingForNewMeeting: true };
 }
