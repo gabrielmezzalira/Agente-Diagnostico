@@ -16,4 +16,9 @@ export interface AgenteStreamerDeps {
   snapshot?: AgenteStreamerSnapshotStore;
   /** Status de runtime para a tela (WR-07): resultado do último envio. */
   reportStatus?: (patch: Partial<AgenteStreamingStatus>) => void;
+  /**
+   * Grava em `storage.local` a reunião a que a sessão do Agente está vinculada (CR-01).
+   * Sobrevive ao fechamento do navegador, ao contrário do snapshot do cursor.
+   */
+  bindMeeting?: (meetingId: string) => Promise<void>;
 }

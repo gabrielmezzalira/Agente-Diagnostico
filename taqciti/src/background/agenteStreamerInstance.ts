@@ -14,7 +14,7 @@ import {
   isStreamingReady,
   type AgenteConfig,
 } from '@/shared/config/agenteConfig';
-import { planStreamStep, primeCursor, type StreamCursor } from '@/features/agente/wordDelta';
+import { planStreamStep, type StreamCursor } from '@/features/agente/wordDelta';
 import {
   appendDeltas,
   buildPhraseRequests,
@@ -59,6 +59,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let unsubscribeConfig: (() => void) | null = null;
   /** WR-01: destino (URL + sessão + chave) dos trechos que estão na fila de envio; `null` = nada visto. */
   let lastDestinationKey: string | null = null;
+  /** CR-01: última dupla (sessão, reunião) cujo vínculo já foi pedido ao storage — evita regravar a cada flush. */
+  let lastBoundKey: string | null = null;
   const status = createStatusReporter(deps.reportStatus);
   const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
@@ -102,6 +104,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     discard();
     cursor = null;
     lastDestinationKey = null;
+    lastBoundKey = null;
     status.waitingForMeeting(null);
   }
 
@@ -144,13 +147,14 @@ ${config.agenteApiKey}`;
       return;
     }
     syncDestination(config);
-    advance(config, state);
+    await advance(config, state);
   }
 
-  function advance(config: AgenteConfig, state: MeetingState): void {
+  async function advance(config: AgenteConfig, state: MeetingState): Promise<void> {
     const binding = {
       sessionId: config.agenteSessionId,
       confirmedMeetingId: config.confirmedMeetingId,
+      boundMeetingId: config.boundMeetingId,
     };
     const result = planStreamStep(cursor, state.session, binding);
     cursor = result.cursor;
@@ -160,6 +164,27 @@ ${config.agenteApiKey}`;
     const destination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
     pending = appendDeltas(pending, result.deltas, destination, now);
     drain(config, now, state.phase !== 'recording');
+    await recordBinding(config);
+  }
+
+  /**
+   * CR-01: anota em `storage.local` a reunião que o cursor atende. É o que sobra de memória
+   * quando o cursor se perde (navegador fechado, extensão atualizada, toggle religado), e é
+   * por ele que a reunião do dia seguinte é reconhecida como diferente. Depois do envio, para
+   * nunca atrasá-lo; só o id, nunca texto. Falhar só vai para o log e tenta de novo no próximo passo.
+   */
+  async function recordBinding(config: AgenteConfig): Promise<void> {
+    if (!deps.bindMeeting || cursor === null) return;
+    const meetingId = cursor.meetingId;
+    const key = `${config.agenteSessionId}\n${meetingId}`;
+    if (meetingId === config.boundMeetingId || key === lastBoundKey) return;
+    lastBoundKey = key;
+    try {
+      await deps.bindMeeting(meetingId);
+    } catch (error) {
+      lastBoundKey = null;
+      logger.error('gravar a reunião vinculada do Agente falhou', error);
+    }
   }
 
   /** Callback do timer da janela: relê a config (pode ter mudado) antes de mandar. */
@@ -194,15 +219,11 @@ ${config.agenteApiKey}`;
     syncDestination(config);
     status.resetSendOutcome(); // WR-07
     if (lastState === null) return;
-    if (cursor === null) {
-      // WR-02: religar começa a contar DESTE instante. Sem isto, o próximo
-      // flush fazia o prime já com o trecho novo aplicado, e ele se perdia.
-      if (lastState.session !== null) cursor = primeCursor(lastState.session, config.agenteSessionId);
-      return;
-    }
-    // CR-01: confirmar a reunião nova (ou trocar o session_id) libera na hora,
-    // sem esperar alguém voltar a falar.
-    advance(config, lastState);
+    // WR-02: religar (cursor nulo) começa a contar DESTE instante — o prime ancora no estado
+    // atual, então o próximo flush não perde o trecho novo. CR-01: se a sessão estava vinculada
+    // a OUTRA reunião, o mesmo passo espera em vez de ancorar nela. E confirmar a reunião nova
+    // (ou trocar o session_id) libera na hora, sem esperar alguém voltar a falar.
+    await advance(config, lastState);
   }
 
   /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */
