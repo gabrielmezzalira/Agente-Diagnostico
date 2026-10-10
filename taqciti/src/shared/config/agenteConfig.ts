@@ -14,8 +14,59 @@
  * vazio por padrão (nenhum header enviado).
  */
 
+/**
+ * Hosts onde `http:` sem TLS é aceitável — só loopback (dev local). Em
+ * qualquer outro host, `http:` expõe a chave `x-agente-key` e a transcrição
+ * da reunião em texto puro na rede (WR-06).
+ */
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/** Extrai o hostname de um trecho "host[:porta]" sem protocolo. */
+function extractHostname(hostAndMaybePort: string): string {
+  try {
+    return new URL(`http://${hostAndMaybePort}`).hostname;
+  } catch {
+    return '';
+  }
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAMES.has(hostname);
+}
+
+/** Esquema digitado de forma explícita: `algo://`. */
+const EXPLICIT_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
+
+/**
+ * Normaliza a URL do backend do Agente — mesmo padrão de
+ * `extension/background.js::normalizeUrl` (trim, remove barras finais,
+ * prefixa protocolo quando falta). String vazia continua vazia (quem chama
+ * decide o fallback — ver `normalizeAgenteConfig`).
+ *
+ * WR-06: o prefixo é `http://` só para host de loopback (para não quebrar o
+ * dev local digitando `localhost:8000`) — qualquer outro host sem protocolo
+ * vira `https://`, para não mandar credencial em texto puro por engano.
+ */
+export function normalizeAgenteBackendUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  // IN-03: esquema explícito (http, https ou qualquer outro, ex.: ftp://) fica
+  // como foi digitado — nunca ganha prefixo. Quem recusa os esquemas que não
+  // são http/https é `isValidAgenteBackendUrl`. `localhost:8000` não tem "://".
+  if (trimmed.length === 0 || EXPLICIT_SCHEME_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+  const scheme = isLoopbackHostname(extractHostname(trimmed)) ? 'http://' : 'https://';
+  return `${scheme}${trimmed}`;
+}
+
+/*
+ * WR-03: o padrão da build passa pela mesma normalização da URL salva (barra
+ * no fim, espaço, protocolo faltando). As helpers acima precisam vir ANTES
+ * desta constante: `const` no escopo do módulo fica em zona morta até a linha
+ * em que é declarada, e esta linha já as chama na avaliação do módulo.
+ */
 export const AGENTE_BACKEND_URL_DEFAULT =
-  import.meta.env.VITE_AGENTE_BACKEND_URL ?? 'http://localhost:8000';
+  normalizeAgenteBackendUrl(import.meta.env.VITE_AGENTE_BACKEND_URL ?? '') || 'http://localhost:8000';
 
 // D-09: streaming desligado por padrão — ninguém é afetado até decidir ligar.
 export const AGENTE_STREAMING_ENABLED_DEFAULT =
@@ -64,51 +115,6 @@ export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
   agenteApiKey: '',
   confirmedMeetingId: '',
 };
-
-/**
- * Hosts onde `http:` sem TLS é aceitável — só loopback (dev local). Em
- * qualquer outro host, `http:` expõe a chave `x-agente-key` e a transcrição
- * da reunião em texto puro na rede (WR-06).
- */
-const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-/** Extrai o hostname de um trecho "host[:porta]" sem protocolo. */
-function extractHostname(hostAndMaybePort: string): string {
-  try {
-    return new URL(`http://${hostAndMaybePort}`).hostname;
-  } catch {
-    return '';
-  }
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  return LOOPBACK_HOSTNAMES.has(hostname);
-}
-
-/** Esquema digitado de forma explícita: `algo://`. */
-const EXPLICIT_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
-
-/**
- * Normaliza a URL do backend do Agente — mesmo padrão de
- * `extension/background.js::normalizeUrl` (trim, remove barras finais,
- * prefixa protocolo quando falta). String vazia continua vazia (quem chama
- * decide o fallback — ver `normalizeAgenteConfig`).
- *
- * WR-06: o prefixo é `http://` só para host de loopback (para não quebrar o
- * dev local digitando `localhost:8000`) — qualquer outro host sem protocolo
- * vira `https://`, para não mandar credencial em texto puro por engano.
- */
-export function normalizeAgenteBackendUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, '');
-  // IN-03: esquema explícito (http, https ou qualquer outro, ex.: ftp://) fica
-  // como foi digitado — nunca ganha prefixo. Quem recusa os esquemas que não
-  // são http/https é `isValidAgenteBackendUrl`. `localhost:8000` não tem "://".
-  if (trimmed.length === 0 || EXPLICIT_SCHEME_PATTERN.test(trimmed)) {
-    return trimmed;
-  }
-  const scheme = isLoopbackHostname(extractHostname(trimmed)) ? 'http://' : 'https://';
-  return `${scheme}${trimmed}`;
-}
 
 /**
  * Resolve uma config parcial (ex: vinda do storage) para uma config completa

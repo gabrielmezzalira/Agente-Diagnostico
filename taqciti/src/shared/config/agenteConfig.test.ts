@@ -41,6 +41,25 @@ describe('padrões da build (VITE_AGENTE_*)', () => {
     expect(mod.DEFAULT_AGENTE_CONFIG.streamingEnabled).toBe(true);
     expect(mod.DEFAULT_AGENTE_CONFIG.agenteBackendUrl).toBe('https://agente.exemplo');
   });
+
+  it('WR-03: o padrão da build é normalizado — barra no fim e espaço saem, protocolo faltando entra', async () => {
+    vi.stubEnv('VITE_AGENTE_BACKEND_URL', ' https://agente.up.railway.app/ ');
+    const mod = await import('./agenteConfig');
+    expect(mod.AGENTE_BACKEND_URL_DEFAULT).toBe('https://agente.up.railway.app');
+    expect(mod.DEFAULT_AGENTE_CONFIG.agenteBackendUrl).toBe('https://agente.up.railway.app');
+    expect(mod.normalizeAgenteConfig({}).agenteBackendUrl).toBe('https://agente.up.railway.app');
+
+    vi.resetModules();
+    vi.stubEnv('VITE_AGENTE_BACKEND_URL', 'agente.up.railway.app/');
+    const semProtocolo = await import('./agenteConfig');
+    expect(semProtocolo.AGENTE_BACKEND_URL_DEFAULT).toBe('https://agente.up.railway.app');
+  });
+
+  it('WR-03: sem VITE_AGENTE_BACKEND_URL (ou só espaços), o padrão continua http://localhost:8000', async () => {
+    vi.stubEnv('VITE_AGENTE_BACKEND_URL', '   ');
+    const mod = await import('./agenteConfig');
+    expect(mod.AGENTE_BACKEND_URL_DEFAULT).toBe('http://localhost:8000');
+  });
 });
 
 describe('normalizeAgenteBackendUrl', () => {

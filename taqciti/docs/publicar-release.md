@@ -87,7 +87,7 @@ ou `?view=agente`) — sem precisar recompilar nem cortar release nova.
 Configuração vive em `src/shared/config/agenteConfig.ts` e é gravada em
 `chrome.storage.local` (`src/shared/config/agenteConfigStore.ts`).
 
-> **O `check-release-env.sh` não valida `VITE_AGENTE_BACKEND_URL`.** Quem definir essa variável deve usar `https://`: um `http://` de produção passa pelo script e não é corrigido em runtime (a barra no fim é normalizada, o `http` não).
+> **O `check-release-env.sh` não valida `VITE_AGENTE_BACKEND_URL`.** Quem definir essa variável deve usar `https://`: um `http://` de produção passa pelo script e não é corrigido em runtime (a barra no fim e os espaços nas pontas são normalizados, inclusive no padrão da build; o `http` não).
 
 A chave `x-agente-key` (autenticação opcional do webhook) **não tem** variável
 de build de propósito — não existe `VITE_AGENTE_KEY` nem qualquer valor
