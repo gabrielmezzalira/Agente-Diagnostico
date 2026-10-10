@@ -106,6 +106,14 @@ export interface AgenteConfig {
   agenteApiKey: string;
   /** Reunião nova confirmada como continuação da mesma sessão (CR-01). Vazio = nenhuma. */
   confirmedMeetingId: string;
+  /**
+   * Última reunião enviada para a sessão `agenteSessionId` (CR-01). Fica em
+   * `storage.local` — sobrevive ao fechamento do navegador, ao contrário do cursor
+   * (`storage.session`) — para que o streamer reconheça uma reunião diferente
+   * mesmo sem cursor. Só o id da reunião, nunca texto. Vazio = nenhuma ainda.
+   * `patchAgenteConfig` zera quando o `agenteSessionId` muda.
+   */
+  boundMeetingId: string;
 }
 
 export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
@@ -114,6 +122,7 @@ export const DEFAULT_AGENTE_CONFIG: AgenteConfig = {
   agenteSessionId: '',
   agenteApiKey: '',
   confirmedMeetingId: '',
+  boundMeetingId: '',
 };
 
 /**
@@ -144,7 +153,17 @@ export function normalizeAgenteConfig(
   const confirmedMeetingId =
     typeof source.confirmedMeetingId === 'string' ? source.confirmedMeetingId : '';
 
-  return { agenteBackendUrl, streamingEnabled, agenteSessionId, agenteApiKey, confirmedMeetingId };
+  const boundMeetingId =
+    typeof source.boundMeetingId === 'string' ? source.boundMeetingId : '';
+
+  return {
+    agenteBackendUrl,
+    streamingEnabled,
+    agenteSessionId,
+    agenteApiKey,
+    confirmedMeetingId,
+    boundMeetingId,
+  };
 }
 
 const AGENTE_SESSION_ID_PATTERN =

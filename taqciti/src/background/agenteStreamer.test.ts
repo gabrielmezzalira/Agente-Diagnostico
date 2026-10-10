@@ -41,6 +41,7 @@ const READY_CONFIG = {
   agenteSessionId: SESSION_ID,
   agenteApiKey: 's3cr3t',
   confirmedMeetingId: '',
+  boundMeetingId: '',
 };
 
 function baseSession(overrides: Partial<MeetingSessionState> = {}): MeetingSessionState {

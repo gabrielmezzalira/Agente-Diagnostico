@@ -159,6 +159,7 @@ describe('AgenteConfigScreen', () => {
       agenteApiKey: 's3cr3t',
       streamingEnabled: false,
       confirmedMeetingId: '', // CR-01: nenhuma reunião nova confirmada
+      boundMeetingId: '',
     });
   });
 

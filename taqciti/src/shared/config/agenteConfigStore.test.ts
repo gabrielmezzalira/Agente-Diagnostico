@@ -106,6 +106,48 @@ describe('patchAgenteConfig', () => {
     expect(config.agenteBackendUrl).toBe(DEFAULT_AGENTE_CONFIG.agenteBackendUrl);
     expect(config.streamingEnabled).toBe(DEFAULT_AGENTE_CONFIG.streamingEnabled);
   });
+
+  /*
+   * CR-01: `boundMeetingId` é "a última reunião enviada para ESTA sessão". Trocar
+   * a sessão faz o vínculo deixar de valer — se sobrevivesse, a reunião certa da
+   * sessão nova seria tratada como "reunião diferente" e travaria à espera.
+   */
+  describe('boundMeetingId (CR-01)', () => {
+    const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
+    const BOUND = { ...DEFAULT_AGENTE_CONFIG, agenteSessionId: SAVED_SESSION_ID, boundMeetingId: 'M1' };
+
+    it('trocar o agenteSessionId zera o vínculo', async () => {
+      const { patchAgenteConfig } = await fresh(BOUND);
+      const next = await patchAgenteConfig({ agenteSessionId: OTHER_SESSION_ID });
+      expect(next.boundMeetingId).toBe('');
+    });
+
+    it('regravar o MESMO agenteSessionId (inclusive com espaços) mantém o vínculo', async () => {
+      const { patchAgenteConfig } = await fresh(BOUND);
+      const next = await patchAgenteConfig({ agenteSessionId: `  ${SAVED_SESSION_ID} ` });
+      expect(next.boundMeetingId).toBe('M1');
+    });
+
+    it('patch que não mexe na sessão mantém o vínculo', async () => {
+      const { patchAgenteConfig } = await fresh(BOUND);
+      const next = await patchAgenteConfig({ streamingEnabled: true });
+      expect(next.boundMeetingId).toBe('M1');
+    });
+
+    it('trocar a sessão e gravar o vínculo no mesmo patch vale o vínculo novo', async () => {
+      const { patchAgenteConfig } = await fresh(BOUND);
+      const next = await patchAgenteConfig({
+        agenteSessionId: OTHER_SESSION_ID,
+        boundMeetingId: 'M2',
+      });
+      expect(next.boundMeetingId).toBe('M2');
+    });
+
+    it('config salva antes do CR-01 (sem o campo) carrega com vínculo vazio', async () => {
+      const { loadAgenteConfig } = await fresh({ agenteSessionId: SAVED_SESSION_ID });
+      expect((await loadAgenteConfig()).boundMeetingId).toBe('');
+    });
+  });
 });
 
 describe('subscribeAgenteConfig', () => {

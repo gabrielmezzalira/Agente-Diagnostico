@@ -135,6 +135,14 @@ describe('normalizeAgenteConfig — invariante "campo salvo vence / campo ausent
   });
 });
 
+describe('normalizeAgenteConfig — boundMeetingId (CR-01)', () => {
+  it('string salva é mantida; ausente ou de tipo errado vira vazio', () => {
+    expect(normalizeAgenteConfig({ boundMeetingId: 'M1' }).boundMeetingId).toBe('M1');
+    expect(normalizeAgenteConfig({}).boundMeetingId).toBe('');
+    expect(normalizeAgenteConfig({ boundMeetingId: 42 as unknown as string }).boundMeetingId).toBe('');
+  });
+});
+
 describe('isValidAgenteSessionId', () => {
   it('aceita UUID em maiúsculas ou minúsculas', () => {
     expect(isValidAgenteSessionId('11111111-1111-1111-1111-111111111111')).toBe(true);
@@ -154,6 +162,7 @@ describe('getStreamingReadiness — ordem de precedência disabled > invalid-url
     agenteSessionId: '11111111-1111-1111-1111-111111111111',
     agenteApiKey: 'chave',
     confirmedMeetingId: '',
+    boundMeetingId: '',
   };
 
   it('disabled quando streamingEnabled=false, mesmo com o resto inválido', () => {
@@ -231,6 +240,7 @@ describe('buildExtensionChunkRequest', () => {
     agenteSessionId: '11111111-1111-1111-1111-111111111111',
     agenteApiKey: '',
     confirmedMeetingId: '',
+    boundMeetingId: '',
   };
 
   it('monta URL = base + /webhook/extension, método POST', () => {
