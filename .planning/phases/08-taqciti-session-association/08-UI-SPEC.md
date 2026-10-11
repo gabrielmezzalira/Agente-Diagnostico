@@ -84,7 +84,7 @@ Exceções (todas herdadas do kit/painel, nenhuma nova):
 - Gutter do corpo do painel = **14px** (`px-3.5`, definido em `PanelApp`); o conteúdo novo herda, não redefine.
 - Folgas de 6px / 10px dos botões e controles do kit (`gap-1.5`, `gap-2.5`).
 - Alturas de alvo de toque: `Button` default = **44px** (ação principal de cada tela); `Button compact` = **34px** (ações auxiliares); o ícone "!" tem alvo de **32px** (visual de 20px), no mesmo nível dos controles de cabeçalho do painel (28px). É uma ferramenta de desktop com mouse, e o 44px vale para as ações principais.
-- Itens de lista (OptionCard) têm ~62px de altura; é o que o kit entrega, não se redefine.
+- Itens de lista (OptionCard) têm a altura que o kit entrega (conteúdo + padding próprio do componente); esta fase não fixa nem redefine essa altura.
 
 ---
 
@@ -116,7 +116,7 @@ Tema único escuro. Os valores vêm de `tokens.css`; não declarar cor nova.
 | Dominant (60%) | `#080B0E` (`--c-background`) com os halos de aurora do `body` | Fundo da saída larga e o que o vidro do painel filtra |
 | Secondary (30%) | `#10141A` surface / `#161B23` elevated + camadas de vidro (`.glass`, `.glass-raised`, `.glass-subtle`, `.glass-sunken`) | Moldura do painel, cartão de decisão, linhas de lista, barra de vínculo, campos |
 | Accent (10%) | `#5CCB85` (`--c-primary`), brilho `#90DFAD` (`--c-glow`), texto sobre o verde `#0C3120` | Ver lista abaixo |
-| Destructive | `#F88D8D` (`--c-danger`) | Somente "Descartar" e a confirmação de descarte; falha irrecuperável de envio |
+| Destructive | `#F88D8D` (`--c-danger`) | "Descartar" e a confirmação de descarte; e a mensagem de erro de uma ação do usuário que falhou sem perder dado (ex.: falha ao criar cliente, `text-danger` abaixo do campo). A falha no meio do envio em partes **não** usa danger: é warning (nada foi perdido, a transcrição segue guardada). |
 | Warning (cor semântica já existente) | `#F2C94C` (borda/fundo a 25%/10%), texto `#F7DD8F` | Ícone "!" de reunião pendente; aviso de "Agente fora do ar"; selo "Sem cliente" e "Envio parou". É o mesmo literal que `PanelApp` já usa nos avisos de legenda e de captura. **Não** criar token novo nesta fase. |
 
 Texto: `#F4F7FA` (`--c-text`), apoio `#94A3B1` (`--c-muted`).
@@ -126,8 +126,10 @@ Texto: `#F4F7FA` (`--c-text`), apoio `#94A3B1` (`--c-muted`).
 1. O botão `primary` único de cada tela ("Selecionar cliente agora", "Vincular reunião", "Enviar reunião", "Criar e vincular");
 2. A linha de cliente **selecionada** na lista (fundo `bg-primary/12` + fio de 1px, o estado `selected` do `OptionCard`);
 3. O ponto e o texto de "Enviando ao vivo para {cliente}" na barra de vínculo, enquanto tudo está saudável (`text-glow`);
-4. O selo "Enviada" (`Badge tone="primary"`);
-5. O anel de foco (`outline-primary/70`) e o fio interno de foco dos campos.
+4. Os selos "Enviada" e "Enviando" (`Badge tone="primary"`);
+5. O anel de foco (`outline-primary/70`) e o fio interno de foco dos campos;
+6. A parte preenchida do trilho do `ProgressRail` (envio do que já foi falado e envio em partes);
+7. O `Icon check` de sucesso ("Reunião enviada para {cliente}.") e o `Icon check` da linha de cliente selecionada.
 
 **Nunca em accent:** o ícone "!" (é warning), o aviso de Agente offline (warning), linhas de lista em repouso, o botão "Depois", o botão "Descartar" (é danger).
 
@@ -174,6 +176,7 @@ Todo texto da UI em português (pt-BR), tom direto, sem jargão. "Taqciti" e "Ag
 | Apoio | `Só o nome basta. Tipo de projeto, maturidade e contexto você completa depois no Agente.` |
 | Primary CTA, ao vivo | `Criar e vincular` |
 | Primary CTA, encerrada | `Criar e enviar` |
+| Ação secundária (`ghost`) | `Voltar à lista` (volta à lista de clientes sem criar nada; o texto digitado é descartado) |
 | Em andamento | `Criando…` |
 | Nome duplicado | `Já existe um cliente com esse nome. Selecione-o na lista.` |
 | Erro | `Não foi possível criar o cliente. Confira a conexão e tente de novo.` |
@@ -217,6 +220,7 @@ Todo texto da UI em português (pt-BR), tom direto, sem jargão. "Taqciti" e "Ag
 | Sucesso | `Reunião enviada para {cliente}.` |
 | Falha no meio | `O envio parou na parte {x} de {y}. O que já chegou continua no Agente.` |
 | Ação da falha | `Continuar envio` (**bloqueada** por Decisão do time 3, ver abaixo) |
+| Apoio enquanto `Continuar envio` está bloqueado | `A transcrição continua guardada na Taqciti. Você pode copiá-la ou baixá-la enquanto isso.` |
 
 ### Selos no histórico
 
@@ -226,8 +230,10 @@ Todo texto da UI em português (pt-BR), tom direto, sem jargão. "Taqciti" e "Ag
 
 | Ação | Confirmação |
 |------|-------------|
-| Descartar (reunião nunca enviada) | Título `Descartar esta reunião?`. Corpo: `“{título}” será removida do histórico da Taqciti, com a transcrição. Nada foi enviado ao Agente, então não há como recuperar.` Confirmar: `Descartar` (`danger`). Cancelar: `Cancelar`. |
-| Apagar (já existente, reunião já enviada) | Mantém `Apagar do histórico?` e **acrescenta** ao corpo: `A cópia que já foi enviada ao Agente continua lá.` (D-11: nada é apagado no backend; sem essa frase a pessoa pode achar que apagou dos dois lados.) |
+| Descartar (reunião nunca enviada) | Título `Descartar esta reunião?`. Corpo: `“{título}” será removida do histórico da Taqciti, com a transcrição. Nada foi enviado ao Agente, então não há como recuperar.` Confirmar: `Descartar` (`danger`). Recusar: `Manter reunião` (`ghost`, fecha o modal e preserva a reunião e a transcrição). |
+| Apagar (já existente, reunião já enviada) | Mantém `Apagar do histórico?` e **acrescenta** ao corpo: `A cópia que já foi enviada ao Agente continua lá.` (D-11: nada é apagado no backend; sem essa frase a pessoa pode achar que apagou dos dois lados.) Recusar: `Manter no histórico` (mesmo mecanismo de override abaixo). |
+
+**Override do rótulo de recusa do `ConfirmModal`:** o kit hoje fixa o texto `Cancelar` no `ConfirmModal` (`taqciti/src/shared/ui/ConfirmModal.tsx`, linha 60). Este contrato acrescenta uma prop opcional `cancelLabel?: string` ao `ConfirmModal`, com padrão `'Cancelar'` para não alterar chamadores existentes; todo uso desta fase **deve** passar `cancelLabel` explícito (`Manter reunião` / `Manter no histórico`). O `Esc` e o clique no fundo continuam chamando `onCancel`, sem mudança de comportamento.
 
 ### Tela "Agente Diagnóstico" (`AgenteConfigScreen`)
 
@@ -296,7 +302,7 @@ Componente apresentacional `ClientPicker`: recebe a lista, o estado (`loading` |
 
 - **Dois passos, de propósito.** Clicar numa linha só a *seleciona* (estado `selected` verde). Quem cria sessão e envia é o botão do rodapé. Criar uma sessão no backend a cada clique errado geraria sessões órfãs, e o `OptionCard` já suporta `selected` sem avançar sozinho (o avanço automático dele é do papel `single` do fluxo antigo, não obrigatório).
 - Selecionar outra linha troca a seleção. Selecionar de novo a mesma linha desmarca.
-- `Criar cliente novo` troca a lista por um formulário inline: `TextField` `Nome do cliente` + texto de apoio + `primary` (`Criar e vincular` | `Criar e enviar`) + `ghost` `Cancelar` (volta à lista). `Enter` envia; `Esc` cancela. Quando a busca não acha nada, a ação `Criar cliente “{busca}”` abre o formulário já preenchido.
+- `Criar cliente novo` troca a lista por um formulário inline: `TextField` `Nome do cliente` + texto de apoio + `primary` (`Criar e vincular` | `Criar e enviar`) + `ghost` `Voltar à lista` (volta à lista sem criar nada). `Enter` envia; `Esc` aciona `Voltar à lista`. Quando a busca não acha nada, a ação `Criar cliente “{busca}”` abre o formulário já preenchido.
 - **Enviando:** o CTA vira `Criando…`/`Enviando…`, fica desabilitado, e a lista fica inerte (`aria-busy`). Em falha, a mensagem aparece abaixo do campo (`text-caption text-danger`, `aria-live="assertive"`) e o valor digitado é preservado.
 - **Painel compacto (320px):** ao abrir o picker em `compact`, o painel sobe para `regular` (564px) uma vez. Em 320px a lista receberia menos de duas linhas.
 - **Saída larga:** o picker ocupa a tela inteira dentro do `AppShell` (cabeçalho de vidro fixo, lista com `scroll-region`, rodapé fixo).
@@ -325,7 +331,7 @@ Faixa de uma linha acima da transcrição ao vivo (`LiveBody`), `Surface level="
 - **Mesmo pedido, por botão** (D-09): `Enviar ao Agente` (`secondary compact`, largura total) acima da fileira Copiar / Baixar .txt / Apagar, em `RecordDetail` (saída larga) e na `MeetingScreen` (painel). Aparece só para reuniões não enviadas. Reuso da mesma `MeetingScreen`/`RecordDetail`; **não** criar telas irmãs.
 - **Envio em partes:** substitui o cartão por `Enviando para {cliente}…` + `ProgressRail` `{x} de {y}` (singular `1 de 1` quando for uma parte só). **Sem botão Cancelar** nesta fase: o envio continua no service worker mesmo se o painel for fechado. Ver "Decisões a confirmar" (e).
 - **Sucesso:** o cartão vira `Reunião enviada para {cliente}.` com `Icon check` em `text-primary`, e o selo do histórico passa a `Enviada`.
-- **Falha no meio:** mostra o texto de falha (warning) e `Continuar envio` **só quando a Decisão do time 3 estiver resolvida**; até lá exibir apenas o texto, sem botão de retry (risco de duplicar fala).
+- **Falha no meio:** mostra o texto de falha (warning) e `Continuar envio` **só quando a Decisão do time 3 estiver resolvida**; até lá exibir apenas o texto de falha + a linha de apoio (`A transcrição continua guardada…`), sem botão de retry (risco de duplicar fala). Enquanto estiver bloqueado, o que a pessoa pode fazer é `Copiar`, `Baixar .txt` e `Apagar` (já existentes, este último com a frase extra de D-11); `Enviar ao Agente` **não reaparece** para uma reunião em `send-failed`, porque reenviar do zero duplicaria as partes que já chegaram. O selo do histórico fica `Envio parou`.
 - **Descartar:** `ConfirmModal` com `danger`. Depois de confirmar, a reunião sai do histórico e o painel volta ao histórico. Irreversível (one-way, D-11).
 - **Conferir no teste manual (D-20c):** o painel tem `scale-100` (transform), que faz o `fixed` do `ConfirmModal` ficar contido na caixa do painel em vez da viewport. Se for isso, é aceitável (o modal cobre o painel). O `ConfirmModal` hoje só é usado na saída larga.
 
@@ -365,6 +371,7 @@ Nomes sugeridos; o planejamento decide a divisão final em arquivos (um componen
 | `AssociationBadge` | componente | Mapeia estado → `Badge`. |
 | `Icon` `alert` | acréscimo | Traço de exclamação, mesma espessura de 1.8, sem círculo. Entra em `IconName` e `PATHS`. |
 | `nudge` | acréscimo | `keyframes` + `animation` em `tailwind.config.ts`, 5 s, só `transform`. |
+| `ConfirmModal` prop `cancelLabel` | acréscimo | Prop opcional (`string`, padrão `'Cancelar'`) para o rótulo do botão de recusa; ver "Override do rótulo de recusa" em Destrutivos. Compatível com os usos atuais. |
 | `ClientDirectory` | interface (não é UI) | `list()`, `create(name)`; permite trocar a origem (AGM). |
 
 Nenhum token novo em `tokens.css`. Nenhum tamanho novo de fonte.
