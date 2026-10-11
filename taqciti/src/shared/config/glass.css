@@ -1,0 +1,280 @@
+/**
+ * As camadas de vidro do Liquid Glass — a receita, num arquivo só.
+ *
+ * Antes esta receita existia DUAS vezes, copiada byte a byte entre
+ * `global.css` (janela principal e popup) e `panel.css` (painel injetado no
+ * Meet). Duas cópias de um efeito visual divergem sempre: foi assim que os
+ * vidros das telas passaram a ter opacidades diferentes. Agora os dois lados
+ * importam este arquivo, e a única diferença entre eles continua sendo onde
+ * os tokens são declarados (`:root` vs `:host`, ver tokens.css).
+ *
+ * ── O que faz um vidro parecer vidro ───────────────────────────────────────
+ *
+ * Um `background: rgba(...)` sozinho parece plástico fosco. São três coisas
+ * juntas que dão a leitura de superfície física, e nenhuma delas funciona sem
+ * as outras:
+ *
+ *   1. o BLUR com saturação — desfoque puro acinzenta o que está atrás;
+ *      recuperar a saturação é o que faz a luz parecer atravessar em vez de
+ *      ser absorvida;
+ *   2. o FIO DE LUZ de 1px em gradiente (::before) — vidro real acende na
+ *      quina onde a luz entra e apaga na oposta. Uma borda de cor uniforme
+ *      mata o efeito, porque anuncia que aquilo é uma caixa desenhada;
+ *   3. o GRÃO (::after) — uma textura quase imperceptível. É o que tira o
+ *      aspecto de degradê digital perfeito.
+ *
+ * ── A escala ───────────────────────────────────────────────────────────────
+ *
+ * Quatro níveis, e o nível diz o PAPEL, não a aparência:
+ *
+ *   .glass          moldura do app — cabeçalho, barra de controles, modal
+ *   .glass-raised   cartão que flutua sobre o fundo
+ *   .glass-subtle   item de lista, controle secundário
+ *   .glass-sunken   campo de entrada, trecho rebaixado
+ *
+ * Só os dois primeiros desfocam o fundo. `backdrop-filter` obriga o
+ * compositor a rasterizar de novo tudo o que está atrás do elemento a cada
+ * quadro: numa lista de reuniões que rola, um blur por item derruba o
+ * scroll. Vidro em tudo não é o objetivo — é hierarquia, e hierarquia exige
+ * que a maior parte da tela NÃO seja o nível mais alto.
+ */
+
+.glass,
+.glass-raised,
+.glass-subtle,
+.glass-sunken {
+  position: relative;
+  /* Sem isto o `z-index: -1` dos pseudo-elementos escapa para trás do
+     ancestral mais próximo com contexto de empilhamento, e o fio de luz
+     some atrás da superfície de baixo. */
+  isolation: isolate;
+}
+
+.glass {
+  background: var(--glass-chrome);
+  backdrop-filter: blur(var(--blur-md)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-md);
+}
+
+.glass-raised {
+  background: var(--glass-raised);
+  backdrop-filter: blur(var(--blur-sm)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-sm);
+}
+
+.glass-subtle {
+  background: var(--glass-subtle);
+}
+
+.glass-sunken {
+  background: var(--glass-sunken);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+/*
+ * O fio de luz. `padding: 1px` + máscara XOR desenha SÓ a moldura de um
+ * pixel, acompanhando o `border-radius` herdado — é o único jeito de ter
+ * borda em gradiente com canto arredondado sem uma segunda caixa no DOM e sem
+ * que a curva externa e a interna briguem.
+ */
+.glass::before,
+.glass-raised::before,
+.glass-subtle::before,
+.glass-sunken::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.glass::before {
+  background: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.26),
+    rgba(255, 255, 255, 0.07) 32%,
+    rgba(255, 255, 255, 0.02) 58%,
+    rgba(255, 255, 255, 0.1)
+  );
+}
+
+.glass-raised::before {
+  background: linear-gradient(
+    158deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.05) 38%,
+    rgba(255, 255, 255, 0.02) 64%,
+    rgba(255, 255, 255, 0.07)
+  );
+}
+
+.glass-subtle::before {
+  background: linear-gradient(
+    158deg,
+    var(--color-border-soft),
+    var(--color-border-faint) 60%,
+    var(--color-border-soft)
+  );
+}
+
+.glass-sunken::before {
+  background: linear-gradient(
+    158deg,
+    var(--color-border-faint),
+    var(--color-border-soft)
+  );
+}
+
+/*
+ * O grão. Só nas superfícies grandes: numa lista longa ele multiplica o custo
+ * de paint por item sem nenhum ganho perceptível a 22px de altura.
+ */
+.glass::after,
+.glass-raised::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+}
+
+/*
+ * REFLEXO — a luz verde difusa que acende por trás do vidro sob o cursor.
+ *
+ * A intenção é "uma fonte de luz verde ATRÁS de um vidro transparente", e não
+ * um botão que muda de cor. Quatro decisões sustentam isso:
+ *
+ *   1. a luz TRANSBORDA o elemento, por `filter: blur` e não por uma caixa
+ *      maior. O desfoque de filtro pinta fora da borda do elemento de graça,
+ *      então o brilho vaza suave para os lados sem uma segunda caixa no DOM e
+ *      sem `box-shadow`, que travaria numa auréola de contorno — a leitura de
+ *      neon duro que se quer evitar;
+ *   2. o raio é PROPORCIONAL ao elemento, via `--sheen-r`. Um raio fixo em
+ *      pixels servia enquanto só botões acendiam: os mesmos 72px que eram uma
+ *      poça num botão largo lavavam um controle de ícone de 28px inteiro, e o
+ *      efeito virava "ficou verde". Agora a fonte de luz cresce com a
+ *      superfície que ela ilumina;
+ *   3. a opacidade continua baixa e some por transição — o vidro segue
+ *      translúcido o tempo todo, a cor da marca não muda, só ganha um realce
+ *      local;
+ *   4. no clique a MESMA luz fica um pouco mais forte, em vez de o elemento
+ *      mudar de fundo. É a diferença entre iluminar mais e preencher.
+ *
+ * Posição e raio vêm de `--sheen-x` / `--sheen-y` / `--sheen-r`, que
+ * `trackSheen` escreve no elemento a cada movimento do ponteiro (propriedade
+ * customizada herda, então a camada lê de graça). Sem ponteiro — foco por
+ * teclado — os padrões deixam a luz no centro, num raio médio.
+ *
+ * `z-index: -1` dentro do `isolate` do elemento: pinta ACIMA do fundo do vidro
+ * e ABAIXO do rótulo, que é exatamente onde uma luz atrás do vidro mora. Sem o
+ * `isolate` esta camada escaparia para trás do ancestral com contexto de
+ * empilhamento (a moldura de vidro da tela) e sumiria.
+ */
+.sheen {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  /* O que faz a luz ultrapassar os limites do elemento. Proporcional ao raio
+     pela mesma razão que o raio é proporcional ao elemento. */
+  filter: blur(calc(var(--sheen-r, 96px) * 0.16));
+  transition: opacity var(--dur-slow) var(--motion-flow);
+}
+
+/* O caso comum: vidro neutro recebendo luz verde. */
+.sheen-green {
+  background: radial-gradient(
+    var(--sheen-r, 96px) var(--sheen-r, 96px) at var(--sheen-x, 50%) var(--sheen-y, 50%),
+    rgba(92, 203, 133, 0.58),
+    rgba(92, 203, 133, 0.24) 46%,
+    transparent 78%
+  );
+}
+
+/*
+ * O primário JÁ é verde. Uma luz verde sobre superfície verde não lê como
+ * reflexo — lê como "o botão ficou mais verde no hover", que é precisamente o
+ * que se quer evitar. Sobre o vidro tingido, a mesma fonte de luz se comporta
+ * como um realce quase branco com um resto de cor: é assim que uma luz colorida
+ * incide numa superfície da própria cor.
+ */
+.sheen-light {
+  background: radial-gradient(
+    var(--sheen-r, 96px) var(--sheen-r, 96px) at var(--sheen-x, 50%) var(--sheen-y, 50%),
+    rgba(226, 255, 238, 0.55),
+    rgba(180, 240, 205, 0.22) 46%,
+    transparent 78%
+  );
+}
+
+/*
+ * O clique. A luz existente ganha corpo em vez de o elemento ganhar fundo —
+ * escrito aqui, e não como variante do Tailwind, porque depende do mesmo
+ * `--sheen-r` do resto da receita e ficaria ilegível como classe arbitrária.
+ */
+.group\/sheen:active .sheen {
+  opacity: 1;
+  filter: blur(calc(var(--sheen-r, 96px) * 0.14)) brightness(1.5);
+}
+
+/*
+ * Vidro TINGIDO de verde — a peça central da suavização do acento.
+ *
+ * O botão primário antes era um bloco de verde chapado, e era ele que
+ * carregava quase toda a sensação de saturação da interface: um retângulo
+ * sólido de hsl(138 79% 52%) ocupando a base da tela o tempo inteiro. Aqui o
+ * mesmo verde vira uma PLACA DE VIDRO VERDE: alpha abaixo de 1, blur por
+ * trás, brilho interno na quina de cima. O fundo atravessa um pouco, a cor
+ * respira, e a hierarquia não se perde — continua sendo o único elemento
+ * colorido da tela.
+ */
+.glass-tint {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    to bottom,
+    rgba(92, 203, 133, 0.78),
+    rgba(64, 173, 108, 0.68)
+  );
+  backdrop-filter: blur(var(--blur-sm)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(var(--glass-saturate));
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Um respiro de luz atrás do vidro tingido: dá a impressão de que a cor vem
+   de baixo da superfície, não de cima dela. Fica desligado no hover porque o
+   próprio hover já clareia — somados, viravam brilho exagerado. */
+.glass-tint::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% -30%,
+    rgba(255, 255, 255, 0.22),
+    transparent 62%
+  );
+}

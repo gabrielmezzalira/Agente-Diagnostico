@@ -2,45 +2,45 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 7
-current_phase_name: Taqciti Config + Background Streamer
+current_phase: 8
+current_phase_name: Taqciti Session Association
 status: planning
-stopped_at: Phase 06 complete, ready to plan Phase 7
-last_updated: "2026-09-25T13:58:48.838Z"
-last_activity: 2026-09-25
-last_activity_desc: Phase 06 complete, transitioned to Phase 7
-state_head: 2702b12f453a13b3ad04d2020a5eaec936b10bed
+stopped_at: Phase 7 complete, ready to plan Phase 8
+last_updated: "2026-09-27T13:18:52.007Z"
+last_activity: 2026-09-27
+last_activity_desc: Phase 7 complete, transitioned to Phase 8
+state_head: 7f2dd542f16ab8bc074f5d4b169fed5c0ebe2468
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
-  percent: 60
+  completed_phases: 7
+  total_plans: 24
+  completed_plans: 24
+  percent: 70
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-25)
+See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 07 — Taqciti Config + Background Streamer
+**Current focus:** Phase 08 — Taqciti Session Association
 
 ## Current Position
 
-Phase: 7 — Taqciti Config + Background Streamer
+Phase: 8 — Taqciti Session Association
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-25 — Phase 06 complete, transitioned to Phase 7
+Last activity: 2026-09-27 — Phase 7 complete, transitioned to Phase 8
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 24
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -54,6 +54,7 @@ Progress: [██████░░░░] 60%
 | 04 | 4 | - | - |
 | 05 | 5 | - | - |
 | 06 | 2 | - | - |
+| 7 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -81,6 +82,10 @@ Progress: [██████░░░░] 60%
 | Phase 05 P05 | ~10min | 2 tasks | 5 files |
 | Phase 06 P01 | ~10min | 2 tasks | 5 files |
 | Phase 06 P02 | 35min | 2 tasks | 7 files |
+| Phase 07 P07-01 | ~30min | 3 tasks | 7 files |
+| Phase 07 P07-02 | ~20min | 2 tasks | 5 files |
+| Phase 07 P07-03 | ~35min | 2 tasks | 8 files |
+| Phase 07 P04 | 24min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -119,6 +124,15 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06] D-02: campo da extensao usa input type=password e chrome.storage.local (nunca .sync) — mesmo nivel de exposicao do campo backendUrl ja existente
 - [Phase 06]: [Phase 06] D-03: ativacao real de EXTENSION_SHARED_KEY em producao (Railway) fica como DECISAO EM ABERTO do time — nenhuma task desta fase seta a env var em ambiente real
 - [Phase 06]: [Fase 06] [06-02]: rastreio de edicao por campo (editCount) + releitura pos-save substitui a guarda de foco do plano anterior (3f0d1e8) - foco sai do campo para o botao Salvar antes do clique (Tab/mousedown), entao so a guarda de foco nao fecha o G-06-1
+- [Phase 07]: [Phase 07-01]: computeSegmentDeltas ganhou tipo de retorno proprio (cursor nunca nulo) em vez de reusar StreamStep -- elimina checagens de null desnecessarias reveladas pelo typecheck
+- [Phase 07]: [Phase 07-01]: precondicao da Task 1 tratada como satisfeita incluindo .planning/state.json (companheiro JSON de STATE.md) na mesma categoria de bookkeeping do GSD ja prevista pela Passo 3 do plano
+- [Phase 07]: [Phase 07-02]: createAgenteConfigReader registra o listener de onChanged ANTES da leitura inicial (mesma ordem de prefsStore.ts) para nao perder mudanca que chegue entre as duas operacoes assincronas
+- [Phase 07]: [Phase 07-02]: streamer passa a ler a config real do storage via createAgenteConfigReader() no lugar de DEFAULT_AGENTE_CONFIG fixo - gravar ligado+session_id+URL no storage liga a transmissao sem recompilar
+- [Phase 07]: [Phase 07] [07-03]: request.agenteConfig decidido em App.tsx antes de request.history e do switch de fase - pedido explicito da URL vence, mesma logica do historico
+- [Phase 07]: [Phase 07] [07-03]: readiness deriva da config salva (nao do rascunho em edicao) - digitar nao muda o status ate Salvar; so o toggle grava na hora e muda o status imediatamente
+- [Phase 07]: [Phase 07] [07-03]: teste de componente descobriu que act(async) so comita no fim do callback - vi.waitFor chamado de dentro do act trava ate o timeout; correcao foi o helper flushUntil fazendo o polling fora do act
+- [Phase 07]: D-06 refinado (aprovado pelo usuario em 2026-09-26, opcao phrase-window): envio ao Agente ganha janela propria por fala - silencio 1500ms (AGENTE_PHRASE_QUIET_MS), teto 5000ms (AGENTE_PHRASE_MAX_WAIT_MS), envio imediato ao sair de 'recording'; a parte estrutural do D-06 (alimentado so por flushState()) continua valendo
+- [Phase 07]: Chamar onSessionFlushed()/step() enquanto o streaming esta desligado reseta o cursor do wordDelta para null (comportamento pre-existente) - o primeiro flush pos-religar sempre re-ancora (prime) antes de qualquer envio novo
 
 ### Pending Todos
 
@@ -132,6 +146,7 @@ None yet.
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
+- [Phase 07] RESOLVIDO (2026-09-27): SC1 e SC2 verificados via /gsd-verify-work. SC1 encontrou G-07-1/G-07-2 (fala fragmentada em varias linhas) na primeira rodada; fechados pelo plano 07-04 (janela de agrupamento por fala) e confirmados OK no reteste ao vivo no Meet. SC2 (Gerar Documento sem regressao) passou de primeira.
 
 ## Deferred Items
 
@@ -149,6 +164,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-25
-Stopped at: Phase 06 complete, ready to plan Phase 7
+Last session: 2026-09-27T13:20:00Z
+Stopped at: Phase 7 complete (UAT passed, re-verified 30/30), ready to plan Phase 8
 Resume file: None

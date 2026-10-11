@@ -34,7 +34,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 4: Discovery Report + Pricing Handoff** - One discovery document with a pricing-metrics section, feeding import-from-diagnosis (completed 2026-09-23)
 - [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
-- [ ] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call
+- [x] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call (completed 2026-09-27)
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
 - [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
 - [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
@@ -213,7 +213,23 @@ Plans:
   2. Taqciti's existing batch `/api/generate` flow continues to work unchanged for calls that don't use live streaming
   3. The Agente backend URL and streaming toggle are configurable in Taqciti (via `agenteConfig.ts`) rather than hardcoded
 
-**Plans**: TBD
+**Plans**: 4/4 plans complete (07-04 é fechamento de gaps, aguardando execução)
+
+**Wave 1**
+
+- [x] 07-01-PLAN.md — Importação da Taqciti em `taqciti/` via `git subtree` (commit isolado, com histórico — D-01/D-02/D-03) + TRACER do streaming ponta a ponta: flush agrupado de 250 ms → delta palavra-a-palavra por segmento → `POST /webhook/extension` com `x-agente-key` condicional, desligado por padrão (D-06/D-07/D-08/D-09/D-10) + casos de borda (TAQ-01)
+
+**Wave 2** *(bloqueada na conclusão da Wave 1)*
+
+- [x] 07-02-PLAN.md — Config do Agente editável em runtime: store em `chrome.storage.local` (`taq:agenteConfig`, fila de patch + `onChanged`) ligado como fonte do streamer — liga/desliga sem recompilar, sem backfill ao religar (D-08/D-09/D-10, TAQ-01)
+
+**Wave 3** *(bloqueada na conclusão da Wave 2)*
+
+- [x] 07-03-PLAN.md — Tela "Agente Diagnóstico" na saída larga (`?view=agente`, link na tela inicial, sem `default_popup`): toggle, session_id manual, URL e chave mascarada + verificação final (typecheck/lint/test/build da Taqciti, pytest do backend, nada fora do escopo alterado) (D-04/D-05/D-08/D-09/D-10, TAQ-01)
+
+**Gap closure** *(fecha G-07-1/G-07-2 do 07-UAT.md — linhas fragmentadas palavra a palavra na tela de monitoramento)*
+
+- [x] 07-04-PLAN.md — GAP G-07-1/G-07-2: envio ao Agente agrupado por fala (janela de silêncio de 1,5 s + teto de 5 s + envio imediato no fim/pausa) em `phraseBatcher.ts` puro + timer único no `agenteStreamer.ts`; cadência local de 250 ms, `sessionController.ts` e `wordDelta.ts` intocados; abre com checkpoint de refinamento do D-06 — **autonomous:false** (TAQ-01)
 
 ### Phase 8: Taqciti Session Association
 
@@ -271,7 +287,33 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 4. Discovery Report + Pricing Handoff | 4/4 | Complete    | 2026-09-23 |
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
-| 7. Taqciti Config + Background Streamer | 0/? | Not started | - |
+| 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 0/? | Not started | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
+
+## Backlog
+
+### Phase 999.1: Follow-up — Phase 7 deferred UAT follow-up: caption quality/punctuation lag (BACKLOG)
+
+**Goal:** Improve punctuation and coherence of the text streamed to the Agente, which currently comes straight from Google Meet's native captions (CC) with no cleanup pass
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "a pontuação, entendimento das falas pelo taqciti estão muito defasada" — Meet's own captions are the source; a fix would require an AI cleanup/rewrite pass over the raw caption text, which is new scope, not a Phase 7 defect (deferred 2026-09-26)
+
+### Phase 999.2: Follow-up — Phase 7 deferred UAT follow-up: make the Agente Diagnóstico link more prominent in Taqciti (BACKLOG)
+
+**Goal:** Make the "Agente Diagnóstico · streaming ao vivo" entry point on the Taqciti home screen more visually explicit (currently a small muted-caption text link)
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "a parte de conectar com a gente diagnostico está muito pequena na aba do taqciti, quero deixar mais explicito essa conexão" — cosmetic/UX polish, out of Phase 7's scope (deferred 2026-09-26)
+
+### Phase 999.3: Follow-up — Phase 7 deferred UAT follow-up: option to not generate a transcript for a meeting (BACKLOG)
+
+**Goal:** Let the user opt a given Taqciti meeting out of transcript generation entirely (today every captured meeting produces a transcript)
+**Source phase:** 07
+**Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
+**Follow-ups:**
+- [ ] User reported during SC1 UAT: "não existe uma opção de não querer gerar uma transcrição" — product-scope decision, needs team alignment before planning (deferred 2026-09-26)
