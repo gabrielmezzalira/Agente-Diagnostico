@@ -28,7 +28,7 @@ foram feitas numa worktree isolada (`.claude/worktrees/rf-07-4188-1791684037`, b
 
 ## Fixed Issues
 
-### WR-01: Gravar o vínculo dentro do objeto da config cria corrida entre o service worker e a tela
+### WR-01: Gravar o vínculo dentro do objeto da config cria corrida entre o service worker e a tela, e uma gravação pode apagar a outra
 
 **Arquivos modificados:** `taqciti/src/shared/config/constants.ts`,
 `taqciti/src/shared/config/agenteBindingStore.ts` (novo),
@@ -68,7 +68,7 @@ lógica/estado, e os testes só provam a sequência simulada. O teste manual no 
 "fechar o navegador, entrar em outra reunião e ver o aviso" (passo 7 do
 `07-DECISOES-REVIEW-2.md`) vale ser refeito, porque o vínculo agora mora em outra chave.
 
-### WR-02: Zerar o status pela tela é read-modify-write entre contextos e pode ressuscitar o aviso "Reunião nova detectada"
+### WR-02: Zerar o status pela tela é read-modify-write entre contextos e pode ressuscitar o aviso "Reunião nova detectada" enquanto o envio já está acontecendo
 
 **Arquivos modificados:** `taqciti/src/shared/config/constants.ts`,
 `taqciti/src/shared/config/agenteStatus.ts`, `taqciti/src/shared/config/agenteStatusStore.ts`,
@@ -102,6 +102,11 @@ de `storage.session`, cada uma com um único dono.
 
 **Status:** fixed: requires human verification. Mesma razão do WR-01. Convém olhar na tela o aviso
 "Reunião nova detectada" aparecendo e sumindo ao confirmar ou trocar a sessão.
+
+### IN-01: A gravação do vínculo zera, sem motivo, o resultado do envio que acabou de sair
+
+**Commit:** `2400d11` (junto com o WR-01)
+**Status:** fixed. Resolvido de brinde pelo WR-01: o vínculo saiu da chave da config, então gravar o vínculo não dispara mais o `onChanged` dela nem o `resetSendOutcome()`. Verificado por teste.
 
 ## Skipped Issues
 
