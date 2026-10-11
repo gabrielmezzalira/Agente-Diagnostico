@@ -5,16 +5,28 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: fixed
-    title: "Reunião nova com o mesmo session_id trava o streaming em silêncio, enquanto a UI diz \"Ligado\""
+    disposition: skipped
+    title: "Religar o toggle numa reunião nova e confirmar manda o que foi dito com o envio DESLIGADO"
   - id: WR-01
     severity: warning
-    disposition: fixed
-    title: "O cursor avança antes do envio ser confirmado: falha de rede perde palavras de vez (agora até 5 s de fala), e a ordem de chegada não é garantida"
+    disposition: open
+    title: "Gravar o vínculo dentro do objeto da config cria corrida entre o service worker e a tela, e uma gravação pode apagar a outra"
   - id: WR-02
     severity: warning
-    disposition: fixed
-    title: "Depois de reiniciar o service worker ou religar o toggle, palavras são descartadas (agora também tudo o que estava pendente na janela)"
+    disposition: open
+    title: "Zerar o status pela tela é read-modify-write entre contextos e pode ressuscitar o aviso \"Reunião nova detectada\" enquanto o envio já está acontecendo"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "A gravação do vínculo zera, sem motivo, o resultado do envio que acabou de sair"
+  - id: IN-02
+    severity: info
+    disposition: open
+    title: "\"← Voltar\" ainda fica sem efeito quando a aba tem só entradas para frente no histórico"
+  - id: IN-03
+    severity: info
+    disposition: open
+    title: "Trocar só o ID da sessão descarta os trechos já liberados para a sessão antiga, mas manda os que ainda estão na janela"
   - id: WR-03
     severity: warning
     disposition: fixed
@@ -55,18 +67,6 @@ findings:
     severity: warning
     disposition: fixed
     title: "`dispose()` não é terminal: um passo já enfileirado na instância antiga rearma timer e envia com as deps antigas"
-  - id: IN-01
-    severity: info
-    disposition: fixed
-    title: "`.catch` redundante em `flushState`"
-  - id: IN-02
-    severity: info
-    disposition: fixed
-    title: "Corrida entre a leitura inicial e o `onChanged` em `subscribeAgenteConfig`"
-  - id: IN-03
-    severity: info
-    disposition: fixed
-    title: "URLs com query, fragmento ou esquema estranho passam na validação"
   - id: IN-04
     severity: info
     disposition: fixed
@@ -99,39 +99,39 @@ findings:
     severity: info
     disposition: fixed
     title: "A fala pendente de uma sessão antiga sai com a URL e a chave atuais, não as do momento em que foi acumulada"
-open: 0
+open: 5
 total: 24
-recorded: 2026-09-27T15:39:56.559Z
+recorded: 2026-10-11T02:17:38.593Z
 ---
 
 # Phase 07: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | 07-REVIEW-FIX.md |
-| WR-01 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-02 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-03 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-04 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-05 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-06 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-07 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-08 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-10 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-11 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-12 | warning | fixed | 07-REVIEW-FIX.md |
-| WR-13 | warning | fixed | 07-REVIEW-FIX.md |
-| IN-01 | info | fixed | 16b4bab |
-| IN-02 | info | fixed | fe14f8c |
-| IN-03 | info | fixed | 8e1885c |
-| IN-04 | info | fixed | 5267a37 |
-| IN-05 | info | fixed | 812214d |
-| IN-06 | info | fixed | 7ba1507 |
-| IN-07 | info | deferred | Adiado (D3): refatoração própria dos testes do streamer (941 linhas); não muda comportamento. |
-| IN-08 | info | deferred | Adiado (D3): separar as responsabilidades do streamer é tarefa de refatoração própria, fora do fechamento da fase. |
-| IN-09 | info | deferred | Adiado (D2): as falas pendentes agora sobrevivem ao reinício do service worker e performance.now() zera a cada reinício; a troca criaria um problema mais frequente do que o ajuste de relógio que resolve. |
-| IN-10 | info | fixed | Resolvido pela refatoração do agenteSender: send síncrono que lança vira falha tratada (await dentro do try) e submit só enfileira. |
-| IN-11 | info | fixed | 6676027 + 62812b9 (fala de outro backend é descartada, para a chave nova não ir ao backend antigo) |
+| CR-01 | critical | skipped | 07-REVIEW-FIX.md |
+| WR-01 | warning | open | - |
+| WR-02 | warning | open | - |
+| IN-01 | info | open | - |
+| IN-02 | info | open | - |
+| IN-03 | info | open | - |
+| WR-03 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-04 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-05 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-06 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-07 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-08 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-10 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-11 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-12 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| WR-13 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
+| IN-04 | info | fixed | 5267a37 (not in the current review) |
+| IN-05 | info | fixed | 812214d (not in the current review) |
+| IN-06 | info | fixed | 7ba1507 (not in the current review) |
+| IN-07 | info | deferred | Adiado (D3): refatoração própria dos testes do streamer (941 linhas); não muda comportamento. (not in the current review) |
+| IN-08 | info | deferred | Adiado (D3): separar as responsabilidades do streamer é tarefa de refatoração própria, fora do fechamento da fase. (not in the current review) |
+| IN-09 | info | deferred | Adiado (D2): as falas pendentes agora sobrevivem ao reinício do service worker e performance.now() zera a cada reinício; a troca criaria um problema mais frequente do que o ajuste de relógio que resolve. (not in the current review) |
+| IN-10 | info | fixed | Resolvido pela refatoração do agenteSender: send síncrono que lança vira falha tratada (await dentro do try) e submit só enfileira. (not in the current review) |
+| IN-11 | info | fixed | 6676027 + 62812b9 (fala de outro backend é descartada, para a chave nova não ir ao backend antigo) (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
