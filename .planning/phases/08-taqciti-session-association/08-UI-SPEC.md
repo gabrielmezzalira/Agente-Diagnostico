@@ -1,10 +1,11 @@
 ---
 phase: "08"
 slug: taqciti-session-association
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-10-11"
+reviewed_at: "2026-10-11"
 ---
 
 # Phase 08 — UI Design Contract
@@ -392,30 +393,52 @@ A UI é construída contra a interface `ClientDirectory` e contra o estado local
 
 ## UI Considerations
 
-> Estados de conteúdo e robustez por elemento. Texto de estado vazio e de erro está em `## Copywriting Contract`; aqui só se referencia, sem repetir.
+> Estados de conteúdo e robustez por elemento. Texto de estado vazio e de erro está em `## Copywriting Contract`; aqui só se referencia, sem repetir. Elementos classificados na sonda: E1 ícone "!" · E2 cartão de decisão · E3 picker · E4 criar cliente · E5 ID manual · E6 barra de vínculo · E7 fim da reunião · E8 selo · E9 modal de confirmação · E10 tela de config.
 
-Applicable state considerations resolved: 15 covered, 1 backstop, 2 unresolved.
+Applicable state considerations resolved: 21 covered, 4 backstop (3 da sonda + 1 herdado do pesquisador: picker em 320px), 5 unresolved. 11 dismissed (listadas abaixo). Total da sonda: 40.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | list-collection: lista de clientes | ✅ covered | Sem clientes cadastrados, a lista mostra o estado vazio documentado (`Nenhum cliente cadastrado ainda.`) com a ação `Criar cliente novo`; busca sem resultado mostra `Nenhum cliente com “{busca}”.` com a ação de criar. |
-| loading | list-collection: lista de clientes | ✅ covered | Enquanto a lista carrega aparecem 4 linhas-esqueleto `glass-subtle` com `animate-typing` e o texto `Carregando clientes…` (`aria-live="polite"`); busca e `Criar cliente novo` ficam desabilitados. |
-| error | list-collection: lista de clientes | ✅ covered | Falha ao carregar mostra a mensagem documentada, `Tentar de novo` e o campo de ID manual (plano B, D-02); o campo nunca aparece com a lista carregada. |
-| populated | list-collection: lista de clientes | ✅ covered | Cada cliente é um `OptionCard` (cliente + projeto); só uma linha selecionada por vez; o CTA do rodapé só habilita com seleção. |
-| partial | list-collection: lista de clientes | ✅ covered | Cliente sem nome de projeto, ou com projeto igual ao cliente, mostra só o rótulo (sem linha de dica vazia). |
-| overflow | list-collection: lista de clientes | ✅ covered | Uma única `scroll-region` com `scrollbar-gutter: stable`; nome longo usa `truncate` + `title`. |
-| zero-one-many | list-collection: contador da lista | ✅ covered | `1 cliente` / `{N} clientes`; com busca `Resultados · {N}`; zero cai no estado vazio. |
-| long-text | interactive-control: linha de cliente | ✅ covered | Rótulo e dica truncam em uma linha com reticências e o nome completo em `title`; nunca quebram o layout do cartão. |
-| empty | form: nome do cliente novo | ✅ covered | Campo vazio ou só com espaços mantém o CTA `Criar e vincular`/`Criar e enviar` desabilitado. |
-| loading | form: nome do cliente novo | ✅ covered | Durante a criação o CTA vira `Criando…`, fica desabilitado, e a lista/campo ficam inertes (`aria-busy`). |
-| error | form: nome do cliente novo | ✅ covered | Falha mostra a mensagem documentada abaixo do campo (`aria-live="assertive"`) e preserva o texto digitado; nome duplicado mostra a dica de duplicidade e mantém o CTA desabilitado. |
-| long-text | form: nome do cliente novo | ⚠ unresolved | O limite de caracteres depende do contrato da rota nova (Decisão do time 1); o planejador assume `maxLength` de 120 até a decisão. |
-| error | interactive-control: vincular / criar sessão | ✅ covered | Falha ao criar a sessão mostra `Não foi possível criar a sessão no Agente…`, o vínculo volta a `deferred` e a reunião continua guardada só na Taqciti (nada é enviado). |
-| loading | interactive-control: envio em partes | ✅ covered | O envio mostra `ProgressRail` com `{x} de {y}` e `tabular-nums`; singular `1 de 1`; continua no service worker se o painel fechar. |
-| error | interactive-control: envio em partes | ⚠ unresolved | A falha no meio mostra o texto de parada, mas o botão `Continuar envio` depende de `chunk_id` (Decisão do time 3); o planejador trata como suposição e não entrega o botão antes da decisão. |
-| zero-one-many | static-content: contagem da fila offline | ✅ covered | `{n} fala na fila` / `{n} falas na fila`; contador some quando a fila esvazia. |
-| long-text | static-content: barra de vínculo | ✅ covered | O nome do cliente na barra usa `truncate` + `title`; o botão de ação não encolhe (`shrink-0`). |
-| overflow | list-collection: picker no painel compacto (320px) | 🧪 backstop | O painel sobe para `regular` ao abrir o picker; verificação visual no painel em 320px e 564px no teste manual (D-20), com pelo menos 3 linhas visíveis em 564px. |
+| empty | list-collection: E3 lista de clientes | ✅ covered | Sem clientes cadastrados, a lista mostra o estado vazio documentado (`Nenhum cliente cadastrado ainda.`) com a ação `Criar cliente novo`; busca sem resultado mostra `Nenhum cliente com “{busca}”.` com a ação de criar. |
+| loading | list-collection: E3 lista de clientes | ✅ covered | Enquanto a lista carrega aparecem 4 linhas-esqueleto `glass-subtle` com `animate-typing` e o texto `Carregando clientes…` (`aria-live="polite"`); busca e `Criar cliente novo` ficam desabilitados. |
+| error | list-collection: E3 lista de clientes | ✅ covered | Falha ao carregar mostra a mensagem documentada, `Tentar de novo` e o campo de ID manual (plano B, D-02); o campo nunca aparece com a lista carregada. |
+| populated | list-collection: E3 lista de clientes | ✅ covered | Cada cliente é um `OptionCard` (cliente + projeto); só uma linha selecionada por vez; o CTA do rodapé só habilita com seleção. |
+| partial | list-collection: E3 lista de clientes | ✅ covered | Cliente sem nome de projeto, ou com projeto igual ao cliente, mostra só o rótulo (sem linha de dica vazia). |
+| overflow | list-collection: E3 lista de clientes | ✅ covered | Uma única `scroll-region` com `scrollbar-gutter: stable`; nome longo usa `truncate` + `title`. |
+| zero-one-many | list-collection: E3 contador da lista | ✅ covered | `1 cliente` / `{N} clientes`; com busca `Resultados · {N}`; zero cai no estado vazio. |
+| long-text | list-collection: E3 linha de cliente | ✅ covered | Rótulo e dica truncam em uma linha com reticências e o nome completo em `title`; nunca quebram o layout do cartão. |
+| empty | form: E4 nome do cliente novo | ✅ covered | Campo vazio ou só com espaços mantém o CTA `Criar e vincular`/`Criar e enviar` desabilitado. |
+| loading | form: E4 nome do cliente novo | ✅ covered | Durante a criação o CTA vira `Criando…`, fica desabilitado, e a lista/campo ficam inertes (`aria-busy`). |
+| error | form: E4 nome do cliente novo | ✅ covered | Falha mostra a mensagem documentada abaixo do campo (`aria-live="assertive"`) e preserva o texto digitado; nome duplicado mostra a dica de duplicidade e mantém o CTA desabilitado. |
+| partial | form: E4 nome do cliente novo | ✅ covered | Quando a busca não acha nada, `Criar cliente “{busca}”` abre o formulário já preenchido com o termo; espaços nas pontas são ignorados e o CTA só habilita com texto útil. |
+| long-text | form: E4 nome do cliente novo | ⚠ unresolved | O limite de caracteres depende do contrato da rota nova (Decisão do time 1); o planejador assume `maxLength` de 120 até a decisão. |
+| empty | form: E5 ID manual (plano B) | ✅ covered | O CTA `Vincular com este ID` fica desabilitado enquanto o campo estiver vazio ou só com espaços. |
+| loading | form: E5 ID manual (plano B) | ⚠ unresolved | O contrato não define o texto nem o estado de "vinculando…" para o ID manual; o planejador assume o mesmo padrão de E4 (CTA desabilitado, `aria-busy`) e precisa definir a copy. |
+| error | form: E5 ID manual (plano B) | ⚠ unresolved | O contrato não define a mensagem para ID inexistente ou recusado; o planejador deve definir a copy e preservar o valor digitado, como em E4. |
+| partial | form: E5 ID manual (plano B) | ⚠ unresolved | O contrato não define se há validação de formato (UUID) antes de enviar; o planejador decide e registra. |
+| overflow | static-content: E6 barra de vínculo | ✅ covered | A barra é uma única linha, mínimo 40px; o aviso offline e os textos longos não quebram o layout. |
+| long-text | static-content: E6 barra de vínculo | ✅ covered | O nome do cliente na barra usa `truncate` + `title`; o botão de ação não encolhe (`shrink-0`). |
+| loading | interactive-control: E7 envio em partes | ✅ covered | O envio mostra `ProgressRail` com `{x} de {y}` e `tabular-nums`; singular `1 de 1`; continua no service worker se o painel fechar. |
+| error | interactive-control: E7 envio em partes | ⚠ unresolved | A falha no meio mostra o texto de parada, mas o botão `Continuar envio` depende de `chunk_id` (Decisão do time 3); o planejador trata como suposição e não entrega o botão antes da decisão. |
+| overflow | static-content: E7 fim da reunião | ✅ covered | O nome do cliente em `Enviando para {cliente}…`, `Reunião enviada para {cliente}.` e `Enviada para {cliente}` usa `truncate` + `title`, o mesmo padrão da barra de vínculo. |
+| long-text | static-content: E7 fim da reunião | ✅ covered | Mesma regra de overflow: nome do cliente truncado com `title`; botões do cartão em linha, sem quebrar. |
+| empty | form: E10 tela de config | ✅ covered | Sem lista carregada o campo de ID não aparece; com lista carregada aparece só o texto de apoio documentado. |
+| loading | form: E10 tela de config | ✅ covered | Enquanto a lista de clientes carrega, o campo de ID não é mostrado. |
+| error | form: E10 tela de config | ✅ covered | Se a lista falhar, o campo `ID da sessão do Agente` aparece com o rótulo, placeholder e apoio de hoje. |
+| long-text | interactive-control: E2 cartão de decisão | 🧪 backstop | Verificação visual do cartão com título, corpo e botões em 320px e 564px no teste manual (D-20): sem corte e sem rolagem horizontal. |
+| overflow | static-content: E8 selo no histórico | 🧪 backstop | Verificação visual do selo ao lado do `StatusBadge` no `HistoryCard` com título longo, no teste manual (D-20). |
+| long-text | interactive-control: E9 modal de confirmação | 🧪 backstop | Verificação visual do modal com `“{título}”` longo, no teste manual (D-20): o texto não estoura o modal. |
+| overflow | list-collection: E3 picker no painel compacto (320px) | 🧪 backstop | O painel sobe para `regular` ao abrir o picker; verificação visual no painel em 320px e 564px no teste manual (D-20), com pelo menos 3 linhas visíveis em 564px. |
+
+**Dispensadas (com motivo):**
+
+- E1 loading, error: o ícone não busca dado; só abre o cartão de decisão.
+- E1 long-text: o nome acessível é fixo e curto, sem texto visível além do glifo "!".
+- E2 loading, error: o cartão não busca dado; só leva ao picker.
+- E5 long-text: o ID tem tamanho fixo (UUID) e o campo é o da Fase 7, sem mudança.
+- E8 long-text: os 4 rótulos do selo são fixos e curtos, sem texto vindo do usuário.
+- E9 loading, error: descartar e apagar são ações locais da Taqciti, sem rede.
+- E10 partial, long-text: URL do backend e chave não mudam nesta fase.
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -454,12 +477,12 @@ Escolhas que este contrato fez dentro de "Claude's Discretion" ou onde o CONTEXT
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: FLAG (não bloqueante — rótulos de uma palavra: `Depois`, `Voltar`, `Descartar`)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: FLAG (não bloqueante — tamanhos herdados do kit somam 6 na tela; só os 4 declarados valem para componente novo)
+- [x] Dimension 5 Spacing: FLAG (não bloqueante — exceções herdadas de 6/10/14/34px; nenhuma pode ser usada em componente novo)
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-11 (revisão 1; 0 BLOCK, 3 FLAG não bloqueantes)
