@@ -186,6 +186,30 @@ em `taqciti/`. Resultado final: **37 arquivos, 517 testes, todos passando** (par
 typecheck limpo, `npm run build` ok. Cada teste novo foi validado falhando com a correção
 desativada antes de ser commitado.
 
+### 3ª rodada — achados da re-revisão incremental (`07-REVIEW.md`, iteração 2)
+
+**Atenção aos códigos:** os CR/WR/IN abaixo são os da **iteração 2** do `07-REVIEW.md` e repetem os números da 1ª revisão
+com outro significado. O `07-REVIEW-DISPOSITION.md` é gerado pelo gate e ainda descreve a 1ª revisão; ele não foi editado
+à mão (o gate descarta uma linha cujo id foi reaproveitado por outro achado). Decisões e contexto em
+`07-DECISOES-REVIEW-2.md`.
+
+| Achado (iteração 2) | Situação | Commit |
+|---------------------|----------|--------|
+| WR-01 | corrigido | `ddb856b` |
+| WR-02 | corrigido | `2d4df95` |
+| WR-03 | corrigido | `9b564d7` |
+| WR-05 | corrigido | `4a31957` |
+| IN-06 | corrigido | `32864ad` |
+| IN-02, IN-03 | corrigidos | `ff970d0` |
+| IN-01, IN-04 | corrigidos | `3e4a1dc` |
+| CR-01 (crítico) | corrigido (decisão: opção A, vínculo `boundMeetingId`) | `b3dfcf1`, `e28bdac`, `a66e15d` |
+| WR-04 | corrigido (decisão: opção 2-B; status `interrupted`) | `6404a73` |
+| IN-05 | **pendente, fora desta fase**: task de backend (404 para sessão desconhecida em `backend/app/routers/webhook.py`) | — |
+
+Estado final: typecheck, lint e **595 testes** (40 arquivos) verdes; `npm run build` ok. O CR-01 também foi exercitado à
+mão no Chrome em 2026-10-10 (aviso de reunião nova apareceu, nada vazou para a sessão anterior, e a confirmação liberou a
+reunião) — roteiro e resultado em `07-DECISOES-REVIEW-2.md`, seção "Teste manual do CR-01".
+
 ---
 
 _Corrigido: 2026-09-27T14:00:25Z (1ª rodada) e 2026-09-27 (2ª rodada)_
