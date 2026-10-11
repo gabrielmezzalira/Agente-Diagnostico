@@ -1,13 +1,184 @@
 ---
 phase: 07-taqciti-config-background-streamer
-fixed_at: 2026-09-27T14:00:25Z
+fixed_at: 2026-10-11T02:14:36Z
 review_path: .planning/phases/07-taqciti-config-background-streamer/07-REVIEW.md
 iteration: 1
-findings_in_scope: 13
-fixed: 13
-skipped: 0
-status: all_fixed
+findings_in_scope: 3
+fixed: 2
+skipped: 1
+status: partial
 ---
+
+# Fase 7: Relatório de Correção de Code Review (3ª revisão)
+
+**Corrigido em:** 2026-10-11
+**Revisão de origem:** `.planning/phases/07-taqciti-config-background-streamer/07-REVIEW.md` (3ª passada, incremental)
+**Iteração:** 1 (desta execução do fixer; as rodadas das revisões anteriores estão no fim deste arquivo)
+
+**Resumo:**
+- Achados no escopo (Critical + Warning): 3 (CR-01, WR-01, WR-02)
+- Corrigidos: 2 (WR-01, WR-02)
+- Pulados: 1 (CR-01, por decisão do time, só com o comentário corrigido)
+- Fora do escopo (Info, não tocados): IN-02, IN-03. IN-01 foi resolvido de brinde pelo WR-01.
+
+Cada achado já tinha uma decisão do time nesta sessão, e todas foram seguidas à risca. As correções
+foram feitas numa worktree isolada (`.claude/worktrees/rf-07-4188-1791684037`, branch temporária
+`gsd-reviewfix/07-4188`) e avançadas por fast-forward sobre
+`feat/fase-07-taqciti-config-background-streamer`.
+
+## Fixed Issues
+
+### WR-01: Gravar o vínculo dentro do objeto da config cria corrida entre o service worker e a tela
+
+**Arquivos modificados:** `taqciti/src/shared/config/constants.ts`,
+`taqciti/src/shared/config/agenteBindingStore.ts` (novo),
+`taqciti/src/shared/config/agenteConfig.ts`, `taqciti/src/shared/config/agenteConfigStore.ts`,
+`taqciti/src/background/agenteStreamerDeps.ts`, `taqciti/src/background/agenteStreamer.ts`,
+`taqciti/src/background/agenteStreamerInstance.ts`, mais os testes
+**Commit:** `2400d11`
+**Correção aplicada:** o vínculo saiu do objeto da config e ganhou a chave própria
+`STORAGE_KEYS.agenteBinding = 'taq:agenteBinding'` em `storage.local`, com o valor
+`{ sessionId, meetingId }`.
+
+- Só o service worker grava, por escrita direta do valor inteiro, sem ler antes
+  (`writeAgenteBinding`). A tela nunca grava essa chave.
+- O vínculo só conta quando o `sessionId` gravado é igual ao `agenteSessionId` da config atual
+  (`boundMeetingFor`). Por isso a regra especial "trocou a sessão, zera o vínculo" de
+  `patchAgenteConfig` foi removida.
+- `boundMeetingId` saiu do tipo `AgenteConfig`, do `DEFAULT_AGENTE_CONFIG` e do normalizador.
+  Uma config legada que ainda traga o campo carrega sem erro (o campo é ignorado, e há teste
+  para isso). Efeito aceito pelo time: o vínculo antigo é ignorado, e a próxima reunião
+  diferente pede confirmação.
+- O streamer lê o vínculo uma vez (`deps.loadBinding`) e o mantém em memória, já que ele é o único
+  escritor. O `recordBinding` continua sem gravar com o cursor nulo, inclusive enquanto a reunião
+  espera confirmação. O vínculo está em `storage.local`, então sobrevive ao reinício do service
+  worker e ao fechamento do navegador.
+- **IN-01 resolvido por este commit:** gravar o vínculo não dispara mais o `onChanged` da config,
+  então não chama `applyConfigChange` nem `resetSendOutcome()`. Há um teste que prova isso
+  (semeia um 401 na tela, grava o vínculo e confere que o 401 continua lá).
+- Testes novos ou ajustados: `agenteBindingStore.test.ts` (normalização, `boundMeetingFor`,
+  escrita direta, sobrevive ao fim da `storage.session`, e o teste-semente da revisão: um
+  salvamento concorrente da tela não apaga o vínculo, e gravar o vínculo não desfaz o que a tela
+  salvou, com leituras "paradas" para forçar o pior intercalamento); config legada em
+  `agenteConfig.test.ts` e `agenteConfigStore.test.ts`; vínculo de outra sessão não vale, espera
+  com vínculo da sessão atual em outra reunião, e IN-01 em `agenteStreamer.test.ts`.
+
+**Status:** fixed: requires human verification. A revisão classifica o achado como erro de
+lógica/estado, e os testes só provam a sequência simulada. O teste manual no Chrome do cenário
+"fechar o navegador, entrar em outra reunião e ver o aviso" (passo 7 do
+`07-DECISOES-REVIEW-2.md`) vale ser refeito, porque o vínculo agora mora em outra chave.
+
+### WR-02: Zerar o status pela tela é read-modify-write entre contextos e pode ressuscitar o aviso "Reunião nova detectada"
+
+**Arquivos modificados:** `taqciti/src/shared/config/constants.ts`,
+`taqciti/src/shared/config/agenteStatus.ts`, `taqciti/src/shared/config/agenteStatusStore.ts`,
+`taqciti/src/background/agenteStatusReporter.ts`, `taqciti/src/background/agenteStreamerDeps.ts`,
+`taqciti/src/background/agenteStreamer.ts`, `taqciti/src/shared/hooks/useAgenteConfigForm.ts`,
+mais os testes (`agenteStatusStore.test.ts` novo, `agenteStreamer.test.ts`,
+`AgenteConfigScreen.test.tsx`)
+**Commit:** `1bae001`
+**Correção aplicada:** o status deixou de ser um objeto só (`taq:agenteStatus`) e virou duas chaves
+de `storage.session`, cada uma com um único dono.
+
+- `taq:agenteSendOutcome` (`STORAGE_KEYS.agenteSendOutcome`): resultado do envio, escrito pelo
+  envio e zerado pela tela (`resetSendOutcome`), sempre por escrita direta do valor inteiro, sem
+  leitura antes.
+- `taq:agenteWaiting` (`STORAGE_KEYS.agenteWaiting`): espera por confirmação, escrita só pelo
+  service worker. A tela nunca escreve nela.
+- `subscribeAgenteStatus` junta as duas chaves para a tela, mantendo o tratamento do IN-02
+  (mudança que chega antes da leitura inicial vence a leitura), agora por chave.
+  `describeAgenteStreaming` e os textos da tela não mudaram.
+- `markInterruptedSend` (WR-04, boot) mexe só na chave do resultado, e só em `retrying`.
+- O reporter passou a falar com um `AgenteStatusSink` (`writeSendOutcome` / `writeWaiting`) em vez
+  de um patch genérico. Há uma fila só para ordenar as escritas do mesmo contexto (o `retrying`
+  precisa chegar antes do `sent`), e nenhuma delas lê para depois gravar.
+- A chave antiga `taq:agenteStatus` foi removida. É efêmera (`storage.session`), então não há
+  migração: ela some quando o navegador fecha.
+- Testes novos ou ajustados: o teste-semente da revisão em `agenteStatusStore.test.ts` (a leitura
+  da session devolve sempre o retrato velho com `waitingMeetingId: 'm2'`, o reset da tela é
+  intercalado com o service worker zerando a espera, e o final tem `waitingMeetingId` nulo);
+  ordem das escritas; assinatura com as duas chaves; e na tela, salvar zera o resultado mas não
+  mexe na espera.
+
+**Status:** fixed: requires human verification. Mesma razão do WR-01. Convém olhar na tela o aviso
+"Reunião nova detectada" aparecendo e sumindo ao confirmar ou trocar a sessão.
+
+## Skipped Issues
+
+### CR-01: Religar o toggle numa reunião nova e confirmar manda o que foi dito com o envio DESLIGADO
+
+**Arquivo:** `taqciti/src/background/agenteStreamerInstance.ts:221-226`
+**Motivo:** decisão do time (2026-10-10): confirmar libera a reunião desde o início, inclusive o
+que foi dito com o toggle desligado. O comportamento atual foi mantido. Nenhuma lógica foi alterada.
+**Problema original:** o religar do toggle passa por `planStreamStep`, e ao confirmar a reunião
+nova o envio inclui tudo o que foi dito enquanto estava desligado (a revisão via isso como quebra
+do D-09 e risco de LGPD).
+
+O que foi feito, dentro do que a decisão permite:
+
+- Commit `8d768a0` (`docs(07)`): o comentário de `applyConfigChange` prometia que religar "começa a
+  contar deste instante" também no ramo da espera. Passou a descrever o comportamento decidido:
+  só o religar sem vínculo para outra reunião ancora no instante atual, e a confirmação de uma
+  reunião em espera libera tudo desde o início. Só comentário.
+- Commit `2158287` (`test(07)`): teste de caracterização, sem mudança de comportamento. Desligar,
+  trocar de reunião, religar e confirmar envia a reunião inteira, inclusive o que foi dito com o
+  toggle desligado. O comentário do teste avisa que mudar isso é decisão nova do time.
+
+## Info resolvido de brinde
+
+- **IN-01** (a gravação do vínculo zerava o resultado do envio): resolvido pelo WR-01 (`2400d11`).
+  O vínculo não passa mais pela chave da config, então o `onChanged` dela não dispara. Verificado
+  por teste.
+- **IN-02** e **IN-03**: fora do escopo desta rodada, não foram tocados.
+
+## Verificação
+
+Rodada no checkout principal (`taqciti/`), depois do fast-forward, com o tree final. A worktree
+não tem `node_modules`, então os gates **não** rodaram dentro dela: a cada commit, o diff foi
+aplicado temporariamente no checkout principal limpo, os gates rodaram e o checkout foi
+restaurado. A rodada final abaixo é reproduzível a partir da branch como está.
+
+| Verificação | Resultado |
+|-------------|-----------|
+| `npx tsc --noEmit` | limpo (código de saída 0) |
+| `npx eslint src` | limpo (código de saída 0) |
+| `npx vitest run` | 42 arquivos, **619/619 testes passando** (eram 595 antes desta rodada) |
+
+Observações:
+
+- `agenteStreamerInstance.ts` agora tem 288 linhas (eram 271). O crescimento vem da leitura e do
+  cache do vínculo e do comentário do CR-01. A extração do IN-08 continua adiada de propósito.
+- `markInterruptedSend` lê e grava a chave do resultado dentro do mesmo contexto. Um reset da tela
+  exatamente entre a leitura e a escrita, durante o boot, poderia ser desfeito. A janela é de
+  milissegundos, só ocorre no boot e o resultado seria o texto honesto "interrompido", então foi
+  aceita (a decisão do time pediu que esse caminho "toque só a chave do resultado", o que foi feito).
+
+## Commits desta rodada
+
+| Commit | Achado | Tipo |
+|--------|--------|------|
+| `8d768a0` | CR-01 | comentário (sem mudança de comportamento) |
+| `2158287` | CR-01 | teste de caracterização da decisão do time |
+| `2400d11` | WR-01 (e IN-01) | correção |
+| `1bae001` | WR-02 | correção |
+
+Cada commit pode ser revertido com `git revert`, na ordem inversa (`1bae001` antes de `2400d11`, porque os dois
+mexem no mesmo arquivo de teste). Reverter o `1bae001` volta ao status de uma chave só; reverter o `2400d11`
+devolve o vínculo ao objeto da config.
+
+---
+
+_Corrigido: 2026-10-11T02:14:36Z_
+_Fixer: Claude (gsd-code-fixer)_
+_Iteração: 1_
+
+---
+
+# Histórico: rodadas das revisões anteriores
+
+O conteúdo abaixo é o relatório anterior (1ª revisão e rodadas seguintes), mantido sem alterações
+para rastreio.
+
 
 # Fase 7: Relatório de Correção de Code Review
 
