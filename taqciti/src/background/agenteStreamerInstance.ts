@@ -219,10 +219,12 @@ ${config.agenteApiKey}`;
     syncDestination(config);
     status.resetSendOutcome(); // WR-07
     if (lastState === null) return;
-    // WR-02: religar (cursor nulo) começa a contar DESTE instante — o prime ancora no estado
-    // atual, então o próximo flush não perde o trecho novo. CR-01: se a sessão estava vinculada
-    // a OUTRA reunião, o mesmo passo espera em vez de ancorar nela. E confirmar a reunião nova
-    // (ou trocar o session_id) libera na hora, sem esperar alguém voltar a falar.
+    // WR-02: religar (cursor nulo) numa reunião que não é de outro vínculo começa a contar DESTE
+    // instante — o prime ancora no estado atual, então o próximo flush não perde o trecho novo.
+    // CR-01: se a sessão estava vinculada a OUTRA reunião, o mesmo passo ESPERA em vez de ancorar.
+    // Decisão do time (2026-10-10): confirmar essa reunião a libera DESDE O INÍCIO — inclusive o
+    // que foi dito com o toggle desligado —, porque a pessoa decidiu mandá-la inteira para a sessão.
+    // Confirmar (ou trocar o session_id) libera na hora, sem esperar alguém voltar a falar.
     await advance(config, lastState);
   }
 
