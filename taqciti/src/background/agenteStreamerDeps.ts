@@ -5,7 +5,7 @@
  */
 import type { AgenteConfig, ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { AgenteBinding } from '@/shared/config/agenteBindingStore';
-import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
+import type { AgenteStatusSink } from './agenteStatusReporter';
 import type { AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
 
 export interface AgenteStreamerDeps {
@@ -15,8 +15,8 @@ export interface AgenteStreamerDeps {
   onConfigChange?: (listener: (config: AgenteConfig) => void) => () => void;
   /** Onde cursor e falas pendentes sobrevivem ao reinício do service worker (WR-02). */
   snapshot?: AgenteStreamerSnapshotStore;
-  /** Status de runtime para a tela (WR-07): resultado do último envio. */
-  reportStatus?: (patch: Partial<AgenteStreamingStatus>) => void;
+  /** Status de runtime para a tela (WR-07): resultado do último envio e espera por confirmação (CR-01). */
+  reportStatus?: AgenteStatusSink;
   /**
    * Lê o vínculo "sessão → última reunião enviada" de `storage.local` (CR-01). Sobrevive ao
    * fechamento do navegador, ao contrário do snapshot do cursor. Sem isto, nada é vinculado.

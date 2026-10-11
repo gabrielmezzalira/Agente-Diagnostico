@@ -296,7 +296,7 @@ describe('AgenteConfigScreen', () => {
 
   it('(11) último envio recusado com 401: a tela mostra a chave recusada', async () => {
     await renderScreen(READY, {
-      [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
+      [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
     });
     await flushUntil(() => statusText().includes('401'));
     expect(statusText()).toBe(
@@ -308,7 +308,7 @@ describe('AgenteConfigScreen', () => {
     const mock = await renderScreen(READY);
     await act(async () => {
       await mock.session.set({
-        [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'retrying', lastHttpStatus: null, lastAttemptAt: 1 },
+        [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'retrying', lastHttpStatus: null, lastAttemptAt: 1 },
       });
     });
     await flushUntil(() => statusText().includes('tentando de novo'));
@@ -321,12 +321,8 @@ describe('AgenteConfigScreen', () => {
    */
   it('(13) reunião nova esperando: a tela avisa, e confirmar grava a reunião na config', async () => {
     const mock = await renderScreen(READY, {
-      [STORAGE_KEYS.agenteStatus]: {
-        lastOutcome: 'sent',
-        lastHttpStatus: 202,
-        lastAttemptAt: 1,
-        waitingMeetingId: 'm2',
-      },
+      [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'sent', lastHttpStatus: 202, lastAttemptAt: 1 },
+      [STORAGE_KEYS.agenteWaiting]: { waitingMeetingId: 'm2' },
     });
     await flushUntil(() => statusText().includes('Reunião nova detectada'));
     expect(statusText()).toContain('nada está sendo enviado');
@@ -468,7 +464,7 @@ describe('AgenteConfigScreen', () => {
    */
   it('(22) salvar uma chave nova zera o último resultado de envio, sem depender do service worker', async () => {
     const mock = await renderScreen(READY, {
-      [STORAGE_KEYS.agenteStatus]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
+      [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
     });
     await flushUntil(() => statusText().includes('401'));
     const { apiKey, saveButton } = fields();
@@ -479,11 +475,37 @@ describe('AgenteConfigScreen', () => {
     });
 
     await flushUntil(() => !statusText().includes('401'));
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+    expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({
       lastOutcome: null,
       lastHttpStatus: null,
     });
     expect(statusText()).toBe('Ligado — pronto para enviar. O envio começa quando alguém falar.');
+  });
+
+  /*
+   * WR-02 (3ª revisão): a espera por confirmação é do service worker. A tela zera só o resultado do
+   * envio; se zerasse (ou regravasse) a espera a partir de uma leitura velha, ressuscitaria ou
+   * apagaria o aviso "Reunião nova detectada" no momento errado.
+   */
+  it('(22b) salvar zera o resultado do envio mas não mexe na espera por confirmação', async () => {
+    const mock = await renderScreen(READY, {
+      [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'rejected', lastHttpStatus: 401, lastAttemptAt: 1 },
+      [STORAGE_KEYS.agenteWaiting]: { waitingMeetingId: 'm2' },
+    });
+    await flushUntil(() => statusText().includes('Reunião nova detectada'));
+    const { apiKey, saveButton } = fields();
+
+    typeInto(apiKey, 'chave-certa');
+    await act(async () => {
+      saveButton.click();
+    });
+
+    await flushUntil(
+      () =>
+        (mock.session.values[STORAGE_KEYS.agenteSendOutcome] as { lastOutcome: unknown }).lastOutcome ===
+        null,
+    );
+    expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toEqual({ waitingMeetingId: 'm2' });
   });
 
   /*

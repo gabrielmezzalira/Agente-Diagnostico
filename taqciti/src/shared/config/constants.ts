@@ -22,8 +22,16 @@ export const STORAGE_KEYS = {
   agenteBinding: 'taq:agenteBinding',
   /** chrome.storage.session — cursor + falas pendentes do streamer do Agente (sobrevive a restart do service worker, WR-02). */
   agenteStreamer: 'taq:agenteStreamer',
-  /** chrome.storage.session — resultado do último envio ao Agente, para a tela mostrar a verdade (WR-07). */
-  agenteStatus: 'taq:agenteStatus',
+  /**
+   * chrome.storage.session — resultado do último envio ao Agente, para a tela mostrar a verdade (WR-07).
+   * Escrito pelo envio e zerado pela tela, sempre por escrita direta (WR-02, 3ª revisão).
+   */
+  agenteSendOutcome: 'taq:agenteSendOutcome',
+  /**
+   * chrome.storage.session — reunião nova esperando confirmação (CR-01). Só o service worker grava
+   * (WR-02, 3ª revisão): a tela nunca escreve aqui, então não há como ela ressuscitar o aviso.
+   */
+  agenteWaiting: 'taq:agenteWaiting',
 } as const;
 
 /** Chaves da era "CITi Flow Companion" — migradas uma única vez no boot. */

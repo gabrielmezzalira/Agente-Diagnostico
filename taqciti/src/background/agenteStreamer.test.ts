@@ -378,7 +378,7 @@ describe('não bloqueante em erro de rede', () => {
     await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+      expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({
         lastOutcome: 'rejected',
         lastHttpStatus: 401,
       }),
@@ -388,7 +388,7 @@ describe('não bloqueante em erro de rede', () => {
     await patchAgenteConfig({ agenteApiKey: 'chave-certa' });
     await agenteStreamer.whenAgenteStreamerIdle();
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+      expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({
         lastOutcome: null,
         lastHttpStatus: null,
       }),
@@ -477,7 +477,7 @@ describe('não bloqueante em erro de rede', () => {
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.advanceTimersByTimeAsync(2_000);
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'sent' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({ lastOutcome: 'sent' }),
     );
 
     await vi.advanceTimersByTimeAsync(60_000);
@@ -894,7 +894,7 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
     await streamer.whenAgenteStreamerIdle();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: 'm2' }),
     );
 
     // Reinício do service worker no meio da espera: continua esperando (antes,
@@ -926,7 +926,7 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
       text: 'começo da reunião nova e mais',
     });
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: null }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: null }),
     );
   });
 
@@ -960,7 +960,7 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
     const streamer = await import('./agenteStreamer');
     await streamer.whenAgenteStreamerIdle();
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: 'm2' }),
     );
 
     await patchAgenteConfig({ agenteSessionId: OTHER_SESSION_ID });
@@ -976,7 +976,7 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
       session_id: OTHER_SESSION_ID,
       text: 'e depois',
     });
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: null });
+    expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: null });
   });
 });
 
@@ -1048,7 +1048,7 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
     // Nada do cliente B chegou à sessão do cliente A, e a tela foi avisada.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: 'm2' }),
     );
 
     // A pessoa confirma: a reunião inteira sai, e o vínculo passa a ser a m2.
@@ -1113,7 +1113,7 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: 'm2' }),
     );
 
     /*
@@ -1174,7 +1174,7 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
       agenteSessionId: SESSION_ID,
     });
     // Um 401 antigo na tela; só o fluxo do vínculo roda daqui em diante.
-    mock.session.values[STORAGE_KEYS.agenteStatus] = {
+    mock.session.values[STORAGE_KEYS.agenteSendOutcome] = {
       lastOutcome: 'rejected',
       lastHttpStatus: 401,
       lastAttemptAt: 1,
@@ -1188,7 +1188,7 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
       expect(await loadAgenteBinding()).toEqual({ sessionId: SESSION_ID, meetingId: 'm1' }),
     );
     // Antes do WR-01 a gravação do vínculo voltava como `onChanged` da config e zerava isto.
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'rejected' });
+    expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({ lastOutcome: 'rejected' });
   });
 
   it('vínculo de OUTRA sessão não vale: a reunião é aceita e o vínculo passa a ser desta sessão', async () => {
@@ -1228,7 +1228,7 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
 
     expect(bindMeeting).not.toHaveBeenCalled();
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm1' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteWaiting]).toMatchObject({ waitingMeetingId: 'm1' }),
     );
   });
 
@@ -1262,12 +1262,12 @@ describe('WR-04: status "tentando de novo" não sobrevive ao reinício do servic
 
   it('no boot, "retrying" vira "interrupted" e o resto do status é preservado', async () => {
     const { agenteStreamer, mock } = await fresh();
-    mock.session.values[STORAGE_KEYS.agenteStatus] = { ...STALE_RETRYING, lastHttpStatus: 503 };
+    mock.session.values[STORAGE_KEYS.agenteSendOutcome] = { ...STALE_RETRYING, lastHttpStatus: 503 };
 
     await agenteStreamer.resumeAgenteStreamer();
     await agenteStreamer.whenAgenteStreamerIdle();
 
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({
+    expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({
       lastOutcome: 'interrupted',
       lastHttpStatus: 503,
       lastAttemptAt: 1,
@@ -1278,13 +1278,13 @@ describe('WR-04: status "tentando de novo" não sobrevive ao reinício do servic
     'no boot, um status "%s" já definitivo não é mexido',
     async (lastOutcome) => {
       const { agenteStreamer, mock } = await fresh();
-      const before = { lastOutcome, lastHttpStatus: 401, lastAttemptAt: 7, waitingMeetingId: null };
-      mock.session.values[STORAGE_KEYS.agenteStatus] = { ...before };
+      const before = { lastOutcome, lastHttpStatus: 401, lastAttemptAt: 7 };
+      mock.session.values[STORAGE_KEYS.agenteSendOutcome] = { ...before };
 
       await agenteStreamer.resumeAgenteStreamer();
       await agenteStreamer.whenAgenteStreamerIdle();
 
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject(before);
+      expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject(before);
     },
   );
 
@@ -1294,19 +1294,19 @@ describe('WR-04: status "tentando de novo" não sobrevive ao reinício do servic
     await agenteStreamer.resumeAgenteStreamer();
     await agenteStreamer.whenAgenteStreamerIdle();
 
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toBeUndefined();
+    expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toBeUndefined();
   });
 
   it('um envio novo depois do boot volta a mandar o status real (não fica preso em "interrupted")', async () => {
     const { sessionController, agenteStreamer, mock } = await fresh();
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
-    mock.session.values[STORAGE_KEYS.agenteStatus] = { ...STALE_RETRYING };
+    mock.session.values[STORAGE_KEYS.agenteSendOutcome] = { ...STALE_RETRYING };
     agenteStreamer.configureAgenteStreamer({ loadConfig: () => Promise.resolve(READY_CONFIG) });
 
     await agenteStreamer.resumeAgenteStreamer();
     await agenteStreamer.whenAgenteStreamerIdle();
-    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'interrupted' });
+    expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({ lastOutcome: 'interrupted' });
 
     await sessionController.dispatch({
       type: 'MEETING_DETECTED',
@@ -1327,7 +1327,7 @@ describe('WR-04: status "tentando de novo" não sobrevive ao reinício do servic
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await vi.waitFor(() =>
-      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'sent' }),
+      expect(mock.session.values[STORAGE_KEYS.agenteSendOutcome]).toMatchObject({ lastOutcome: 'sent' }),
     );
   });
 });

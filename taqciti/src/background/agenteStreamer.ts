@@ -9,9 +9,13 @@ import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import { loadAgenteBinding, writeAgenteBinding } from '@/shared/config/agenteBindingStore';
 import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
-import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
-import { markInterruptedSend, patchAgenteStatus } from '@/shared/config/agenteStatusStore';
+import {
+  markInterruptedSend,
+  writeSendOutcome,
+  writeWaitingMeeting,
+} from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
+import type { AgenteStatusSink } from './agenteStatusReporter';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 import { sessionSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -25,11 +29,17 @@ function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
 }
 
 /** Grava o status de runtime sem nunca travar o streamer (WR-07). */
-function reportStatus(patch: Partial<AgenteStreamingStatus>): void {
-  patchAgenteStatus(patch).catch((error: unknown) => {
+function logStatusWriteFailure(write: Promise<void>): void {
+  write.catch((error: unknown) => {
     logger.error('gravar o status do Agente falhou', error);
   });
 }
+
+/** Cada chave do status tem um dono (WR-02, 3ª revisão): aqui o service worker escreve as duas. */
+const reportStatus: AgenteStatusSink = {
+  writeSendOutcome: (record) => logStatusWriteFailure(writeSendOutcome(record)),
+  writeWaiting: (meetingId) => logStatusWriteFailure(writeWaitingMeeting(meetingId)),
+};
 
 /**
  * Padrão de produção (Fase 7, plano 02, D-08): lê a config salva em

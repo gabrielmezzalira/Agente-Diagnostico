@@ -7,7 +7,9 @@
  * session_id ou chave passa por aqui.
  *
  * Este arquivo é puro (tipos + normalização + texto da tela); quem lê e grava
- * é `agenteStatusStore.ts`.
+ * é `agenteStatusStore.ts`. No storage o status vive em DUAS chaves, cada uma com um único
+ * dono (WR-02, 3ª revisão): o resultado do envio (`AgenteSendRecord`) e a espera por
+ * confirmação (`AgenteWaitingRecord`). A tela recebe os dois já juntos, como `AgenteStreamingStatus`.
  */
 import type { StreamingReadiness } from './agenteConfig';
 
@@ -28,12 +30,21 @@ export interface AgenteStreamingStatus {
   waitingMeetingId: string | null;
 }
 
+/** O que fica na chave do resultado do envio (escrita pelo envio, zerada pela tela). */
+export type AgenteSendRecord = Pick<
+  AgenteStreamingStatus,
+  'lastOutcome' | 'lastHttpStatus' | 'lastAttemptAt'
+>;
+
+/** O que fica na chave da espera por confirmação (escrita só pelo service worker). */
+export type AgenteWaitingRecord = Pick<AgenteStreamingStatus, 'waitingMeetingId'>;
+
 /** Zera só o resultado do último envio — a espera do CR-01 é do streamer, não da config. */
 export const NO_SEND_OUTCOME = {
   lastOutcome: null,
   lastHttpStatus: null,
   lastAttemptAt: null,
-} as const satisfies Partial<AgenteStreamingStatus>;
+} as const satisfies AgenteSendRecord;
 
 export const EMPTY_AGENTE_STATUS: AgenteStreamingStatus = {
   ...NO_SEND_OUTCOME,

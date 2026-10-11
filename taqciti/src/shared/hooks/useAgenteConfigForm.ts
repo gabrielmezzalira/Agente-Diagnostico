@@ -18,8 +18,7 @@ import {
   type StreamingReadiness,
 } from '@/shared/config/agenteConfig';
 import { patchAgenteConfig, subscribeAgenteConfig } from '@/shared/config/agenteConfigStore';
-import { NO_SEND_OUTCOME } from '@/shared/config/agenteStatus';
-import { patchAgenteStatus } from '@/shared/config/agenteStatusStore';
+import { resetSendOutcome } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
 
 /** Mensagem mostrada quando um patch (salvar ou toggle) falha. */
@@ -136,7 +135,7 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
        * de o service worker estar acordado para ouvir o `onChanged` — o status
        * fica em storage.session e sobrevive ao sono dele.
        */
-      await patchAgenteStatus(NO_SEND_OUTCOME).catch((err: unknown) => {
+      await resetSendOutcome().catch((err: unknown) => {
         logger.error('zerar o status do Agente falhou', err);
       });
 
