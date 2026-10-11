@@ -9,15 +9,15 @@ findings:
     title: "Religar o toggle numa reunião nova e confirmar manda o que foi dito com o envio DESLIGADO"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Gravar o vínculo dentro do objeto da config cria corrida entre o service worker e a tela, e uma gravação pode apagar a outra"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Zerar o status pela tela é read-modify-write entre contextos e pode ressuscitar o aviso \"Reunião nova detectada\" enquanto o envio já está acontecendo"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "A gravação do vínculo zera, sem motivo, o resultado do envio que acabou de sair"
   - id: IN-02
     severity: info
@@ -99,9 +99,9 @@ findings:
     severity: info
     disposition: fixed
     title: "A fala pendente de uma sessão antiga sai com a URL e a chave atuais, não as do momento em que foi acumulada"
-open: 5
+open: 2
 total: 24
-recorded: 2026-10-11T02:17:38.593Z
+recorded: 2026-10-11T02:18:19.673Z
 ---
 
 # Phase 07: Code Review Disposition
@@ -109,9 +109,9 @@ recorded: 2026-10-11T02:17:38.593Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | CR-01 | critical | skipped | 07-REVIEW-FIX.md |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| IN-01 | info | open | - |
+| WR-01 | warning | fixed | 07-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 07-REVIEW-FIX.md |
+| IN-01 | info | fixed | 07-REVIEW-FIX.md |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
 | WR-03 | warning | fixed | 07-REVIEW-FIX.md (not in the current review) |
