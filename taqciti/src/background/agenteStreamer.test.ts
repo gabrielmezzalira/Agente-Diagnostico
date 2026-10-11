@@ -1110,6 +1110,21 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
     await vi.waitFor(() =>
       expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm2' }),
     );
+
+    /*
+     * Decisão do time (2026-10-10), documentada aqui para não virar regressão sem querer:
+     * confirmar libera a reunião DESDE O INÍCIO, inclusive o que foi dito enquanto o toggle
+     * estava desligado. Quem clica em "Continuar enviando para esta sessão" está mandando a
+     * reunião inteira. Se um dia isso mudar, é decisão nova do time, não ajuste de teste.
+     */
+    await patchAgenteConfig({ confirmedMeetingId: 'm2' });
+    await streamer.whenAgenteStreamerIdle();
+    await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toMatchObject({
+      session_id: SESSION_ID,
+      text: 'cliente B continua falando',
+    });
   });
 
   it('grava o vínculo uma vez por (sessão, reunião) e não regrava quando a config já o tem', async () => {
