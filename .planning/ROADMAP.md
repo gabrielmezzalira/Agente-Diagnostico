@@ -35,7 +35,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
 - [x] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call (completed 2026-09-27)
-- [ ] **Phase 8: Taqciti Session Association** - A Taqciti stream binds to the correct backend session
+- [ ] **Phase 8: Taqciti Session Association** - A Taqciti meeting binds to a backend session through an explicit per-meeting client selection
 - [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
 - [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
 
@@ -233,17 +233,66 @@ Plans:
 
 ### Phase 8: Taqciti Session Association
 
-**Goal**: A Taqciti stream binds to the correct backend discovery session automatically when possible, with a manual fallback when it isn't
+**Goal**: A Taqciti meeting binds to a backend discovery session through an explicit per-meeting client selection (replaces the earlier localStorage auto-detect, decided in `08-CONTEXT.md` D-01); chunks are never attributed without an explicit binding
 **Depends on**: Phase 7
 **Requirements**: TAQ-02
+**Context**: `.planning/phases/08-taqciti-session-association/08-CONTEXT.md`
 **Success Criteria** (what must be TRUE):
 
-  1. When the Agente web app and Taqciti run in the same browser during a call, Taqciti auto-detects the active session id (`localStorage['agente_session_id']`) and streams chunks tagged to that session with no manual step
-  2. When auto-detect is unavailable, the user can enter the session id manually in the Taqciti panel and streaming binds to that session
-  3. Chunks are only attributed to a session when the binding is explicit (auto-detected or manually entered) — never guessed or defaulted silently
+  1. When a meeting is detected, Taqciti asks the user to pick a client from a searchable list (or create a new one) or to defer; choosing a client creates a new backend session for that meeting and streams the meeting's speech to it
+  2. A deferred meeting is kept only in Taqciti and sends nothing until a client is chosen at the end of the meeting (or from the panel); "Descartar" asks for confirmation and removes the meeting from Taqciti's local history only
+  3. The manual session-id field from Phase 7 stays as a hidden fallback that appears only when the client list cannot load; chunks are only attributed to a session when the binding is explicit — never guessed or defaulted silently
+  4. When the Agente is unreachable during a live meeting, unsent speech is kept and resent once it is back, and the user is told on screen that the Agente is offline
 
-**Plans**: TBD
+**Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
+
+**Plans**: 21 plans
 **UI hint**: yes
+
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Tracer: o vínculo por reunião decide o destino do streamer + ciclo de vida da associação (pendente, não enviada, recuperação no boot)
+- [ ] 08-02-PLAN.md — Kit (ícone alert, keyframe nudge, ConfirmModal.cancelLabel) + bolha "!" e cartão de decisão
+- [ ] 08-03-PLAN.md — Portas ClientDirectory/AgenteSessionGateway + busca sem acento + seletor de clientes com plano B
+- [ ] 08-04-PLAN.md — Barra de vínculo, cartão de fim da reunião (envio em partes) e selo do histórico
+- [ ] 08-05-PLAN.md — Motor do envio em partes (plano puro + executor serial com pausa e retomada)
+- [ ] 08-06-PLAN.md — Backend: asyncio.Lock por sessão em get_or_create + prova da suposição A1 (chunk_id extra)
+- [ ] 08-07-PLAN.md — [DECISÃO B1 + B4-a] Rotas da extensão: listar clientes e criar sessão
+- [ ] 08-08-PLAN.md — [DECISÃO B2] Chave Gemini opcional na criação de projeto (backend + web app)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-09-PLAN.md — [DECISÃO B3] Webhook idempotente por chunk_id + migração aplicada por humano
+- [ ] 08-10-PLAN.md — Comandos ui/agente/* + vínculo ao vivo (backfill + semente) e envio da reunião encerrada
+- [ ] 08-11-PLAN.md — Fila durável de envio + status de entrega em storage.local (reenvio pronto, desligado até a B3)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 08-12-PLAN.md — Criar cliente pela extensão + portas HTTP reais na Taqciti
+- [ ] 08-14-PLAN.md — Painel do Meet: bolha "!", cartão, seletor e barra de vínculo (hooks e contêineres)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 08-13-PLAN.md — [D-11 porta sem volta] Evicção protegida do histórico + comando de descarte
+- [ ] 08-15-PLAN.md — [DECISÃO B4-b] Rota de encerramento da sessão criada pela Taqciti
+- [ ] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 08-16-PLAN.md — Encerramento automático por chrome.alarms (permissão alarms)
+- [ ] 08-17-PLAN.md — Fim da reunião e histórico: enviar ao Agente, descartar com confirmação, selos
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 08-19-PLAN.md — Aplica a B3 na Taqciti: chunk_id no corpo + reenvio automático ligado
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 08-20-PLAN.md — "Continuar envio" do índice confirmado
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 08-21-PLAN.md — Portão automático completo + roteiro manual D-20 numa reunião real
 
 ### Phase 9: Cutover + Retire Custom Extension
 

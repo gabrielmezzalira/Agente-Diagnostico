@@ -41,22 +41,43 @@ Utilitário existente: `taqciti/src/test/chromeStorageMock.ts` (`installChromeSt
 
 ## Per-Task Verification Map
 
-> Preenchido pelo planejador a partir dos PLAN.md. Mapa de partida (critério → teste), vindo da pesquisa:
+> Preenchido pelo planejador a partir dos PLAN.md (21 planos, 8 waves). Tasks de checkpoint (decisões B1–B5 e D-11,
+> migração humana) não têm comando automático e não aparecem aqui. O status é atualizado pelo plano 08-21.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 8-TBD | TBD | TBD | TAQ-02 (SC1) | T-8-03 | Reducer `pending → choosing → linking → linked`; nunca vincula sem escolha explícita | unit | `cd taqciti && npx vitest run src/features/agente/association.test.ts` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC1) | T-8-08 | Picker: busca sem acento/caixa, criar cliente, estados loading/empty/error; nome renderizado como texto | component | `cd taqciti && npx vitest run src/sidepanel/components/ClientPicker.test.tsx` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC1) | T-8-03 | `bind` cria sessão via `ClientDirectory` fake, backfill em ordem | integration | `cd taqciti && npx vitest run src/background/agenteAssociationService.test.ts` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC1) | T-8-01 / T-8-02 | Rotas novas: listagem com campos mínimos; 401 sem chave com gate ligado | unit | `cd backend && python -m pytest tests/test_extension_clients.py -x -q` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC2) | T-8-03 | Reunião `pending`/`deferred` nunca chama `send` | integration | `cd taqciti && npx vitest run src/background/agenteStreamer.test.ts` | ✅ estender | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC2) | T-8-07 | Descartar remove só o local; histórico cheio não evita não enviados | unit/integration | `cd taqciti && npx vitest run src/background/history.test.ts` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC2) | T-8-06 | Upload em blocos: ordem, K por bloco, pausa, progresso | unit | `cd taqciti && npx vitest run src/features/agente/meetingUploader.test.ts` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC3) | T-8-03 | Campo de ID só com lista em erro; sem associação `linked` ⇒ nenhum envio | component | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreen.test.tsx` | ✅ estender | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC4) | T-8-04 / T-8-05 | Falha ⇒ outbox persistida, status `offline`; chave não persistida no item | unit | `cd taqciti && npx vitest run src/background/agenteSender.test.ts` | ✅ estender | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC4) | T-8-04 | Reinício do SW rehidrata a outbox e reenvia em ordem com o mesmo `chunkId` | integration | `cd taqciti && npx vitest run src/background/agenteOutbox.test.ts` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 (SC4) | T-8-04 | Webhook: `chunk_id` repetido ⇒ 202 sem `push_chunk` (bloqueado pela decisão 3) | unit | `cd backend && python -m pytest tests/test_webhook_idempotency.py -x -q` | ❌ W0 | ⬜ pending |
-| 8-TBD | TBD | TBD | TAQ-02 | T-8-06 | 2 chamadas concorrentes a `get_or_create` ⇒ 1 pipeline | unit async | `cd backend && python -m pytest tests/test_pipeline_get_or_create_lock.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-01-T1 | 08-01 | 1 | TAQ-02 (SC3) | T-08-01 / T-08-02 | Sem associação `linked` nada sai (mesmo com ID na config); `linked` de qualquer origem = destino; chave nunca persistida | e2e | `cd taqciti && npx vitest run src/background/agenteStreamerAssociation.test.ts` | ❌ W0 | ⬜ pending |
+| 08-01-T2 | 08-01 | 1 | TAQ-02 (SC2) | T-08-03 | `pending` idempotente; fim sem escolha → `ended-unsent`; boot nunca deixa estado preso | unit/integration | `cd taqciti && npx vitest run src/features/agente/association.test.ts src/background/agenteAssociationLifecycle.test.ts` | ❌ W0 | ⬜ pending |
+| 08-02-T1 | 08-02 | 1 | TAQ-02 (SC2) | T-08-04 | `ConfirmModal.cancelLabel`; Esc/fundo = cancelar | component | `cd taqciti && npx vitest run src/shared/ui/ConfirmModal.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-02-T2 | 08-02 | 1 | TAQ-02 (SC1) | — | Bolha "!" e cartão; Esc contido; sem foco roubado | component | `cd taqciti && npx vitest run src/sidepanel/components/AgenteNudge.test.tsx src/sidepanel/components/AgenteDecisionCard.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-03-T1 | 08-03 | 1 | TAQ-02 (SC1) | — | Busca sem acento/caixa; duplicidade | unit | `cd taqciti && npx vitest run src/features/agente/clientSearch.test.ts` | ❌ W0 | ⬜ pending |
+| 08-03-T2/T3 | 08-03 | 1 | TAQ-02 (SC1/SC3) | T-08-05 / T-08-06 | Seletor em 2 passos; estados; plano B só com lista em erro; nome como texto; UUID validado | component | `cd taqciti && npx vitest run src/sidepanel/components/ClientPicker.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-04-T1/T2 | 08-04 | 1 | TAQ-02 (SC2/SC4) | T-08-07 | Barra (offline com contagem), fim da reunião, selo; sem "Continuar envio" antes da B3 | component | `cd taqciti && npx vitest run src/sidepanel/components/AgenteBindingBar.test.tsx src/sidepanel/components/AgenteEndPrompt.test.tsx src/sidepanel/components/AssociationBadge.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-05-T1/T2 | 08-05 | 1 | TAQ-02 (SC2) | T-08-08 | Envio em partes serial, blocos de 20, pausa 1 s, progresso por índice, retomada | unit | `cd taqciti && npx vitest run src/features/agente/meetingUploader.test.ts src/features/agente/meetingUploadRunner.test.ts` | ❌ W0 | ⬜ pending |
+| 08-06-T1 | 08-06 | 1 | TAQ-02 | T-08-09 | 2 chamadas concorrentes a `get_or_create` ⇒ 1 pipeline | unit async | `cd backend && python -m pytest tests/test_pipeline_get_or_create_lock.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-06-T2 | 08-06 | 1 | TAQ-02 (SC4) | — | Suposição A1: `chunk_id` extra aceito | unit | `cd backend && python -m pytest tests/test_extension_chunk_extra_fields.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-07-T2/T3 | 08-07 | 1 | TAQ-02 (SC1) | T-08-10 / T-08-11 / T-08-12 | Listagem mínima; sessão nova; 404; gate 401 (B1) | unit | `cd backend && python -m pytest tests/test_extension_clients.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-08-T2 | 08-08 | 1 | TAQ-02 (SC1) | T-08-13 / T-08-14 | Projeto sem chave Gemini não toca o Vault (B2) | unit | `cd backend && python -m pytest tests/test_projects.py -x -q` | ✅ estender | ⬜ pending |
+| 08-08-T3 | 08-08 | 1 | TAQ-02 (SC1) | — | Formulário sem chave obrigatória (B2) | build | `npm --prefix frontend run build` | ✅ | ⬜ pending |
+| 08-09-T2 | 08-09 | 2 | TAQ-02 (SC4) | T-08-15 / T-08-16 | `chunk_id` repetido ⇒ 202 sem `push_chunk` (B3) | unit | `cd backend && python -m pytest tests/test_webhook_idempotency.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-10-T1 | 08-10 | 2 | TAQ-02 (SC1) | T-08-17 | Comandos zod; lista indisponível → plano B | unit | `cd taqciti && npx vitest run src/background/agenteAssociationService.test.ts` | ❌ W0 | ⬜ pending |
+| 08-10-T2/T3 | 08-10 | 2 | TAQ-02 (SC1/SC2) | T-08-18 / T-08-19 | Vínculo ao vivo com backfill e semente; 1 sessão por reunião; envio da reunião encerrada | integration | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts` | ❌ W0 | ⬜ pending |
+| 08-11-T1 | 08-11 | 2 | TAQ-02 (SC4) | T-08-20 / T-08-22 | Fila durável sem segredo, teto com overflow | unit | `cd taqciti && npx vitest run src/features/agente/outbox.test.ts src/shared/config/agenteOutboxStore.test.ts` | ❌ W0 | ⬜ pending |
+| 08-11-T2 | 08-11 | 2 | TAQ-02 (SC4) | T-08-21 | Sem "descarta o mais antigo"; política de reenvio | unit | `cd taqciti && npx vitest run src/background/agenteSender.test.ts` | ✅ estender | ⬜ pending |
+| 08-11-T3 | 08-11 | 2 | TAQ-02 (SC4) | T-08-20 / T-08-21 | Queda, reinício do SW e reenvio em ordem | e2e | `cd taqciti && npx vitest run src/background/agenteOutbox.test.ts` | ❌ W0 | ⬜ pending |
+| 08-12-T1 | 08-12 | 3 | TAQ-02 (SC1) | T-08-23 | Criar cliente só com nome; 409 duplicado (B1/B2/B4-a) | unit | `cd backend && python -m pytest tests/test_extension_clients.py -x -q` | ❌ W0 | ⬜ pending |
+| 08-12-T2/T3 | 08-12 | 3 | TAQ-02 (SC1/SC3) | T-08-24 / T-08-25 | Portas HTTP com gate, URL validada, resposta validada; produção usa as rotas | integration | `cd taqciti && npx vitest run src/background/httpAgentePorts.test.ts src/background/agenteAssociationHttp.test.ts` | ❌ W0 | ⬜ pending |
+| 08-13-T1 | 08-13 | 4 | TAQ-02 (SC2) | T-08-27 | Histórico cheio nunca remove reunião não enviada | unit/integration | `cd taqciti && npx vitest run src/background/history.test.ts` | ❌ W0 | ⬜ pending |
+| 08-13-T3 | 08-13 | 4 | TAQ-02 (SC2) | T-08-26 | Descartar só `ended-unsent` fora do ar, só local | unit | `cd taqciti && npx vitest run src/background/agenteAssociationService.test.ts` | ❌ W0 | ⬜ pending |
+| 08-14-T1 | 08-14 | 3 | TAQ-02 (SC1/SC4) | T-08-28 | Tradução associação/entrega → visão | unit | `cd taqciti && npx vitest run src/features/agente/bindingView.test.ts` | ❌ W0 | ⬜ pending |
+| 08-14-T2 | 08-14 | 3 | TAQ-02 (SC1/SC2) | T-08-29 | Cartão ↔ seletor ↔ barra; minimizar = Depois | component | `cd taqciti && npx vitest run src/sidepanel/components/AgenteLiveSlot.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-15-T2 | 08-15 | 4 | TAQ-02 | T-08-30 / T-08-31 | Finish só de sessão extension ativa + stop_session (B4-b) | unit | `cd backend && python -m pytest tests/test_extension_clients.py tests/test_finish_stops_pipeline.py -x -q` | ✅ estender | ⬜ pending |
+| 08-16-T1 | 08-16 | 5 | TAQ-02 | T-08-32 | Encerramento 10 min após o fim, fila vazia, nunca manual-id (B4-b) | unit | `cd taqciti && npx vitest run src/background/agenteSessionFinisher.test.ts` | ❌ W0 | ⬜ pending |
+| 08-17-T1/T2 | 08-17 | 5 | TAQ-02 (SC2) | T-08-34 / T-08-35 | Selo no histórico; enviar/descartar com confirmação | component | `cd taqciti && npx vitest run src/sidepanel/components/AssociationBadgeFor.test.tsx src/sidepanel/components/AgenteEndSlot.test.tsx` | ❌ W0 | ⬜ pending |
+| 08-18-T2 | 08-18 | 4 | TAQ-02 (SC3) | T-08-36 | Campo de ID só no plano B; nunca destino silencioso (B5) | component | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreenPlanB.test.tsx src/sidepanel/screens/AgenteConfigScreen.test.tsx` | ✅ estender | ⬜ pending |
+| 08-19-T1/T2 | 08-19 | 6 | TAQ-02 (SC4) | T-08-37 / T-08-38 | `chunk_id` estável; reenvio automático ligado (B3) | unit/e2e | `cd taqciti && npx vitest run src/shared/config/agenteConfig.test.ts src/background/agenteSender.test.ts src/background/agenteOutbox.test.ts` | ✅ estender | ⬜ pending |
+| 08-20-T1/T3 | 08-20 | 7 | TAQ-02 (SC2) | T-08-39 | "Continuar envio" do índice confirmado (B3) | unit/component | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts src/sidepanel/components/AgenteEndSlot.test.tsx` | ✅ estender | ⬜ pending |
+| 08-21-T1 | 08-21 | 8 | TAQ-02 | T-08-40 / T-08-SC | Portão completo; manifestos de pacote sem diff | suite | `cd taqciti && npm test && npm run typecheck && npm run lint && npm run build` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
