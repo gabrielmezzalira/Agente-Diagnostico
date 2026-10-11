@@ -53,6 +53,23 @@ pelo mesmo `planStreamStep`.
   "Continuar enviando para esta sessão" resolve.
 - `agenteStreamerInstance.ts` foi de 238 para 263 linhas (já passava de 200; é o IN-08, adiado de propósito).
 
+## Teste manual do CR-01 (2026-10-10) — passou
+
+Feito pelo usuário no Chrome, com o `dist/` gerado por `npm run build` (typecheck, lint e 595 testes verdes antes), backend
+local em `:8000` e web app em `:5173`, extensão em modo "carregar sem compactação".
+
+| Passo | Resultado |
+|-------|-----------|
+| Reunião 1 (sessão A configurada, toggle ligado) | as falas chegaram à coluna de transcrição da sessão A |
+| Recarregar a extensão (simula o "dia seguinte": apaga `storage.session`, a config salva fica) e abrir a reunião 2 em outra sala | a tela mostrou "Reunião nova detectada — nada está sendo enviado" com o botão "Continuar enviando para esta sessão"; **nenhuma fala da reunião 2 entrou na sessão A** |
+| Clicar em "Continuar enviando para esta sessão" | tudo o que foi dito na reunião 2 durante a espera chegou à sessão A (comportamento projetado: a confirmação libera a reunião desde o início) |
+| Recarregar a extensão e desligar/religar o toggle **na mesma reunião** | sem aviso; as falas seguiram chegando |
+
+**Observação do teste (não é defeito do CR-01):** em algum momento a tela mostrou "Último envio falhou mesmo depois das
+novas tentativas (sem conexão com o backend)". A causa foi o backend local ter sido derrubado (outra sessão de trabalho
+o desligou); subir o backend de novo resolveu. O status honesto do WR-07 se comportou como projetado. Mas o episódio
+mostra o limite da política de envio — ver a decisão 6 abaixo.
+
 ## Entregue para a Fase 8 (seletor de cliente por reunião) — proposta aprovada, ainda sem plano
 
 A ideia do usuário, que substitui a "auto-detecção por `localStorage` + ID manual" do ROADMAP:
@@ -74,6 +91,14 @@ extensão: exige `gemini_api_key`. O histórico do Taqciti guarda até 100 reuni
 4. O "depois" envia a reunião inteira de uma vez ao Agente? **Não foi verificado** como o pipeline reage a uma rajada de
    trechos (custo de Gemini, ordem). Precisa de teste antes de prometer.
 5. Duas telas novas (aviso ao detectar, diálogo de fim de reunião): passam pelo `/gsd-ui-phase`.
+6. **Resiliência do envio (surgiu no teste manual; sem plano ainda).** Hoje o `agenteSender` tenta 1 vez + 3 novas
+   (espera de 1, 2 e 4 s, `AGENTE_SEND_MAX_RETRIES = 3`) e depois **descarta** o trecho; o `fetch` não tem limite de
+   espera. Um backend fora do ar por mais de ~7 s perde fala. Em reunião real o backend fica no Railway, onde reinício e
+   instabilidade acontecem. Opções, da mais barata à mais cara: (a) esperar mais antes de desistir e pôr limite de
+   espera no `fetch`; (b) guardar os trechos que falharam e reenviar quando o backend voltar — **reabre a decisão 2-B
+   do WR-04** (aceitar a perda); (c) aviso mais claro na tela e no painel do Meet ("Agente fora do ar — guardando as
+   falas"); (d) no backend, 404 para sessão desconhecida (IN-05) e proteção contra fala repetida no reenvio (WR-01,
+   ver memória `taqciti-retry-duplicates`). Qualquer uma muda comportamento: plano nas 7 seções, fora da Fase 7.
 
 O `boundMeetingId` do CR-01 é a versão simples do que o seletor vai generalizar ("reunião → sessão"), então o trabalho
 da Fase 7 não é descartado.
