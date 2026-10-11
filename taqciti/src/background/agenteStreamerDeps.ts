@@ -4,6 +4,7 @@
  * produção; os testes trocam só o que precisam.
  */
 import type { AgenteConfig, ExtensionChunkRequest } from '@/shared/config/agenteConfig';
+import type { AgenteBinding } from '@/shared/config/agenteBindingStore';
 import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
 import type { AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -17,10 +18,15 @@ export interface AgenteStreamerDeps {
   /** Status de runtime para a tela (WR-07): resultado do último envio. */
   reportStatus?: (patch: Partial<AgenteStreamingStatus>) => void;
   /**
-   * Grava em `storage.local` a reunião a que a sessão do Agente está vinculada (CR-01).
-   * Sobrevive ao fechamento do navegador, ao contrário do snapshot do cursor.
+   * Lê o vínculo "sessão → última reunião enviada" de `storage.local` (CR-01). Sobrevive ao
+   * fechamento do navegador, ao contrário do snapshot do cursor. Sem isto, nada é vinculado.
    */
-  bindMeeting?: (meetingId: string) => Promise<void>;
+  loadBinding?: () => Promise<AgenteBinding | null>;
+  /**
+   * Grava o vínculo na chave própria dele (WR-01): escrita direta do par (sessão, reunião),
+   * sem tocar na config da tela.
+   */
+  bindMeeting?: (sessionId: string, meetingId: string) => Promise<void>;
   /** No boot, troca um status "tentando de novo" herdado do service worker anterior por "interrompido" (WR-04). */
   settleStatusAfterRestart?: () => Promise<void>;
 }

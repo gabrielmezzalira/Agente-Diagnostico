@@ -218,7 +218,6 @@ describe('phraseBatcher / buildPhraseRequests (IN-11)', () => {
     agenteSessionId: OTHER_SESSION_ID,
     agenteApiKey: 's3cr3t',
     confirmedMeetingId: '',
-    boundMeetingId: '',
   };
 
   it('a requisição usa o session_id guardado na fala, não o da config atual', () => {

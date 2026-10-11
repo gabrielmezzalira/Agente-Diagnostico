@@ -39,13 +39,6 @@ export function patchAgenteConfig(patch: Partial<AgenteConfig>): Promise<AgenteC
   const run = queue.catch(() => undefined).then(async () => {
     const current = await loadAgenteConfig();
     const next = normalizeAgenteConfig({ ...current, ...patch });
-    /*
-     * CR-01: o vínculo é "a última reunião desta sessão". Outra sessão = outro
-     * vínculo, a menos que o próprio patch já traga o novo.
-     */
-    if (next.agenteSessionId !== current.agenteSessionId && patch.boundMeetingId === undefined) {
-      next.boundMeetingId = '';
-    }
     await writeLocal(STORAGE_KEYS.agenteConfig, next);
     return next;
   });

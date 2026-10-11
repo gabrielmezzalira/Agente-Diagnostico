@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   panelTabs: 'taq:panelTabs',
   /** chrome.storage.local — configuração da integração com o Agente Diagnóstico (URL, toggle, session_id, chave). */
   agenteConfig: 'taq:agenteConfig',
+  /** chrome.storage.local — última reunião enviada para a sessão do Agente (CR-01/WR-01); só o service worker grava. */
+  agenteBinding: 'taq:agenteBinding',
   /** chrome.storage.session — cursor + falas pendentes do streamer do Agente (sobrevive a restart do service worker, WR-02). */
   agenteStreamer: 'taq:agenteStreamer',
   /** chrome.storage.session — resultado do último envio ao Agente, para a tela mostrar a verdade (WR-07). */

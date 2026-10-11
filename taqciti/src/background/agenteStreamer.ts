@@ -7,11 +7,8 @@
  */
 import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
-import {
-  createAgenteConfigReader,
-  onAgenteConfigChange,
-  patchAgenteConfig,
-} from '@/shared/config/agenteConfigStore';
+import { loadAgenteBinding, writeAgenteBinding } from '@/shared/config/agenteBindingStore';
+import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
 import type { AgenteStreamingStatus } from '@/shared/config/agenteStatus';
 import { markInterruptedSend, patchAgenteStatus } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
@@ -34,11 +31,6 @@ function reportStatus(patch: Partial<AgenteStreamingStatus>): void {
   });
 }
 
-/** Grava só o id da reunião vinculada à sessão (CR-01) — nunca texto de transcrição. */
-async function bindMeeting(meetingId: string): Promise<void> {
-  await patchAgenteConfig({ boundMeetingId: meetingId });
-}
-
 /**
  * Padrão de produção (Fase 7, plano 02, D-08): lê a config salva em
  * `chrome.storage.local` (`agenteConfigStore.ts`), com cache — não o valor
@@ -53,7 +45,9 @@ let activeDeps: AgenteStreamerDeps = {
   onConfigChange: onAgenteConfigChange,
   snapshot: sessionSnapshotStore,
   reportStatus,
-  bindMeeting,
+  // CR-01/WR-01: só ids, em chave própria de storage.local — nunca texto, nunca a config da tela.
+  loadBinding: loadAgenteBinding,
+  bindMeeting: writeAgenteBinding,
   settleStatusAfterRestart: markInterruptedSend,
 };
 let activeStreamer = createAgenteStreamer(activeDeps);

@@ -108,44 +108,32 @@ describe('patchAgenteConfig', () => {
   });
 
   /*
-   * CR-01: `boundMeetingId` é "a última reunião enviada para ESTA sessão". Trocar
-   * a sessão faz o vínculo deixar de valer — se sobrevivesse, a reunião certa da
-   * sessão nova seria tratada como "reunião diferente" e travaria à espera.
+   * WR-01: o vínculo reunião→sessão (CR-01) saiu da config e foi para `taq:agenteBinding`
+   * (ver agenteBindingStore.test.ts). Uma config salva por uma versão anterior ainda pode
+   * trazer o campo `boundMeetingId`: tem que carregar sem erro, e o campo antigo é ignorado
+   * (efeito aceito: o vínculo antigo não vale e a próxima reunião diferente pergunta).
    */
-  describe('boundMeetingId (CR-01)', () => {
+  describe('config legada com boundMeetingId (WR-01)', () => {
     const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
-    const BOUND = { ...DEFAULT_AGENTE_CONFIG, agenteSessionId: SAVED_SESSION_ID, boundMeetingId: 'M1' };
+    const LEGACY = { ...DEFAULT_AGENTE_CONFIG, agenteSessionId: SAVED_SESSION_ID, boundMeetingId: 'M1' };
 
-    it('trocar o agenteSessionId zera o vínculo', async () => {
-      const { patchAgenteConfig } = await fresh(BOUND);
+    it('carrega sem erro e sem o campo antigo', async () => {
+      const { loadAgenteConfig } = await fresh(LEGACY);
+      const config = await loadAgenteConfig();
+      expect(config.agenteSessionId).toBe(SAVED_SESSION_ID);
+      expect(config).not.toHaveProperty('boundMeetingId');
+    });
+
+    it('o próximo patch regrava a config já sem o campo antigo', async () => {
+      const { patchAgenteConfig, mock } = await fresh(LEGACY);
+      await patchAgenteConfig({ streamingEnabled: true });
+      expect(mock.local.values[STORAGE_KEYS.agenteConfig]).not.toHaveProperty('boundMeetingId');
+    });
+
+    it('trocar o agenteSessionId não tem mais regra especial: só muda a sessão', async () => {
+      const { patchAgenteConfig } = await fresh({ ...DEFAULT_AGENTE_CONFIG, agenteSessionId: SAVED_SESSION_ID });
       const next = await patchAgenteConfig({ agenteSessionId: OTHER_SESSION_ID });
-      expect(next.boundMeetingId).toBe('');
-    });
-
-    it('regravar o MESMO agenteSessionId (inclusive com espaços) mantém o vínculo', async () => {
-      const { patchAgenteConfig } = await fresh(BOUND);
-      const next = await patchAgenteConfig({ agenteSessionId: `  ${SAVED_SESSION_ID} ` });
-      expect(next.boundMeetingId).toBe('M1');
-    });
-
-    it('patch que não mexe na sessão mantém o vínculo', async () => {
-      const { patchAgenteConfig } = await fresh(BOUND);
-      const next = await patchAgenteConfig({ streamingEnabled: true });
-      expect(next.boundMeetingId).toBe('M1');
-    });
-
-    it('trocar a sessão e gravar o vínculo no mesmo patch vale o vínculo novo', async () => {
-      const { patchAgenteConfig } = await fresh(BOUND);
-      const next = await patchAgenteConfig({
-        agenteSessionId: OTHER_SESSION_ID,
-        boundMeetingId: 'M2',
-      });
-      expect(next.boundMeetingId).toBe('M2');
-    });
-
-    it('config salva antes do CR-01 (sem o campo) carrega com vínculo vazio', async () => {
-      const { loadAgenteConfig } = await fresh({ agenteSessionId: SAVED_SESSION_ID });
-      expect((await loadAgenteConfig()).boundMeetingId).toBe('');
+      expect(next).toEqual({ ...DEFAULT_AGENTE_CONFIG, agenteSessionId: OTHER_SESSION_ID });
     });
   });
 });

@@ -41,7 +41,6 @@ const READY_CONFIG = {
   agenteSessionId: SESSION_ID,
   agenteApiKey: 's3cr3t',
   confirmedMeetingId: '',
-  boundMeetingId: '',
 };
 
 function baseSession(overrides: Partial<MeetingSessionState> = {}): MeetingSessionState {
@@ -85,9 +84,9 @@ function createFetchMock() {
 
 /**
  * `realBinding`: a gravação real do vínculo reunião→sessão (CR-01, 2ª revisão) fica desligada
- * por padrão. Quase todos os testes injetam um `loadConfig` próprio, e gravar no storage de
- * verdade dispararia o `onChanged` real, que devolve a config padrão (envio desligado) por
- * cima da injetada. Só os testes ponta a ponta do vínculo ligam a gravação real.
+ * por padrão, para a maioria dos testes (que só querem enviar) não gravarem storage sem
+ * querer. Só os testes do vínculo ligam a gravação real. Desde o WR-01 o vínculo mora numa
+ * chave própria e gravá-la não mexe na config nem dispara o `onChanged` dela.
  */
 async function fresh(options: { realBinding?: boolean } = {}) {
   const mock = installChromeStorageMock({
@@ -985,7 +984,8 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
  * CR-01 (2ª revisão): o cursor mora em storage.session e some quando o navegador
  * fecha, a extensão é atualizada ou o toggle é desligado e religado — mas a sessão
  * do Agente (storage.local) continua salva. Sem outra memória, a reunião do cliente B
- * ia para a sessão do cliente A sem ninguém confirmar. `boundMeetingId` é essa memória.
+ * ia para a sessão do cliente A sem ninguém confirmar. O vínculo (`taq:agenteBinding`, WR-01)
+ * é essa memória.
  */
 describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao cursor', () => {
   const meeting = (meetingId: string, at: number, meetingCode = 'abc-defg-hij') => ({
@@ -1001,7 +1001,8 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
 
   it('navegador fechado entre duas reuniões: a do dia seguinte espera, e confirmar envia desde o início', async () => {
     const { sessionController, mock } = await fresh({ realBinding: true });
-    const { patchAgenteConfig, loadAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const { loadAgenteBinding } = await import('@/shared/config/agenteBindingStore');
     const fetchMock = createFetchMock();
     vi.stubGlobal('fetch', fetchMock);
     await patchAgenteConfig({
@@ -1020,7 +1021,9 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_QUIET_MS);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     // O streamer gravou a reunião a que a sessão está vinculada (só o id).
-    await vi.waitFor(async () => expect((await loadAgenteConfig()).boundMeetingId).toBe('m1'));
+    await vi.waitFor(async () =>
+      expect(await loadAgenteBinding()).toEqual({ sessionId: SESSION_ID, meetingId: 'm1' }),
+    );
 
     // O navegador fecha: storage.session (cursor, estado, status) some; storage.local fica.
     vi.clearAllTimers();
@@ -1057,7 +1060,9 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
       session_id: SESSION_ID,
       text: 'fala do cliente B',
     });
-    await vi.waitFor(async () => expect((await loadAgenteConfig()).boundMeetingId).toBe('m2'));
+    await vi.waitFor(async () =>
+      expect(await loadAgenteBinding()).toEqual({ sessionId: SESSION_ID, meetingId: 'm2' }),
+    );
   });
 
   it('desligar, trocar de reunião e religar: espera em vez de ancorar na reunião nova e mandar para a sessão antiga', async () => {
@@ -1129,7 +1134,9 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
 
   it('grava o vínculo uma vez por (sessão, reunião) e não regrava quando a config já o tem', async () => {
     const { agenteStreamer } = await fresh();
-    const bindMeeting = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
+    const bindMeeting = vi.fn<(sessionId: string, meetingId: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
     const fetchMock = createFetchMock();
     agenteStreamer.configureAgenteStreamer({
       loadConfig: () => Promise.resolve(READY_CONFIG),
@@ -1141,23 +1148,95 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
     await agenteStreamer.onSessionFlushed(meetingState());
     await agenteStreamer.onSessionFlushed(meetingState());
     expect(bindMeeting).toHaveBeenCalledTimes(1);
-    expect(bindMeeting).toHaveBeenCalledWith('m1');
+    expect(bindMeeting).toHaveBeenCalledWith(SESSION_ID, 'm1');
 
-    // Config que já traz o vínculo da própria reunião: nada a gravar.
-    const already = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
+    // Vínculo salvo que já é o da própria reunião (para a sessão atual): nada a gravar.
+    const already = vi.fn<(sessionId: string, meetingId: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
     agenteStreamer.configureAgenteStreamer({
-      loadConfig: () => Promise.resolve({ ...READY_CONFIG, boundMeetingId: 'm1' }),
+      loadConfig: () => Promise.resolve(READY_CONFIG),
+      loadBinding: () => Promise.resolve({ sessionId: SESSION_ID, meetingId: 'm1' }),
       bindMeeting: already,
     });
     await agenteStreamer.onSessionFlushed(meetingState());
     expect(already).not.toHaveBeenCalled();
   });
 
+  it('IN-01: gravar o vínculo não zera o resultado do envio que a tela está mostrando', async () => {
+    const { sessionController, agenteStreamer, mock } = await fresh({ realBinding: true });
+    const { patchAgenteConfig } = await import('@/shared/config/agenteConfigStore');
+    const { loadAgenteBinding } = await import('@/shared/config/agenteBindingStore');
+    vi.stubGlobal('fetch', createFetchMock());
+    await patchAgenteConfig({
+      agenteBackendUrl: AGENTE_URL,
+      streamingEnabled: true,
+      agenteSessionId: SESSION_ID,
+    });
+    // Um 401 antigo na tela; só o fluxo do vínculo roda daqui em diante.
+    mock.session.values[STORAGE_KEYS.agenteStatus] = {
+      lastOutcome: 'rejected',
+      lastHttpStatus: 401,
+      lastAttemptAt: 1,
+    };
+
+    await sessionController.dispatch(meeting('m1', 1000));
+    await vi.advanceTimersByTimeAsync(STATE_FLUSH_INTERVAL_MS);
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    await vi.waitFor(async () =>
+      expect(await loadAgenteBinding()).toEqual({ sessionId: SESSION_ID, meetingId: 'm1' }),
+    );
+    // Antes do WR-01 a gravação do vínculo voltava como `onChanged` da config e zerava isto.
+    expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ lastOutcome: 'rejected' });
+  });
+
+  it('vínculo de OUTRA sessão não vale: a reunião é aceita e o vínculo passa a ser desta sessão', async () => {
+    const { agenteStreamer } = await fresh();
+    const bindMeeting = vi.fn<(sessionId: string, meetingId: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    const fetchMock = createFetchMock();
+    agenteStreamer.configureAgenteStreamer({
+      loadConfig: () => Promise.resolve(READY_CONFIG),
+      send: (request) => fetchMock(request.url, request.init),
+      // Salvo para a sessão antiga, com uma reunião diferente da atual (m1).
+      loadBinding: () => Promise.resolve({ sessionId: OTHER_SESSION_ID, meetingId: 'm-antiga' }),
+      bindMeeting,
+    });
+
+    await agenteStreamer.onSessionFlushed(meetingState());
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    // Sem espera por confirmação (o vínculo antigo é de outra sessão) e com vínculo novo gravado.
+    expect(bindMeeting).toHaveBeenCalledWith(SESSION_ID, 'm1');
+  });
+
+  it('vínculo da sessão atual com OUTRA reunião: espera e não grava vínculo enquanto espera', async () => {
+    const { agenteStreamer, mock } = await fresh();
+    const bindMeeting = vi.fn<(sessionId: string, meetingId: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    agenteStreamer.configureAgenteStreamer({
+      loadConfig: () => Promise.resolve(READY_CONFIG),
+      loadBinding: () => Promise.resolve({ sessionId: SESSION_ID, meetingId: 'm-antiga' }),
+      bindMeeting,
+    });
+
+    await agenteStreamer.onSessionFlushed(meetingState());
+    await agenteStreamer.whenAgenteStreamerIdle();
+
+    expect(bindMeeting).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(mock.session.values[STORAGE_KEYS.agenteStatus]).toMatchObject({ waitingMeetingId: 'm1' }),
+    );
+  });
+
   it('se gravar o vínculo falhar, o envio continua e a próxima passada tenta de novo', async () => {
     const { agenteStreamer } = await fresh();
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const bindMeeting = vi
-      .fn<(meetingId: string) => Promise<void>>()
+      .fn<(sessionId: string, meetingId: string) => Promise<void>>()
       .mockRejectedValueOnce(new Error('storage cheio'))
       .mockResolvedValue(undefined);
     agenteStreamer.configureAgenteStreamer({
