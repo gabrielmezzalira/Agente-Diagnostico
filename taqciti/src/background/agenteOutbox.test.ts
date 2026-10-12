@@ -60,12 +60,16 @@ function sendControl(initial: number) {
 }
 
 const bodiesOf = (send: ReturnType<typeof sendControl>['send']) =>
-  send.mock.calls.map(([request]) => JSON.parse(String(request.init.body)) as { session_id: string; text: string });
+  send.mock.calls.map(
+    ([request]) =>
+      JSON.parse(String(request.init.body)) as { session_id: string; text: string; chunk_id?: string },
+  );
 
 interface Setup {
   config?: () => AgenteConfig;
   send: ReturnType<typeof sendControl>['send'];
-  resend: boolean;
+  /** Ausente = padrão de produção (`AGENTE_OUTBOX_RESEND_ENABLED`); presente = injetado só para teste. */
+  resend?: boolean;
   local?: Record<string, unknown>;
 }
 
@@ -128,7 +132,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('padrão de produção (reenvio desligado): a Fase 7 continua e a fala descartada fica no rastro', () => {
+describe('reenvio desligado por injeção (comportamento antigo): a Fase 7 continua e a fala descartada fica no rastro', () => {
   it('503 sempre -> failed e a próxima fala sai; o rastro sobrevive ao "ok" e ao reinício, sem chave nem texto', async () => {
     const agente = sendControl(503);
     const sw = await boot({ send: agente.send, resend: false });
@@ -158,6 +162,45 @@ describe('padrão de produção (reenvio desligado): a Fase 7 continua e a fala 
     const trace = after.raw(STORAGE_KEYS.agenteDropTrace);
     expect(trace).not.toContain('s3cr3t');
     expect(trace).not.toContain('olá tudo bem');
+  });
+});
+
+describe('padrão de produção (sem injetar o reenvio): queda, reinício e volta do Agente (D-18, D-19)', () => {
+  it('Agente cai -> offline com contagem -> reinício -> volta -> reenvio na ordem com os MESMOS chunk_id', async () => {
+    const sw = await boot({ send: sendControl(503).send }); // nada injetado: vale o padrão de produção
+    await twoPhrases(sw);
+
+    expect(sw.stored(STORAGE_KEYS.agenteDelivery)).toMatchObject({ status: 'offline', queued: 2 });
+    const savedIds = (sw.stored(STORAGE_KEYS.agenteOutbox) as { chunkId: string }[]).map((item) => item.chunkId);
+    expect(savedIds).toHaveLength(2);
+    expect(new Set(savedIds).size).toBe(2);
+
+    const up = sendControl(202);
+    const after = await restart(sw, { send: up.send });
+    await after.agenteStreamer.resumeAgenteStreamer();
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(bodiesOf(up.send)).toEqual([
+      expect.objectContaining({ session_id: OTHER_SESSION_ID, text: 'olá tudo bem', chunk_id: savedIds[0] }),
+      expect.objectContaining({ session_id: OTHER_SESSION_ID, text: 'como vai', chunk_id: savedIds[1] }),
+    ]);
+    expect(after.stored(STORAGE_KEYS.agenteOutbox)).toEqual([]);
+    expect(after.stored(STORAGE_KEYS.agenteDelivery)).toMatchObject({ status: 'ok', queued: 0 });
+  });
+
+  it('o mesmo chunk_id vai em cada tentativa do ciclo (a cópia é reconhecida pelo backend)', async () => {
+    const agente = sendControl(503);
+    const sw = await boot({ send: agente.send });
+    await sw.sessionController.dispatch(detected('m1'));
+    await sw.link('m1', OTHER_SESSION_ID);
+    await sw.sessionController.dispatch(caption('olá tudo bem'));
+    await sw.letPhraseOut();
+    await vi.advanceTimersByTimeAsync(CYCLE_MS);
+
+    const ids = bodiesOf(agente.send).map((body) => body.chunk_id);
+    expect(ids.length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(1);
+    expect(ids[0]).toEqual(expect.any(String));
   });
 });
 

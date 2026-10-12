@@ -26,7 +26,7 @@ export interface AgenteSenderDeps {
   buildRequest: (item: OutboxItem) => Promise<ExtensionChunkRequest | null>;
   /** Onde as falas esperam a vez. Sem ela vale a fila em memória. */
   queue?: SendQueuePort;
-  /** Reenvio depois de queda (D-18); padrão `AGENTE_OUTBOX_RESEND_ENABLED` (desligado até a B3). */
+  /** Reenvio depois de queda (D-18); padrão `AGENTE_OUTBOX_RESEND_ENABLED` (ligado, B3). */
   resendEnabled?: boolean;
   /** Limite B3-b para retirar uma fala recusada com HTTP 500; `null` = nunca. */
   serverErrorMaxAgeMs?: number | null;

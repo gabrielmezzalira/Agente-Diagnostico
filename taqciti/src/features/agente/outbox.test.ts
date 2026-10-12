@@ -53,10 +53,10 @@ function config(extra: Partial<AgenteConfig> = {}): AgenteConfig {
 }
 
 describe('constantes', () => {
-  it('teto de 1000, intervalo de 15 s e reenvio automático nasce desligado (B3)', () => {
+  it('teto de 1000, intervalo de 15 s e reenvio automático ligado (B3)', () => {
     expect(AGENTE_OUTBOX_MAX_ITEMS).toBe(1000);
     expect(AGENTE_OUTBOX_RETRY_INTERVAL_MS).toBe(15_000);
-    expect(AGENTE_OUTBOX_RESEND_ENABLED).toBe(false);
+    expect(AGENTE_OUTBOX_RESEND_ENABLED).toBe(true);
   });
 });
 

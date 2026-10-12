@@ -27,10 +27,12 @@ export const AGENTE_OUTBOX_MAX_ITEMS = 1000;
 export const AGENTE_OUTBOX_RETRY_INTERVAL_MS = 15_000;
 
 /**
- * O reenvio automático nasce DESLIGADO: reenviar pode duplicar fala no backend, e evitar a duplicata
- * (`chunk_id`) é a decisão B3 do time. Só liga pelo plano 08-19, depois dessa decisão.
+ * Reenvio automático LIGADO (D-18, critério 4): com o Agente fora do ar as falas ficam na fila
+ * durável e saem na ordem quando ele volta. Evita duplicata o `chunk_id` por fala (B3-a =
+ * `aprovar-chunk-id`, `AGENTE_SEND_CHUNK_ID`); ligado em 2026-10-12 pelo plano 08-19. A regra de
+ * retirada por HTTP 500 segue a B3-b (`retirada-nunca`, `AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS`).
  */
-export const AGENTE_OUTBOX_RESEND_ENABLED = false;
+export const AGENTE_OUTBOX_RESEND_ENABLED = true;
 
 /**
  * Manda o `chunk_id` em cada trecho (D-19). Decisão B3-a = `aprovar-chunk-id` (2026-10-12): a

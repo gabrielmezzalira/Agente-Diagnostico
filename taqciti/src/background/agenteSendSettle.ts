@@ -21,7 +21,7 @@ export interface SettleEnv {
   queue: SendQueuePort;
   tracker: DeliveryTracker;
   report: (outcome: AgenteSendOutcome, httpStatus: number | null) => void;
-  /** Ausente = `AGENTE_OUTBOX_RESEND_ENABLED` (desligado até a B3). */
+  /** Ausente = `AGENTE_OUTBOX_RESEND_ENABLED` (ligado, B3). */
   resendEnabled?: boolean;
   /** Ausente = `AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS` (B3-b); `null` = nunca retira. */
   serverErrorMaxAgeMs?: number | null;

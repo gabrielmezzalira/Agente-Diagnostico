@@ -257,11 +257,11 @@ describe('agenteSender / fila sem descarte e rastro de falas descartadas (D-18)'
     );
   });
 
-  it('reenvio desligado (padrão): esgotadas as tentativas o item sai, é avisado e o 2º segue (Fase 7)', async () => {
+  it('reenvio desligado (injetado): esgotadas as tentativas o item sai, é avisado e o 2º segue (Fase 7)', async () => {
     const send = sendByBody({ a: 'network' });
     const onOutcome = vi.fn();
     const onDropped = vi.fn();
-    const sender = createAgenteSender({ send, buildRequest, onOutcome, onDropped });
+    const sender = createAgenteSender({ send, buildRequest, resendEnabled: false, onOutcome, onDropped });
 
     sender.submit([item('a'), item('b')]);
     await vi.advanceTimersByTimeAsync(10_000);

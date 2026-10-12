@@ -41,6 +41,6 @@ export interface AgenteStreamerDeps {
    * sobrevive ao reinício do service worker. Ausente = fila em memória (a mecânica da Fase 7).
    */
   outbox?: SendQueuePort;
-  /** Liga o reenvio depois de queda (D-18). Ausente = `AGENTE_OUTBOX_RESEND_ENABLED`, desligado até a B3. */
+  /** Liga o reenvio depois de queda (D-18). Ausente = `AGENTE_OUTBOX_RESEND_ENABLED`, ligado (B3). */
   outboxResendEnabled?: boolean;
 }
