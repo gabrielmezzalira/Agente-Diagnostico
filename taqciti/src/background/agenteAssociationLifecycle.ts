@@ -4,7 +4,9 @@
  * só dispara os eventos certos a partir da máquina da reunião:
  *   - reunião detectada com o envio ligado  -> `created` (a associação nasce `pending`, uma vez só);
  *   - reunião terminou ou foi preemptada    -> `meeting-ended` (ou a associação some, se não houve fala);
- *   - a MESMA sala voltou na janela de retomada -> `meeting-resumed`.
+ *   - a MESMA sala voltou na janela de retomada -> `meeting-resumed` (a retomada da mesma sala só vale
+ *     enquanto a sessão do Agente NÃO foi encerrada: depois disso a máquina já abre uma reunião nova, e
+ *     por defesa o reducer devolve a associação encerrada a `pending`).
  * No boot do service worker, `recoverAssociationsAfterRestart` garante que nenhuma associação fique presa.
  *
  * Quem chama (`sessionController`) dispara isto sem esperar: o ciclo de vida nunca atrasa nem derruba a
@@ -80,9 +82,22 @@ export async function syncAssociationLifecycle(prev: MeetingState, next: Meeting
 /**
  * O que tirar de uma associação que o service worker encontrou ao acordar. `live` = é a reunião que está
  * ao vivo agora. Cada resultado é um estado com tela e com saída; `linked`, `sent` e `send-failed` de
- * reunião que não está ao vivo já têm onde ser tratados e ficam como estão.
+ * reunião que não está ao vivo já têm onde ser tratados e ficam como estão (inclusive os encerrados).
  */
 function recoveryEvents(association: MeetingAssociation, live: boolean): AssociationEvent[] {
+  const events = stateRecoveryEvents(association, live);
+  // Encerrada ou com prazo de encerramento pendurado numa reunião que está ao vivo: o reducer decide
+  // (encerrada -> pending, só prazo -> prazo cancelado); a que não está ao vivo não muda.
+  const hasCloseMarks =
+    association.sessionFinished === true ||
+    association.finishBy !== undefined ||
+    association.finishTries !== undefined ||
+    association.finishGaveUp !== undefined;
+  const alreadyResumed = events.some((event) => event.type === 'meeting-resumed');
+  return live && hasCloseMarks && !alreadyResumed ? [...events, { type: 'meeting-resumed' }] : events;
+}
+
+function stateRecoveryEvents(association: MeetingAssociation, live: boolean): AssociationEvent[] {
   const ended: AssociationEvent[] = live ? [] : [{ type: 'meeting-ended' }];
   const resumed: AssociationEvent[] = live ? [{ type: 'meeting-resumed' }] : [];
   const hasSession = association.sessionId !== undefined;

@@ -195,6 +195,50 @@ describe('retomada da mesma sala (D-06, T-08-41)', () => {
   });
 });
 
+describe('volta à mesma sala depois do encerramento da sessão do Agente (B4-b, DA-1, T-08-50)', () => {
+  async function linkedMeeting(finished: boolean, extra: { finishBy?: number } = {}) {
+    const ctx = await fresh();
+    await ctx.dispatch(detected('m1'));
+    await ctx.dispatch(caption('olá tudo bem'));
+    const { store } = ctx;
+    await store.applyAssociationEvent('m1', { type: 'link-started', origin: 'picker', clientName: 'ACME', sessionId: SESSION_ID });
+    await store.applyAssociationEvent('m1', { type: 'link-completed', seedSent: {} });
+    if (extra.finishBy !== undefined) await store.applyAssociationEvent('m1', { type: 'finish-armed', by: extra.finishBy });
+    if (finished) await store.applyAssociationEvent('m1', { type: 'session-finished' });
+    await ctx.dispatch({ type: 'MEETING_FINISHED', at: 5000 });
+    return ctx;
+  }
+
+  it('linked picker com sessionFinished + a mesma sala (mesma reunião) -> pending, sem sessão', async () => {
+    const { dispatch, stored } = await linkedMeeting(true);
+    await dispatch(detected('m-novo-id', 'abc-defg-hij', 6000));
+    const map = await stored();
+    expect(map.m1).toEqual({ meetingId: 'm1', state: 'pending' });
+    expect(Object.keys(map)).toEqual(['m1']);
+  });
+
+  it('sent com sessionFinished + a mesma sala -> pending (nunca linked ligada à sessão fechada)', async () => {
+    const { dispatch, stored, store } = await fresh();
+    await dispatch(detected('m1'));
+    await dispatch(caption('olá tudo'));
+    await dispatch({ type: 'MEETING_FINISHED', at: 5000 });
+    await store.applyAssociationEvent('m1', { type: 'send-started', origin: 'picker', clientName: 'ACME', sessionId: SESSION_ID });
+    await store.applyAssociationEvent('m1', { type: 'send-completed', seedSent: { '0:c1': 2 } });
+    await store.applyAssociationEvent('m1', { type: 'session-finished' });
+    await dispatch(detected('x', 'abc-defg-hij', 6000));
+    expect((await stored()).m1).toEqual({ meetingId: 'm1', state: 'pending' });
+  });
+
+  it('linked SEM sessionFinished + a mesma sala continua linked e sem prazo (a volta cancela o finishBy)', async () => {
+    const { dispatch, stored } = await linkedMeeting(false, { finishBy: 305000 });
+    expect((await stored()).m1?.finishBy).toBe(305000);
+    await dispatch(detected('x', 'abc-defg-hij', 6000));
+    const next = (await stored()).m1;
+    expect(next).toMatchObject({ state: 'linked', sessionId: SESSION_ID });
+    expect(next?.finishBy).toBeUndefined();
+  });
+});
+
 describe('falha no ciclo de vida nunca derruba o dispatch (T-08-42)', () => {
   it('a gravação da associação falha: o dispatch devolve o estado novo e o erro vai para o log', async () => {
     const { mock, sessionController, settle } = await fresh();
@@ -271,6 +315,46 @@ describe('recuperação no boot do service worker (D-04, Pitfall 10)', () => {
   it('sent da reunião ao vivo vira linked, com a mesma sessão', async () => {
     const sent = await recover({ live: association('live', { state: 'sent', sessionId: SESSION_ID, seedSent: {} }) }, liveState);
     expect(sent.live).toMatchObject({ state: 'linked', sessionId: SESSION_ID });
+  });
+
+  it('da reunião ao vivo: linked com sessionFinished volta a pending', async () => {
+    const map = await recover(
+      { live: association('live', { state: 'linked', sessionId: SESSION_ID, origin: 'picker', sessionFinished: true }) },
+      liveState,
+    );
+    expect(map.live).toEqual({ meetingId: 'live', state: 'pending' });
+  });
+
+  it('da reunião ao vivo: só o prazo (finishBy/finishTries) é cancelado, a sessão segue', async () => {
+    const withDeadline = await recover(
+      { live: association('live', { state: 'linked', sessionId: SESSION_ID, origin: 'picker', finishBy: 5, finishTries: 2 }) },
+      liveState,
+    );
+    expect(withDeadline.live).toEqual(association('live', { state: 'linked', sessionId: SESSION_ID, origin: 'picker' }));
+  });
+
+  it('da reunião ao vivo: sending com sessionFinished também volta a pending', async () => {
+    const map = await recover(
+      { live: association('live', { state: 'sending', sessionId: SESSION_ID, sessionFinished: true }) },
+      liveState,
+    );
+    expect(map.live).toEqual({ meetingId: 'live', state: 'pending' });
+  });
+
+  it('da reunião ao vivo: send-failed que desistiu de encerrar perde só a marca de desistência', async () => {
+    const failed = await recover(
+      { live: association('live', { state: 'send-failed', sessionId: SESSION_ID, error: 'send', finishGaveUp: true }) },
+      liveState,
+    );
+    expect(failed.live).toEqual(association('live', { state: 'send-failed', sessionId: SESSION_ID, error: 'send' }));
+  });
+
+  it('associação encerrada de reunião que NÃO está ao vivo não muda', async () => {
+    const seed = {
+      old: association('old', { state: 'linked', sessionId: SESSION_ID, origin: 'picker', sessionFinished: true }),
+      gaveUp: association('gaveUp', { state: 'sent', sessionId: SESSION_ID, finishBy: 5, finishGaveUp: true }),
+    };
+    expect(await recover(seed, liveState)).toEqual(seed);
   });
 
   it('linked, sent e send-failed de reuniões que não estão ao vivo não mudam', async () => {
