@@ -11,6 +11,7 @@
  */
 
 import { reduceCloseFlow } from './associationClose';
+import { BEFORE_LINK, reduceMeetingEnded, reduceMeetingResumed } from './associationMeeting';
 import { carryIdentity, reduceSendFlow } from './associationSend';
 
 export type AssociationState =
@@ -91,8 +92,6 @@ export type AssociationEvent =
   | { type: 'finish-armed'; by: number }
   | { type: 'finish-failed'; definitive?: boolean };
 
-const BEFORE_LINK: readonly AssociationState[] = ['pending', 'choosing', 'deferred'];
-
 /**
  * Falha do vínculo ao vivo. Sem `sessionId` a sessão nem foi criada: volta para `deferred` (com erro
  * visível). Com `sessionId` a sessão existe e o resumo é que não saiu: fica parado em `send-failed`.
@@ -105,32 +104,6 @@ function reduceLinkFailed(current: MeetingAssociation, error: AssociationError):
   }
   if (error === 'send' && current.sessionId !== undefined) return { ...current, state: 'send-failed', error };
   return current;
-}
-
-/**
- * O fim da reunião: quem ainda não escolheu vira `ended-unsent` (o erro, se houver, fica). `linking`
- * não muda — o vínculo em andamento continua e o fluxo dele (08-10) resolve o fim. O resto já tem destino.
- */
-function reduceMeetingEnded(current: MeetingAssociation): MeetingAssociation {
-  return BEFORE_LINK.includes(current.state) ? { ...current, state: 'ended-unsent' } : current;
-}
-
-/**
- * A mesma sala voltou: `ended-unsent` -> `pending` (a bolha reaparece), `sending` -> `linking` (o envio
- * em partes vira vínculo ao vivo), `sent` -> `linked` e a fala nova segue para a sessão já escolhida — só
- * quando a associação TEM `sessionId`. `send-failed` fica parado (a barra mostra o aviso).
- */
-function reduceMeetingResumed(current: MeetingAssociation): MeetingAssociation {
-  switch (current.state) {
-    case 'ended-unsent':
-      return { meetingId: current.meetingId, state: 'pending' };
-    case 'sending':
-      return { ...current, state: 'linking' };
-    case 'sent':
-      return current.sessionId === undefined ? current : { ...current, state: 'linked' };
-    default:
-      return current;
-  }
 }
 
 /**
