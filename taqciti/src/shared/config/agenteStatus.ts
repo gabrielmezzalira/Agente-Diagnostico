@@ -12,6 +12,7 @@
  * confirmação (`AgenteWaitingRecord`). A tela recebe os dois já juntos, como `AgenteStreamingStatus`.
  */
 import type { StreamingReadiness } from './agenteConfig';
+import type { AgenteDropTrace } from './agenteDeliveryStore';
 
 /**
  * `interrupted` (WR-04): o service worker reiniciou enquanto um trecho esperava nova tentativa.
@@ -148,4 +149,40 @@ export function describeAgenteStreaming(
     default:
       return { tone: 'muted', text: 'Ligado — pronto para enviar. O envio começa quando alguém falar.' };
   }
+}
+
+const SESSION_PREFIX_LENGTH = 8;
+
+function dropReasonText(trace: AgenteDropTrace): string | null {
+  switch (trace.lastReason) {
+    case 'failed':
+      return failureReason(trace.lastHttpStatus);
+    case 'rejected':
+      return `recusada pelo Agente, HTTP ${trace.lastHttpStatus ?? '—'}`;
+    case 'overflow':
+      return 'fila cheia';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Nota do rastro de falas que a Taqciti desistiu de entregar (Fase 8, decisão B3-b): vive numa chave
+ * própria que nenhum status apaga, então continua na tela mesmo depois de um envio bem-sucedido.
+ * `null` quando não há rastro — a tela mostra só o texto da Fase 7.
+ */
+export function describeDropTrace(
+  trace: AgenteDropTrace,
+  formatDateTime: (epochMs: number) => string,
+): string | null {
+  if (trace.count <= 0 || trace.sessionId === null) return null;
+  const subject =
+    trace.count === 1
+      ? '1 fala da sessão'
+      : `${trace.count} falas da sessão`;
+  const verb = trace.count === 1 ? 'não chegou' : 'não chegaram';
+  const session = `${trace.sessionId.slice(0, SESSION_PREFIX_LENGTH)}…`;
+  const when = trace.lastAt === null ? '' : ` — a última em ${formatDateTime(trace.lastAt)}`;
+  const reason = dropReasonText(trace);
+  return `${subject} ${session} ${verb} ao Agente${when}${reason === null ? '' : ` (${reason})`}.`;
 }
