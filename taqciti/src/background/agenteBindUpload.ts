@@ -27,6 +27,12 @@ export interface BindUploadDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Chamado depois de o vínculo ao vivo concluir (produção: reavaliar o streamer, 08-01). */
   onLinked?: (meetingId: string) => Promise<void>;
+  /**
+   * Chamado ao FINAL do envio em partes em qualquer desfecho (concluído, parado ou vínculo ao vivo pronto),
+   * depois de a associação refletir o resultado (produção: avisar o agendador do encerramento, B4-b).
+   * Nunca é esperado e um erro dele só vai para o log: o encerramento não atrasa nem derruba o envio.
+   */
+  onSettled?: (meetingId: string) => Promise<void>;
 }
 
 function defaultSleep(ms: number): Promise<void> {
@@ -50,7 +56,32 @@ async function applyForCurrentState(
   return null;
 }
 
+/** Avisa o fim do envio sem esperar: falha (síncrona ou assíncrona) só vai para o log. */
+function notifySettled(deps: BindUploadDeps, meetingId: string): void {
+  if (deps.onSettled === undefined) return;
+  const logFailure = (error: unknown) =>
+    logger.error('avisar o fim do envio em partes ao encerramento falhou', error);
+  try {
+    void deps.onSettled(meetingId).catch(logFailure);
+  } catch (error) {
+    logFailure(error);
+  }
+}
+
 export async function runBindUpload(
+  deps: BindUploadDeps,
+  meetingId: string,
+  sessionId: string,
+  parts: readonly UploadPart[],
+): Promise<void> {
+  try {
+    await uploadParts(deps, meetingId, sessionId, parts);
+  } finally {
+    notifySettled(deps, meetingId);
+  }
+}
+
+async function uploadParts(
   deps: BindUploadDeps,
   meetingId: string,
   sessionId: string,

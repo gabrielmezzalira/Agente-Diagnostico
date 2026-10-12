@@ -26,6 +26,7 @@ import type {
   MeetingAssociation,
 } from '@/features/agente/association';
 import { logger } from '@/shared/services/log';
+import { agenteSessionFinisher } from './agenteSessionFinisher';
 
 /** Leitor próprio e preguiçoso: só toca o storage na primeira chamada e depois segue o `onChanged`. */
 const readConfig = createAgenteConfigReader();
@@ -57,6 +58,17 @@ async function closeFinishedMeeting(prev: MeetingState, next: MeetingState): Pro
     return;
   }
   await applyAssociationEvent(previous.meetingId, { type: 'meeting-ended' });
+  notifyMeetingEnded(previous.meetingId);
+}
+
+/**
+ * Avisa o agendador do encerramento (B4-b) que a reunião acabou; quem decide se encerra agora, espera ou
+ * ignora é ele. Sem esperar: o aviso nunca atrasa a associação da reunião seguinte (T-08-53).
+ */
+function notifyMeetingEnded(meetingId: string): void {
+  void agenteSessionFinisher
+    .evaluate(meetingId)
+    .catch((error: unknown) => logger.error('avisar o fim da reunião ao encerramento falhou', error));
 }
 
 /** Mesma sala retomada logo depois de encerrar: devolve a associação a um estado ao vivo. */

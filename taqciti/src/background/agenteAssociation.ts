@@ -17,6 +17,7 @@ import {
   createAgenteAssociationService,
   type AgenteAssociationServiceDeps,
 } from './agenteAssociationService';
+import { agenteSessionFinisher } from './agenteSessionFinisher';
 import { reevaluateAgenteStreamer } from './agenteStreamer';
 import { deleteRecord, getRecord } from './history';
 import { createHttpClientDirectory } from './httpClientDirectory';
@@ -55,6 +56,8 @@ let activeDeps: AgenteAssociationServiceDeps = {
   send: defaultSend,
   // Logo depois do vínculo, o que foi dito depois da semente sai uma vez (08-01).
   onLinked: () => reevaluateAgenteStreamer(),
+  // Fim do envio em partes (concluído ou parado): o agendador decide se encerra a sessão (B4-b).
+  onSettled: (meetingId) => agenteSessionFinisher.evaluate(meetingId),
 };
 let activeService = createAgenteAssociationService(activeDeps);
 
