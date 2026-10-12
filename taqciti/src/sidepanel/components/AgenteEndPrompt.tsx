@@ -5,15 +5,19 @@
  *   ask          pergunta se a reunião vai para o Agente (Selecionar / Descartar)
  *   sending      "Enviando para {cliente}…" + trilho "{x} de {y}"
  *   sent         "Reunião enviada para {cliente}." com o check de sucesso
- *   failed       o envio parou no meio — aviso warning e linha de apoio
+ *   failed       o envio parou no meio — aviso warning e, conforme o caso: botão "Continuar envio"
+ *                (quando há `onResume`), linha de apoio (sem botão) e aviso de sessão já encerrada
  *   linked-note  só uma linha de apoio "Enviada para {cliente}"
  *
  * Decisões do contrato que este arquivo respeita:
  *   - não há botão "Cancelar": o envio continua no service worker mesmo com o
  *     painel fechado (UI-SPEC decisão e);
- *   - não há botão "Continuar envio" nem "Enviar ao Agente" na falha: sem o
- *     identificador por trecho (decisão B3) uma nova tentativa duplicaria as
- *     partes que já chegaram. Entra no plano 08-20, se a B3 for aplicada;
+ *   - na falha não há "Enviar ao Agente" (reenviar do zero duplicaria as partes
+ *     que já chegaram). "Continuar envio" (plano 08-20, B3 resolvida pelo
+ *     `chunk_id`) só aparece quando quem hospeda passa `onResume`: retoma da última
+ *     parte confirmada, sem duplicar;
+ *   - com a sessão já encerrada pela Taqciti (B4-b, decisão DA-2) a falha ganha o
+ *     aviso de que o relatório precisa ser gerado de novo;
  *   - a falha é warning, nunca danger: nada foi perdido, a transcrição segue
  *     guardada na Taqciti.
  *
@@ -30,7 +34,7 @@ export type EndPromptView =
   | { kind: 'ask' }
   | { kind: 'sending'; clientName: string; done: number; total: number }
   | { kind: 'sent'; clientName: string }
-  | { kind: 'failed'; done: number; total: number }
+  | { kind: 'failed'; done: number; total: number; sessionClosed?: boolean }
   | { kind: 'linked-note'; clientName: string };
 
 interface AgenteEndPromptProps {
@@ -39,11 +43,17 @@ interface AgenteEndPromptProps {
   onSelectClient?: (() => void) | undefined;
   /** "Descartar" do estado `ask` (a confirmação é de quem recebe o callback). */
   onDiscard?: (() => void) | undefined;
+  /** "Continuar envio" da visão `failed`; sem ele a falha mostra só a linha de apoio. */
+  onResume?: (() => void) | undefined;
 }
 
 /* Mesmo literal do aviso de captura (PanelApp): warning, sem token novo. */
 const WARNING =
   'rounded-control border border-[#f2c94c]/25 bg-[#f2c94c]/10 px-3 py-2 text-caption leading-relaxed text-[#f7dd8f]';
+
+/** Cópia da DA-2 (2026-10-12), a mesma do UI-SPEC §Copywriting. */
+const SESSION_CLOSED_TEXT =
+  'A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo.';
 
 /**
  * Uma linha "{prefixo} {cliente}{sufixo}" em que só o nome encolhe: o prefixo e
@@ -76,6 +86,7 @@ export function AgenteEndPrompt({
   view,
   onSelectClient,
   onDiscard,
+  onResume,
 }: AgenteEndPromptProps) {
   switch (view.kind) {
     case 'ask':
@@ -134,10 +145,24 @@ export function AgenteEndPrompt({
           <p role="status" aria-live="polite" className={WARNING}>
             {`O envio parou na parte ${view.done} de ${view.total}. O que já chegou continua no Agente.`}
           </p>
-          <p className="mt-2 text-caption text-muted">
-            A transcrição continua guardada na Taqciti. Você pode copiá-la ou baixá-la
-            enquanto isso.
-          </p>
+          {view.sessionClosed === true && (
+            <p className={`mt-2 ${WARNING}`}>{SESSION_CLOSED_TEXT}</p>
+          )}
+          {onResume !== undefined ? (
+            <Button
+              variant="secondary"
+              size="compact"
+              className="mt-3 w-full"
+              onClick={onResume}
+            >
+              Continuar envio
+            </Button>
+          ) : (
+            <p className="mt-2 text-caption text-muted">
+              A transcrição continua guardada na Taqciti. Você pode copiá-la ou baixá-la
+              enquanto isso.
+            </p>
+          )}
         </Surface>
       );
 

@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgenteEndPrompt, type EndPromptView } from './AgenteEndPrompt';
 
 const FAILED_TEXT = 'O envio parou na parte 7 de 30. O que já chegou continua no Agente.';
+const CLOSED_TEXT =
+  'A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo.';
 const SUPPORT_TEXT =
   'A transcrição continua guardada na Taqciti. Você pode copiá-la ou baixá-la enquanto isso.';
 
@@ -30,7 +32,7 @@ describe('AgenteEndPrompt', () => {
 
   function render(
     view: EndPromptView,
-    handlers: { onSelectClient?: () => void; onDiscard?: () => void } = {},
+    handlers: { onSelectClient?: () => void; onDiscard?: () => void; onResume?: () => void } = {},
   ) {
     act(() => {
       root.render(<AgenteEndPrompt view={view} {...handlers} />);
@@ -115,6 +117,40 @@ describe('AgenteEndPrompt', () => {
     expect(buttons()).toHaveLength(0);
     expect(host.innerHTML).not.toContain('text-danger');
     expect(host.textContent).not.toContain('Continuar envio');
+  });
+
+  it('failed sem sessionClosed: nenhuma linha extra de sessão encerrada', () => {
+    render({ kind: 'failed', done: 7, total: 30 });
+    expect(host.textContent).not.toContain('já foi encerrada');
+  });
+
+  it('failed com onResume: botão "Continuar envio" (secondary) no lugar da linha de apoio; o clique chama onResume', () => {
+    const onResume = vi.fn();
+    render({ kind: 'failed', done: 7, total: 30 }, { onResume });
+
+    expect(host.querySelector('[role="status"]')!.textContent).toBe(FAILED_TEXT);
+    expect(buttons()).toHaveLength(1);
+    expect(buttons()[0]!.textContent).toBe('Continuar envio');
+    expect(host.textContent).not.toContain(SUPPORT_TEXT);
+    expect(host.innerHTML).not.toContain('text-danger');
+    act(() => buttons()[0]!.click());
+    expect(onResume).toHaveBeenCalledTimes(1);
+  });
+
+  it('failed com sessionClosed (DA-2): a linha exata do UI-SPEC em warning, com ou sem o botão', () => {
+    render({ kind: 'failed', done: 7, total: 30, sessionClosed: true });
+    expect(host.textContent).toContain(CLOSED_TEXT);
+    expect(host.textContent).toContain(SUPPORT_TEXT);
+    expect(buttons()).toHaveLength(0);
+    const closed = Array.from(host.querySelectorAll('p')).find((p) => p.textContent === CLOSED_TEXT)!;
+    expect(closed.className).toContain('border-[#f2c94c]/25');
+
+    render({ kind: 'failed', done: 7, total: 30, sessionClosed: true }, { onResume: vi.fn() });
+    expect(host.textContent).toContain(CLOSED_TEXT);
+    expect(buttons().map((b) => b.textContent)).toEqual(['Continuar envio']);
+    // a linha de aviso vem acima do botão
+    const text = host.textContent ?? '';
+    expect(text.indexOf(CLOSED_TEXT)).toBeLessThan(text.indexOf('Continuar envio'));
   });
 
   it('linked-note: "Enviada para {cliente}" em text-caption text-muted, com nome truncado', () => {

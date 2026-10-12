@@ -9,7 +9,7 @@
  * Regras que moram aqui:
  *   - `variant="card"` é a tela "Transcrição salva" (cartão); `variant="button"` é o histórico
  *     (botão "Enviar ao Agente"). Nos dois, só `ended-unsent` pergunta; `send-failed` mostra a falha e
- *     nunca oferece reenviar do zero (duplicaria as partes que já chegaram — B3, plano 08-20);
+ *     oferece "Continuar envio" (retoma da última parte confirmada, B3, plano 08-20) — nunca reenviar do zero;
  *   - descartar só acontece no botão de confirmar do modal; Esc, fundo e "Manter reunião" não mandam nada;
  *   - um comando por vez: o `busyRef` trava o segundo clique no mesmo instante;
  *   - na saída larga o seletor ocupa a tela inteira dentro do `AppShell`; no painel, ele entra no lugar.
@@ -49,7 +49,7 @@ function viewForVariant(view: EndPromptView, variant: 'card' | 'button'): EndPro
 }
 
 export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded }: AgenteEndSlotProps) {
-  const { association, bind, discard } = useMeetingAssociation(meetingId);
+  const { association, bind, discard, resumeSend } = useMeetingAssociation(meetingId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,6 +88,14 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
     const result = await discard();
     busyRef.current = false;
     if (result.ok) onDiscarded?.();
+  };
+
+  /** "Continuar envio": um comando por vez; a tela segue o estado que o service worker grava (sending). */
+  const handleResume = async (): Promise<void> => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    await resumeSend();
+    busyRef.current = false;
   };
 
   if (view === null) return null;
@@ -129,6 +137,7 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
           view={viewForVariant(view, variant)}
           onSelectClient={openPicker}
           onDiscard={() => setConfirmDiscard(true)}
+          onResume={() => void handleResume()}
         />
       )}
       <ConfirmModal

@@ -71,7 +71,12 @@ export function toEndPromptView(
     case 'sent':
       return { kind: 'sent', clientName };
     case 'send-failed':
-      return { kind: 'failed', ...progressOf(association) };
+      // A Taqciti já encerrou a sessão (B4-b, DA-2): o cartão avisa que o relatório precisa ser gerado de novo.
+      return {
+        kind: 'failed',
+        ...progressOf(association),
+        ...(association.sessionFinished === true && { sessionClosed: true }),
+      };
     case 'linked':
       return { kind: 'linked-note', clientName };
     default:

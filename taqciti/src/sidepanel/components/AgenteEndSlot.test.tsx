@@ -10,6 +10,7 @@ import { createAgenteHarness } from '@/test/agentePanelHarness';
 import { AgenteEndSlot } from './AgenteEndSlot';
 
 const MEETING = 'm1';
+const SID = '22222222-2222-2222-2222-222222222222';
 const TITLE = 'Reunião com a Acme';
 const CLIENTS = [
   { id: 'c-acme', client: 'Acme', name: 'Pipeline' },
@@ -203,12 +204,40 @@ describe('AgenteEndSlot — variante botão e demais estados', () => {
     expect(h.host.textContent).toContain('Escolher cliente');
   });
 
-  it('send-failed: mostra a falha e o apoio, sem "Enviar ao Agente" nem "Continuar envio"', async () => {
-    h.start(assoc('send-failed', { sendProgress: { done: 7, total: 30 } }));
+  it('send-failed: mostra a falha e "Continuar envio", sem "Enviar ao Agente"', async () => {
+    h.start(assoc('send-failed', { sessionId: SID, sendProgress: { done: 7, total: 30 } }));
     await h.render(slot('button'));
     expect(h.host.textContent).toContain('O envio parou na parte 7 de 30.');
     expect(h.buttonByText('Enviar ao Agente')).toBeUndefined();
-    expect(h.host.textContent).not.toContain('Continuar envio');
+    expect(h.buttonByText('Continuar envio')).toBeDefined();
+    expect(h.host.textContent).not.toContain('já foi encerrada');
+  });
+
+  it('send-failed: clicar em "Continuar envio" manda UM resume-send mesmo com clique duplo; depois vem "Enviando para"', async () => {
+    h.start(assoc('send-failed', { sessionId: SID, clientName: 'Acme', sendProgress: { done: 7, total: 30 } }));
+    await h.render(slot('card'));
+    const resume = h.buttonByText('Continuar envio')!;
+    await act(async () => {
+      resume.click();
+      resume.click();
+    });
+    expect(h.commandsOf('ui/agente/meeting/resume-send')).toEqual([
+      { type: 'ui/agente/meeting/resume-send', meetingId: MEETING },
+    ]);
+
+    await h.writeAssociation(assoc('sending', { sessionId: SID, clientName: 'Acme', sendProgress: { done: 7, total: 30 } }));
+    expect(h.host.textContent).toContain('Enviando para');
+    expect(h.host.textContent).toContain('Acme');
+    expect(h.buttonByText('Continuar envio')).toBeUndefined();
+  });
+
+  it('send-failed com a sessão já encerrada: o aviso da DA-2 aparece junto do botão', async () => {
+    h.start(assoc('send-failed', { sessionId: SID, sessionFinished: true, sendProgress: { done: 7, total: 30 } }));
+    await h.render(slot('card'));
+    expect(h.host.textContent).toContain(
+      'A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo.',
+    );
+    expect(h.buttonByText('Continuar envio')).toBeDefined();
   });
 
   it('linked (reunião encerrada): só a linha "Enviada para {cliente}"', async () => {

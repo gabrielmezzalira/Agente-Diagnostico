@@ -122,6 +122,17 @@ describe('toEndPromptView — reunião encerrada', () => {
     });
   });
 
+  it('send-failed com sessionFinished marca sessionClosed (DA-2); sem encerramento a visão não tem o campo', () => {
+    const progress = { sendProgress: { done: 6, total: 45 } };
+    expect(toEndPromptView(assoc('send-failed', { ...progress, sessionFinished: true }), false)).toEqual({
+      kind: 'failed',
+      done: 6,
+      total: 45,
+      sessionClosed: true,
+    });
+    expect(toEndPromptView(assoc('send-failed', progress), false)).not.toHaveProperty('sessionClosed');
+  });
+
   it('sent / send-failed / linked', () => {
     expect(toEndPromptView(assoc('sent', { clientName: 'Empresa X' }), false)).toEqual({
       kind: 'sent',
