@@ -4,6 +4,7 @@
  * atravessando fronteiras de contexto.
  */
 import { z } from 'zod';
+import { agenteUiMessageSchemas } from './agenteMessages';
 
 export const participantSchema = z.object({
   name: z.string().min(1).max(120),
@@ -189,6 +190,7 @@ export const uiMessageSchema = z.discriminatedUnion('type', [
     id: z.string(),
     title: z.string().min(1).max(200),
   }),
+  ...agenteUiMessageSchemas,
 ]);
 
 /** Broadcast do background → todos os contextos. */
