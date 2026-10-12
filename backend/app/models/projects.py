@@ -15,7 +15,7 @@ class ProjectCreate(BaseModel):
     client: str
     description: Optional[str] = None
     project_type: Optional[ProjectType] = None
-    gemini_api_key: str
+    gemini_api_key: Optional[str] = None
     budget_usd: Optional[Decimal] = None
     data_maturity_score: Optional[int] = None
     pre_meeting_context: Optional[str] = None

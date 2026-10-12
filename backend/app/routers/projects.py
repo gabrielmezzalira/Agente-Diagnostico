@@ -52,9 +52,12 @@ async def list_projects(db: Client = Depends(get_supabase)):
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(payload: ProjectCreate, db: Client = Depends(get_supabase)):
-    secret_id = _vault_store(db, payload.gemini_api_key, f"gemini-{payload.client}")
     row = payload.model_dump(mode="json", exclude={"gemini_api_key", "pricing_api_key"})
-    row["gemini_api_key_secret_id"] = secret_id
+    # D-15: a chave Gemini do projeto é opcional; sem ela o pipeline usa GEMINI_API_KEY do servidor.
+    if payload.gemini_api_key:
+        row["gemini_api_key_secret_id"] = _vault_store(
+            db, payload.gemini_api_key, f"gemini-{payload.client}"
+        )
     if payload.pricing_api_key:
         row["pricing_api_key_secret_id"] = _vault_store(
             db, payload.pricing_api_key, f"pricing-{payload.client}"
