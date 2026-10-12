@@ -15,7 +15,9 @@ export interface FakeClientDirectory extends ClientDirectory {
   readonly createCalls: number;
 }
 
-export function createFakeClientDirectory(initial: readonly ClientSummary[]): FakeClientDirectory {
+export function createFakeClientDirectory(
+  initial: readonly ClientSummary[],
+): FakeClientDirectory {
   const clients: ClientSummary[] = [...initial];
   let listCalls = 0;
   let createCalls = 0;
@@ -32,7 +34,8 @@ export function createFakeClientDirectory(initial: readonly ClientSummary[]): Fa
     },
     create: (name) => {
       createCalls += 1;
-      if (isDuplicateClientName(name, clients)) return Promise.reject(new DuplicateClientError());
+      if (isDuplicateClientName(name, clients))
+        return Promise.reject(new DuplicateClientError());
       const trimmed = name.trim();
       const created: ClientSummary = {
         id: `fake-client-${clients.length + 1}-${foldText(trimmed).replace(/\s+/g, '-')}`,
@@ -50,7 +53,9 @@ export interface FakeSessionGateway extends AgenteSessionGateway {
 }
 
 /** UUIDs fixos e sequenciais ("00000000-0000-4000-8000-00000000000N"); `failWith` faz falhar. */
-export function createFakeSessionGateway(options: { failWith?: Error } = {}): FakeSessionGateway {
+export function createFakeSessionGateway(
+  options: { failWith?: Error } = {},
+): FakeSessionGateway {
   const calls: Array<{ clientId: string; name: string }> = [];
   return {
     calls,

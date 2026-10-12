@@ -7,7 +7,10 @@
  */
 import type { KeyboardEvent } from 'react';
 
-export function containEscape(event: KeyboardEvent<HTMLElement>, onEscape: () => void): boolean {
+export function containEscape(
+  event: KeyboardEvent<HTMLElement>,
+  onEscape: () => void,
+): boolean {
   if (event.key !== 'Escape') return false;
   event.stopPropagation();
   event.nativeEvent.stopImmediatePropagation();

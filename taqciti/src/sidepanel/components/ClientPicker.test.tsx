@@ -20,17 +20,20 @@ const CLIENTS: ClientSummary[] = [
 
 const VALID_UUID = '11111111-2222-4333-8444-555555555555';
 const DUPLICATE_HINT = 'Já existe um cliente com esse nome. Selecione-o na lista.';
-const CREATE_CLIENT_ERROR = 'Não foi possível criar o cliente. Confira a conexão e tente de novo.';
+const CREATE_CLIENT_ERROR =
+  'Não foi possível criar o cliente. Confira a conexão e tente de novo.';
 const CREATE_SESSION_ERROR =
   'Não foi possível criar a sessão no Agente. A reunião continua guardada só aqui. Tente de novo.';
-const MANUAL_FORMAT_ERROR = 'O ID precisa ser um UUID, como aparece no web app do Agente.';
+const MANUAL_FORMAT_ERROR =
+  'O ID precisa ser um UUID, como aparece no web app do Agente.';
 
 /** Monta o picker num root próprio e devolve os atalhos de consulta dos grupos de teste. */
 function usePickerHarness() {
   const ctx = { host: null as unknown as HTMLDivElement, root: null as unknown as Root };
 
   beforeEach(() => {
-    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
+      true;
     ctx.host = document.createElement('div');
     document.body.append(ctx.host);
     ctx.root = createRoot(ctx.host);
@@ -62,7 +65,10 @@ function usePickerHarness() {
       act(() => ctx.root.render(<ClientPicker {...props} />));
     },
     typeInto(input: HTMLInputElement, value: string) {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      )!.set!;
       act(() => {
         setter.call(input, value);
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -74,13 +80,18 @@ function usePickerHarness() {
       });
     },
     buttonByText: (text: string) =>
-      Array.from(ctx.host.querySelectorAll('button')).find((b) => b.textContent?.trim() === text),
+      Array.from(ctx.host.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === text,
+      ),
     input: () => ctx.host.querySelector<HTMLInputElement>('input')!,
-    rows: () => Array.from(ctx.host.querySelectorAll<HTMLLIElement>('ul[aria-label="Clientes"] > li')),
+    rows: () =>
+      Array.from(
+        ctx.host.querySelectorAll<HTMLLIElement>('ul[aria-label="Clientes"] > li'),
+      ),
     rowButton: (index: number) =>
-      Array.from(ctx.host.querySelectorAll<HTMLLIElement>('ul[aria-label="Clientes"] > li'))[
-        index
-      ]!.querySelector('button')!,
+      Array.from(
+        ctx.host.querySelectorAll<HTMLLIElement>('ul[aria-label="Clientes"] > li'),
+      )[index]!.querySelector('button')!,
   };
 }
 
@@ -91,7 +102,9 @@ describe('ClientPicker — lista, busca e seleção', () => {
     h.render({ status: 'loading', clients: [] });
 
     expect(h.host.querySelectorAll('[data-skeleton-row]')).toHaveLength(4);
-    expect(h.host.querySelector('[aria-live="polite"]')!.textContent).toBe('Carregando clientes…');
+    expect(h.host.querySelector('[aria-live="polite"]')!.textContent).toBe(
+      'Carregando clientes…',
+    );
     expect(h.input().disabled).toBe(true);
     expect(h.buttonByText('Criar cliente novo')!.disabled).toBe(true);
     expect(h.host.textContent).not.toContain('ID da sessão do Agente');
@@ -166,13 +179,17 @@ describe('ClientPicker — lista, busca e seleção', () => {
 
     h.render({ mode: 'ended', onConfirm });
     expect(h.buttonByText('Enviar reunião')).toBeDefined();
-    expect(h.host.textContent).toContain('A transcrição guardada será enviada para a sessão deste cliente.');
+    expect(h.host.textContent).toContain(
+      'A transcrição guardada será enviada para a sessão deste cliente.',
+    );
   });
 
   it('busy: CTA "Vinculando…"/"Enviando…" desabilitado e lista com aria-busy', () => {
     h.render({ busy: true });
     expect(h.buttonByText('Vinculando…')!.disabled).toBe(true);
-    expect(h.host.querySelector('ul[aria-label="Clientes"]')!.getAttribute('aria-busy')).toBe('true');
+    expect(
+      h.host.querySelector('ul[aria-label="Clientes"]')!.getAttribute('aria-busy'),
+    ).toBe('true');
 
     h.render({ busy: true, mode: 'ended' });
     expect(h.buttonByText('Enviando…')!.disabled).toBe(true);
@@ -301,7 +318,9 @@ describe('ClientPicker — criar cliente inline', () => {
     expect(h.input().value).toBe('Nova Co');
 
     h.render({ error: 'create-session' });
-    expect(h.host.querySelector('[aria-live="assertive"]')!.textContent).toBe(CREATE_SESSION_ERROR);
+    expect(h.host.querySelector('[aria-live="assertive"]')!.textContent).toBe(
+      CREATE_SESSION_ERROR,
+    );
     expect(h.input().value).toBe('Nova Co');
   });
 

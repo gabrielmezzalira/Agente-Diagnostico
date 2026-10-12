@@ -46,13 +46,18 @@ function LoadingRows() {
   );
 }
 
-function EmptyState({ query, onCreateFromQuery }: Pick<ClientPickerListProps, 'query' | 'onCreateFromQuery'>) {
+function EmptyState({
+  query,
+  onCreateFromQuery,
+}: Pick<ClientPickerListProps, 'query' | 'onCreateFromQuery'>) {
   const term = query.trim();
   if (term === '') {
     return (
       <div className="px-2 py-6 text-center">
         <p className="text-read font-semibold">Nenhum cliente cadastrado ainda.</p>
-        <p className="mt-1 text-caption text-muted">Crie o primeiro para vincular esta reunião.</p>
+        <p className="mt-1 text-caption text-muted">
+          Crie o primeiro para vincular esta reunião.
+        </p>
       </div>
     );
   }

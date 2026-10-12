@@ -30,7 +30,9 @@ const CLIENTS: ClientSummary[] = [
 describe('filterClients', () => {
   it('"acai" encontra "Açaí Ltda" e "  SAO paulo " encontra "São Paulo Tech"', () => {
     expect(filterClients(CLIENTS, 'acai').map((c) => c.client)).toEqual(['Açaí Ltda']);
-    expect(filterClients(CLIENTS, '  SAO paulo ').map((c) => c.client)).toEqual(['São Paulo Tech']);
+    expect(filterClients(CLIENTS, '  SAO paulo ').map((c) => c.client)).toEqual([
+      'São Paulo Tech',
+    ]);
   });
 
   it('busca vazia (ou só espaços) devolve todos', () => {
@@ -39,15 +41,24 @@ describe('filterClients', () => {
   });
 
   it('casa por cliente OU por nome do projeto', () => {
-    expect(filterClients(CLIENTS, 'pipeline').map((c) => c.client)).toEqual(['Açaí Ltda']);
-    expect(filterClients(CLIENTS, 'dash').map((c) => c.client)).toEqual(['São Paulo Tech']);
+    expect(filterClients(CLIENTS, 'pipeline').map((c) => c.client)).toEqual([
+      'Açaí Ltda',
+    ]);
+    expect(filterClients(CLIENTS, 'dash').map((c) => c.client)).toEqual([
+      'São Paulo Tech',
+    ]);
     expect(filterClients(CLIENTS, 'zzz')).toEqual([]);
   });
 });
 
 describe('sortClients', () => {
   it('ordena pelo cliente em pt-BR: "Ágape" antes de "Beta"; "beta" e "Beta" ficam juntos', () => {
-    const sorted = sortClients([client('Beta'), client('Zeta'), client('beta', 'x', 'b2'), client('Ágape')]);
+    const sorted = sortClients([
+      client('Beta'),
+      client('Zeta'),
+      client('beta', 'x', 'b2'),
+      client('Ágape'),
+    ]);
     expect(sorted.map((c) => c.client)).toEqual(['Ágape', 'Beta', 'beta', 'Zeta']);
   });
 
@@ -83,12 +94,14 @@ describe('countLabel', () => {
 
 describe('implementações "indisponível"', () => {
   it('list() e createSession() rejeitam com ClientDirectoryUnavailableError', async () => {
-    await expect(unavailableClientDirectory.list()).rejects.toBeInstanceOf(ClientDirectoryUnavailableError);
+    await expect(unavailableClientDirectory.list()).rejects.toBeInstanceOf(
+      ClientDirectoryUnavailableError,
+    );
     await expect(unavailableClientDirectory.create('X')).rejects.toBeInstanceOf(
       ClientDirectoryUnavailableError,
     );
-    await expect(unavailableSessionGateway.createSession('1', 'X')).rejects.toBeInstanceOf(
-      ClientDirectoryUnavailableError,
-    );
+    await expect(
+      unavailableSessionGateway.createSession('1', 'X'),
+    ).rejects.toBeInstanceOf(ClientDirectoryUnavailableError);
   });
 });

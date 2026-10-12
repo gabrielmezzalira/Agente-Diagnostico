@@ -21,7 +21,8 @@ export function filterClients(
   const needle = foldText(query);
   if (needle === '') return [...clients];
   return clients.filter(
-    (item) => foldText(item.client).includes(needle) || foldText(item.name).includes(needle),
+    (item) =>
+      foldText(item.client).includes(needle) || foldText(item.name).includes(needle),
   );
 }
 
@@ -31,7 +32,10 @@ export function sortClients(clients: readonly ClientSummary[]): ClientSummary[] 
 }
 
 /** Já existe um cliente com este nome (sem contar acento, caixa nem espaços nas pontas)? */
-export function isDuplicateClientName(name: string, clients: readonly ClientSummary[]): boolean {
+export function isDuplicateClientName(
+  name: string,
+  clients: readonly ClientSummary[],
+): boolean {
   const target = foldText(name);
   return clients.some((item) => foldText(item.client) === target);
 }
