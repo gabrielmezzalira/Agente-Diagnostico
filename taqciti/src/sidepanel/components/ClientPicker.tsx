@@ -79,6 +79,13 @@ export function ClientPicker({
   // Só vale a seleção de uma linha que a pessoa está vendo: nada de CTA agindo sobre cliente oculto.
   const selected = visible.find((item) => item.id === selectedId) ?? null;
   const loading = status === 'loading';
+  // O erro de criar a sessão vale para a lista e para o plano B (ID manual): a pessoa sempre o vê.
+  const sessionError =
+    error === 'create-session' ? (
+      <p aria-live="assertive" className="shrink-0 text-caption text-danger">
+        {CLIENT_ERROR_COPY['create-session']}
+      </p>
+    ) : null;
 
   const toggle = (item: ClientSummary): void => {
     if (busy) return;
@@ -122,6 +129,7 @@ export function ClientPicker({
             Tentar de novo
           </Button>
           <ManualSessionIdForm mode={mode} busy={busy} onSubmit={onManualId} />
+          {sessionError}
         </div>
       ) : (
         <>
@@ -160,11 +168,7 @@ export function ClientPicker({
             onToggle={toggle}
             onCreateFromQuery={setCreateSeed}
           />
-          {error === 'create-session' && (
-            <p aria-live="assertive" className="shrink-0 text-caption text-danger">
-              {CLIENT_ERROR_COPY['create-session']}
-            </p>
-          )}
+          {sessionError}
           <footer className="glass shrink-0 rounded-panel p-3">
             <Button
               variant="primary"
