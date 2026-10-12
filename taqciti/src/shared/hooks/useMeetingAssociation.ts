@@ -4,8 +4,8 @@
  * LÊ só de `chrome.storage.local` — a associação e o status de entrega que o service worker escreve —
  * e nunca de `storage.session`, que o content script do Meet não enxerga (Pitfall 3). AGE só por
  * comando (`platform.send`), com a resposta validada por zod: o painel nunca fala com o backend
- * (CORS do Meet, camadas do CLAUDE.md). Ações deste hook: `open`, `defer` e `bind`; a ação de
- * descartar entra no 08-17, junto do comando do 08-13 que ela precisa.
+ * (CORS do Meet, camadas do CLAUDE.md). Ações deste hook: `open`, `defer`, `bind` e `discard`
+ * (descartar a reunião encerrada e não enviada, D-11 — o comando do 08-13).
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { MeetingAssociation } from '@/features/agente/association';
@@ -50,6 +50,8 @@ export interface MeetingAssociationApi {
   open: () => Promise<AgenteCommandResult>;
   defer: () => Promise<AgenteCommandResult>;
   bind: (target: AgenteBindTarget) => Promise<AgenteCommandResult>;
+  /** Descarta de vez a cópia local de uma reunião encerrada e não enviada. Quem chama já confirmou. */
+  discard: () => Promise<AgenteCommandResult>;
 }
 
 export function useMeetingAssociation(meetingId: string | null): MeetingAssociationApi {
@@ -89,5 +91,13 @@ export function useMeetingAssociation(meetingId: string | null): MeetingAssociat
     [platform, meetingId],
   );
 
-  return { association, delivery, open, defer, bind };
+  const discard = useCallback(
+    () =>
+      meetingId === null
+        ? Promise.resolve(UNAVAILABLE)
+        : sendAgenteCommand(platform, { type: 'ui/agente/meeting/discard', meetingId }),
+    [platform, meetingId],
+  );
+
+  return { association, delivery, open, defer, bind, discard };
 }
