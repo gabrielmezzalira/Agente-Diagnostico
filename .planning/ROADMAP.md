@@ -249,7 +249,7 @@ Plans:
 
 **Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). Open and non-blocking: DA-4 (tab navigates away from Meet mid-call) and DA-5 (what closes a session after the Taqciti gave up closing it)
 
-**Plans**: 22/27 plans executed
+**Plans**: 23/27 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -294,7 +294,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 08-24-PLAN.md — Reentrada na mesma sala depois do encerramento = reunião nova (ajuste do 08-22; DA-1 respondida): regra no reducer, boot e máquina da reunião (`startFresh`)
+- [x] 08-24-PLAN.md — Reentrada na mesma sala depois do encerramento = reunião nova (ajuste do 08-22; DA-1 respondida): regra no reducer, boot e máquina da reunião (`startFresh`)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -355,7 +355,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
-| 8. Taqciti Session Association | 22/27 | In Progress | - |
+| 8. Taqciti Session Association | 23/27 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 
