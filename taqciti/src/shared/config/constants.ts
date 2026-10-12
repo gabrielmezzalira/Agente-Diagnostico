@@ -46,6 +46,11 @@ export const STORAGE_KEYS = {
    * (WR-02, 3ª revisão): a tela nunca escreve aqui, então não há como ela ressuscitar o aviso.
    */
   agenteWaiting: 'taq:agenteWaiting',
+  /**
+   * chrome.storage.local — perguntas do Agente espelhadas no painel AGP (Fase 10). Só o service worker grava;
+   * é `local` porque o content script do Meet não lê `storage.session` (Pitfall 3). Nunca guarda chave.
+   */
+  agpQuestions: 'taq:agpQuestions',
 } as const;
 
 /** Chaves da era "CITi Flow Companion" — migradas uma única vez no boot. */

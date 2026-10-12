@@ -115,7 +115,7 @@ export function normalizeDropTrace(raw: unknown): AgenteDropTrace {
  * Para os painéis (só leitura): valor atual logo de cara e depois a cada mudança. Se um `onChanged`
  * chegar antes da leitura inicial resolver, a leitura já está velha e é descartada.
  */
-function subscribeNormalized<T>(
+export function subscribeNormalized<T>(
   key: string,
   normalize: (raw: unknown) => T,
   fallback: T,
