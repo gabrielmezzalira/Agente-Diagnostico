@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 08
-current_phase_name: taqciti-session-association
+current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-10-12T01:22:44.900Z"
-last_activity: 2026-09-27
-last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: f9c292e2f8a08a0b4dd0619ce224250f229a2edc
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-10-12T02:55:02.351Z"
+last_activity: 2026-10-11
+last_activity_desc: Phase 08 execution started
+state_head: f08d486944dfa86d92fcbf0c4d5df420a637d630
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Phase: 08 (taqciti-session-association) — READY TO EXECUTE
-Plan: Not started
+Phase: 08 (Taqciti Session Association) — EXECUTING
+Plan: 2 of 23
 Status: Ready to execute
-Last activity: 2026-09-27 — Phase 7 complete, transitioned to Phase 8
+Last activity: 2026-10-11 — Phase 08 execution started
 
 Progress: [███████░░░] 70%
 
@@ -85,6 +85,7 @@ Progress: [███████░░░] 70%
 | Phase 07 P07-02 | ~20min | 2 tasks | 5 files |
 | Phase 07 P07-03 | ~35min | 2 tasks | 8 files |
 | Phase 07 P04 | 24min | 3 tasks | 6 files |
+| Phase 08 P01 | 20min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,9 @@ Recent decisions affecting current work:
 - [Phase 07]: [Phase 07] [07-03]: teste de componente descobriu que act(async) so comita no fim do callback - vi.waitFor chamado de dentro do act trava ate o timeout; correcao foi o helper flushUntil fazendo o polling fora do act
 - [Phase 07]: D-06 refinado (aprovado pelo usuario em 2026-09-26, opcao phrase-window): envio ao Agente ganha janela propria por fala - silencio 1500ms (AGENTE_PHRASE_QUIET_MS), teto 5000ms (AGENTE_PHRASE_MAX_WAIT_MS), envio imediato ao sair de 'recording'; a parte estrutural do D-06 (alimentado so por flushState()) continua valendo
 - [Phase 07]: Chamar onSessionFlushed()/step() enquanto o streaming esta desligado reseta o cursor do wordDelta para null (comportamento pre-existente) - o primeiro flush pos-religar sempre re-ancora (prime) antes de qualquer envio novo
+- [Phase 08]: [Phase 08-01] Destino da fala em producao e so a associacao linked da reuniao (D-01/D-04); configDestination fica como politica explicita usada so pelos testes de mecanica da Fase 7 — O ID global da config deixa de enviar sozinho ate o seletor/plano B (08-10/08-14); nao distribuir build da Taqciti entre 08-01 e 08-14
+- [Phase 08]: [Phase 08-01] createAssociationDestination.usesMeetingBinding=false: o CR-01 (taq:agenteBinding) nao e consultado nem regravado para destinos de associacao; idle nao descarta falas ja enderecadas, so disabled descarta (D-09) — Associacao ja e o vinculo explicito da reuniao; semente {} e valida (nada enviado ainda) e so null significa sem semente
+- [Phase 08]: [Phase 08-01] agenteStreamerInstance.ts ficou com 293 linhas (limite 300): so 7 linhas de folga para o plano 08-23 — Se faltar espaco, mover settleTarget/adocao da semente para agenteStreamDestination.ts em commit mecanico
 
 ### Pending Todos
 
@@ -163,6 +167,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-11T13:21:51.878Z
-Stopped at: Phase 8 UI-SPEC approved
-Resume file: .planning/phases/08-taqciti-session-association/08-UI-SPEC.md
+Last session: 2026-10-12T02:55:02.124Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None
