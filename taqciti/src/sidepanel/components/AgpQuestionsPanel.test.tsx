@@ -9,9 +9,8 @@ import type { AgpFeed } from '@/shared/config/agpQuestionsStore';
 import { AgpQuestionsPanel } from './AgpQuestionsPanel';
 
 const SID = '11111111-1111-1111-1111-111111111111';
-const NOW = Date.parse('2026-10-12T20:00:10Z');
 const q = (id: string, over: Partial<AgpQuestion> = {}): AgpQuestion => ({
-  id, text: `Pergunta ${id}?`, block: 'negocio', lens: 'produto', status: 'queued', expiresAt: null, ...over,
+  id, text: `Pergunta ${id}?`, block: 'negocio', lens: 'produto', status: 'queued', ...over,
 });
 
 let host: HTMLDivElement;
@@ -28,7 +27,7 @@ afterEach(async () => {
 });
 
 async function show(feed: AgpFeed) {
-  await act(async () => root.render(<AgpQuestionsPanel feed={feed} nowMs={NOW} />));
+  await act(async () => root.render(<AgpQuestionsPanel feed={feed} />));
 }
 const text = () => host.textContent ?? '';
 
@@ -58,21 +57,6 @@ describe('AgpQuestionsPanel', () => {
     });
     const items = Array.from(host.querySelectorAll('li')).map((li) => li.textContent);
     expect(items).toEqual(['ProdutoPergunta a?', 'DadosPergunta b?', 'FixadaPergunta c?']);
-  });
-
-  it('a pergunta vencida some; a fixada continua', async () => {
-    await show({
-      sessionId: SID,
-      connection: 'live',
-      questions: [
-        q('vencida', { expiresAt: '2026-10-12T20:00:05Z' }),
-        q('valida', { expiresAt: '2026-10-12T20:00:30Z' }),
-        q('fixa', { status: 'pinned', expiresAt: '2000-01-01T00:00:00Z' }),
-      ],
-    });
-    expect(text()).not.toContain('Pergunta vencida?');
-    expect(text()).toContain('Pergunta valida?');
-    expect(text()).toContain('Pergunta fixa?');
   });
 
   it.each([

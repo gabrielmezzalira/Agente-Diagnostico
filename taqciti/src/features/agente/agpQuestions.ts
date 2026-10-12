@@ -1,8 +1,10 @@
 /**
  * As perguntas do Agente espelhadas na Taqciti (Fase 10, TAQ-05): a leitura das mensagens do WebSocket
  * `/ws/{session_id}` do backend e a lista que o painel "AGP" mostra. Puro — sem `chrome`, `WebSocket` nem
- * relógio (o "agora" entra por parâmetro). A Taqciti NÃO recalcula nem inventa pergunta: só reflete o que o
- * backend manda (`initial_state`, `question_new`, `question_expired`) e ignora qualquer outro evento.
+ * relógio. A Taqciti NÃO recalcula nem inventa pergunta: só reflete o que o backend manda (`initial_state`,
+ * `question_new`, `question_expired`) e ignora qualquer outro evento. A expiração vem SÓ do `question_expired`
+ * do backend: comparar o `expires_at` do servidor com o relógio do cliente esconderia pergunta nova num relógio
+ * adiantado, então não há prazo local.
  */
 
 export type AgpLens = 'produto' | 'dados';
@@ -15,8 +17,6 @@ export interface AgpQuestion {
   /** `null` no modo vendas (o backend não etiqueta a lente lá). */
   lens: AgpLens | null;
   status: 'queued' | 'pinned';
-  /** ISO 8601 de quando some da fila; `null` = sem prazo legível. */
-  expiresAt: string | null;
 }
 
 export type AgpMessage =
@@ -27,24 +27,32 @@ export type AgpMessage =
 /** Teto defensivo: o backend limita a fila a 5, mas um backend com defeito não pode lotar o storage. */
 export const AGP_MAX_QUESTIONS = 30;
 
+/** Tetos por campo (WR-03): o `storage.local` é o mesmo do histórico; texto de backend nunca entra sem limite. */
+const MAX_ID_LENGTH = 128;
+const MAX_TEXT_LENGTH = 1_000;
+const MAX_BLOCK_LENGTH = 64;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Lista branca de campos: nada além destes seis entra no storage (sem fala, sem chave). */
+/**
+ * Lista branca de campos, com tetos de tamanho: nada além destes cinco entra no storage (sem fala, sem chave).
+ * Serve para a mensagem do backend E para o que já foi guardado (os nomes dos campos são os mesmos), então
+ * reler o storage nunca perde campo.
+ */
 export function toAgpQuestion(raw: unknown): AgpQuestion | null {
   if (!isRecord(raw)) return null;
-  const { id, text, block, lens, status, expires_at: expiresAt } = raw;
-  if (typeof id !== 'string' || id.length === 0) return null;
+  const { id, text, block, lens, status } = raw;
+  if (typeof id !== 'string' || id.length === 0 || id.length > MAX_ID_LENGTH) return null;
   if (typeof text !== 'string' || text.trim().length === 0) return null;
   if (status !== 'queued' && status !== 'pinned') return null;
   return {
     id,
-    text,
-    block: typeof block === 'string' ? block : '',
+    text: text.slice(0, MAX_TEXT_LENGTH),
+    block: typeof block === 'string' ? block.slice(0, MAX_BLOCK_LENGTH) : '',
     lens: lens === 'produto' || lens === 'dados' ? lens : null,
     status,
-    expiresAt: typeof expiresAt === 'string' ? expiresAt : null,
   };
 }
 
@@ -75,8 +83,18 @@ export function parseAgpMessage(rawText: string): AgpMessage | null {
   }
 }
 
+/** Acima do teto, descarta as mais antigas que NÃO estão fixadas primeiro (WR-02): fixada só sai se não houver outra saída. */
 function capped(list: AgpQuestion[]): AgpQuestion[] {
-  return list.length > AGP_MAX_QUESTIONS ? list.slice(list.length - AGP_MAX_QUESTIONS) : list;
+  let excess = list.length - AGP_MAX_QUESTIONS;
+  if (excess <= 0) return list;
+  const dropUnpinned = list.filter((q) => {
+    if (excess > 0 && q.status !== 'pinned') {
+      excess -= 1;
+      return false;
+    }
+    return true;
+  });
+  return dropUnpinned.length > AGP_MAX_QUESTIONS ? dropUnpinned.slice(dropUnpinned.length - AGP_MAX_QUESTIONS) : dropUnpinned;
 }
 
 /** Aplica uma mensagem à lista. Devolve a MESMA referência quando nada muda (quem grava pula a escrita). */
@@ -93,11 +111,4 @@ export function applyAgpMessage(current: readonly AgpQuestion[], message: AgpMes
       return next.length === current.length ? current : next;
     }
   }
-}
-
-/** A pergunta ainda deve aparecer? Fixada nunca vence; as demais somem quando o prazo passa (backup do `question_expired`). */
-export function isAgpQuestionVisible(question: AgpQuestion, nowMs: number): boolean {
-  if (question.status === 'pinned' || question.expiresAt === null) return true;
-  const expires = Date.parse(question.expiresAt);
-  return Number.isNaN(expires) || expires > nowMs;
 }

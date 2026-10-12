@@ -133,7 +133,7 @@ describe('abrir, espelhar e fechar', () => {
 });
 
 describe('queda, reconexão e desistência', () => {
-  it('queda comum: reconnecting e nova tentativa com espera crescente; o onopen zera a contagem', async () => {
+  it('queda comum: reconnecting e nova tentativa com espera crescente; só o initial_state zera a contagem', async () => {
     r.set(target(S1));
     await r.feed.reconcile();
     r.sockets[0]?.drop(1006);
@@ -146,8 +146,20 @@ describe('queda, reconexão e desistência', () => {
     expect(r.timers.map((t) => t.ms)).toEqual([1000, 2000]);
     r.fire();
     r.sockets[2]?.open();
+    r.sockets[2]?.send('initial_state', { questions: [] });
     r.sockets[2]?.drop(1006);
     expect(r.timers.map((t) => t.ms)).toEqual([1000, 2000, 1000]);
+  });
+
+  it('abrir e cair SEM initial_state (falha pós-accept do backend) NÃO zera a espera: sem laço de 1 s (WR-01)', async () => {
+    r.set(target(S1));
+    await r.feed.reconcile();
+    for (let i = 0; i < 4; i += 1) {
+      r.sockets.at(-1)?.open();
+      r.sockets.at(-1)?.drop(1011);
+      r.fire();
+    }
+    expect(r.timers.map((t) => t.ms)).toEqual([1000, 2000, 4000, 8000]);
   });
 
   it('as perguntas já recebidas continuam visíveis enquanto reconecta', async () => {

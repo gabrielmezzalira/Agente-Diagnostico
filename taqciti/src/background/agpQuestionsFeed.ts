@@ -108,7 +108,6 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
     const isCurrent = () => following === current && current.socket === socket;
     socket.onopen = () => {
       if (!isCurrent()) return;
-      current.attempt = 0;
       publish(current.target.sessionId, 'live', current.questions);
     };
     socket.onmessage = (event) => {
@@ -116,6 +115,9 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
       const message = parseAgpMessage(event.data);
       if (message === null) return;
       const next = applyAgpMessage(current.questions, message);
+      // Só o `initial_state` prova que o backend aceitou a sessão (o `ws.py` aceita a conexão ANTES de validar):
+      // zerar a espera no `onopen` deixaria uma falha pós-accept reconectar a cada 1 s para sempre (WR-01).
+      if (message.kind === 'initial') current.attempt = 0;
       if (next === current.questions && message.kind !== 'initial') return;
       current.questions = next;
       publish(current.target.sessionId, 'live', next);
@@ -161,5 +163,5 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
     return reconciling.then(() => writes);
   }
 
-  return { reconcile, isFollowing: (sessionId: string) => following?.target.sessionId === sessionId };
+  return { reconcile };
 }

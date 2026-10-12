@@ -11,7 +11,7 @@ import { AgpLiveTabs } from './AgpLiveTabs';
 
 const SID = '11111111-1111-1111-1111-111111111111';
 const question = (id: string, lens: string) => ({
-  id, text: `Pergunta ${id}?`, block: 'negocio', lens, status: 'queued', expiresAt: null,
+  id, text: `Pergunta ${id}?`, block: 'negocio', lens, status: 'queued',
 });
 
 let host: HTMLDivElement;

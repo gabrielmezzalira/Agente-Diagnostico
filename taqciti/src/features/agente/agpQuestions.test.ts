@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AGP_MAX_QUESTIONS,
   applyAgpMessage,
-  isAgpQuestionVisible,
   parseAgpMessage,
   toAgpQuestion,
   type AgpQuestion,
@@ -24,14 +23,13 @@ const raw = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 const q = (id: string, over: Partial<AgpQuestion> = {}): AgpQuestion => ({
-  id, text: `pergunta ${id}`, block: 'negocio', lens: 'produto', status: 'queued', expiresAt: null, ...over,
+  id, text: `pergunta ${id}`, block: 'negocio', lens: 'produto', status: 'queued', ...over,
 });
 
 describe('toAgpQuestion', () => {
   it('só copia a lista branca de campos', () => {
     expect(toAgpQuestion(raw({ segredo: 'x' }))).toEqual({
       id: 'q1', text: 'Qual é o gargalo hoje?', block: 'negocio', lens: 'produto', status: 'queued',
-      expiresAt: '2026-10-12T20:00:30Z',
     });
   });
   it('lente ausente ou desconhecida vira null (modo vendas)', () => {
@@ -96,15 +94,22 @@ describe('applyAgpMessage', () => {
   });
 });
 
-describe('isAgpQuestionVisible', () => {
-  const NOW = Date.parse('2026-10-12T20:00:10Z');
-  it('some depois do prazo; antes, fica', () => {
-    expect(isAgpQuestionVisible(q('a', { expiresAt: '2026-10-12T20:00:30Z' }), NOW)).toBe(true);
-    expect(isAgpQuestionVisible(q('a', { expiresAt: '2026-10-12T20:00:05Z' }), NOW)).toBe(false);
+describe('tetos de tamanho (WR-03)', () => {
+  it('corta texto e bloco enormes e recusa id enorme', () => {
+    const question = toAgpQuestion(raw({ text: 'x'.repeat(5_000), block: 'b'.repeat(500) }));
+    expect(question?.text).toHaveLength(1_000);
+    expect(question?.block).toHaveLength(64);
+    expect(toAgpQuestion(raw({ id: 'i'.repeat(129) }))).toBeNull();
   });
-  it('fixada nunca vence; sem prazo ou prazo ilegível fica', () => {
-    expect(isAgpQuestionVisible(q('a', { status: 'pinned', expiresAt: '2000-01-01T00:00:00Z' }), NOW)).toBe(true);
-    expect(isAgpQuestionVisible(q('a', { expiresAt: null }), NOW)).toBe(true);
-    expect(isAgpQuestionVisible(q('a', { expiresAt: 'ontem' }), NOW)).toBe(true);
+});
+
+describe('o teto não derruba as fixadas primeiro (WR-02)', () => {
+  it('estourando o teto, saem as mais antigas NÃO fixadas; a fixada do começo continua', () => {
+    const list = [q('fixa', { status: 'pinned' }), ...Array.from({ length: AGP_MAX_QUESTIONS - 1 }, (_, i) => q(`p${i}`))];
+    const next = applyAgpMessage(list, { kind: 'new', question: q('novo') });
+    expect(next).toHaveLength(AGP_MAX_QUESTIONS);
+    expect(next.map((x) => x.id)).toContain('fixa');
+    expect(next.map((x) => x.id)).not.toContain('p0');
+    expect(next.at(-1)?.id).toBe('novo');
   });
 });

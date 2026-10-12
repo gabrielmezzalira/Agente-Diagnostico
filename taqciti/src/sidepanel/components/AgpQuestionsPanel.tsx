@@ -3,7 +3,7 @@
  * uma com a lente (Produto ou Dados). Só apresenta — a Taqciti não recalcula nem inventa pergunta, e sem
  * vínculo explícito mostra o aviso em vez de qualquer pergunta (critério 3).
  */
-import { isAgpQuestionVisible, type AgpLens } from '@/features/agente/agpQuestions';
+import type { AgpLens } from '@/features/agente/agpQuestions';
 import type { AgpFeed } from '@/shared/config/agpQuestionsStore';
 import { Badge } from '@/shared/ui/Badge';
 
@@ -15,7 +15,7 @@ function Notice({ children }: { children: string }) {
   );
 }
 
-export function AgpQuestionsPanel({ feed, nowMs }: { feed: AgpFeed; nowMs: number }) {
+export function AgpQuestionsPanel({ feed }: { feed: AgpFeed }) {
   if (feed.sessionId === null) {
     return <Notice>Vincule esta reunião a um cliente para ver aqui as perguntas do Agente.</Notice>;
   }
@@ -23,7 +23,7 @@ export function AgpQuestionsPanel({ feed, nowMs }: { feed: AgpFeed; nowMs: numbe
     return <Notice>A sessão do Agente não está ativa. Não há perguntas para mostrar.</Notice>;
   }
 
-  const visible = feed.questions.filter((question) => isAgpQuestionVisible(question, nowMs));
+  const visible = feed.questions;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
       {feed.connection !== 'live' && (

@@ -13,7 +13,7 @@ const TAB_BASE = 'rounded-control px-3 py-1 text-caption font-semibold transitio
 
 export function AgpLiveTabs({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState<Tab>('transcript');
-  const { feed, nowMs } = useAgpQuestions();
+  const feed = useAgpQuestions();
   const count = feed.questions.length;
 
   const button = (value: Tab, label: string, badge?: number) => (
@@ -35,7 +35,7 @@ export function AgpLiveTabs({ children }: { children: ReactNode }) {
         {button('transcript', 'Transcrição')}
         {button('agp', 'AGP', count)}
       </div>
-      {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} nowMs={nowMs} />}
+      {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} />}
     </div>
   );
 }
