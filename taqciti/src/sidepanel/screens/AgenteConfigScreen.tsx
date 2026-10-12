@@ -13,6 +13,8 @@ import { AGENTE_BACKEND_URL_DEFAULT } from '@/shared/config/agenteConfig';
 import type { StreamingStatusTone } from '@/shared/config/agenteStatus';
 import { useAgenteConfigForm } from '@/shared/hooks/useAgenteConfigForm';
 import { useAgenteStreamingStatus } from '@/shared/hooks/useAgenteStreamingStatus';
+import { useClientDirectory } from '@/shared/hooks/useClientDirectory';
+import { useLiveMeetingManualBind } from '@/shared/hooks/useLiveMeetingManualBind';
 import { AgenteApiKeyField } from '@/sidepanel/components/AgenteApiKeyField';
 import { canGoBackWithinExtension } from '@/sidepanel/backNavigation';
 import { AppShell } from '@/shared/ui/AppShell';
@@ -23,6 +25,13 @@ import { Wordmark } from '@/shared/ui/Wordmark';
 
 /** Aviso do status enquanto a config salva ainda não chegou do storage. */
 const LOADING_STATUS_TEXT = 'Carregando configuração…';
+
+/** Texto de apoio com a lista de clientes carregada (D-02: o campo de ID fica escondido). */
+const PICKER_SUPPORT_TEXT = 'A associação é feita a cada reunião, pelo ícone “!” no painel do Meet.';
+
+/** Texto de apoio do plano B, quando a lista falha e o campo de ID aparece (B5, vincular-ao-vivo). */
+const MANUAL_ID_SUPPORT_TEXT =
+  'Copie o ID da sessão ativa no web app do Agente e salve: se houver uma reunião em andamento sem cliente, ela passa a ser enviada para essa sessão.';
 
 const TONE_CLASS: Record<StreamingStatusTone, string> = {
   muted: 'text-muted',
@@ -56,7 +65,15 @@ export function AgenteConfigScreen() {
     clearApiKey,
     setStreamingEnabled,
   } = useAgenteConfigForm();
-  const { view: status, confirmError, confirmNewMeeting } = useAgenteStreamingStatus(readiness);
+  const { view: status } = useAgenteStreamingStatus(readiness);
+  const directory = useClientDirectory(true);
+  const { bindLiveMeeting } = useLiveMeetingManualBind();
+
+  /** B5: o ID salvo só vincula a reunião ao vivo sem cliente; nunca fica de destino padrão. */
+  async function handleSave(): Promise<void> {
+    const savedSessionId = await save();
+    if (savedSessionId !== null) await bindLiveMeeting(savedSessionId);
+  }
 
   return (
     <AppShell
@@ -88,25 +105,28 @@ export function AgenteConfigScreen() {
           label="Enviar a transcrição ao vivo para o Agente"
         />
 
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="agente-session-id"
-            className="text-caption font-semibold uppercase tracking-wide text-muted"
-          >
-            ID da sessão do Agente
-          </label>
-          <TextField
-            id="agente-session-id"
-            value={drafts.agenteSessionId}
-            onChange={(event) => setField('agenteSessionId', event.target.value)}
-            placeholder="cole aqui o ID (UUID) da sessão ativa"
-            disabled={saving}
-          />
-          <p className="text-caption text-muted">
-            Copie o ID da sessão ativa no web app do Agente. Numa reunião nova, salve o ID da nova
-            sessão — ou, se for a mesma sessão, confirme quando o aviso aparecer.
-          </p>
-        </div>
+        {directory.status === 'ready' ? (
+          <p className="text-caption text-muted">{PICKER_SUPPORT_TEXT}</p>
+        ) : null}
+
+        {directory.status === 'error' ? (
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="agente-session-id"
+              className="text-caption font-semibold uppercase tracking-wide text-muted"
+            >
+              ID da sessão do Agente
+            </label>
+            <TextField
+              id="agente-session-id"
+              value={drafts.agenteSessionId}
+              onChange={(event) => setField('agenteSessionId', event.target.value)}
+              placeholder="cole aqui o ID (UUID) da sessão ativa"
+              disabled={saving}
+            />
+            <p className="text-caption text-muted">{MANUAL_ID_SUPPORT_TEXT}</p>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-1.5">
           <label
@@ -134,7 +154,7 @@ export function AgenteConfigScreen() {
 
         <Button
           variant="primary"
-          onClick={() => void save()}
+          onClick={() => void handleSave()}
           disabled={saving || config === null}
         >
           {justSaved ? 'Salvo!' : 'Salvar'}
@@ -143,16 +163,6 @@ export function AgenteConfigScreen() {
         <p aria-live="polite" className={`text-caption ${TONE_CLASS[status?.tone ?? 'muted']}`}>
           {status?.text ?? (config === null ? LOADING_STATUS_TEXT : '')}
         </p>
-        {status?.confirmableMeetingId ? (
-          <Button variant="secondary" onClick={confirmNewMeeting}>
-            Continuar enviando para esta sessão
-          </Button>
-        ) : null}
-        {confirmError ? (
-          <p aria-live="assertive" className="text-caption text-danger">
-            {confirmError}
-          </p>
-        ) : null}
         {error ? (
           <p aria-live="assertive" className="text-caption text-danger">
             {error}

@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import {
-  getStreamingReadiness,
+  isValidAgenteBackendUrl,
   type AgenteConfig,
   type StreamingReadiness,
 } from '@/shared/config/agenteConfig';
@@ -31,6 +31,15 @@ const JUST_SAVED_MS = 1_500;
 
 type Drafts = Record<AgenteConfigField, string>;
 
+/**
+ * Prontidão da tela (B5, 08-18): ligado + URL válida. O ID da sessão saiu da conta — o destino vem da
+ * associação de cada reunião, não mais da config (por isso `missing-session`/`invalid-session` não existem aqui).
+ */
+function screenReadiness(config: AgenteConfig): StreamingReadiness {
+  if (!config.streamingEnabled) return 'disabled';
+  return isValidAgenteBackendUrl(config.agenteBackendUrl) ? 'ready' : 'invalid-url';
+}
+
 const EMPTY_DRAFTS: Drafts = {
   agenteBackendUrl: '',
   agenteSessionId: '',
@@ -47,7 +56,8 @@ interface UseAgenteConfigForm {
   /** Há uma chave salva (só o fato — o valor nunca sai do store para a tela). */
   hasApiKey: boolean;
   setField: (field: AgenteConfigField, value: string) => void;
-  save: () => Promise<void>;
+  /** Devolve o ID de sessão gravado POR ESTA chamada (`null` = o campo não foi salvo agora, ou falhou). */
+  save: () => Promise<string | null>;
   clearApiKey: () => void;
   setStreamingEnabled: (enabled: boolean) => void;
 }
@@ -95,21 +105,13 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
     setDrafts((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function save(): Promise<void> {
+  async function save(): Promise<string | null> {
     /*
-     * WR-05: manda só os campos marcados como editados — o contrato de
-     * `patchAgenteConfig` (agenteConfigStore.ts) é "só o campo que está
-     * mudando, nunca o objeto inteiro". Mandar sempre os três campos, mesmo
-     * os não editados, sobrescrevia um valor gravado por outra superfície
-     * entre o clique e a leitura do rascunho (ex.: auto-detect da Fase 8) e
-     * também gravava o padrão da build no storage assim que a pessoa salvasse
-     * qualquer coisa, mesmo sem ter mexido nos outros campos.
-     */
-    /*
-     * IN-05: chave em branco = manter a atual, então não entra no patch.
-     * IN-03: e também não pode ficar "editada" nem com espaços no campo — se era
-     * a única edição, `save()` retornaria em silêncio e a pessoa acharia que
-     * trocou a chave. Limpar o rascunho mostra que nada foi guardado.
+     * WR-05: manda só os campos marcados como editados (contrato de `patchAgenteConfig`: "só o
+     * campo que está mudando"). Mandar os três sobrescrevia valor gravado por outra superfície
+     * e gravava o padrão da build sem a pessoa ter mexido nos outros campos.
+     * IN-05/IN-03: chave em branco (ou só espaços) = manter a atual, então não entra no patch nem
+     * fica "editada" — senão `save()` retornaria em silêncio e a pessoa acharia que trocou a chave.
      */
     const apiKeyIsBlank = editedRef.current.agenteApiKey && drafts.agenteApiKey.trim().length === 0;
     if (apiKeyIsBlank) {
@@ -119,7 +121,7 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
     const editedFields = (Object.keys(editedRef.current) as AgenteConfigField[]).filter(
       (field) => editedRef.current[field],
     );
-    if (editedFields.length === 0) return;
+    if (editedFields.length === 0) return null;
 
     setSaving(true);
     setError(null);
@@ -150,9 +152,11 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
       setJustSaved(true);
       if (justSavedTimer.current) clearTimeout(justSavedTimer.current);
       justSavedTimer.current = setTimeout(() => setJustSaved(false), JUST_SAVED_MS);
+      return editedFields.includes('agenteSessionId') ? next.agenteSessionId : null;
     } catch (err) {
       setError(SAVE_ERROR_MESSAGE);
       logger.error('salvar config do Agente falhou', err);
+      return null;
     } finally {
       setSaving(false);
     }
@@ -179,7 +183,7 @@ export function useAgenteConfigForm(): UseAgenteConfigForm {
   return {
     config,
     drafts,
-    readiness: config ? getStreamingReadiness(config) : null,
+    readiness: config ? screenReadiness(config) : null,
     saving,
     justSaved,
     error,

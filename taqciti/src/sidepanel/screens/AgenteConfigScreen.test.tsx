@@ -20,8 +20,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_AGENTE_CONFIG, type AgenteConfig } from '@/shared/config/agenteConfig';
 import { STORAGE_KEYS } from '@/shared/config/constants';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
+import type { Platform } from '@/shared/platform/types';
 
 const RUNTIME_STUB = { getURL: (path: string) => `chrome-extension://taqciti/${path}` };
+
+/**
+ * Plataforma falsa (08-18): a tela passou a usar `useClientDirectory`, e `usePlatform()` lança fora de
+ * `<PlatformProvider>`. A lista de clientes fica indisponível — com ela, o campo de ID aparece (D-02,
+ * plano B), como na Fase 7 —, e as assinaturas não emitem nada.
+ */
+const UNAVAILABLE_PLATFORM: Platform = {
+  kind: 'extension',
+  send: <R,>() => Promise.resolve({ ok: false, error: 'unavailable' } as R),
+  subscribeMeeting: () => () => {},
+  subscribeHistory: () => () => {},
+};
 
 /** Setter nativo + evento `input` — é assim que digitar de verdade chega ao React. */
 function typeInto(input: HTMLInputElement, value: string): void {
@@ -87,14 +100,21 @@ describe('AgenteConfigScreen', () => {
       session,
       extra: { runtime: RUNTIME_STUB },
     });
+    const { PlatformProvider } = await import('@/shared/platform/context');
     const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
 
     await act(async () => {
-      root.render(<AgenteConfigScreen />);
+      root.render(
+        <PlatformProvider platform={UNAVAILABLE_PLATFORM}>
+          <AgenteConfigScreen />
+        </PlatformProvider>,
+      );
     });
     // A primeira entrega da assinatura é assíncrona (loadAgenteConfig lê o
     // storage) — até lá o status vem vazio (readiness ainda null).
     await flushUntil(() => statusText() !== '');
+    // A lista de clientes falha (plataforma falsa) e só então o campo de ID aparece (D-02, plano B).
+    await flushUntil(() => host.querySelector('#agente-session-id') !== null);
 
     return mock;
   }
@@ -114,10 +134,15 @@ describe('AgenteConfigScreen', () => {
       await gate;
       return realGet(keys);
     });
+    const { PlatformProvider } = await import('@/shared/platform/context');
     const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
 
     await act(async () => {
-      root.render(<AgenteConfigScreen />);
+      root.render(
+        <PlatformProvider platform={UNAVAILABLE_PLATFORM}>
+          <AgenteConfigScreen />
+        </PlatformProvider>,
+      );
     });
     expect(statusText()).toBe('Carregando configuração…');
     // IN-02: sem conhecer o valor real, o toggle não pode aceitar clique.
@@ -204,9 +229,14 @@ describe('AgenteConfigScreen', () => {
     expect(sessionId.value).toBe('rascunho-nao-salvo');
   });
 
-  it('(6) com o toggle ligado e o ID vazio, o status mostra "Falta o ID da sessão"', async () => {
+  /*
+   * Mudou de propósito na decisão B5 (08-18, vincular-ao-vivo): o destino vem da associação de cada
+   * reunião, então o ID salvo não entra mais na prontidão — antes dizia "Falta o ID da sessão".
+   */
+  it('(6) com o toggle ligado e o ID vazio, o status NÃO exige o ID (B5): fica "pronto para enviar"', async () => {
     await renderScreen({ ...DEFAULT_AGENTE_CONFIG, streamingEnabled: true });
-    expect(statusText()).toBe('Falta o ID da sessão do Agente — nada é enviado.');
+    expect(statusText()).not.toContain('Falta o ID da sessão');
+    expect(statusText()).toBe('Ligado — pronto para enviar. O envio começa quando alguém falar.');
   });
 
   /*
@@ -316,33 +346,22 @@ describe('AgenteConfigScreen', () => {
   });
 
   /*
-   * CR-01: antes, reunião nova com o mesmo session_id travava o envio em
-   * silêncio e a tela dizia "Ligado". Agora avisa e oferece a confirmação.
+   * Mudou de propósito na decisão B5 (08-18, vincular-ao-vivo): o cartão CR-01 "Continuar enviando para
+   * esta sessão" saiu da tela — com uma sessão por reunião, "continuar a mesma sessão" não existe mais.
+   * O aviso de texto do status continua como estava (a função `confirmNewMeeting` do hook permanece:
+   * remover o código é decisão do time, 08-01).
    */
-  it('(13) reunião nova esperando: a tela avisa, e confirmar grava a reunião na config', async () => {
-    const mock = await renderScreen(READY, {
+  it('(13) reunião nova esperando: a tela avisa no status, mas já não oferece o botão CR-01 (B5)', async () => {
+    await renderScreen(READY, {
       [STORAGE_KEYS.agenteSendOutcome]: { lastOutcome: 'sent', lastHttpStatus: 202, lastAttemptAt: 1 },
       [STORAGE_KEYS.agenteWaiting]: { waitingMeetingId: 'm2' },
     });
     await flushUntil(() => statusText().includes('Reunião nova detectada'));
     expect(statusText()).toContain('nada está sendo enviado');
-
-    const confirm = [...host.querySelectorAll('button')].find((b) =>
-      /continuar enviando/i.test(b.textContent ?? ''),
-    );
-    expect(confirm).toBeDefined();
-
-    await act(async () => {
-      confirm!.click();
-    });
-    await flushUntil(
-      () =>
-        (mock.local.values[STORAGE_KEYS.agenteConfig] as AgenteConfig | undefined)
-          ?.confirmedMeetingId === 'm2',
-    );
+    expect(host.textContent).not.toContain('Continuar enviando para esta sessão');
   });
 
-  it('(14) sem espera, o botão de confirmar não aparece', async () => {
+  it('(14) sem espera, o botão "Continuar enviando para esta sessão" também não existe (B5)', async () => {
     await renderScreen(READY);
     const confirm = [...host.querySelectorAll('button')].find((b) =>
       /continuar enviando/i.test(b.textContent ?? ''),

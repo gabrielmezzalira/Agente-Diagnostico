@@ -13,8 +13,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_AGENTE_CONFIG } from '@/shared/config/agenteConfig';
 import { STORAGE_KEYS } from '@/shared/config/constants';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
+import type { Platform } from '@/shared/platform/types';
 
 const RUNTIME_STUB = { getURL: (path: string) => `chrome-extension://taqciti/${path}` };
+
+/**
+ * Plataforma falsa (08-18): a tela passou a usar `useClientDirectory`, e `usePlatform()` lança fora de
+ * `<PlatformProvider>`. A lista de clientes fica indisponível — com ela, o campo de ID aparece (D-02,
+ * plano B), como na Fase 7 —, e as assinaturas não emitem nada.
+ */
+const UNAVAILABLE_PLATFORM: Platform = {
+  kind: 'extension',
+  send: <R,>() => Promise.resolve({ ok: false, error: 'unavailable' } as R),
+  subscribeMeeting: () => () => {},
+  subscribeHistory: () => () => {},
+};
 const READY = {
   ...DEFAULT_AGENTE_CONFIG,
   agenteBackendUrl: 'https://agente.test',
@@ -70,9 +83,14 @@ describe('AgenteConfigScreen / rastro de falas descartadas', () => {
       session,
       extra: { runtime: RUNTIME_STUB },
     });
+    const { PlatformProvider } = await import('@/shared/platform/context');
     const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
     await act(async () => {
-      root.render(<AgenteConfigScreen />);
+      root.render(
+        <PlatformProvider platform={UNAVAILABLE_PLATFORM}>
+          <AgenteConfigScreen />
+        </PlatformProvider>,
+      );
     });
     await flushUntil(() => /^Ligado/.test(statusText()));
     return mock;

@@ -10,8 +10,21 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
+import type { Platform } from '@/shared/platform/types';
 
 const RUNTIME_STUB = { getURL: (path: string) => `chrome-extension://taqciti/${path}` };
+
+/**
+ * Plataforma falsa (08-18): a tela passou a usar `useClientDirectory`, e `usePlatform()` lança fora de
+ * `<PlatformProvider>`. A lista de clientes fica indisponível — com ela, o campo de ID aparece (D-02,
+ * plano B), como na Fase 7 —, e as assinaturas não emitem nada.
+ */
+const UNAVAILABLE_PLATFORM: Platform = {
+  kind: 'extension',
+  send: <R,>() => Promise.resolve({ ok: false, error: 'unavailable' } as R),
+  subscribeMeeting: () => () => {},
+  subscribeHistory: () => () => {},
+};
 
 describe('AgenteConfigScreen — botão Voltar', () => {
   let host: HTMLDivElement;
@@ -44,9 +57,14 @@ describe('AgenteConfigScreen — botão Voltar', () => {
   /** Clica no Voltar e devolve se o clique foi cancelado (defaultPrevented). */
   async function clickBack(): Promise<boolean> {
     installChromeStorageMock({ local: {}, session: {}, extra: { runtime: RUNTIME_STUB } });
+    const { PlatformProvider } = await import('@/shared/platform/context');
     const { AgenteConfigScreen } = await import('./AgenteConfigScreen');
     await act(async () => {
-      root.render(<AgenteConfigScreen />);
+      root.render(
+        <PlatformProvider platform={UNAVAILABLE_PLATFORM}>
+          <AgenteConfigScreen />
+        </PlatformProvider>,
+      );
     });
 
     const link = [...host.querySelectorAll('a')].find((a) => /voltar/i.test(a.textContent ?? ''))!;
