@@ -429,6 +429,10 @@ async def upload_pdf_transcript(
         except Exception:
             pass
     if not gemini_key:
+        # D-15 (decisão B2, pdf-fallback: sim): projeto sem chave própria usa a chave do servidor,
+        # o mesmo fallback do pipeline.py. Chave do projeto continua tendo prioridade.
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if not gemini_key:
         raise HTTPException(status_code=503, detail="Chave Gemini não configurada para este projeto")
 
     pdf_bytes = await file.read()

@@ -20,7 +20,7 @@ import io
 from uuid import uuid4
 
 import pytest
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 
 from app.routers import sessions as sessions_router
 from app.services import llm as llm_service
@@ -77,13 +77,14 @@ class FakeSupabase:
     Fornece um coverage_snapshot NÃO vazio de propósito, para pular o ramo de
     classify_coverage automático (fora de escopo deste teste isolado)."""
 
-    def __init__(self, mode: str | None):
+    def __init__(self, mode: str | None, has_project_key: bool = True):
         project = {
             "id": PROJECT_ID,
             "project_type": "bi",
             "data_maturity_score": 3,
-            "gemini_api_key_secret_id": "fake-secret-id",
         }
+        if has_project_key:
+            project["gemini_api_key_secret_id"] = "fake-secret-id"
         if mode is not None:
             # Coluna projects.mode presente (caso comum pós-migration, D-38).
             project["mode"] = mode
@@ -143,7 +144,9 @@ def _fake_pdfplumber_open(monkeypatch):
     monkeypatch.setattr(sessions_router.pdfplumber, "open", lambda _bytes: _FakePdf())
 
 
-async def _run_upload(monkeypatch, mode: str | None) -> tuple[FakeSupabase, dict]:
+async def _run_upload(
+    monkeypatch, mode: str | None, has_project_key: bool = True
+) -> tuple[FakeSupabase, dict]:
     _fake_pdfplumber_open(monkeypatch)
 
     captured: dict = {}
@@ -155,7 +158,7 @@ async def _run_upload(monkeypatch, mode: str | None) -> tuple[FakeSupabase, dict
     monkeypatch.setattr(llm_service, "generate_report", _fake_generate_report)
     monkeypatch.setattr(sessions_router.llm_service, "generate_report", _fake_generate_report)
 
-    fake_db = FakeSupabase(mode=mode)
+    fake_db = FakeSupabase(mode=mode, has_project_key=has_project_key)
     upload = UploadFile(file=io.BytesIO(b"%PDF-1.4 fake pdf bytes"), filename="transcricao.pdf")
 
     await sessions_router.upload_pdf_transcript(session_id=SESSION_ID, file=upload, db=fake_db)
@@ -201,3 +204,37 @@ async def test_upload_no_mode_defaults_to_sales(monkeypatch):
     report_inserts = [payload for table, payload in fake_db.inserts if table == "reports"]
     assert len(report_inserts) == 1
     assert "status" not in report_inserts[0]
+
+
+@pytest.mark.asyncio
+async def test_upload_without_project_key_uses_server_key(monkeypatch):
+    """D-15 (pdf-fallback: sim): projeto sem chave no Vault + GEMINI_API_KEY no servidor ->
+    a importação segue e generate_report recebe a chave do servidor."""
+    monkeypatch.setenv("GEMINI_API_KEY", "chave-do-servidor")
+
+    fake_db, captured = await _run_upload(monkeypatch, mode="sales", has_project_key=False)
+
+    assert captured["api_key"] == "chave-do-servidor"
+    assert len([1 for table, _ in fake_db.inserts if table == "reports"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_upload_without_any_key_is_503(monkeypatch):
+    """Sem chave no projeto E sem GEMINI_API_KEY no servidor -> 503 como sempre."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await _run_upload(monkeypatch, mode="sales", has_project_key=False)
+
+    assert excinfo.value.status_code == 503
+    assert "Chave Gemini" in excinfo.value.detail
+
+
+@pytest.mark.asyncio
+async def test_upload_project_key_has_priority_over_server_key(monkeypatch):
+    """Chave própria do projeto continua tendo prioridade sobre a do servidor."""
+    monkeypatch.setenv("GEMINI_API_KEY", "chave-do-servidor")
+
+    _, captured = await _run_upload(monkeypatch, mode="sales", has_project_key=True)
+
+    assert captured["api_key"] == "fake-gemini-key"
