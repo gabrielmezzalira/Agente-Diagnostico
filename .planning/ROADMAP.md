@@ -246,7 +246,7 @@ Plans:
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Plans**: 14/23 plans executed
+**Plans**: 15/23 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -277,7 +277,7 @@ Plans:
 
 - [ ] 08-13-PLAN.md — [D-11 porta sem volta] Evicção protegida do histórico + comando de descarte
 - [ ] 08-15-PLAN.md — [DECISÃO B4-b] Rota de encerramento da sessão criada pela Taqciti
-- [ ] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
+- [x] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -339,7 +339,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
-| 8. Taqciti Session Association | 14/23 | In Progress | - |
+| 8. Taqciti Session Association | 15/23 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 
