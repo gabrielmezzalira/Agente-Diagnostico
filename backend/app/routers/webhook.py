@@ -3,7 +3,7 @@ import os
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from supabase import Client
 
 from app.database import get_supabase
@@ -16,6 +16,7 @@ class ExtensionChunk(BaseModel):
     session_id: str
     text: str
     speaker: str | None = None
+    chunk_id: str | None = Field(default=None, max_length=200)
 
 
 def verify_extension_key(x_agente_key: str | None = Header(default=None)) -> None:
@@ -38,9 +39,15 @@ async def extension_webhook(
     if not payload.text.strip():
         return {"accepted": True}
 
-    TranscriptChunksRepository(db).insert_chunk(
-        payload.session_id, payload.text.strip(), payload.speaker
+    inserted = TranscriptChunksRepository(db).insert_chunk(
+        payload.session_id,
+        payload.text.strip(),
+        payload.speaker,
+        chunk_id=payload.chunk_id,
     )
+    if not inserted:
+        # Fala reenviada (mesmo chunk_id já gravado): 202 sem reprocessar (D-19).
+        return {"accepted": True}
 
     # Push to in-memory pipeline (non-blocking)
     from app.services.pipeline import pipeline_manager

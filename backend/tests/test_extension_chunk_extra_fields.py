@@ -10,8 +10,10 @@
 # que, HOJE, o contrato de POST /webhook/extension:
 #   - aceita um campo extra `chunk_id` (pydantic v2, sem extra='forbid');
 #   - ignora esse campo (ele não chega ao banco nem ao pipeline).
-# Ou seja: mandar `chunk_id` não quebra nada, mas também ainda não protege contra
-# duplicata — isso depende da decisão B3.
+#
+# ATUALIZADO no plano 08-09 (decisão B3 = aprovar-chunk-id, D-19): `chunk_id`
+# agora é um campo opcional do contrato e é gravado junto do trecho; a
+# deduplicação em si é coberta por test_webhook_idempotency.py.
 #
 # Teste unitário puro: db fake e pipeline_manager.push_chunk em monkeypatch,
 # sem rede e sem .env.
@@ -57,22 +59,26 @@ class _FakeDB:
         return _FakeTable(self.inserts, name)
 
 
-def test_extension_chunk_accepts_and_ignores_extra_chunk_id():
+def test_extension_chunk_accepts_chunk_id():
+    # Plano 08-09 (D-19): chunk_id deixou de ser ignorado e passou a ser um campo do contrato.
     chunk = ExtensionChunk.model_validate(_PAYLOAD_WITH_CHUNK_ID)
 
     assert chunk.session_id == "s"
     assert chunk.text == "t"
-    assert "chunk_id" not in chunk.model_dump()
+    assert chunk.chunk_id == "bulk:m1:0"
 
 
 def test_extension_chunk_without_chunk_id_is_still_valid():
     chunk = ExtensionChunk.model_validate({"session_id": "s", "text": "t"})
 
     assert chunk.speaker is None
-    assert chunk.model_dump() == {"session_id": "s", "text": "t", "speaker": None}
+    assert chunk.chunk_id is None
+    assert chunk.model_dump() == {
+        "session_id": "s", "text": "t", "speaker": None, "chunk_id": None,
+    }
 
 
-async def test_extension_webhook_does_not_persist_extra_chunk_id(monkeypatch):
+async def test_extension_webhook_persists_chunk_id(monkeypatch):
     pushed: list = []
 
     async def _fake_push_chunk(session_id, text, speaker=None):
@@ -87,7 +93,8 @@ async def test_extension_webhook_does_not_persist_extra_chunk_id(monkeypatch):
 
     assert result == {"accepted": True}
     assert db.inserts == [
-        ("transcript_chunks", {"session_id": "s", "speaker": None, "text": "t"})
+        ("transcript_chunks", {
+            "session_id": "s", "speaker": None, "text": "t", "chunk_id": "bulk:m1:0",
+        })
     ]
-    assert set(db.inserts[0][1].keys()) == {"session_id", "speaker", "text"}
     assert pushed == [("s", "t", None)]
