@@ -852,7 +852,8 @@ describe('configuração vinda do storage (D-08)', () => {
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(i + 1));
     }
 
-    expect(countAgenteConfigReads() - readsBeforeFlushes).toBe(1);
+    // Uma leitura por leitor com cache: a do streamer e a do ciclo de vida da associação (08-22). Nenhuma cresce com os flushes.
+    expect(countAgenteConfigReads() - readsBeforeFlushes).toBe(2);
   });
 });
 
