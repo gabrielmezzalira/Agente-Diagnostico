@@ -1,20 +1,19 @@
 /**
- * O vínculo de uma reunião com um cliente/sessão (Fase 8, TAQ-02, D-03/D-12, Pitfall 8). Roda só no
- * service worker; a UI apenas pede (`ui/agente/meeting/bind`).
+ * O vínculo de uma reunião com um cliente/sessão (Fase 8, TAQ-02, D-03/D-09/D-12, Pitfall 8). Roda só
+ * no service worker; a UI apenas pede (`ui/agente/meeting/bind`).
  *
- * Ordem do vínculo ao vivo — pensada para a reunião inteira ir para o MESMO lugar, sem perder nem
- * repetir nada: (1) resolve o alvo (cria o cliente se for novo); (2) grava `link-started` ANTES de
- * criar a sessão — o segundo comando simultâneo vê `linking` e recebe `invalid-state`; (3) cria UMA
- * sessão pela porta; (4) responde `{ ok: true }`; (5) em segundo plano manda em partes tudo o que já
- * foi falado e só no fim grava `linked` com a semente — o envio ao vivo fica em espera (`linking`)
- * até lá.
+ * Ordem — pensada para a reunião inteira ir para o MESMO lugar, sem perder nem repetir nada:
+ * (1) resolve o alvo (cria o cliente se for novo); (2) grava `link-started` (ao vivo) ou
+ * `send-started` (reunião já encerrada) ANTES de criar a sessão — o segundo comando simultâneo vê o
+ * estado novo e recebe `invalid-state`; (3) cria UMA sessão pela porta; (4) responde `{ ok: true }`;
+ * (5) em segundo plano manda em partes tudo o que já foi falado (ou a reunião guardada) — o envio ao
+ * vivo fica em espera (`linking`) até o fim, e só então a associação vira `linked` com a semente.
  */
-import { planMeetingUpload } from '@/features/agente/meetingUploader';
 import type { AssociationEvent, AssociationState } from '@/features/agente/association';
-import {
-  DuplicateClientError,
-  type AgenteSessionGateway,
-  type ClientDirectory,
+import { planMeetingUpload } from '@/features/agente/meetingUploader';
+import type {
+  AgenteSessionGateway,
+  ClientDirectory,
 } from '@/features/agente/clientDirectory';
 import {
   applyAssociationEvent,
@@ -33,6 +32,7 @@ import type {
   MeetingState,
 } from '@/shared/types/domain';
 import { runBindUpload, type BindUploadDeps } from './agenteBindUpload';
+import { bindFail, resolveBindTarget, type ResolvedTarget } from './agenteBindTarget';
 
 export interface BindFlowDeps extends BindUploadDeps {
   directory: ClientDirectory;
@@ -42,64 +42,47 @@ export interface BindFlowDeps extends BindUploadDeps {
   getRecord: (meetingId: string) => Promise<MeetingRecord | null>;
 }
 
+/** `live`: a reunião está acontecendo; `ended`: já acabou e a transcrição está guardada (D-09). */
+type Mode = 'live' | 'ended';
+
 const LIVE_PHASES: readonly MeetingPhase[] = ['captionsRequired', 'recording', 'paused'];
 const BEFORE_LINK: readonly AssociationState[] = ['pending', 'choosing', 'deferred'];
-
-const fail = (
-  error: Extract<AgenteCommandResult, { ok: false }>['error'],
-): AgenteCommandResult => ({
-  ok: false,
-  error,
-});
 
 /** A reunião `meetingId` é a que está acontecendo agora? */
 function isLive(state: MeetingState, meetingId: string): boolean {
   return state.session?.meetingId === meetingId && LIVE_PHASES.includes(state.phase);
 }
 
-interface ResolvedTarget {
-  origin: 'picker' | 'manual-id';
-  clientName: string;
-  /** Só no ID manual: a sessão já existe. */
-  sessionId?: string;
-  /** Só no cliente: dono da sessão a criar. */
-  clientId?: string;
+function modeOf(state: AssociationState, live: boolean): Mode | null {
+  if (live && BEFORE_LINK.includes(state)) return 'live';
+  if (!live && state === 'ended-unsent') return 'ended';
+  return null;
+}
+
+function startedEvent(mode: Mode, target: ResolvedTarget): AssociationEvent {
+  const base = {
+    origin: target.origin,
+    clientName: target.clientName,
+    ...(target.sessionId !== undefined && { sessionId: target.sessionId }),
+  };
+  return mode === 'live'
+    ? { type: 'link-started', ...base }
+    : { type: 'send-started', ...base };
 }
 
 export function createBindFlow(deps: BindFlowDeps) {
   const inFlight = new Set<string>();
   const uploads = new Set<Promise<void>>();
 
-  async function resolveTarget(
-    target: AgenteBindTarget,
-  ): Promise<ResolvedTarget | AgenteCommandResult> {
-    switch (target.kind) {
-      case 'manual':
-        return {
-          origin: 'manual-id',
-          clientName: `Sessão ${target.sessionId.slice(0, 8)}`,
-          sessionId: target.sessionId,
-        };
-      case 'client':
-        return {
-          origin: 'picker',
-          clientId: target.clientId,
-          clientName: target.clientName,
-        };
-      case 'new-client':
-        try {
-          const created = await deps.directory.create(target.name);
-          return { origin: 'picker', clientId: created.id, clientName: created.client };
-        } catch (error) {
-          return fail(
-            error instanceof DuplicateClientError ? 'duplicate' : 'create-client',
-          );
-        }
-    }
-  }
-
   /** A criação da sessão falhou: volta a poder escolher; se a reunião já acabou, o cartão do fim aparece. */
-  async function failCreateSession(meetingId: string): Promise<void> {
+  async function failCreateSession(mode: Mode, meetingId: string): Promise<void> {
+    if (mode === 'ended') {
+      await applyAssociationEvent(meetingId, {
+        type: 'send-failed',
+        error: 'create-session',
+      });
+      return;
+    }
     await applyAssociationEvent(meetingId, {
       type: 'link-failed',
       error: 'create-session',
@@ -110,56 +93,61 @@ export function createBindFlow(deps: BindFlowDeps) {
   }
 
   /** "Tudo o que já foi falado": a reunião ao vivo, ou — se já saiu da tela — o que ficou guardado. */
-  async function liveSegments(meetingId: string): Promise<LiveSegment[]> {
+  async function spokenSegments(meetingId: string): Promise<LiveSegment[]> {
     const state = deps.getMeetingState();
     if (state.session?.meetingId === meetingId) return state.session.segments;
     return (await deps.getRecord(meetingId))?.segments ?? [];
   }
 
-  async function bindLive(
+  async function bindOnce(
     meetingId: string,
     target: AgenteBindTarget,
   ): Promise<AgenteCommandResult> {
     const association = await getAssociation(meetingId);
-    if (association === null) return fail('not-found');
+    if (association === null) return bindFail('not-found');
     const meeting = deps.getMeetingState();
-    if (!BEFORE_LINK.includes(association.state) || !isLive(meeting, meetingId)) {
-      return fail('invalid-state');
-    }
+    const mode = modeOf(association.state, isLive(meeting, meetingId));
+    if (mode === null) return bindFail('invalid-state');
+
+    const record = mode === 'ended' ? await deps.getRecord(meetingId) : null;
+    if (mode === 'ended' && record === null) return bindFail('not-found');
 
     const config = await deps.loadConfig();
     if (!config.streamingEnabled || !isValidAgenteBackendUrl(config.agenteBackendUrl)) {
-      return fail('create-session');
+      return bindFail('create-session');
     }
 
-    const resolved = await resolveTarget(target);
+    const resolved = await resolveBindTarget(deps.directory, target);
     if ('ok' in resolved) return resolved;
-
-    const started: AssociationEvent = {
-      type: 'link-started',
-      origin: resolved.origin,
-      clientName: resolved.clientName,
-      ...(resolved.sessionId !== undefined && { sessionId: resolved.sessionId }),
-    };
-    if (!(await applyAssociationEvent(meetingId, started)).applied)
-      return fail('invalid-state');
+    const started = await applyAssociationEvent(meetingId, startedEvent(mode, resolved));
+    if (!started.applied) return bindFail('invalid-state');
 
     let sessionId = resolved.sessionId;
     if (sessionId === undefined) {
       try {
-        const title = meeting.session?.title ?? '';
+        const title = record?.title ?? meeting.session?.title ?? '';
         sessionId = (await deps.sessions.createSession(resolved.clientId ?? '', title))
           .sessionId;
       } catch (error) {
         logger.error('criar a sessão do Agente falhou', error);
-        await failCreateSession(meetingId);
-        return fail('create-session');
+        await failCreateSession(mode, meetingId);
+        return bindFail('create-session');
       }
-      await applyAssociationEvent(meetingId, { type: 'session-created', sessionId });
+      await applyAssociationEvent(
+        meetingId,
+        mode === 'live'
+          ? { type: 'session-created', sessionId }
+          : { type: 'send-session-created', sessionId },
+      );
     }
 
-    const parts = planMeetingUpload(meetingId, await liveSegments(meetingId));
-    const job: Promise<void> = runBindUpload(deps, meetingId, sessionId, parts)
+    const segments = record?.segments ?? (await spokenSegments(meetingId));
+    const job: Promise<void> = runBindUpload(
+      deps,
+      meetingId,
+      sessionId,
+      planMeetingUpload(meetingId, segments),
+    )
       .catch((error: unknown) => logger.error('envio em partes do vínculo falhou', error))
       .finally(() => uploads.delete(job));
     uploads.add(job);
@@ -171,10 +159,10 @@ export function createBindFlow(deps: BindFlowDeps) {
     target: AgenteBindTarget,
   ): Promise<AgenteCommandResult> {
     // Guarda síncrona: dois comandos para a mesma reunião nunca passam juntos da validação (T-08-18).
-    if (inFlight.has(meetingId)) return fail('invalid-state');
+    if (inFlight.has(meetingId)) return bindFail('invalid-state');
     inFlight.add(meetingId);
     try {
-      return await bindLive(meetingId, target);
+      return await bindOnce(meetingId, target);
     } finally {
       inFlight.delete(meetingId);
     }

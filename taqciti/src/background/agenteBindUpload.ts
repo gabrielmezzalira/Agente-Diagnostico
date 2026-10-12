@@ -32,11 +32,21 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function applyIfValid(
+/**
+ * Aplica o primeiro evento que o estado ATUAL da associação aceita. O envio em partes serve a duas
+ * famílias de estado: `linking` (vínculo ao vivo -> `link-*`) e `sending` (reunião encerrada ->
+ * `send-*`) — e a mesma sala pode ser retomada no meio do envio (`sending` vira `linking`, 08-22).
+ * Tentar na ordem pela fila serializada do store decide sem corrida: o reducer recusa (applied =
+ * false) o evento da família errada.
+ */
+async function applyForCurrentState(
   meetingId: string,
-  event: AssociationEvent,
-): Promise<boolean> {
-  return (await applyAssociationEvent(meetingId, event)).applied;
+  events: readonly AssociationEvent[],
+): Promise<AssociationEvent | null> {
+  for (const event of events) {
+    if ((await applyAssociationEvent(meetingId, event)).applied) return event;
+  }
+  return null;
 }
 
 export async function runBindUpload(
@@ -61,7 +71,12 @@ export async function runBindUpload(
     },
     onProgress: (done, total) => {
       progress = progress
-        .then(() => applyIfValid(meetingId, { type: 'link-progress', done, total }))
+        .then(() =>
+          applyForCurrentState(meetingId, [
+            { type: 'link-progress', done, total },
+            { type: 'send-progress', done, total },
+          ]),
+        )
         .then(() => undefined)
         .catch((error: unknown) =>
           logger.error('gravar o progresso do envio falhou', error),
@@ -71,14 +86,19 @@ export async function runBindUpload(
   await progress;
 
   if (outcome.status !== 'completed') {
-    await applyIfValid(meetingId, { type: 'link-failed', error: 'send' });
+    await applyForCurrentState(meetingId, [
+      { type: 'link-failed', error: 'send' },
+      { type: 'send-failed', error: 'send' },
+    ]);
     return;
   }
-  const completed = await applyIfValid(meetingId, {
-    type: 'link-completed',
-    seedSent: seedFromParts(parts),
-  });
-  if (!completed) return;
+  const seedSent = seedFromParts(parts);
+  const completed = await applyForCurrentState(meetingId, [
+    { type: 'link-completed', seedSent },
+    { type: 'send-completed', seedSent },
+  ]);
+  // Só o vínculo ao vivo libera o streamer; a reunião encerrada vira `sent` e nada mais sai.
+  if (completed?.type !== 'link-completed') return;
   try {
     await deps.onLinked?.(meetingId);
   } catch (error) {
