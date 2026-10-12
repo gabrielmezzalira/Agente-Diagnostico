@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-25-PLAN.md
-last_updated: "2026-10-12T20:02:27.394Z"
+stopped_at: Completed 08-20-PLAN.md
+last_updated: "2026-10-12T20:16:10.907Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: a3c5408f15b14967242f0c6388457db8d2bba638
+state_head: 766080a718a11a3a1874c127222a682ea0e7aec6
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 51
-  completed_plans: 49
+  completed_plans: 50
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 25 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-25; faltam 08-20 e 08-21)
+Plan: 26 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-20; falta 08-21)
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -110,6 +110,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P24 | 25min | 3 tasks | 10 files |
 | Phase 08 P26 | 20min | 2 tasks | 4 files |
 | Phase 08 P25 | 12 min | 2 tasks | 8 files |
+| Phase 08 P20 | 22 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-27: agendador do encerramento (B4-b) inerte — encerra na hora com fila vazia (graça de 10 s), prazo de 5 min armado depois da graça, kick dedicado do envio em qualquer estado, backoff limitado sem laço e isMeetingLive padrão 'ao vivo' (falha segura) até a fiação do 08-25
 - [Phase 08]: [08-26] DA-3 fechar-aba-encerra: aba da reunião ao vivo fechada dispara MEETING_FINISHED (mesmo caminho do meet/ended), sem RESET, para a regra de reentrada do 08-24 valer; DA-4 (navegação para fora do Meet) segue em aberto
 - [Phase 08]: 08-25: encerramento automático ligado (alarms + gatilhos); DA-4 e DA-5 seguem em aberto
+- [Phase 08]: 08-20: Continuar envio (B3-a chunk_id) retoma da ultima parte confirmada para a mesma sessao; DA-2 continuar-com-aviso mostra o aviso de sessao ja encerrada; retomar cancela o prazo de 5 min (finishBy/finishTries)
 
 ### Pending Todos
 
@@ -212,6 +214,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T20:02:27.180Z
-Stopped at: Completed 08-25-PLAN.md
+Last session: 2026-10-12T20:16:10.547Z
+Stopped at: Completed 08-20-PLAN.md
 Resume file: None
