@@ -104,7 +104,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   void forgetPanelTab(tabId);
 
   // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts.
-  void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch }));
+  void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch, now: Date.now }));
 });
 
 function defaultTitle(now: Date): string {

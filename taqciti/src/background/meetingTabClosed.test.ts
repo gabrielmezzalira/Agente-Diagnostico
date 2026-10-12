@@ -1,10 +1,13 @@
 /**
  * Aba da reunião fechada (plano 08-26, TAQ-02): a regra pura, com `getState` e `dispatch` falsos.
- * Caracteriza o que o service worker faz quando uma aba some — RESET depois do fim, nada nos outros casos.
+ * Depois do fim: RESET. No meio da call (DA-3 = fechar-aba-encerra): MEETING_FINISHED, o mesmo evento do
+ * meet/ended. Aba de outra reunião, aba nula ou fase ociosa: nada.
  */
 import { describe, expect, it, vi } from 'vitest';
 import { IDLE_STATE, type MeetingPhase, type MeetingSessionState, type MeetingState } from '@/shared/types/domain';
 import { onMeetingTabRemoved } from './meetingTabClosed';
+
+const NOW = 424242;
 
 function session(tabId: number | null): MeetingSessionState {
   return {
@@ -34,7 +37,7 @@ function stateOf(phase: MeetingPhase, tabId: number | null = 7): MeetingState {
 
 function setup(state: MeetingState) {
   const dispatch = vi.fn(() => Promise.resolve(state));
-  return { dispatch, deps: { getState: () => state, dispatch } };
+  return { dispatch, deps: { getState: () => state, dispatch, now: () => NOW } };
 }
 
 describe('aba da reunião fechada depois do fim', () => {
@@ -58,19 +61,36 @@ describe('aba da reunião fechada depois do fim', () => {
   });
 });
 
-describe('demais casos', () => {
+describe('aba da reunião fechada no meio da call (DA-3 = fechar-aba-encerra)', () => {
+  it.each(['captionsRequired', 'recording', 'paused'] as const)(
+    'fase %s + a mesma aba -> MEETING_FINISHED uma vez, com o relógio injetado, sem RESET',
+    async (phase) => {
+      const { dispatch, deps } = setup(stateOf(phase));
+      await onMeetingTabRemoved(7, deps);
+      expect(dispatch).toHaveBeenCalledTimes(1);
+      expect(dispatch).toHaveBeenCalledWith({ type: 'MEETING_FINISHED', at: NOW });
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'RESET' });
+    },
+  );
+
+  it.each(['captionsRequired', 'recording', 'paused'] as const)(
+    'fase %s + outra aba -> nada',
+    async (phase) => {
+      const { dispatch, deps } = setup(stateOf(phase));
+      await onMeetingTabRemoved(99, deps);
+      expect(dispatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('fase recording + tabId nulo na sessão -> nada (aba nula nunca casa)', async () => {
+    const { dispatch, deps } = setup(stateOf('recording', null));
+    await onMeetingTabRemoved(7, deps);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
   it('fase idle (sem sessão) -> nada', async () => {
     const { dispatch, deps } = setup(IDLE_STATE);
     await onMeetingTabRemoved(7, deps);
     expect(dispatch).not.toHaveBeenCalled();
   });
-
-  it.each(['captionsRequired', 'recording', 'paused'] as const)(
-    'fase %s + a mesma aba -> nada (comportamento de antes do 08-26)',
-    async (phase) => {
-      const { dispatch, deps } = setup(stateOf(phase));
-      await onMeetingTabRemoved(7, deps);
-      expect(dispatch).not.toHaveBeenCalled();
-    },
-  );
 });
