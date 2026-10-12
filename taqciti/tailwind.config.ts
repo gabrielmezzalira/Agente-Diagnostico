@@ -125,6 +125,17 @@ export default {
           from: { transform: 'translateY(10px) scale(0.9)' },
           to: { transform: 'translateY(0) scale(1)' },
         },
+        /*
+         * O pulinho do aviso de reunião detectada (AgenteNudge): sobe e desce
+         * nos primeiros ~20% de um ciclo de 5 s e fica parado no resto. Só
+         * transform, NUNCA opacidade — mesma lição do `dock-in` acima.
+         */
+        nudge: {
+          '0%, 20%, 100%': { transform: 'translateY(0)' },
+          '5%': { transform: 'translateY(-4px)' },
+          '10%': { transform: 'translateY(0)' },
+          '15%': { transform: 'translateY(-2px)' },
+        },
         ripple: {
           '0%': { opacity: '0.5', transform: 'scale(0.6)' },
           '100%': { opacity: '0', transform: 'scale(1.9)' },
@@ -146,6 +157,7 @@ export default {
         'slide-in-left': 'slide-in-left 220ms cubic-bezier(0.32, 0.72, 0, 1)',
         eq: 'eq 1.15s ease-in-out infinite',
         'dock-in': 'dock-in 420ms cubic-bezier(0.34, 1.45, 0.64, 1)',
+        nudge: 'nudge 5s cubic-bezier(0.32, 0.72, 0, 1) infinite',
         ripple: 'ripple 2.6s cubic-bezier(0.32, 0.72, 0, 1) infinite',
         typing: 'typing 1.3s ease-in-out infinite',
         'spin-slow': 'spin 900ms linear infinite',

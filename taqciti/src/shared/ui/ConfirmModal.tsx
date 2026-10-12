@@ -15,6 +15,8 @@ interface ConfirmModalProps {
   title: string;
   description: ReactNode;
   confirmLabel: string;
+  /** Rótulo do botão de recusa. Padrão "Cancelar"; telas da Fase 8 passam o seu. */
+  cancelLabel?: string;
   danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -25,6 +27,7 @@ export function ConfirmModal({
   title,
   description,
   confirmLabel,
+  cancelLabel = 'Cancelar',
   danger = false,
   onConfirm,
   onCancel,
@@ -57,7 +60,7 @@ export function ConfirmModal({
         <p className="mb-5 text-read leading-relaxed text-muted">{description}</p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel}>
-            Cancelar
+            {cancelLabel}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} autoFocus>
             {confirmLabel}

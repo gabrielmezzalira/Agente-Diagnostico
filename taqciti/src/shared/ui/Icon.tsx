@@ -18,7 +18,8 @@ type IconName =
   | 'close'
   | 'minimize'
   | 'expand'
-  | 'compress';
+  | 'compress'
+  | 'alert';
 
 interface IconProps {
   name: IconName;
@@ -91,6 +92,14 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M8.5 6.5L12 10l3.5-3.5" />
       <path d="M8.5 17.5L12 14l3.5 3.5" />
+    </>
+  ),
+  /* Exclamação sem círculo: o círculo (e a cor de aviso) vem de quem usa — a
+     bolha do AgenteNudge. Traço 1.8 e currentColor como os vizinhos. */
+  alert: (
+    <>
+      <path d="M12 6v8" />
+      <path d="M12 18.2v.1" />
     </>
   ),
 };
