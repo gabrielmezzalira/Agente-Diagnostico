@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-16-PLAN.md
-last_updated: "2026-10-12T19:23:18.510Z"
+stopped_at: Completed 08-27-PLAN.md
+last_updated: "2026-10-12T19:36:07.377Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: ce9b9b92c2329580bbeddb04afb58fe6b9127dd8
+state_head: 61886013d2e7b5b7f429cbe33841e39453715586
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 51
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 21 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-16)
+Plan: 22 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-27)
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -106,6 +106,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P15 | ~20min | 3 tasks | 7 files |
 | Phase 08 P19 | 8 min | 2 tasks | 12 files |
 | Phase 08 P16 | 8 min | 3 tasks | 10 files |
+| Phase 08 P27 | 12 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-13: D-11 confirmar-d11 — Descartar apaga de vez a cópia local (só ended-unsent, fora do ar); evicção do histórico nunca remove reunião não enviada (teto suave)
 - [Phase 08]: 08-19: B3-a aplicada na Taqciti — chunk_id em toda fala ao vivo (UUID da fila) e em toda parte (bulk:{meetingId}:{index}); reenvio automático ligado; B3-b (retirada-nunca) intacta
 - [Phase 08]: 08-16: B4-b aplicada como alicerce inerte — 5 min com envio parado (primeiro prazo vale), reconferência 30 s, backoff de 11 tentativas (~16 h) e só origem picker é elegível; finishGaveUp/sessionFinished sobrevivem a mudança de estado e a reinício
+- [Phase 08]: 08-27: agendador do encerramento (B4-b) inerte — encerra na hora com fila vazia (graça de 10 s), prazo de 5 min armado depois da graça, kick dedicado do envio em qualquer estado, backoff limitado sem laço e isMeetingLive padrão 'ao vivo' (falha segura) até a fiação do 08-25
 
 ### Pending Todos
 
@@ -205,6 +207,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T19:23:00.515Z
-Stopped at: Completed 08-16-PLAN.md
+Last session: 2026-10-12T19:36:07.144Z
+Stopped at: Completed 08-27-PLAN.md
 Resume file: None
