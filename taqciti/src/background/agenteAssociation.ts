@@ -3,14 +3,10 @@
  * dependências de produção e expõe `agenteAssociation` para o `index.ts` — cada `case ui/agente/*`
  * lá é só uma linha que chama um método daqui. Mesmo padrão de `agenteStreamer.ts`.
  *
- * Enquanto as rotas da decisão B1 não estão ligadas (plano 08-12), as portas de clientes e de
- * sessão são as "indisponível": a lista responde `unavailable` e o seletor cai no plano B (ID
- * manual, D-02), que já transmite de ponta a ponta.
+ * As portas de clientes e de sessão de produção falam com as rotas /webhook/extension/* do backend
+ * (decisão B1, plano 08-12). Com as rotas fora do ar (ou um backend antigo sem elas), a lista
+ * responde `unavailable` e o seletor cai no plano B (ID manual, D-02), que transmite de ponta a ponta.
  */
-import {
-  unavailableClientDirectory,
-  unavailableSessionGateway,
-} from '@/features/agente/clientDirectory';
 import {
   AGENTE_REQUEST_TIMEOUT_MS,
   type ExtensionChunkRequest,
@@ -23,6 +19,8 @@ import {
 } from './agenteAssociationService';
 import { reevaluateAgenteStreamer } from './agenteStreamer';
 import { getRecord } from './history';
+import { createHttpClientDirectory } from './httpClientDirectory';
+import { createHttpSessionGateway } from './httpSessionGateway';
 import { getState } from './sessionController';
 
 function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
@@ -36,12 +34,14 @@ function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
  * `createAgenteConfigReader()` é preguiçoso: só toca o storage na primeira chamada, então importar
  * este módulo continua sem efeito colateral.
  */
+const loadConfig = createAgenteConfigReader();
 let activeDeps: AgenteAssociationServiceDeps = {
-  directory: unavailableClientDirectory,
-  sessions: unavailableSessionGateway,
+  // B1: lista/criar cliente e criar sessão pelas rotas da extensão (leitor de config compartilhado).
+  directory: createHttpClientDirectory({ loadConfig }),
+  sessions: createHttpSessionGateway({ loadConfig }),
   getMeetingState: getState,
   getRecord,
-  loadConfig: createAgenteConfigReader(),
+  loadConfig,
   send: defaultSend,
   // Logo depois do vínculo, o que foi dito depois da semente sai uma vez (08-01).
   onLinked: () => reevaluateAgenteStreamer(),

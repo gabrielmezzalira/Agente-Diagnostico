@@ -132,6 +132,7 @@ async function setup(options: SetupOptions = {}) {
 
 beforeEach(() => {
   vi.resetModules();
+  vi.unstubAllGlobals();
 });
 
 describe('vínculo ao vivo — ID manual', () => {
@@ -399,7 +400,9 @@ describe('vínculo ao vivo — bordas', () => {
 });
 
 describe('raiz de composição — agenteAssociation', () => {
-  it('padrão de produção: lista indisponível e vínculo por cliente falha sem rede', async () => {
+  it('padrão de produção: backend sem as rotas (404) deixa a lista indisponível', async () => {
+    // Portas HTTP de produção (08-12): sem simular o backend, o teste tentaria a rede de verdade.
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 404 }))));
     installChromeStorageMock({
       extra: {
         runtime: { sendMessage: vi.fn(() => Promise.resolve()) },
