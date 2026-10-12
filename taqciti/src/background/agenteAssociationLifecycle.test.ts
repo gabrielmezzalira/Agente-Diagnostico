@@ -7,7 +7,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
 import { STORAGE_KEYS } from '@/shared/config/constants';
+import type { MeetingAssociation } from '@/features/agente/association';
 import type { MeetingEvent } from '@/features/meeting/machine';
+import { transition } from '@/features/meeting/machine';
+import { IDLE_STATE, type MeetingState } from '@/shared/types/domain';
 
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -207,5 +210,75 @@ describe('falha no ciclo de vida nunca derruba o dispatch (T-08-42)', () => {
     await settle();
     expect(result.phase).toBe('recording');
     expect(logSpy).toHaveBeenCalledWith('ciclo de vida da associação do Agente falhou', expect.any(Error));
+  });
+});
+
+function association(meetingId: string, patch: Partial<MeetingAssociation>): MeetingAssociation {
+  return { meetingId, state: 'pending', ...patch };
+}
+
+async function recover(
+  seed: Record<string, MeetingAssociation>,
+  state: MeetingState = IDLE_STATE,
+) {
+  const ctx = await fresh({ local: { [STORAGE_KEYS.agenteAssociations]: seed } });
+  await ctx.lifecycle.recoverAssociationsAfterRestart(state);
+  return ctx.stored();
+}
+
+const liveState = transition(IDLE_STATE, detected('live'));
+
+describe('recuperação no boot do service worker (D-04, Pitfall 10)', () => {
+  it('linking sem sessionId: deferred com create-session; se a reunião não está ao vivo, ended-unsent (erro preservado)', async () => {
+    const seed = { live: association('live', { state: 'linking', clientName: 'A' }), old: association('old', { state: 'linking', clientName: 'B' }) };
+    const map = await recover(seed, liveState);
+    expect(map.live).toMatchObject({ state: 'deferred', error: 'create-session', clientName: 'A' });
+    expect(map.old).toMatchObject({ state: 'ended-unsent', error: 'create-session', clientName: 'B' });
+  });
+
+  it('linking e sending com sessionId viram send-failed; sending sem sessionId vira ended-unsent com erro', async () => {
+    const map = await recover({
+      a: association('a', { state: 'linking', sessionId: SESSION_ID }),
+      b: association('b', { state: 'sending', sessionId: SESSION_ID }),
+      c: association('c', { state: 'sending' }),
+    });
+    expect(map.a).toMatchObject({ state: 'send-failed', error: 'send', sessionId: SESSION_ID });
+    expect(map.b).toMatchObject({ state: 'send-failed', error: 'send', sessionId: SESSION_ID });
+    expect(map.c).toMatchObject({ state: 'ended-unsent', error: 'create-session' });
+  });
+
+  it('pending/choosing/deferred de reunião que não é a ao vivo viram ended-unsent; a da ao vivo fica', async () => {
+    const map = await recover(
+      {
+        p: association('p', { state: 'pending' }),
+        c: association('c', { state: 'choosing' }),
+        d: association('d', { state: 'deferred' }),
+        live: association('live', { state: 'pending' }),
+      },
+      liveState,
+    );
+    expect(map.p?.state).toBe('ended-unsent');
+    expect(map.c?.state).toBe('ended-unsent');
+    expect(map.d?.state).toBe('ended-unsent');
+    expect(map.live?.state).toBe('pending');
+  });
+
+  it('ended-unsent da reunião ao vivo (sala retomada com o service worker dormindo) volta a pending', async () => {
+    const map = await recover({ live: association('live', { state: 'ended-unsent' }) }, liveState);
+    expect(map.live?.state).toBe('pending');
+  });
+
+  it('sent da reunião ao vivo vira linked, com a mesma sessão', async () => {
+    const sent = await recover({ live: association('live', { state: 'sent', sessionId: SESSION_ID, seedSent: {} }) }, liveState);
+    expect(sent.live).toMatchObject({ state: 'linked', sessionId: SESSION_ID });
+  });
+
+  it('linked, sent e send-failed de reuniões que não estão ao vivo não mudam', async () => {
+    const seed = {
+      l: association('l', { state: 'linked', sessionId: SESSION_ID }),
+      s: association('s', { state: 'sent', sessionId: SESSION_ID }),
+      f: association('f', { state: 'send-failed', sessionId: SESSION_ID, error: 'send' }),
+    };
+    expect(await recover(seed, liveState)).toEqual(seed);
   });
 });

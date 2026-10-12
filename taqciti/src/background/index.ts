@@ -24,6 +24,7 @@ import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
+import { recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
 /**
@@ -44,6 +45,7 @@ const ready: Promise<void> = migrateLocalStorage()
   // Sem await: o streamer do Agente nunca atrasa os handlers de mensagem (WR-02).
   .then(() => void resumeAgenteStreamer())
   .then(() => recoverInterruptedMeetings())
+  .then(() => recoverAssociationsAfterRestart(getState()))
   .then(() => ensurePanelPrefs())
   .then(() => undefined)
   .catch((error) => logger.error('falha na inicialização', error));

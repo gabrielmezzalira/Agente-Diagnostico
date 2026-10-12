@@ -15,9 +15,15 @@ import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
 import {
   applyAssociationEvent,
   getAssociation,
+  loadAssociations,
   removeAssociation,
 } from '@/shared/config/agenteAssociationStore';
-import type { AssociationState } from '@/features/agente/association';
+import type {
+  AssociationEvent,
+  AssociationState,
+  MeetingAssociation,
+} from '@/features/agente/association';
+import { logger } from '@/shared/services/log';
 
 /** Leitor próprio e preguiçoso: só toca o storage na primeira chamada e depois segue o `onChanged`. */
 const readConfig = createAgenteConfigReader();
@@ -69,4 +75,56 @@ export async function syncAssociationLifecycle(prev: MeetingState, next: Meeting
   await resumeMeeting(prev, next);
   await closeFinishedMeeting(prev, next);
   await createForLiveMeeting(next);
+}
+
+/**
+ * O que tirar de uma associação que o service worker encontrou ao acordar. `live` = é a reunião que está
+ * ao vivo agora. Cada resultado é um estado com tela e com saída; `linked`, `sent` e `send-failed` de
+ * reunião que não está ao vivo já têm onde ser tratados e ficam como estão.
+ */
+function recoveryEvents(association: MeetingAssociation, live: boolean): AssociationEvent[] {
+  const ended: AssociationEvent[] = live ? [] : [{ type: 'meeting-ended' }];
+  const resumed: AssociationEvent[] = live ? [{ type: 'meeting-resumed' }] : [];
+  const hasSession = association.sessionId !== undefined;
+  switch (association.state) {
+    case 'linking':
+      return hasSession
+        ? [{ type: 'link-failed', error: 'send' }]
+        : [{ type: 'link-failed', error: 'create-session' }, ...ended];
+    case 'sending':
+      return hasSession
+        ? [{ type: 'send-failed', error: 'send' }]
+        : [{ type: 'send-failed', error: 'create-session' }, ...resumed];
+    case 'pending':
+    case 'choosing':
+    case 'deferred':
+      return ended;
+    case 'ended-unsent':
+    case 'sent':
+      return resumed;
+    default:
+      return [];
+  }
+}
+
+/**
+ * No boot do service worker: nenhuma associação fica presa. Recebe o estado reidratado da reunião e nunca
+ * mexe nela — só nas associações. Falha numa associação vai para o log e não impede as outras, nem a
+ * cadeia de inicialização do service worker.
+ */
+export async function recoverAssociationsAfterRestart(state: MeetingState): Promise<void> {
+  const liveId = isLivePhase(state) ? state.session?.meetingId : undefined;
+  const associations = await loadAssociations().then(Object.values, (error: unknown) => {
+    logger.error('leitura das associações do Agente falhou', error);
+    return [] as MeetingAssociation[];
+  });
+  for (const association of associations) {
+    try {
+      for (const event of recoveryEvents(association, association.meetingId === liveId)) {
+        await applyAssociationEvent(association.meetingId, event);
+      }
+    } catch (error) {
+      logger.error('recuperação da associação do Agente falhou', error);
+    }
+  }
 }
