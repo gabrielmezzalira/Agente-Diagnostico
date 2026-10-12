@@ -253,8 +253,8 @@ describe('retomar o envio parado (send-resumed, plano 08-20)', () => {
     );
   });
 
-  it('cancela o prazo de 5 min da B4-b: sem finishBy nem finishTries', () => {
-    const next = reduce(stopped({ finishBy: 1_000, finishTries: 2 }), { type: 'send-resumed' });
+  it('cancela o prazo de 5 min da B4-b e a desistência: sem finishBy, finishTries nem finishGaveUp', () => {
+    const next = reduce(stopped({ finishBy: 1_000, finishTries: 11, finishGaveUp: true }), { type: 'send-resumed' });
     expect(next).toEqual(
       assoc('sending', {
         sessionId: SID,

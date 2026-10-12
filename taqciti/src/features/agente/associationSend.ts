@@ -27,8 +27,9 @@ export function carryIdentity(current: MeetingAssociation): Omit<MeetingAssociat
 
 /**
  * "Continuar envio" (08-20): só `send-failed` COM sessão volta a `sending`, mantendo sessão, origem, cliente e
- * progresso (de onde retomar). Quem retoma cancela o prazo de 5 min da B4-b (`finishBy`, `finishTries`); o erro
- * some e `sessionFinished` fica — a sessão já encerrada continua encerrada.
+ * progresso (de onde retomar). Quem retoma cancela o prazo de 5 min da B4-b (`finishBy`, `finishTries`) e a
+ * desistência (`finishGaveUp`) — como a retomada da reunião —, senão o envio retomado nunca mais encerraria a
+ * sessão; o erro some e `sessionFinished` fica — a sessão já encerrada continua encerrada.
  */
 function resumeStoppedSend(current: MeetingAssociation): MeetingAssociation {
   if (current.state !== 'send-failed' || current.sessionId === undefined) return current;
@@ -36,6 +37,7 @@ function resumeStoppedSend(current: MeetingAssociation): MeetingAssociation {
   delete next.error;
   delete next.finishBy;
   delete next.finishTries;
+  delete next.finishGaveUp;
   return next;
 }
 
