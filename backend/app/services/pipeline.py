@@ -631,6 +631,8 @@ class SessionPipeline:
 class PipelineManager:
     def __init__(self):
         self._pipelines: Dict[str, SessionPipeline] = {}
+        # Fase 8 / Pitfall 5b: uma 'porta única' por sessão para a criação do pipeline.
+        self._locks: Dict[str, asyncio.Lock] = {}
 
     async def get_or_create(
         self, session_id: str, allow_finished: bool = False
@@ -638,6 +640,24 @@ class PipelineManager:
         if session_id in self._pipelines:
             return self._pipelines[session_id]
 
+        # Fase 8 / Pitfall 5b: a construção faz `await` ao LLM ANTES de registrar o
+        # pipeline em _pipelines. Sem o lock, dois chunks quase simultâneos da mesma
+        # reunião passam juntos pela checagem acima e criam dois pipelines — um deles
+        # fica com tarefas órfãs chamando o Gemini. O lock é por session_id, então
+        # sessões diferentes não se bloqueiam.
+        lock = self._locks.setdefault(session_id, asyncio.Lock())
+        async with lock:
+            if session_id in self._pipelines:  # quem esperou reaproveita o que já foi criado
+                return self._pipelines[session_id]
+            pipeline = await self._build_pipeline(session_id, allow_finished)
+        if session_id not in self._pipelines:
+            # Sessão inexistente/encerrada: nada foi registrado, então não deixa lock sobrando.
+            self._locks.pop(session_id, None)
+        return pipeline
+
+    async def _build_pipeline(
+        self, session_id: str, allow_finished: bool
+    ) -> Optional[SessionPipeline]:
         db = get_supabase()
         query = (
             db.table("sessions")
@@ -758,6 +778,7 @@ class PipelineManager:
 
     async def stop_session(self, session_id: str) -> None:
         pipeline = self._pipelines.pop(session_id, None)
+        self._locks.pop(session_id, None)  # sessão encerrada: libera o lock dela
         if pipeline:
             await pipeline.stop()
 
