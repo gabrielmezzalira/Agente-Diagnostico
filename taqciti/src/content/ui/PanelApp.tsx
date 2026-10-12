@@ -73,6 +73,7 @@ import {
 import { detectNextMeeting, type NextMeetingHypothesis } from '@/features/meeting/nextMeeting';
 import { AgenteEndSlot } from '@/sidepanel/components/AgenteEndSlot';
 import { AgenteLiveSlot } from '@/sidepanel/components/AgenteLiveSlot';
+import { AgpLiveTabs } from '@/sidepanel/components/AgpLiveTabs';
 import { AgenteNudgeAnchor } from '@/sidepanel/components/AgenteNudgeAnchor';
 import { useFloating } from './useFloating';
 import { PANEL_OPEN_EVENT } from './mount';
@@ -890,14 +891,16 @@ function LiveBody({
           As legendas do Meet pararam de chegar. Religando sozinho.
         </p>
       )}
-      <TranscriptView
-        segments={session.segments}
-        selfName={hostName(session.participants)}
-        live={phase === 'recording'}
-        dimmed={phase === 'paused'}
-        query={query}
-        emptyMessage="Ouvindo a reunião. As falas aparecem aqui automaticamente."
-      />
+      <AgpLiveTabs>
+        <TranscriptView
+          segments={session.segments}
+          selfName={hostName(session.participants)}
+          live={phase === 'recording'}
+          dimmed={phase === 'paused'}
+          query={query}
+          emptyMessage="Ouvindo a reunião. As falas aparecem aqui automaticamente."
+        />
+      </AgpLiveTabs>
       <LiveStats session={session} toast={toast} hypothesis={hypothesis} />
       <LiveControls
         paused={phase === 'paused'}

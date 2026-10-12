@@ -15,6 +15,7 @@ import { AccountBoundaryNotice } from '@/shared/ui/AccountBoundaryNotice';
 import { PanelHeader } from '../components/PanelHeader';
 import { ParticipantsSection } from '../components/ParticipantsSection';
 import { ControlsBar } from '../components/ControlsBar';
+import { AgpLiveTabs } from '../components/AgpLiveTabs';
 
 interface LiveScreenProps {
   session: MeetingSessionState;
@@ -64,12 +65,14 @@ export function LiveScreen({ session, phase }: LiveScreenProps) {
       footer={<ControlsBar paused={phase === 'paused'} />}
     >
       <div className="flex min-h-0 flex-1 flex-col px-3 pb-1 pt-2">
-        <TranscriptView
-          segments={session.segments}
-          selfName={hostName(session.participants)}
-          live={phase === 'recording'}
-          dimmed={phase === 'paused'}
-        />
+        <AgpLiveTabs>
+          <TranscriptView
+            segments={session.segments}
+            selfName={hostName(session.participants)}
+            live={phase === 'recording'}
+            dimmed={phase === 'paused'}
+          />
+        </AgpLiveTabs>
       </div>
     </AppShell>
   );
