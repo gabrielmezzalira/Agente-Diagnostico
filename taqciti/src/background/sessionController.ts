@@ -25,6 +25,7 @@ import { finalizeStaleRecordings, upsertRecord } from './history';
 import { bumpMetrics } from './metrics';
 import { forgetPanelTab, panelTabs } from './panelTabs';
 import { onSessionFlushed } from './agenteStreamer';
+import { syncAssociationLifecycle } from './agenteAssociationLifecycle';
 
 let state: MeetingState = IDLE_STATE;
 let lastLiveSaveAt = 0;
@@ -101,6 +102,7 @@ async function runSideEffects(
   event: MeetingEvent,
   now: number,
 ): Promise<void> {
+  void syncAssociationLifecycle(prev, state).catch((error) => logger.error('ciclo de vida da associação do Agente falhou', error));
   // Uma sessão nova substituiu uma anterior que tinha conteúdo (reunião nova
   // preemptou a antiga): a antiga é selada no histórico como pronta.
   if (
