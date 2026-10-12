@@ -1,11 +1,15 @@
 /**
  * Porta da fila do sender do Agente (Fase 8, D-18) e a fila em memória padrão. O sender só conhece
  * esta interface: em produção quem a implementa é a fila durável de `agenteOutboxStore.ts`; sem uma
- * injetada vale a fila em memória, que mantém a regra da Fase 7 (teto de 50, descarta o mais antigo).
+ * injetada vale a fila em memória — mesma regra da durável (teto de `AGENTE_OUTBOX_MAX_ITEMS`, o
+ * excedente NOVO é recusado e contado; nenhuma fala antiga é descartada).
  */
-import type { AppendResult, OutboxItem } from '@/features/agente/outbox';
-import { AGENTE_SEND_MAX_QUEUED } from '@/features/agente/sendRetryPolicy';
-import { logger } from '@/shared/services/log';
+import {
+  AGENTE_OUTBOX_MAX_ITEMS,
+  appendItems,
+  type AppendResult,
+  type OutboxItem,
+} from '@/features/agente/outbox';
 
 export interface SendQueuePort {
   /** A fila inteira, na ordem de entrega. */
@@ -17,20 +21,14 @@ export interface SendQueuePort {
   clear: () => Promise<void>;
 }
 
-/** Fila da Fase 7: acima do teto, descarta o trecho mais antigo que ainda esperava. */
 export function createMemorySendQueue(): SendQueuePort {
   let items: OutboxItem[] = [];
   return {
     load: () => Promise.resolve([...items]),
     append: (added) => {
-      for (const item of added) {
-        items.push(item);
-        if (items.length > AGENTE_SEND_MAX_QUEUED) {
-          items.shift();
-          logger.warn('fila de envio ao Agente cheia — trecho mais antigo descartado');
-        }
-      }
-      return Promise.resolve({ queue: [...items], overflowed: 0 });
+      const result = appendItems(items, added, AGENTE_OUTBOX_MAX_ITEMS);
+      items = result.queue;
+      return Promise.resolve(result);
     },
     remove: (chunkId) => {
       items = items.filter((item) => item.chunkId !== chunkId);

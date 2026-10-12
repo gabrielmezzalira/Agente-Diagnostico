@@ -6,16 +6,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { OutboxItem } from '@/features/agente/outbox';
-import { AGENTE_SEND_MAX_QUEUED } from '@/features/agente/sendRetryPolicy';
+import { AGENTE_OUTBOX_MAX_ITEMS } from '@/features/agente/outbox';
+import { AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS } from '@/features/agente/sendRetryPolicy';
 import { logger } from '@/shared/services/log';
 import { createAgenteSender } from './agenteSender';
+import { createMemorySendQueue, type SendQueuePort } from './agenteSendQueue';
 
 function request(text: string): ExtensionChunkRequest {
   return { url: 'https://agente.test/webhook/extension', init: { method: 'POST', body: text } };
 }
 
 let nextId = 0;
-function item(text: string): OutboxItem {
+function item(text: string, overrides: Partial<OutboxItem> = {}): OutboxItem {
   nextId += 1;
   return {
     chunkId: `c${nextId}`,
@@ -24,6 +26,7 @@ function item(text: string): OutboxItem {
     text,
     speaker: null,
     enqueuedAt: 0,
+    ...overrides,
   };
 }
 
@@ -193,29 +196,6 @@ describe('agenteSender / cancelamento e teto', () => {
     expect(bodies(send)).toEqual(['novo']);
   });
 
-  it('acima do teto, o trecho mais antigo que ainda esperava é descartado', async () => {
-    let releaseFirst!: (res: Response) => void;
-    const send = vi
-      .fn<(req: ExtensionChunkRequest) => Promise<Response>>()
-      .mockImplementationOnce(() => new Promise<Response>((resolve) => (releaseFirst = resolve)))
-      .mockResolvedValue(response(202));
-    const sender = createAgenteSender({ send, buildRequest });
-
-    sender.submit([item('em-voo')]);
-    await vi.advanceTimersByTimeAsync(0); // a fila é assíncrona: o 1º envio começa um instante depois do submit
-    const extra = Array.from({ length: AGENTE_SEND_MAX_QUEUED + 1 }, (_, i) => item(`t${i}`));
-    sender.submit(extra);
-
-    releaseFirst(response(202));
-    await vi.advanceTimersByTimeAsync(0);
-    await sender.whenIdle();
-
-    const sent = bodies(send);
-    expect(sent).toHaveLength(1 + AGENTE_SEND_MAX_QUEUED);
-    expect(sent).not.toContain('t0');
-    expect(sent.at(-1)).toBe(`t${AGENTE_SEND_MAX_QUEUED}`);
-  });
-
   it('dispose é terminal: submit depois não envia', async () => {
     const send = vi.fn(() => Promise.resolve(response(202)));
     const sender = createAgenteSender({ send, buildRequest });
@@ -242,5 +222,309 @@ describe('agenteSender / cancelamento e teto', () => {
     expect(warn).toHaveBeenCalledWith('falas descartadas: destino diferente da config atual', { discarded: 1 });
     expect(JSON.stringify(warn.mock.calls)).not.toContain('velho');
     warn.mockRestore();
+  });
+});
+
+/** Resposta por texto do trecho: o que não está no mapa volta 202. */
+function sendByBody(statusByBody: Record<string, number | 'network'>) {
+  return vi.fn((req: ExtensionChunkRequest): Promise<Response> => {
+    const behavior = statusByBody[String(req.init.body)];
+    if (behavior === 'network') return Promise.reject(new Error('rede caiu'));
+    return Promise.resolve(response(behavior ?? 202));
+  });
+}
+
+describe('agenteSender / fila sem descarte e rastro de falas descartadas (D-18)', () => {
+  it('acima do teto nada antigo é descartado: só o excedente novo é recusado e contado', async () => {
+    const send = vi.fn(() => Promise.resolve(response(202)));
+    const onDelivery = vi.fn();
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({ send, buildRequest, onDelivery, onDropped });
+
+    const all = Array.from({ length: AGENTE_OUTBOX_MAX_ITEMS + 1 }, (_, i) => item(`t${i}`));
+    sender.submit(all);
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+
+    const sent = bodies(send);
+    expect(sent).toHaveLength(AGENTE_OUTBOX_MAX_ITEMS);
+    expect(sent[0]).toBe('t0');
+    expect(sent).not.toContain(`t${AGENTE_OUTBOX_MAX_ITEMS}`);
+    expect(onDelivery.mock.calls.some(([record]) => record.overflow === 1)).toBe(true);
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's1', count: 1, reason: 'overflow' }),
+    );
+  });
+
+  it('reenvio desligado (padrão): esgotadas as tentativas o item sai, é avisado e o 2º segue (Fase 7)', async () => {
+    const send = sendByBody({ a: 'network' });
+    const onOutcome = vi.fn();
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({ send, buildRequest, onOutcome, onDropped });
+
+    sender.submit([item('a'), item('b')]);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(bodies(send)).toEqual(['a', 'a', 'a', 'a', 'b']);
+    expect(onOutcome.mock.calls.filter(([outcome]) => outcome === 'failed')).toEqual([['failed', null]]);
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's1', count: 1, reason: 'failed', httpStatus: null }),
+    );
+  });
+
+  it('401 é definitivo nas duas políticas e entra no rastro como recusado', async () => {
+    for (const resendEnabled of [false, true]) {
+      const onDropped = vi.fn();
+      const send = vi.fn(() => Promise.resolve(response(401)));
+      const sender = createAgenteSender({ send, buildRequest, resendEnabled, onDropped });
+      sender.submit([item('a')]);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(onDropped).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: 'rejected', httpStatus: 401, count: 1 }),
+      );
+    }
+  });
+});
+
+describe('agenteSender / reenvio ligado: Agente fora do ar (D-18)', () => {
+  it('fica no topo, avisa offline com a contagem e, quando o Agente volta, sai tudo na ordem original', async () => {
+    let up = false;
+    const send = vi.fn((): Promise<Response> =>
+      up ? Promise.resolve(response(202)) : Promise.reject(new Error('rede caiu')),
+    );
+    const onDelivery = vi.fn();
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({ send, buildRequest, resendEnabled: true, onDelivery, onDropped });
+
+    sender.submit([item('a'), item('b')]);
+    await vi.advanceTimersByTimeAsync(8_000); // 1 s + 2 s + 4 s de espera: o topo esgotou as tentativas
+    expect(bodies(send)).toEqual(['a', 'a', 'a', 'a']);
+    expect(onDelivery).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'offline', queued: 2 }));
+
+    up = true;
+    await vi.advanceTimersByTimeAsync(5_000);
+    sender.kick(); // antes de 15 s: não tenta
+    await vi.advanceTimersByTimeAsync(0);
+    expect(send).toHaveBeenCalledTimes(4);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    sender.kick(); // passados 15 s desde que o topo esgotou
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+    expect(bodies(send)).toEqual(['a', 'a', 'a', 'a', 'a', 'b']);
+    expect(onDelivery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'ok', queued: 0, recoveredAt: Date.now() }),
+    );
+    expect(onDropped).not.toHaveBeenCalled();
+  });
+
+  it('falas novas entram atrás do item parado e não furam a fila', async () => {
+    let up = false;
+    const send = vi.fn((): Promise<Response> => Promise.resolve(response(up ? 202 : 503)));
+    const sender = createAgenteSender({ send, buildRequest, resendEnabled: true });
+    sender.submit([item('a')]);
+    await vi.advanceTimersByTimeAsync(8_000);
+    sender.submit([item('b')]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(bodies(send)).toEqual(['a', 'a', 'a', 'a']); // 'b' não é tentada enquanto 'a' espera
+
+    up = true;
+    await vi.advanceTimersByTimeAsync(15_000);
+    sender.kick();
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+    expect(bodies(send).slice(4)).toEqual(['a', 'b']);
+  });
+
+  it('503 por 10 minutos: o item nunca é retirado (fora do ar, D-18)', async () => {
+    const send = vi.fn(() => Promise.resolve(response(503)));
+    const onDropped = vi.fn();
+    const queue = createMemorySendQueue();
+    const sender = createAgenteSender({ send, buildRequest, queue, resendEnabled: true, onDropped });
+    sender.submit([item('a', { enqueuedAt: Date.now() - 3 * 60_000 })]);
+    for (let i = 0; i < 40; i += 1) {
+      await vi.advanceTimersByTimeAsync(15_000);
+      sender.kick();
+    }
+    expect(await queue.load()).toHaveLength(1);
+    expect(onDropped).not.toHaveBeenCalled();
+  });
+});
+
+describe('agenteSender / retirada por HTTP 500 (B3-b)', () => {
+  it('o valor de produção é o registrado na B3-b do 08-09-SUMMARY: retirada-nunca (sem resposta do time)', () => {
+    expect(AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS).toBeNull();
+  });
+
+  it('com limite numérico: 500 em todas as tentativas de um item mais velho que o limite é retirado como recusado', async () => {
+    const send = sendByBody({ a: 500 });
+    const onDelivery = vi.fn();
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({
+      send,
+      buildRequest,
+      resendEnabled: true,
+      serverErrorMaxAgeMs: 120_000,
+      onDelivery,
+      onDropped,
+    });
+
+    sender.submit([item('a', { enqueuedAt: Date.now() - 3 * 60_000 }), item('b')]);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(bodies(send)).toEqual(['a', 'a', 'a', 'a', 'b']);
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'rejected', httpStatus: 500, count: 1, sessionId: 's1' }),
+    );
+    const rejected = onDelivery.mock.calls.some(
+      ([record]) => record.status === 'rejected' && record.httpStatus === 500,
+    );
+    expect(rejected).toBe(true);
+  });
+
+  it('item novo com 500 fica no topo e só é retirado quando passa do limite', async () => {
+    const send = sendByBody({ a: 500 });
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({
+      send,
+      buildRequest,
+      resendEnabled: true,
+      serverErrorMaxAgeMs: 120_000,
+      onDropped,
+    });
+
+    sender.submit([item('a', { enqueuedAt: Date.now() - 30_000 })]);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(onDropped).not.toHaveBeenCalled(); // 30 s + um ciclo: ainda dentro do limite
+
+    await vi.advanceTimersByTimeAsync(95_000);
+    sender.kick();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(expect.objectContaining({ reason: 'rejected', httpStatus: 500 }));
+  });
+
+  it('ciclo com 500, 503, 500, 500 não é recusa por 500: o item fica', async () => {
+    const send = vi
+      .fn<(req: ExtensionChunkRequest) => Promise<Response>>()
+      .mockResolvedValueOnce(response(500))
+      .mockResolvedValueOnce(response(503))
+      .mockResolvedValue(response(500));
+    const onDropped = vi.fn();
+    const queue = createMemorySendQueue();
+    const sender = createAgenteSender({
+      send,
+      buildRequest,
+      queue,
+      resendEnabled: true,
+      serverErrorMaxAgeMs: 120_000,
+      onDropped,
+    });
+    sender.submit([item('a', { enqueuedAt: Date.now() - 10 * 60_000 })]);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(onDropped).not.toHaveBeenCalled();
+    expect(await queue.load()).toHaveLength(1);
+  });
+
+  it('com limite null (retirada-nunca): 500 constante por 10 minutos nunca retira', async () => {
+    const send = sendByBody({ a: 500 });
+    const onDropped = vi.fn();
+    const queue = createMemorySendQueue();
+    const sender = createAgenteSender({
+      send,
+      buildRequest,
+      queue,
+      resendEnabled: true,
+      serverErrorMaxAgeMs: null,
+      onDropped,
+    });
+    sender.submit([item('a', { enqueuedAt: Date.now() - 3 * 60_000 })]);
+    for (let i = 0; i < 40; i += 1) {
+      await vi.advanceTimersByTimeAsync(15_000);
+      sender.kick();
+    }
+    expect(onDropped).not.toHaveBeenCalled();
+    expect(await queue.load()).toHaveLength(1);
+  });
+});
+
+describe('agenteSender / retomada, falha de gravação, cancelamento e descarte da instância', () => {
+  it('resume() carrega a fila da porta e envia na ordem', async () => {
+    const queue = createMemorySendQueue();
+    await queue.append([item('a'), item('b')]);
+    const send = vi.fn(() => Promise.resolve(response(202)));
+    const sender = createAgenteSender({ send, buildRequest, queue });
+    await sender.resume();
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+    expect(bodies(send)).toEqual(['a', 'b']);
+  });
+
+  it('porta que rejeita o append: as falas contam como overflow no rastro e nada é enviado', async () => {
+    const queue: SendQueuePort = {
+      ...createMemorySendQueue(),
+      append: () => Promise.reject(new Error('QUOTA_BYTES')),
+    };
+    const send = vi.fn(() => Promise.resolve(response(202)));
+    const onDropped = vi.fn();
+    const sender = createAgenteSender({ send, buildRequest, queue, onDropped });
+    sender.submit([item('a'), item('b')]);
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+    expect(send).not.toHaveBeenCalled();
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's1', count: 2, reason: 'overflow' }),
+    );
+  });
+
+  it('request null (outro backend) e cancelAll() são saídas pedidas pela pessoa: nenhum onDropped', async () => {
+    const onDropped = vi.fn();
+    const nullSender = createAgenteSender({
+      send: vi.fn(() => Promise.resolve(response(202))),
+      buildRequest: () => Promise.resolve(null),
+      onDropped,
+    });
+    nullSender.submit([item('velho')]);
+    await vi.advanceTimersByTimeAsync(0);
+    await nullSender.whenIdle();
+
+    const queue = createMemorySendQueue();
+    const clear = vi.spyOn(queue, 'clear');
+    const sender = createAgenteSender({
+      send: () => new Promise<Response>(() => undefined),
+      buildRequest,
+      queue,
+      onDropped,
+    });
+    sender.submit([item('a'), item('b')]);
+    await vi.advanceTimersByTimeAsync(0);
+    sender.cancelAll();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(await queue.load()).toEqual([]);
+    expect(onDropped).not.toHaveBeenCalled();
+  });
+
+  it('dispose() é terminal mas NÃO limpa a porta: a fila durável sobrevive à instância', async () => {
+    const queue = createMemorySendQueue();
+    const clear = vi.spyOn(queue, 'clear');
+    const send = vi.fn(() => new Promise<Response>(() => undefined));
+    const sender = createAgenteSender({ send, buildRequest, queue });
+    sender.submit([item('a'), item('b')]);
+    await vi.advanceTimersByTimeAsync(0);
+
+    sender.dispose();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(clear).not.toHaveBeenCalled();
+    expect((await queue.load()).map((queued) => queued.text)).toEqual(['a', 'b']);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });
