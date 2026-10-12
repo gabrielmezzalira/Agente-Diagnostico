@@ -95,7 +95,7 @@ function failureReason(httpStatus: number | null): string {
   return httpStatus === null ? 'sem conexão com o backend' : `HTTP ${httpStatus}`;
 }
 
-function rejectionText(httpStatus: number | null): string {
+export function rejectionText(httpStatus: number | null): string {
   if (httpStatus === 401 || httpStatus === 403) {
     return `Último envio recusado: a chave de autenticação não foi aceita (HTTP ${httpStatus}).`;
   }
