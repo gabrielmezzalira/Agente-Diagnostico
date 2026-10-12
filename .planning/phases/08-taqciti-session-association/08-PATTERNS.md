@@ -383,7 +383,7 @@ if (config.agenteApiKey.length > 0) headers[AGENTE_KEY_HEADER] = config.agenteAp
 |---|---|---|---|
 | `agenteOutboxStore.ts` (fila durável paginada) | store | batch | Nenhuma fila durável existe; a fila atual é memória do SW (`waiting` em `agenteSender`). Combinar `agenteBindingStore` (escrita) + `sendRetryPolicy` (veredito); o planejador usa o Pattern 5 do RESEARCH. |
 | Hook de lock por sessão em `PipelineManager.get_or_create` | service | event-driven | Nenhum `asyncio.Lock` por chave existe; usar o Pitfall 5 do RESEARCH. |
-| Rota `POST /webhook/extension/sessions/{id}/finish` (decisão 4) | router | request-response | `finish_session` em `sessions.py` (~linha 255) é o analog funcional, mas sem gate; reaproveitar a lógica via service, não via cópia. Bloqueado B4. |
+| Rota `POST /webhook/extension/sessions/{id}/finish` (decisão 4) | router | request-response | `finish_session` em `sessions.py` (~linha 255) é o analog funcional, mas sem gate; reaproveitar a lógica via service, não via cópia. ~~Bloqueado B4.~~ [B4-b respondida em 2026-10-12: encerrar na hora com a fila vazia, 5 min com envio parado; rota idempotente no plano 08-15, sem janela de 10 min.] |
 
 ## Mapa de bloqueios (do RESEARCH, para ordenar planos)
 

@@ -222,6 +222,7 @@ Todo texto da UI em português (pt-BR), tom direto, sem jargão. "Taqciti" e "Ag
 | Falha no meio | `O envio parou na parte {x} de {y}. O que já chegou continua no Agente.` |
 | Ação da falha | `Continuar envio` (**bloqueada** por Decisão do time 3, ver abaixo) |
 | Apoio enquanto `Continuar envio` está bloqueado | `A transcrição continua guardada na Taqciti. Você pode copiá-la ou baixá-la enquanto isso.` |
+| Sessão já encerrada (B4-b, decisão DA-2 de 2026-10-12) | `A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo.` — linha de apoio na visão de falha do cartão de fim, acima do botão `Continuar envio`, **só** quando a Taqciti já encerrou a sessão (envio parado há mais de 5 minutos); `warning`, mesma tipografia do texto de parada. |
 
 ### Selos no histórico
 

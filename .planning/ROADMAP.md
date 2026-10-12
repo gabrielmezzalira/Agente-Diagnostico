@@ -243,10 +243,13 @@ Plans:
   2. A deferred meeting is kept only in Taqciti and sends nothing until a client is chosen at the end of the meeting (or from the panel); "Descartar" asks for confirmation and removes the meeting from Taqciti's local history only
   3. The manual session-id field from Phase 7 stays as a hidden fallback that appears only when the client list cannot load; chunks are only attributed to a session when the binding is explicit — never guessed or defaulted silently
   4. When the Agente is unreachable during a live meeting, unsent speech is kept and resent once it is back, and the user is told on screen that the Agente is offline
+  5. Sessions that Taqciti created are closed automatically so the Agente never keeps spending AI after the call: on meeting end (including closing the meeting tab) as soon as the send queue is empty, and after 5 minutes if sending is stalled; a live meeting is never closed; coming back to the same room after the session was closed starts a new meeting (new pending association and a new session with only what is said afterwards)
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Plans**: 18/25 plans executed
+**Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). Open and non-blocking: DA-4 (tab navigates away from Meet mid-call) and DA-5 (what closes a session after the Taqciti gave up closing it)
+
+**Plans**: 18/27 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -276,30 +279,38 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 08-13-PLAN.md — [D-11 porta sem volta] Evicção protegida do histórico + comando de descarte
-- [ ] 08-15-PLAN.md — [B4-b já respondida] Rota de encerramento da sessão criada pela Taqciti (idempotente, só source extension) + correção da corrida do stop_session
+- [ ] 08-15-PLAN.md — [B4-b já respondida] Rota de encerramento da sessão criada pela Taqciti (idempotente, só source extension, parador de pipeline injetado) + correção da corrida do stop_session
 - [x] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
+- [ ] 08-19-PLAN.md — Aplica a B3 na Taqciti: chunk_id no corpo + reenvio automático ligado
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 08-16-PLAN.md — Núcleo do encerramento (B4-b): a associação guarda o encerramento, tempos puros (na hora com fila vazia, 5 min com envio parado), porta HTTP do finish e agendador — ainda inerte
+- [ ] 08-16-PLAN.md — Alicerce do encerramento (B4-b): tempos da decisão (5 min, 30 s, 10 s, backoff limitado) fixados por teste, a associação guarda o encerramento e a porta HTTP do finish — inerte
 - [x] 08-17-PLAN.md — Fim da reunião e histórico: enviar ao Agente, descartar com confirmação, selos
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 08-19-PLAN.md — Aplica a B3 na Taqciti: chunk_id no corpo + reenvio automático ligado
-- [ ] 08-24-PLAN.md — [DECISÕES DA-1/DA-2/DA-3] Reentrada na mesma sala depois do encerramento = reunião nova (ajuste do 08-22): regra no reducer e no boot; máquina da reunião só com a decisão do time
+- [ ] 08-27-PLAN.md — Agendador do encerramento (B4-b): encerra na hora com a fila vazia, prazo de 5 min com envio parado, backoff limitado, nunca com a reunião ao vivo; kick dedicado do envio — ainda inerte
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 08-25-PLAN.md — Fiação do encerramento automático (B4-b): permissão alarms, listener síncrono, reavaliação no boot e gatilhos (fim da reunião, envio em partes, vínculo)
+- [ ] 08-24-PLAN.md — Reentrada na mesma sala depois do encerramento = reunião nova (ajuste do 08-22; DA-1 respondida): regra no reducer, boot e máquina da reunião (`startFresh`)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 08-20-PLAN.md — "Continuar envio" do índice confirmado
+- [ ] 08-26-PLAN.md — [DA-3 respondida] Fechar a aba da reunião no meio da call conta como fim da reunião (handler extraído em refator separado; máquina da Fase 7 intocada)
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 08-21-PLAN.md — Portão automático completo + roteiro manual D-20 numa reunião real
+- [ ] 08-25-PLAN.md — Fiação do encerramento automático (B4-b): permissão alarms, listener síncrono, `isMeetingLive` testado, reavaliação no boot e gatilhos (fim da reunião, envio em partes, vínculo)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 08-20-PLAN.md — "Continuar envio" do índice confirmado, com o aviso de sessão já encerrada (DA-2)
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 08-21-PLAN.md — Portão automático completo + roteiro manual D-20 (a-i) numa reunião real
 
 ### Phase 9: Cutover + Retire Custom Extension
 
