@@ -12,6 +12,7 @@ import {
   formatDurationHuman,
   formatTime,
 } from '@/shared/ui/format';
+import { AssociationBadgeFor } from './AssociationBadgeFor';
 import { StatusBadge } from './StatusBadge';
 
 interface HistoryCardProps {
@@ -46,7 +47,10 @@ export function HistoryCard({ record, onOpen }: HistoryCardProps) {
           <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug">
             {record.title}
           </p>
-          <StatusBadge status={record.status} />
+          <span className="flex shrink-0 items-center gap-1.5">
+            <StatusBadge status={record.status} />
+            <AssociationBadgeFor recordId={record.id} live={record.status === 'recording'} />
+          </span>
         </div>
 
         <p className="mt-2 truncate text-xs text-muted">

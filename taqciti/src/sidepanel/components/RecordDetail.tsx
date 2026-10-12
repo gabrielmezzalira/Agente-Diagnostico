@@ -19,6 +19,7 @@ import { EditableTitle } from '@/shared/ui/EditableTitle';
 import { Icon } from '@/shared/ui/Icon';
 import { TranscriptView } from '@/shared/ui/TranscriptView';
 import { formatDate, formatDurationHuman, formatTime, hostName } from '@/shared/ui/format';
+import { AssociationBadgeFor } from './AssociationBadgeFor';
 import { StatusBadge } from './StatusBadge';
 
 interface RecordDetailProps {
@@ -48,7 +49,10 @@ export function RecordDetail({ record, onBack }: RecordDetailProps) {
               <Icon name="chevron" size={14} className="rotate-90" />
               Histórico
             </Button>
-            <StatusBadge status={record.status} />
+            <span className="flex shrink-0 items-center gap-1.5">
+              <StatusBadge status={record.status} />
+              <AssociationBadgeFor recordId={record.id} live={record.status === 'recording'} />
+            </span>
           </div>
 
           <EditableTitle
