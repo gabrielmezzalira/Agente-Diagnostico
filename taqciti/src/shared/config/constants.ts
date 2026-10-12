@@ -20,6 +20,8 @@ export const STORAGE_KEYS = {
   agenteConfig: 'taq:agenteConfig',
   /** chrome.storage.local — última reunião enviada para a sessão do Agente (CR-01/WR-01); só o service worker grava. */
   agenteBinding: 'taq:agenteBinding',
+  /** chrome.storage.local — vínculo de cada reunião com a sessão do Agente (Fase 8); só o service worker grava. */
+  agenteAssociations: 'taq:agenteAssociations',
   /** chrome.storage.session — cursor + falas pendentes do streamer do Agente (sobrevive a restart do service worker, WR-02). */
   agenteStreamer: 'taq:agenteStreamer',
   /**

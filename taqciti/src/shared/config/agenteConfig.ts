@@ -169,7 +169,7 @@ export function isValidAgenteSessionId(value: string): boolean {
  * depois), então query (`?a=b`) e fragmento (`#x`) são recusados — senão o
  * caminho acabaria colado no meio deles. Só http/https passam.
  */
-function isValidAgenteBackendUrl(url: string): boolean {
+export function isValidAgenteBackendUrl(url: string): boolean {
   if (url.includes('?') || url.includes('#')) return false;
   try {
     const parsed = new URL(url);

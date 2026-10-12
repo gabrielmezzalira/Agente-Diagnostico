@@ -7,6 +7,7 @@
  */
 import type { MeetingState } from '@/shared/types/domain';
 import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/config/agenteConfig';
+import { clearSeed, getAssociation } from '@/shared/config/agenteAssociationStore';
 import { loadAgenteBinding, writeAgenteBinding } from '@/shared/config/agenteBindingStore';
 import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
 import type { AgenteStatusSink } from './agenteStatusReporter';
+import { createAssociationDestination } from './agenteStreamDestination';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 import { sessionSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -59,6 +61,8 @@ let activeDeps: AgenteStreamerDeps = {
   loadBinding: loadAgenteBinding,
   bindMeeting: writeAgenteBinding,
   settleStatusAfterRestart: markInterruptedSend,
+  // Fase 8 (D-01): o destino é a associação da reunião, não o ID salvo na config — sem `linked`, nada sai.
+  destination: createAssociationDestination({ getAssociation, clearSeed }),
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 
@@ -83,6 +87,14 @@ export function onSessionFlushed(state: MeetingState): Promise<void> {
 /** Boot do service worker: restaura cursor e falas pendentes (WR-02). */
 export function resumeAgenteStreamer(): Promise<void> {
   return activeStreamer.resume();
+}
+
+/**
+ * Roda um passo do streamer com o último estado visto (Fase 8): o fluxo de vínculo chama logo depois de
+ * `link-completed`, para o que foi dito depois da semente sair mesmo sem um flush novo.
+ */
+export function reevaluateAgenteStreamer(): Promise<void> {
+  return activeStreamer.reevaluate();
 }
 
 /** Só para testes (WR-10) — ver `whenIdle` em agenteStreamerInstance.ts. */

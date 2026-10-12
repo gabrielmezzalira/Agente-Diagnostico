@@ -26,7 +26,7 @@ import {
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
-import { configDestination } from './agenteStreamDestination';
+import { configDestination, cursorFromSeed, type StreamTarget } from './agenteStreamDestination';
 import { createBindingRecorder } from './agenteStreamerBindingRecorder';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
 import { createSnapshotPersister } from './agenteStreamerSnapshot';
@@ -142,15 +142,38 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     const config = await deps.loadConfig();
     if (disposed) return; // instância descartada enquanto esperava (WR-13)
     lastState = state;
-    const target = await destination.resolve(config, state.session?.meetingId ?? null);
+    const meetingId = state.session?.meetingId ?? null;
+    const target = await destination.resolve(config, meetingId);
     if (disposed) return;
+    const sendConfig = await settleTarget(target, meetingId);
+    if (sendConfig !== null) await advance(sendConfig, state);
+  }
+
+  /**
+   * Traduz o alvo da política em ação; devolve a config de envio ou `null` (este passo não envia).
+   * `idle` zera só o cursor da reunião atual (D-09 da Fase 7 vale só para `disabled`); `hold` não mexe
+   * em nada. A semente vira o cursor inicial (`{}` conta) e é persistida ANTES de consumida.
+   */
+  async function settleTarget(target: StreamTarget, meetingId: string | null): Promise<AgenteConfig | null> {
     if (target.kind === 'disabled') {
       stopStreaming();
-      return;
+      return null;
     }
-    if (target.kind !== 'send') return; // `idle` e `hold`: nenhuma política os produz ainda
+    if (target.kind === 'hold') return null;
+    if (target.kind === 'idle') {
+      cursor = null;
+      status.waitingForMeeting(null);
+      return null;
+    }
     syncDestination(destination.queueKey(target.config));
-    await advance(target.config, state);
+    if (target.seed !== null && meetingId !== null) {
+      cursor = cursorFromSeed(cursor, meetingId, target.config.agenteSessionId, target.seed) ?? cursor;
+      await persister?.persist(cursor, pending);
+      await destination.consumeSeed(meetingId).catch((error: unknown) => {
+        logger.error('consumir a semente do vínculo falhou', error);
+      });
+    }
+    return target.config;
   }
 
   async function advance(config: AgenteConfig, state: MeetingState): Promise<void> {
@@ -198,25 +221,20 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
-    const target = await destination.resolve(config, lastState?.session?.meetingId ?? null);
+    const meetingId = lastState?.session?.meetingId ?? null;
+    const target = await destination.resolve(config, meetingId);
     if (disposed) return;
-    if (target.kind === 'disabled') {
-      status.resetSendOutcome(); // WR-07
-      stopStreaming();
-      return;
-    }
-    if (target.kind !== 'send') return; // `idle` e `hold`: nenhuma política os produz ainda
-    // WR-01: cancela ANTES de zerar o status — assim um trecho antigo não repinta o erro.
-    syncDestination(destination.queueKey(target.config));
+    const sendConfig = await settleTarget(target, meetingId);
+    // WR-01: o cancelAll (settleTarget) vem ANTES de zerar o status — assim um trecho antigo não repinta o erro.
     status.resetSendOutcome(); // WR-07
-    if (lastState === null) return;
+    if (sendConfig === null || lastState === null) return;
     // WR-02: religar (cursor nulo) numa reunião que não é de outro vínculo começa a contar DESTE
     // instante — o prime ancora no estado atual, então o próximo flush não perde o trecho novo.
     // CR-01: se a sessão estava vinculada a OUTRA reunião, o mesmo passo ESPERA em vez de ancorar.
     // Decisão do time (2026-10-10): confirmar essa reunião a libera DESDE O INÍCIO — inclusive o
     // que foi dito com o toggle desligado —, porque a pessoa decidiu mandá-la inteira para a sessão.
     // Confirmar (ou trocar o session_id) libera na hora, sem esperar alguém voltar a falar.
-    await advance(target.config, lastState);
+    await advance(sendConfig, lastState);
   }
 
   /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */
@@ -246,6 +264,17 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     });
   }
 
+  /**
+   * Fase 8: um passo com o último estado visto, pela mesma fila — chamado logo depois de `link-completed`
+   * para o que veio depois da semente sair mesmo sem flush novo. Sem estado visto, no-op.
+   */
+  function reevaluate(): Promise<void> {
+    ensureSubscribed();
+    return enqueueStep(async () => {
+      if (lastState !== null) await step(lastState);
+    });
+  }
+
   /** Só para asserções de ausência em teste (WR-10): espera a fila, sem enfileirar nada. */
   function whenIdle(): Promise<void> {
     return queue;
@@ -260,5 +289,5 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     unsubscribeConfig = null;
   }
 
-  return { onSessionFlushed, resume, dispose, whenIdle };
+  return { onSessionFlushed, resume, reevaluate, dispose, whenIdle };
 }

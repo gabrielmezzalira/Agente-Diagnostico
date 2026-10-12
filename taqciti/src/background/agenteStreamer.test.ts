@@ -97,7 +97,11 @@ async function fresh(options: { realBinding?: boolean } = {}) {
   });
   const sessionController = await import('./sessionController');
   const agenteStreamer = await import('./agenteStreamer');
-  if (!options.realBinding) agenteStreamer.configureAgenteStreamer({ bindMeeting: undefined });
+  // `destination: undefined` = política `configDestination` (a regra da Fase 7, o ID salvo na config):
+  // estes testes cobrem a MECÂNICA de janela/retry/vínculo CR-01, que continua valendo para essa política.
+  agenteStreamer.configureAgenteStreamer(
+    options.realBinding ? { destination: undefined } : { bindMeeting: undefined, destination: undefined },
+  );
   return { sessionController, agenteStreamer, mock };
 }
 
@@ -683,6 +687,8 @@ describe('configuração vinda do storage (D-08)', () => {
     // Reimporta o agenteStreamer depois do reset para pegar a MESMA instância
     // (cursor/buffer/timer novos) que o sessionController reiniciado usa.
     const restartedStreamer = await import('./agenteStreamer');
+    // O módulo recarregado volta à composição de produção: reafirma a política da Fase 7 (ver fresh()).
+    restartedStreamer.configureAgenteStreamer({ destination: undefined });
     await restarted.hydrate();
 
     await restarted.dispatch({
@@ -747,6 +753,8 @@ describe('configuração vinda do storage (D-08)', () => {
     vi.resetModules();
     const restarted = await import('./sessionController');
     const restartedStreamer = await import('./agenteStreamer');
+    // O módulo recarregado volta à composição de produção: reafirma a política da Fase 7 (ver fresh()).
+    restartedStreamer.configureAgenteStreamer({ destination: undefined });
     await restarted.hydrate();
     await restartedStreamer.resumeAgenteStreamer();
 
@@ -905,6 +913,8 @@ describe('CR-01: reunião nova com o mesmo session_id', () => {
     vi.resetModules();
     const restarted = await import('./sessionController');
     const restartedStreamer = await import('./agenteStreamer');
+    // O módulo recarregado volta à composição de produção: reafirma a política da Fase 7 (ver fresh()).
+    restartedStreamer.configureAgenteStreamer({ destination: undefined });
     await restarted.hydrate();
     await restartedStreamer.resumeAgenteStreamer();
     await restarted.dispatch({
@@ -1034,6 +1044,8 @@ describe('CR-01 (2ª revisão): o vínculo reunião→sessão sobrevive ao curso
     // Terça-feira: abre o Chrome e entra na reunião do cliente B (m2). A sessão salva ainda é a S1.
     const restarted = await import('./sessionController');
     const restartedStreamer = await import('./agenteStreamer');
+    // O módulo recarregado volta à composição de produção: reafirma a política da Fase 7 (ver fresh()).
+    restartedStreamer.configureAgenteStreamer({ destination: undefined });
     await restarted.hydrate();
     await restartedStreamer.resumeAgenteStreamer();
     await restarted.dispatch(meeting('m2', 90_000_000));
