@@ -51,6 +51,8 @@ export type MeetingEvent =
       titleAuto?: boolean;
       captionsEnabled: boolean;
       at: number;
+      /** A sessão do Agente da reunião anterior já foi encerrada: a volta à mesma sala é reunião nova, não retomada. */
+      startFresh?: boolean;
     }
   | { type: 'CAPTIONS_STATE'; enabled: boolean }
   | { type: 'CAPTION_CHUNK'; chunk: CaptionChunk }
@@ -220,6 +222,7 @@ export function transition(state: MeetingState, event: MeetingEvent): MeetingSta
       // engano + rejoin): retoma a MESMA sessão e segue transcrevendo.
       if (
         isPostMeeting(state) &&
+        event.startFresh !== true &&
         current?.meetingCode === event.meetingCode &&
         current.endedAt !== null &&
         event.at - current.endedAt <= REJOIN_RESUME_WINDOW_MS

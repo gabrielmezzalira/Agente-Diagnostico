@@ -26,6 +26,7 @@ import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
+import { shouldStartFreshMeeting } from './agenteFreshStart';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
 /**
@@ -126,6 +127,7 @@ onMessage((message, sender) => {
       // ---- Content script ----
       case 'meet/detected': {
         const givenTitle = message.title.trim();
+        const startFresh = await shouldStartFreshMeeting(getState(), message.meetingCode);
         await dispatch({
           type: 'MEETING_DETECTED',
           meetingId: crypto.randomUUID(),
@@ -136,6 +138,7 @@ onMessage((message, sender) => {
           titleAuto: givenTitle.length === 0,
           captionsEnabled: message.captionsEnabled,
           at: now,
+          ...(startFresh && { startFresh: true }),
         });
         return getState();
       }

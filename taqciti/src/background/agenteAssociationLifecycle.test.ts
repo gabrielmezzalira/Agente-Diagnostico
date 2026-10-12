@@ -14,7 +14,7 @@ import { IDLE_STATE, type MeetingState } from '@/shared/types/domain';
 
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
 
-function detected(meetingId: string, meetingCode = 'abc-defg-hij', at = 1000): MeetingEvent {
+function detected(meetingId: string, meetingCode = 'abc-defg-hij', at = 1000, startFresh = false): MeetingEvent {
   return {
     type: 'MEETING_DETECTED',
     meetingId,
@@ -24,6 +24,7 @@ function detected(meetingId: string, meetingCode = 'abc-defg-hij', at = 1000): M
     title: 'Reunião de teste',
     captionsEnabled: true,
     at,
+    ...(startFresh && { startFresh: true }),
   };
 }
 
@@ -227,6 +228,16 @@ describe('volta à mesma sala depois do encerramento da sessão do Agente (B4-b,
     await store.applyAssociationEvent('m1', { type: 'session-finished' });
     await dispatch(detected('x', 'abc-defg-hij', 6000));
     expect((await stored()).m1).toEqual({ meetingId: 'm1', state: 'pending' });
+  });
+
+  it('com startFresh (a máquina real): m2 nasce pending e m1 continua intocada, ainda ligada à sessão fechada', async () => {
+    const { dispatch, stored } = await linkedMeeting(true);
+    const before = (await stored()).m1;
+    await dispatch(detected('m2', 'abc-defg-hij', 6000, true));
+    const map = await stored();
+    expect(map.m2).toEqual({ meetingId: 'm2', state: 'pending' });
+    expect(map.m1).toEqual(before);
+    expect(map.m1).toMatchObject({ state: 'linked', sessionId: SESSION_ID, sessionFinished: true });
   });
 
   it('linked SEM sessionFinished + a mesma sala continua linked e sem prazo (a volta cancela o finishBy)', async () => {
