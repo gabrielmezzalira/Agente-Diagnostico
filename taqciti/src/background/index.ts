@@ -24,6 +24,7 @@ import { backfillOpenTabs, canInject, ensurePanelInTab } from './injectPanel';
 import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { onMeetingTabRemoved } from './meetingTabClosed';
+import { onMeetingTabNavigated } from './meetingTabNavigated';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
@@ -111,6 +112,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
   // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts.
   void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch, now: Date.now }));
+});
+
+// A aba da reunião foi para outro lugar sem fechar (DA-4): a regra mora em meetingTabNavigated.ts.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url === undefined) return;
+  const url = changeInfo.url;
+  void ready.then(() => onMeetingTabNavigated(tabId, url, { getState, dispatch, now: Date.now }));
 });
 
 // Síncrono no topo (MV3): o alarme acorda o service worker; o handler espera a hidratação por dentro.
