@@ -30,6 +30,7 @@ import { resumeAgenteStreamer } from './agenteStreamer';
 import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
 import { agenteSessionFinisher, configureAgenteSessionFinisher } from './agenteSessionFinisher';
 import { shouldStartFreshMeeting } from './agenteFreshStart';
+import { registerAgpQuestionsFeed } from './agpQuestionsFeedInstance';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
 /**
@@ -59,6 +60,9 @@ const ready: Promise<void> = migrateLocalStorage()
   .then(() => ensurePanelPrefs())
   .then(() => undefined)
   .catch((error) => logger.error('falha na inicialização', error));
+
+// Painel AGP (Fase 10): segue a sessão da reunião ao vivo e espelha as perguntas do Agente.
+registerAgpQuestionsFeed(ready);
 
 /**
  * Primeira execução depois de instalar (ou atualizar).
