@@ -22,10 +22,10 @@ import {
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
-import { buildOutboxRequest, phrasesToOutboxItems } from '@/features/agente/outbox';
+import { phrasesToOutboxItems } from '@/features/agente/outbox';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
-import { createAgenteSender } from './agenteSender';
+import { createStreamerSender } from './agenteStreamerSender';
 import { configDestination, cursorFromSeed, type StreamTarget } from './agenteStreamDestination';
 import { createBindingRecorder } from './agenteStreamerBindingRecorder';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
@@ -67,11 +67,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   /** Fase 8 (D-01): a regra "para onde vai a fala"; sem política injetada vale a da Fase 7. */
   const destination = deps.destination ?? configDestination;
   const status = createStatusReporter(deps.reportStatus);
-  const sender = createAgenteSender({
-    send: deps.send,
-    onOutcome: status.sendOutcome,
-    buildRequest: (item) => Promise.resolve(lastQueueConfig ? buildOutboxRequest(lastQueueConfig, item) : null),
-  });
+  const sender = createStreamerSender(deps, status, () => lastQueueConfig);
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
