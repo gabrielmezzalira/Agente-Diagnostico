@@ -15,7 +15,8 @@ import { writeAgpFeed } from '@/shared/config/agpQuestionsStore';
 import { STORAGE_KEYS } from '@/shared/config/constants';
 import { logger } from '@/shared/services/log';
 import { isLivePhase } from './agenteAssociationLifecycle';
-import { createAgpQuestionsFeed, type AgpFeedTarget, type AgpSocket } from './agpQuestionsFeed';
+import { openBrowserSocket } from './agpBrowserSocket';
+import { createAgpQuestionsFeed, type AgpFeedTarget } from './agpQuestionsFeed';
 import { getState } from './sessionController';
 
 const readConfig = createAgenteConfigReader();
@@ -27,16 +28,6 @@ async function selectTarget(): Promise<AgpFeedTarget | null> {
   if (target === null) return null;
   const url = buildAgpSocketUrl((await readConfig()).agenteBackendUrl, target.sessionId);
   return url === null ? null : { sessionId: target.sessionId, url };
-}
-
-/** Adaptador fino: entrega ao feed só o que ele usa (`data` e `code`), sem os tipos de evento do DOM. */
-function openBrowserSocket(url: string): AgpSocket {
-  const ws = new WebSocket(url);
-  const socket: AgpSocket = { onopen: null, onmessage: null, onclose: null, close: () => ws.close() };
-  ws.onopen = () => socket.onopen?.();
-  ws.onmessage = (event) => socket.onmessage?.({ data: event.data as unknown });
-  ws.onclose = (event) => socket.onclose?.({ code: event.code });
-  return socket;
 }
 
 export const agpQuestionsFeed = createAgpQuestionsFeed({
