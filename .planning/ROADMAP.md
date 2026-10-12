@@ -246,7 +246,7 @@ Plans:
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Plans**: 7/23 plans executed
+**Plans**: 8/23 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -258,7 +258,7 @@ Plans:
 - [x] 08-05-PLAN.md — Motor do envio em partes (plano puro + executor serial com pausa e retomada)
 - [x] 08-06-PLAN.md — Backend: asyncio.Lock por sessão em get_or_create + prova da suposição A1 (chunk_id extra)
 - [x] 08-07-PLAN.md — [DECISÃO B1 + B4-a] Rotas da extensão: listar clientes e criar sessão
-- [ ] 08-08-PLAN.md — [DECISÃO B2] Chave Gemini opcional na criação de projeto (backend + web app)
+- [x] 08-08-PLAN.md — [DECISÃO B2] Chave Gemini opcional na criação de projeto (backend + web app)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -339,7 +339,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
-| 8. Taqciti Session Association | 7/23 | In Progress | - |
+| 8. Taqciti Session Association | 8/23 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 

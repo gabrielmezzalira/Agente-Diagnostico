@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-10-12T14:06:36.461Z"
+stopped_at: Completed 08-08-PLAN.md
+last_updated: "2026-10-12T14:14:03.438Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: c8d4ab24c5b77eb6394564638624a2088ffd1d0d
+state_head: a2ba7ddaa9f6e8cdb34386337a7ee3b8c0c0c07a
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 8 of 23
+Plan: 9 of 23
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -92,6 +92,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P05 | 4 min | 2 tasks | 4 files |
 | Phase 08 P06 | 5 min | 2 tasks | 3 files |
 | Phase 08 P07 | 10 min | 3 tasks | 7 files |
+| Phase 08 P08 | 20 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-06: lock por session_id em PipelineManager.get_or_create via invólucro + _build_pipeline (corpo original intacto, diff de 21 linhas); chunk_id extra provado tolerado e ignorado pelo webhook, decisão B3 segue com o time
 - [Phase 08]: 08-07: B1 = aprovar-recomendado (rotas da extensão: mode discovery, 409 sem índice único, gate opt-in); risco T-08-10 aceito pelo Time Antonio até o login do AGM
 - [Phase 08]: 08-07: LEMBRETE - criar GEMINI_API_KEY no Railway antes de deploy / merge na master / junção com o AGM (B2 = aprovar-sem-env)
+- [Phase 08]: 08-08: B2 aprovar-sem-env; chave Gemini opcional na criação de projeto; pdf-fallback sim; GEMINI_API_KEY ainda não está no Railway (pendência bloqueante antes de deploy/merge na master/AGM)
 
 ### Pending Todos
 
@@ -181,6 +183,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T14:06:36.229Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-10-12T14:14:03.233Z
+Stopped at: Completed 08-08-PLAN.md
 Resume file: None
