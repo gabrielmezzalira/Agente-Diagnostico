@@ -42,7 +42,10 @@ Utilitário existente: `taqciti/src/test/chromeStorageMock.ts` (`installChromeSt
 
 ## Per-Task Verification Map
 
-> Preenchido pelo planejador a partir dos PLAN.md (23 planos, 8 waves — revisão de 2026-10-11: o ciclo de vida da
+> Preenchido pelo planejador a partir dos PLAN.md (25 planos, 9 waves — revisão de 2026-10-12 da decisão B4-b: encerrar
+> na hora (fila vazia) e em 5 min com envio parado; o 08-15 ganhou a Task 3 (corrida do stop_session), o 08-16 virou o
+> núcleo do encerramento, nasceram o 08-24 (reentrada na mesma sala = reunião nova) e o 08-25 (fiação e gatilhos), e
+> os critérios "10 min" dos antigos 08-16-T2/T3 foram substituídos. Revisão de 2026-10-11: o ciclo de vida da
 > associação saiu do 08-01 para o 08-22 e o sender/fiação da fila saíram do 08-11 para o 08-23; revisão 2: a regra de
 > retirada por HTTP 500 virou o item B3-b do checkpoint do 08-09, o 08-11 ganhou a Task 3 — rastro de falas descartadas
 > na tela "Agente Diagnóstico" — e o 08-23 grava o rastro). Tasks de checkpoint
@@ -81,15 +84,20 @@ Utilitário existente: `taqciti/src/test/chromeStorageMock.ts` (`installChromeSt
 | 08-14-T1 | 08-14 | 3 | TAQ-02 (SC1/SC4) | T-08-28 | Tradução associação/entrega → visão (inclui sala retomada) | unit | `cd taqciti && npx vitest run src/features/agente/bindingView.test.ts` | ❌ W0 | ⬜ pending |
 | 08-14-T2 | 08-14 | 3 | TAQ-02 (SC1/SC2) | T-08-29 | Cartão ↔ seletor ↔ barra; minimizar = Depois | component | `cd taqciti && npx vitest run src/sidepanel/components/AgenteLiveSlot.test.tsx` | ❌ W0 | ⬜ pending |
 | 08-14-T3 | 08-14 | 3 | TAQ-02 (SC1) | T-08-29 | Bolha só em `pending`; cabeçalho manda `open`, cápsula decorativa; fiação compila | component + build | `cd taqciti && npx vitest run src/sidepanel/components/AgenteNudgeAnchor.test.tsx src/sidepanel/components/AgenteLiveSlot.test.tsx` | ❌ W0 | ⬜ pending |
-| 08-15-T2 | 08-15 | 4 | TAQ-02 | T-08-30 / T-08-31 | Finish só de sessão extension ativa + stop_session (B4-b) | unit | `cd backend && python -m pytest tests/test_extension_clients.py tests/test_finish_stops_pipeline.py -x -q` | ✅ estender | ⬜ pending |
-| 08-16-T1 | 08-16 | 5 | TAQ-02 | T-08-32 | `session-finished`; sala retomada com sessão encerrada → `pending` | unit | `cd taqciti && npx vitest run src/features/agente/association.test.ts src/shared/config/agenteAssociationStore.test.ts` | ✅ estender | ⬜ pending |
-| 08-16-T2 | 08-16 | 5 | TAQ-02 | T-08-32 | Encerramento 10 min após o fim, fila vazia, nunca manual-id (B4-b) | unit | `cd taqciti && npx vitest run src/background/agenteSessionFinisher.test.ts` | ❌ W0 | ⬜ pending |
-| 08-16-T3 | 08-16 | 5 | TAQ-02 | T-08-32 / T-08-33 | Gatilhos: fim, envio concluído, vínculo concluído depois do fim; manifesto compila | integration + build | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts src/background/agenteAssociationLifecycle.test.ts` | ✅ estender | ⬜ pending |
+| 08-15-T2 | 08-15 | 4 | TAQ-02 | T-08-30 / T-08-31 | Finish idempotente só de sessão extension (404/409; chamada repetida devolve 200 e chama stop_session) (B4-b) | unit | `cd backend && python -m pytest tests/test_extension_clients.py tests/test_finish_stops_pipeline.py -x -q` | ✅ estender | ⬜ pending |
+| 08-15-T3 | 08-15 | 4 | TAQ-02 | T-08-31 / T-08-47 | `stop_session` espera a criação do pipeline em andamento: finish durante a criação não deixa pipeline órfão | unit async | `cd backend && python -m pytest tests/test_pipeline_get_or_create_lock.py tests/test_finish_stops_pipeline.py -x -q` | ✅ estender | ⬜ pending |
+| 08-16-T1 | 08-16 | 5 | TAQ-02 | T-08-32 | `session-finished`, `finish-armed` (prazo de 5 min só o primeiro vale) e `finish-failed`; marca e prazo na lista branca; `carryIdentity` leva a marca | unit | `cd taqciti && npx vitest run src/features/agente/associationClose.test.ts src/shared/config/agenteAssociationStore.test.ts` | ❌ W0 | ⬜ pending |
+| 08-16-T2 | 08-16 | 5 | TAQ-02 | T-08-32 / T-08-48 / T-08-49 | Tempos da B4-b fixados por teste (5 min, 30 s, 10 s, backoff de 6 tentativas); porta HTTP com erro tipado e id validado; nunca manual-id | unit | `cd taqciti && npx vitest run src/features/agente/finishPolicy.test.ts src/background/httpAgentePorts.test.ts` | ❌ W0 | ⬜ pending |
+| 08-16-T3 | 08-16 | 5 | TAQ-02 | T-08-32 / T-08-49 | Encerra na hora com a fila vazia; espera a última fala; prazo de 5 min com fila/envio parado; backoff limitado; nunca com a reunião ao vivo (B4-b) | unit | `cd taqciti && npx vitest run src/background/agenteSessionFinisher.test.ts` | ❌ W0 | ⬜ pending |
+| 08-24-T1 | 08-24 | 6 | TAQ-02 | T-08-50 | Sessão encerrada + sala de volta → `pending` limpo; volta antes do encerramento cancela o prazo; boot (B4-b) | unit + integration | `cd taqciti && npx vitest run src/features/agente/associationMeeting.test.ts src/features/agente/association.test.ts src/background/agenteAssociationLifecycle.test.ts` | ❌ W0 | ⬜ pending |
+| 08-24-T3 | 08-24 | 6 | TAQ-02 | T-08-50 / T-08-51 | Só com DA-1 = reuniao-nova-de-verdade: a volta depois do encerramento é reunião nova na máquina; Fase 7 intacta sem o campo | unit | `cd taqciti && npx vitest run src/features/meeting/machineStartFresh.test.ts src/features/meeting/machine.test.ts src/background/agenteFreshStart.test.ts` | ❌ W0 | ⬜ pending |
+| 08-25-T1 | 08-25 | 7 | TAQ-02 | T-08-33 / T-08-52 | Permissão `alarms`; listener de alarme síncrono no topo; reavaliação no boot | build + grep | `cd taqciti && npm run typecheck && npm run build` | ✅ | ⬜ pending |
+| 08-25-T2 | 08-25 | 7 | TAQ-02 | T-08-52 / T-08-53 | Gatilhos: fim/preempção da reunião, envio em partes concluído ou parado e vínculo concluído; nenhum espera o agendador | integration | `cd taqciti && npx vitest run src/background/agenteFinishTriggers.test.ts src/background/agenteAssociationLifecycle.test.ts` | ❌ W0 | ⬜ pending |
 | 08-17-T1/T2 | 08-17 | 5 | TAQ-02 (SC2) | T-08-34 / T-08-35 | Selo no histórico; enviar/descartar com confirmação (`discard()` no hook) | component | `cd taqciti && npx vitest run src/sidepanel/components/AssociationBadgeFor.test.tsx src/sidepanel/components/AgenteEndSlot.test.tsx` | ❌ W0 | ⬜ pending |
 | 08-18-T2 | 08-18 | 4 | TAQ-02 (SC3) | T-08-36 | Campo de ID só no plano B; nunca destino silencioso (B5); os testes que já montavam a tela (Back, DropTrace) seguem verdes dentro do `PlatformProvider` falso, sem mudar expectativas | component | `cd taqciti && npx vitest run src/sidepanel/screens/AgenteConfigScreenPlanB.test.tsx src/sidepanel/screens/AgenteConfigScreen.test.tsx src/sidepanel/screens/AgenteConfigScreenBack.test.tsx src/sidepanel/screens/AgenteConfigScreenDropTrace.test.tsx` | ✅ estender | ⬜ pending |
 | 08-19-T1/T2 | 08-19 | 6 | TAQ-02 (SC4) | T-08-37 / T-08-38 | `chunk_id` estável; reenvio automático ligado (B3) | unit/e2e | `cd taqciti && npx vitest run src/shared/config/agenteConfig.test.ts src/background/agenteSender.test.ts src/background/agenteOutbox.test.ts` | ✅ estender | ⬜ pending |
-| 08-20-T1/T3 | 08-20 | 7 | TAQ-02 (SC2) | T-08-39 | "Continuar envio" do índice confirmado (B3) | unit/component | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts src/sidepanel/components/AgenteEndSlot.test.tsx` | ✅ estender | ⬜ pending |
-| 08-21-T1 | 08-21 | 8 | TAQ-02 | T-08-10 / T-08-40 / T-08-SC | Portão completo da fase; testes do backend conforme B1/B3-a (lista conferida contra os SUMMARYs); manifestos de pacote sem diff; estado do risco T-08-10 registrado | suite (portão da fase) | `cd taqciti && npm test && npm run typecheck && npm run lint && npm run build` | ✅ | ⬜ pending |
+| 08-20-T1/T3 | 08-20 | 8 | TAQ-02 (SC2) | T-08-39 | "Continuar envio" do índice confirmado (B3) | unit/component | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts src/sidepanel/components/AgenteEndSlot.test.tsx` | ✅ estender | ⬜ pending |
+| 08-21-T1 | 08-21 | 9 | TAQ-02 | T-08-10 / T-08-40 / T-08-SC | Portão completo da fase; testes do backend conforme B1/B3-a (lista conferida contra os SUMMARYs); manifestos de pacote sem diff; estado do risco T-08-10 registrado | suite (portão da fase) | `cd taqciti && npm test && npm run typecheck && npm run lint && npm run build` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -104,6 +112,7 @@ Utilitário existente: `taqciti/src/test/chromeStorageMock.ts` (`installChromeSt
 - [ ] `taqciti/src/background/agenteStatusReporter.test.ts` — status de entrega só grava quando muda (08-11)
 - [ ] `taqciti/src/background/agenteAssociationService.test.ts`, `agenteOutbox.test.ts` — SC1/SC4
 - [ ] `taqciti/src/background/agenteAssociationLifecycle.test.ts` — ciclo de vida, retomada e boot (08-22)
+- [ ] `taqciti/src/features/agente/{associationClose,finishPolicy,associationMeeting}.test.ts`, `taqciti/src/background/{agenteSessionFinisher,agenteFreshStart,agenteFinishTriggers}.test.ts`, `taqciti/src/features/meeting/machineStartFresh.test.ts` — encerramento da B4-b e reentrada (08-16, 08-24, 08-25)
 - [ ] `taqciti/src/background/history.test.ts` — evicção protegida
 - [ ] `taqciti/src/sidepanel/components/{ClientPicker,AgenteDecisionCard,AgenteBindingBar,AgenteEndPrompt,AgenteNudgeAnchor}.test.tsx`, `taqciti/src/shared/ui/ConfirmModal.test.tsx`
 - [ ] `taqciti/src/sidepanel/screens/AgenteConfigScreenDropTrace.test.tsx` — rastro de falas descartadas visível (08-11 Task 3)
@@ -121,7 +130,7 @@ prepara o build e este roteiro; nunca marca o teste como aprovado.** O resultado
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Fluxo real no Chrome + Meet: (a) envio em blocos ao fim, (b) queda do Agente + reenvio, (c) descarte com confirmação, (d) vínculo no meio da reunião | TAQ-02 (D-20) | Depende de extensão carregada, Google Meet ao vivo e backend no ar | Roteiro D-20 na seção "Roteiro manual D-20" deste arquivo (08-21, Task 2); registrar também no UAT |
+| Fluxo real no Chrome + Meet: (a) envio em blocos ao fim, (b) queda do Agente + reenvio, (c) descarte com confirmação, (d) vínculo no meio da reunião, (e) encerramento automático da sessão (na hora; ~5 min com envio parado), (f) reentrada na mesma sala depois do encerramento = reunião nova | TAQ-02 (D-20) | Depende de extensão carregada, Google Meet ao vivo e backend no ar | Roteiro D-20 na seção "Roteiro manual D-20" deste arquivo (08-21, Task 2); registrar também no UAT |
 | Checagens visuais "backstop" do UI-SPEC (cartão em 320/564 px, selo no histórico, modal com título longo, picker em 320 px) | TAQ-02 | Layout real no side panel do Chrome | Abrir o painel nas larguras indicadas e conferir contra `08-UI-SPEC.md` |
 | `getBytesInUse` do `storage.local` após reunião longa | TAQ-02 (SC4) | Cota real do Chrome (10 MB sem `unlimitedStorage`) | Medir no DevTools do service worker durante o teste D-20; pedir `unlimitedStorage` ao time só se passar de ~5 MB (Open Question 8) |
 

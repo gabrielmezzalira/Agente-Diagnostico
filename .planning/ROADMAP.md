@@ -246,7 +246,7 @@ Plans:
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Plans**: 18/23 plans executed
+**Plans**: 18/25 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -276,23 +276,28 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 08-13-PLAN.md — [D-11 porta sem volta] Evicção protegida do histórico + comando de descarte
-- [ ] 08-15-PLAN.md — [DECISÃO B4-b] Rota de encerramento da sessão criada pela Taqciti
+- [ ] 08-15-PLAN.md — [B4-b já respondida] Rota de encerramento da sessão criada pela Taqciti (idempotente, só source extension) + correção da corrida do stop_session
 - [x] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 08-16-PLAN.md — Encerramento automático por chrome.alarms (permissão alarms)
+- [ ] 08-16-PLAN.md — Núcleo do encerramento (B4-b): a associação guarda o encerramento, tempos puros (na hora com fila vazia, 5 min com envio parado), porta HTTP do finish e agendador — ainda inerte
 - [x] 08-17-PLAN.md — Fim da reunião e histórico: enviar ao Agente, descartar com confirmação, selos
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [ ] 08-19-PLAN.md — Aplica a B3 na Taqciti: chunk_id no corpo + reenvio automático ligado
+- [ ] 08-24-PLAN.md — [DECISÕES DA-1/DA-2/DA-3] Reentrada na mesma sala depois do encerramento = reunião nova (ajuste do 08-22): regra no reducer e no boot; máquina da reunião só com a decisão do time
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 08-20-PLAN.md — "Continuar envio" do índice confirmado
+- [ ] 08-25-PLAN.md — Fiação do encerramento automático (B4-b): permissão alarms, listener síncrono, reavaliação no boot e gatilhos (fim da reunião, envio em partes, vínculo)
 
 **Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 08-20-PLAN.md — "Continuar envio" do índice confirmado
+
+**Wave 9** *(blocked on Wave 8 completion)*
 
 - [ ] 08-21-PLAN.md — Portão automático completo + roteiro manual D-20 numa reunião real
 
