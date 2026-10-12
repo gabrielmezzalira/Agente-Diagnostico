@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 08
+current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-10-12T03:32:56.148Z"
-last_activity: 2026-10-11
-last_activity_desc: Phase 08 execution started
-state_head: 950e18c7fb45ccd67eac4e16f9df8d1f3defa005
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-10-12T14:06:36.461Z"
+last_activity: 2026-10-12
+last_activity_desc: Phase 8 execution started
+state_head: c8d4ab24c5b77eb6394564638624a2088ffd1d0d
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 08 — Taqciti Session Association
+**Current focus:** Phase 8 — Taqciti Session Association
 
 ## Current Position
 
-Phase: 08 (Taqciti Session Association) — EXECUTING
-Plan: 7 of 23
+Phase: 8 (Taqciti Session Association) — EXECUTING
+Plan: 8 of 23
 Status: Ready to execute
-Last activity: 2026-10-11 — Phase 08 execution started
+Last activity: 2026-10-12 — Phase 8 execution started
 
 Progress: [███████░░░] 70%
 
@@ -91,6 +91,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P04 | 5 min | 2 tasks | 6 files |
 | Phase 08 P05 | 4 min | 2 tasks | 4 files |
 | Phase 08 P06 | 5 min | 2 tasks | 3 files |
+| Phase 08 P07 | 10 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-04: falha do envio em partes e warning sem nenhum botao (nem Continuar envio, nem Cancelar) ate a decisao B3 ser aplicada no plano 08-20
 - [Phase 08]: 08-05: a pausa entre blocos do envio em partes conta as partes entregues na execução corrente (retomada com startAt mantém o ritmo de 20 em 20); done = posição da próxima parte a enviar
 - [Phase 08]: 08-06: lock por session_id em PipelineManager.get_or_create via invólucro + _build_pipeline (corpo original intacto, diff de 21 linhas); chunk_id extra provado tolerado e ignorado pelo webhook, decisão B3 segue com o time
+- [Phase 08]: 08-07: B1 = aprovar-recomendado (rotas da extensão: mode discovery, 409 sem índice único, gate opt-in); risco T-08-10 aceito pelo Time Antonio até o login do AGM
+- [Phase 08]: 08-07: LEMBRETE - criar GEMINI_API_KEY no Railway antes de deploy / merge na master / junção com o AGM (B2 = aprovar-sem-env)
 
 ### Pending Todos
 
@@ -178,6 +181,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T03:32:55.771Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-10-12T14:06:36.229Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None
