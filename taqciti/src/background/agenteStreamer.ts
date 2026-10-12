@@ -24,7 +24,7 @@ import {
 } from '@/shared/config/agenteStatusStore';
 import { logger } from '@/shared/services/log';
 import type { AgenteStatusSink } from './agenteStatusReporter';
-import { createAssociationDestination } from './agenteStreamDestination';
+import { configDestination, createAssociationDestination } from './agenteStreamDestination';
 import { createAgenteStreamer, type AgenteStreamerDeps } from './agenteStreamerInstance';
 import { sessionSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -114,7 +114,26 @@ export function reevaluateAgenteStreamer(): Promise<void> {
   return activeStreamer.reevaluate();
 }
 
-/** Só para testes (WR-10) — ver `whenIdle` em agenteStreamerInstance.ts. */
+/**
+ * Espera a fila do streamer e o sender despacharem (guardar + 1º envio) — ver `whenIdle` em
+ * agenteStreamerInstance.ts. Além dos testes (WR-10), o agendador do encerramento da sessão (B4-b, plano
+ * 08-27) usa para esperar as falas finais irem para a fila durável; não espera a resposta de rede.
+ */
 export function whenAgenteStreamerIdle(): Promise<void> {
   return activeStreamer.whenIdle();
+}
+
+/**
+ * Nova tentativa de entrega da fila durável em QUALQUER estado da reunião (B4-b, plano 08-27): o agendador
+ * do encerramento pede isto a cada reconferência, para a fila parada de uma reunião que já acabou (ou de
+ * outra, com a atual ao vivo e sem destino) voltar a andar sem esperar fala nova. Não passa pelo
+ * `reevaluate` (que pararia antes do kick sem destino) nem pelo `resume` (que mexe no status de reinício e
+ * limpa a fila se o envio estiver desligado); o portão é o MESMO `canDrain` da política ativa (D-09) — envio
+ * desligado ou URL inválida não empurra nada. Não toca em cursor, janela nem status.
+ */
+export async function kickAgenteSender(): Promise<void> {
+  const config = await activeDeps.loadConfig();
+  const policy = activeDeps.destination ?? configDestination;
+  if (!policy.canDrain(config)) return;
+  activeStreamer.kick();
 }

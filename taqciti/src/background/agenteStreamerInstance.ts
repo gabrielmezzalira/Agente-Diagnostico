@@ -295,5 +295,5 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     unsubscribeConfig = null;
   }
 
-  return { onSessionFlushed, resume, reevaluate, dispose, whenIdle };
+  return { onSessionFlushed, resume, reevaluate, dispose, whenIdle, kick: sender.kick };
 }
