@@ -12,7 +12,7 @@ import {
   type AssociationState,
   type MeetingAssociation,
 } from './association';
-import { isEligibleForClose, reduceCloseFlow } from './associationClose';
+import { canRestartFinishRound, isEligibleForClose, reduceCloseFlow } from './associationClose';
 import { AGENTE_FINISH_MAX_TRIES } from './finishPolicy';
 
 const M = 'm1';
@@ -175,5 +175,35 @@ describe('integração com reduceAssociation e carryIdentity', () => {
     for (const key of ['sessionFinished', 'finishBy', 'finishTries', 'finishGaveUp']) {
       expect(next).not.toHaveProperty(key);
     }
+  });
+});
+
+describe('finish-round-restarted (DA-5 = nova-rodada-no-boot)', () => {
+  const gaveUp = (state: AssociationState) => assoc(state, { finishBy: BY, finishTries: 11, finishGaveUp: true });
+
+  it.each(ELIGIBLE_STATES)('em %s: zera tentativas e desistência e mantém o prazo vencido', (state) => {
+    const next = reduceCloseFlow(gaveUp(state), { type: 'finish-round-restarted' });
+    expect(next).toEqual(assoc(state, { finishBy: BY }));
+    expect(next).not.toHaveProperty('finishTries');
+    expect(next).not.toHaveProperty('finishGaveUp');
+    expect(isEligibleForClose(next)).toBe(true);
+  });
+
+  it('quem não desistiu, já encerrou, é do plano B ou está em outro estado: mesma referência', () => {
+    const notGivenUp = assoc('linked', { finishTries: 3 });
+    const finished = assoc('linked', { sessionFinished: true, finishGaveUp: true });
+    const manual = assoc('linked', { origin: 'manual-id', finishGaveUp: true });
+    const other = gaveUp(OTHER_STATES[0] as AssociationState);
+    for (const current of [notGivenUp, finished, manual, other]) {
+      expect(canRestartFinishRound(current)).toBe(false);
+      expect(reduceCloseFlow(current, { type: 'finish-round-restarted' })).toBe(current);
+    }
+  });
+
+  it('pelo reduceAssociation: desistida volta elegível; depois da nova rodada falhar de novo, desiste de novo', () => {
+    const restarted = reduceAssociation(gaveUp('sent'), M, { type: 'finish-round-restarted' }) as MeetingAssociation;
+    expect(isEligibleForClose(restarted)).toBe(true);
+    const again = reduceAssociation(restarted, M, { type: 'finish-failed', definitive: true });
+    expect(again).toMatchObject({ finishTries: 1, finishGaveUp: true });
   });
 });

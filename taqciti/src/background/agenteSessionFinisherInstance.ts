@@ -7,7 +7,7 @@
  * liga o agendador ao fim da reunião, ao boot e aos alarmes é o plano 08-25.
  */
 import type { AssociationEvent, MeetingAssociation } from '@/features/agente/association';
-import { isEligibleForClose } from '@/features/agente/associationClose';
+import { canRestartFinishRound, isEligibleForClose } from '@/features/agente/associationClose';
 import {
   AGENTE_FINISH_ALARM_PREFIX,
   AGENTE_FINISH_DRAIN_CHECK_MS,
@@ -134,14 +134,21 @@ export function createAgenteSessionFinisher(deps: AgenteSessionFinisherDeps) {
     });
   }
 
-  /** Boot: avalia as associações elegíveis uma de cada vez (nunca em rajada); uma falha não impede as outras. */
+  /**
+   * Boot: avalia as associações elegíveis uma de cada vez (nunca em rajada); uma falha não impede as outras.
+   * DA-5: quem tinha desistido ganha uma rodada nova antes de ser avaliada (no máximo uma por boot).
+   */
   async function rescheduleAfterRestart(): Promise<void> {
     const map = await deps.loadAssociations();
     for (const association of Object.values(map)) {
-      if (!isEligibleForClose(association)) continue;
-      await evaluate(association.meetingId).catch((error: unknown) => {
+      const restart = canRestartFinishRound(association);
+      if (!restart && !isEligibleForClose(association)) continue;
+      try {
+        if (restart) await deps.applyEvent(association.meetingId, { type: 'finish-round-restarted' });
+        await evaluate(association.meetingId);
+      } catch (error: unknown) {
         logger.error('retomar o encerramento da sessão do Agente falhou', error);
-      });
+      }
     }
   }
 

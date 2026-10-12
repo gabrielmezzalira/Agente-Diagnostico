@@ -34,6 +34,30 @@ export function isEligibleForClose(association: MeetingAssociation): boolean {
   );
 }
 
+/**
+ * DA-5 (nova-rodada-no-boot): a Taqciti desistiu de encerrar (~16 h de falha ou recusa definitiva) e a sessão
+ * continua aberta no Agente, gastando IA. No boot ela ganha UMA rodada nova — no máximo uma por inicialização,
+ * então não há laço (T-08-49). Só quem a Taqciti criou (`picker`) e que ainda está aberta.
+ */
+export function canRestartFinishRound(association: MeetingAssociation): boolean {
+  return (
+    association.origin === 'picker' &&
+    association.finishGaveUp === true &&
+    association.sessionId !== undefined &&
+    association.sessionFinished !== true &&
+    CLOSABLE_STATES.includes(association.state)
+  );
+}
+
+/** Zera as tentativas e a desistência; o `finishBy` (já vencido) fica para a nova rodada encerrar sem esperar. */
+function restartFinishRound(current: MeetingAssociation): MeetingAssociation {
+  if (!canRestartFinishRound(current)) return current;
+  const next: MeetingAssociation = { ...current };
+  delete next.finishTries;
+  delete next.finishGaveUp;
+  return next;
+}
+
 /** A sessão já foi encerrada: anota e esquece o prazo, as tentativas e a desistência. */
 function markFinished(current: MeetingAssociation): MeetingAssociation {
   if (current.sessionId === undefined || current.sessionFinished === true) return current;
@@ -67,6 +91,8 @@ export function reduceCloseFlow(current: MeetingAssociation, event: AssociationE
       return armFinish(current, event.by);
     case 'finish-failed':
       return recordFailure(current, event.definitive === true);
+    case 'finish-round-restarted':
+      return restartFinishRound(current);
     default:
       return current;
   }

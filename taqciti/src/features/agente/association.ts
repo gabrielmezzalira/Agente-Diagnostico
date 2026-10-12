@@ -92,7 +92,9 @@ export type AssociationEvent =
   /** Encerramento da sessão (B4-b): encerrada, prazo armado e tentativa falha (plano 08-16; quem dispara é o 08-27). */
   | { type: 'session-finished' }
   | { type: 'finish-armed'; by: number }
-  | { type: 'finish-failed'; definitive?: boolean };
+  | { type: 'finish-failed'; definitive?: boolean }
+  /** Boot (DA-5): quem desistiu de encerrar ganha uma rodada nova de tentativas; nunca é disparado fora do boot. */
+  | { type: 'finish-round-restarted' };
 
 /**
  * Falha do vínculo ao vivo. Sem `sessionId` a sessão nem foi criada: volta para `deferred` (com erro
@@ -166,6 +168,7 @@ export function reduceAssociation(
     case 'session-finished':
     case 'finish-armed':
     case 'finish-failed':
+    case 'finish-round-restarted':
       return reduceCloseFlow(current, event);
   }
 }

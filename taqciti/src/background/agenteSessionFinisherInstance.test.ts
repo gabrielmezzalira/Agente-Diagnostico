@@ -229,7 +229,7 @@ describe('concorrência, boot e reentrada', () => {
     expect(rig.finisher.isClosing('m1')).toBe(false);
   });
 
-  it('(n) boot: só a associação elegível é avaliada, uma de cada vez; quem desistiu não gera chamada', async () => {
+  it('(n) boot: só a associação elegível (ou desistida, DA-5) é avaliada, uma de cada vez', async () => {
     await rig.seed('m1');
     await rig.seed('m2');
     await rig.apply('m2', { type: 'session-finished' });
@@ -246,8 +246,23 @@ describe('concorrência, boot e reentrada', () => {
       return 'finished';
     });
     await rig.finisher.rescheduleAfterRestart();
-    expect(rig.finishSession).toHaveBeenCalledTimes(1);
+    // m1 (elegível) e m4 (desistira; DA-5 dá uma rodada nova). m2 (encerrada) e m3 (plano B) ficam de fora.
+    expect(rig.finishSession.mock.calls).toEqual([[S1], [S1]]);
     expect(maxInFlight).toBe(1);
+    expect(await rig.get('m4')).toMatchObject({ sessionFinished: true });
+  });
+
+  it('(n2) DA-5: desistida (~16 h de falha) é retomada no boot, uma vez; falhando de novo, desiste e não gira', async () => {
+    await rig.seed('m1');
+    await rig.apply('m1', { type: 'finish-failed', definitive: true });
+    expect(await rig.get('m1')).toMatchObject({ finishGaveUp: true });
+    rig.finishSession.mockRejectedValue(new rig.AgenteFinishError('401', { retryable: false, httpStatus: 401 }));
+    await rig.finisher.rescheduleAfterRestart();
+    expect(rig.finishSession).toHaveBeenCalledTimes(1);
+    expect(await rig.get('m1')).toMatchObject({ finishGaveUp: true });
+    await rig.finisher.evaluate('m1');
+    await rig.finisher.handleAlarm(ALARM('m1'));
+    expect(rig.finishSession).toHaveBeenCalledTimes(1);
   });
 
   it('(o) a reunião volta ao vivo entre a graça e a chamada -> finishSession não é chamado', async () => {
