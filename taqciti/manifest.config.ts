@@ -148,7 +148,11 @@ export default defineManifest({
   // do usuário é obtido DENTRO do Chrome e usado para criar a ata no Drive
   // dele. O servidor nunca vê esse token — é a razão de a extensão criar o
   // documento em vez de o servidor criar.
-  permissions: ['storage', 'sidePanel', 'scripting', 'identity'],
+  // A quinta permissão serve a um único fim (decisão B4-b): encerrar a sessão
+  // criada pela Taqciti depois do fim da reunião, mesmo com o service worker
+  // dormindo. Não gera aviso de instalação nem de atualização. Intervalo mínimo
+  // do alarme: 1 min no Chrome 116-119 e 30 s do 120 em diante.
+  permissions: ['storage', 'sidePanel', 'scripting', 'identity', 'alarms'],
 
   /*
    * O preço honesto da persistência.

@@ -93,6 +93,12 @@ export function installChromeStorageMock(
         removeListener: vi.fn((listener: ChangeListener) => listeners.delete(listener)),
       },
     },
+    // O agendador do encerramento (08-27) pede alarmes; o simulado só registra as chamadas.
+    alarms: {
+      create: vi.fn(async () => undefined),
+      clear: vi.fn(async () => true),
+      get: vi.fn(async () => undefined),
+    },
     ...options.extra,
   };
   vi.stubGlobal('chrome', chromeMock);

@@ -26,7 +26,8 @@ import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { onMeetingTabRemoved } from './meetingTabClosed';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
-import { recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
+import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
+import { agenteSessionFinisher, configureAgenteSessionFinisher } from './agenteSessionFinisher';
 import { shouldStartFreshMeeting } from './agenteFreshStart';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
@@ -43,12 +44,17 @@ import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
  * que nunca respondem. O erro fica visível no log, e o estado padrão — que
  * `ensurePanelPrefs` e `getState` garantem — continua de pé.
  */
+// B4-b: o agendador do encerramento precisa saber se a reunião está ao vivo; sem isto ninguém é encerrado.
+configureAgenteSessionFinisher({ isMeetingLive: (meetingId) => isMeetingLive(getState(), meetingId) });
+
 const ready: Promise<void> = migrateLocalStorage()
   .then(() => hydrate())
   // Sem await: o streamer do Agente nunca atrasa os handlers de mensagem (WR-02).
   .then(() => void resumeAgenteStreamer())
   .then(() => recoverInterruptedMeetings())
   .then(() => recoverAssociationsAfterRestart(getState()))
+  // Sem await: a varredura do encerramento nunca atrasa os handlers de mensagem.
+  .then(() => void agenteSessionFinisher.rescheduleAfterRestart())
   .then(() => ensurePanelPrefs())
   .then(() => undefined)
   .catch((error) => logger.error('falha na inicialização', error));
@@ -105,6 +111,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
   // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts.
   void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch, now: Date.now }));
+});
+
+// Síncrono no topo (MV3): o alarme acorda o service worker; o handler espera a hidratação por dentro.
+chrome.alarms.onAlarm.addListener((alarm) => {
+  void ready.then(() => agenteSessionFinisher.handleAlarm(alarm.name));
 });
 
 function defaultTitle(now: Date): string {

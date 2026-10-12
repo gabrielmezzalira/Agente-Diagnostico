@@ -377,3 +377,21 @@ describe('recuperação no boot do service worker (D-04, Pitfall 10)', () => {
     expect(await recover(seed, liveState)).toEqual(seed);
   });
 });
+
+describe('isMeetingLive: a reunião pedida está ao vivo agora? (B4-b, T-08-52)', () => {
+  it('mesma reunião em fase ao vivo -> verdadeiro', async () => {
+    const { lifecycle } = await fresh();
+    expect(lifecycle.isMeetingLive(liveState, 'live')).toBe(true);
+    expect(lifecycle.isMeetingLive({ ...liveState, phase: 'paused' }, 'live')).toBe(true);
+    expect(lifecycle.isMeetingLive({ ...liveState, phase: 'captionsRequired' }, 'live')).toBe(true);
+  });
+
+  it('fase ended, fase idle, outra reunião e sessão nula -> falso', async () => {
+    const { lifecycle } = await fresh();
+    const ended = transition(liveState, { type: 'MEETING_FINISHED', at: 5000 });
+    expect(lifecycle.isMeetingLive(ended, 'live')).toBe(false);
+    expect(lifecycle.isMeetingLive({ ...liveState, phase: 'idle' }, 'live')).toBe(false);
+    expect(lifecycle.isMeetingLive(liveState, 'outra')).toBe(false);
+    expect(lifecycle.isMeetingLive(IDLE_STATE, 'live')).toBe(false);
+  });
+});

@@ -37,6 +37,11 @@ export function isLivePhase(state: MeetingState): boolean {
   return state.phase === 'captionsRequired' || state.phase === 'recording' || state.phase === 'paused';
 }
 
+/** A reunião `meetingId` é a que está acontecendo agora (mesma reunião e fase ao vivo)? Pura: sem ela ninguém é encerrado. */
+export function isMeetingLive(state: MeetingState, meetingId: string): boolean {
+  return state.session?.meetingId === meetingId && isLivePhase(state);
+}
+
 /** Reunião que acabou de terminar, ou que foi preemptada por outra sala (a antiga sai de cena). */
 async function closeFinishedMeeting(prev: MeetingState, next: MeetingState): Promise<void> {
   const previous = prev.session;
