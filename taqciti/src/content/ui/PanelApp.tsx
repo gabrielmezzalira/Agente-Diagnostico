@@ -71,6 +71,8 @@ import {
   hostName,
 } from '@/shared/ui/format';
 import { detectNextMeeting, type NextMeetingHypothesis } from '@/features/meeting/nextMeeting';
+import { AgenteLiveSlot } from '@/sidepanel/components/AgenteLiveSlot';
+import { AgenteNudgeAnchor } from '@/sidepanel/components/AgenteNudgeAnchor';
 import { useFloating } from './useFloating';
 import { PANEL_OPEN_EVENT } from './mount';
 
@@ -336,6 +338,7 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
   const showingHistory =
     route.kind === 'history' || (route.kind === 'auto' && idle);
   const searchable = showingHistory || live;
+  const meetingId = session?.meetingId ?? null;
 
   return (
     <>
@@ -359,6 +362,7 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
         } ${expanded ? 'pointer-events-none scale-90 opacity-0' : 'opacity-100'}`}
       >
         <Sheen />
+        <AgenteNudgeAnchor anchor="capsule" meetingId={meetingId} />
         <Wave size={16} animated={phase === 'recording'} tone={tone} />
         {live ? (
           <span>{elapsed}</span>
@@ -419,6 +423,7 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
           canShrink={sizeIndex > 0}
           dragging={floating.dragging}
           dragHandlers={floating.dragHandlers}
+          nudge={<AgenteNudgeAnchor anchor="header" meetingId={meetingId} />}
           onToggleSearch={() => {
             setSearching((current) => !current);
             setQuery('');
@@ -471,6 +476,17 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
             onCopy={copySegments}
             onDownload={download}
             onToast={showToast}
+            liveSlot={
+              meetingId && (
+                <AgenteLiveSlot
+                  meetingId={meetingId}
+                  expanded={expanded}
+                  panelSize={prefs.size}
+                  onPanelSizeChange={(size) => callbacks.onPrefsChange({ size })}
+                  onToast={showToast}
+                />
+              )
+            }
           />
         </div>
       </section>
@@ -492,6 +508,7 @@ function PanelBody({
   onCopy,
   onDownload,
   onToast,
+  liveSlot,
 }: {
   route: Route;
   state: MeetingState;
@@ -504,6 +521,7 @@ function PanelBody({
   onCopy: (segments: MeetingRecord['segments']) => void;
   onDownload: (record: MeetingRecord) => void;
   onToast: (message: string) => void;
+  liveSlot: ReactNode;
 }) {
   const records = useHistory();
   const session = state.session;
@@ -600,6 +618,7 @@ function PanelBody({
         callbacks={callbacks}
         onCopy={() => onCopy(session.segments)}
         onToast={onToast}
+        liveSlot={liveSlot}
       />
     );
   }
@@ -830,6 +849,7 @@ function LiveBody({
   callbacks,
   onCopy,
   onToast,
+  liveSlot,
 }: {
   session: MeetingSessionState;
   phase: MeetingState['phase'];
@@ -840,9 +860,11 @@ function LiveBody({
   callbacks: PanelCallbacks;
   onCopy: () => void;
   onToast: (message: string) => void;
+  liveSlot: ReactNode;
 }) {
   return (
     <>
+      {liveSlot}
       <div className="mb-2 shrink-0">
         <AccountBoundaryNotice boundary={session.accountBoundary} compact />
       </div>
@@ -917,6 +939,7 @@ function PanelHeader({
   canShrink,
   dragging,
   dragHandlers,
+  nudge,
   onToggleSearch,
   onHistory,
   onGrow,
@@ -926,6 +949,7 @@ function PanelHeader({
   onRename,
   children,
 }: {
+  nudge?: ReactNode;
   /** `null` = não há reunião para renomear nesta rota. */
   title: string | null;
   status: string;
@@ -967,6 +991,7 @@ function PanelHeader({
           <Wordmark height={24} />
 
           <div className="flex items-center gap-0.5" onPointerDown={stopDrag}>
+            {nudge}
             <span className="mr-1 truncate rounded-full bg-white/[0.06] px-2.5 py-1 text-micro font-semibold tabular-nums text-muted">
               {status}
             </span>
