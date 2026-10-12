@@ -134,23 +134,34 @@ export function createAgenteSessionFinisher(deps: AgenteSessionFinisherDeps) {
     });
   }
 
-  /**
-   * Boot: avalia as associações elegíveis uma de cada vez (nunca em rajada); uma falha não impede as outras.
-   * DA-5: quem tinha desistido ganha uma rodada nova antes de ser avaliada (no máximo uma por boot).
-   */
+  /** Boot do service worker: avalia as associações elegíveis uma de cada vez (nunca em rajada); uma falha não impede as outras. */
   async function rescheduleAfterRestart(): Promise<void> {
     const map = await deps.loadAssociations();
     for (const association of Object.values(map)) {
-      const restart = canRestartFinishRound(association);
-      if (!restart && !isEligibleForClose(association)) continue;
+      if (!isEligibleForClose(association)) continue;
+      await evaluate(association.meetingId).catch((error: unknown) => {
+        logger.error('retomar o encerramento da sessão do Agente falhou', error);
+      });
+    }
+  }
+
+  /**
+   * DA-5 (nova-rodada-no-boot): quem desistiu de encerrar ganha uma rodada nova, UMA vez por abertura do navegador.
+   * Quem chama é o `chrome.runtime.onStartup` — NUNCA o boot do service worker, que no MV3 dorme e acorda a todo
+   * momento e faria uma rodada por acordada (sem limite, T-08-49).
+   */
+  async function restartGaveUpRounds(): Promise<void> {
+    const map = await deps.loadAssociations();
+    for (const association of Object.values(map)) {
+      if (!canRestartFinishRound(association)) continue;
       try {
-        if (restart) await deps.applyEvent(association.meetingId, { type: 'finish-round-restarted' });
+        await deps.applyEvent(association.meetingId, { type: 'finish-round-restarted' });
         await evaluate(association.meetingId);
       } catch (error: unknown) {
-        logger.error('retomar o encerramento da sessão do Agente falhou', error);
+        logger.error('nova rodada de encerramento da sessão do Agente falhou', error);
       }
     }
   }
 
-  return { evaluate, handleAlarm, rescheduleAfterRestart, isClosing: (id: string) => closing.has(id) };
+  return { evaluate, handleAlarm, rescheduleAfterRestart, restartGaveUpRounds, isClosing: (id: string) => closing.has(id) };
 }

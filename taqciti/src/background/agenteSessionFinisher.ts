@@ -61,5 +61,6 @@ export const agenteSessionFinisher = {
   evaluate: (meetingId: string) => activeFinisher.evaluate(meetingId),
   handleAlarm: (name: string) => activeFinisher.handleAlarm(name),
   rescheduleAfterRestart: () => activeFinisher.rescheduleAfterRestart(),
+  restartGaveUpRounds: () => activeFinisher.restartGaveUpRounds(),
   isClosing: (meetingId: string) => activeFinisher.isClosing(meetingId),
 };
