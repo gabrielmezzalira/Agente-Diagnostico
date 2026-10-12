@@ -7,7 +7,7 @@
 # ou chave (T-08-11 / LGPD).
 # =============================================================================
 
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -38,3 +38,10 @@ class ExtensionSessionCreate(BaseModel):
 
 class ExtensionSessionResponse(BaseModel):
     id: UUID
+
+
+class ExtensionSessionFinishResponse(BaseModel):
+    """Resposta do encerramento (B4-b): sempre 'finished' — a chamada é idempotente."""
+
+    id: UUID
+    status: Literal["finished"]

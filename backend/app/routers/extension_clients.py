@@ -10,6 +10,8 @@
 # com o POST /webhook/extension existente.
 # =============================================================================
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from supabase import Client
 
@@ -18,6 +20,7 @@ from app.models.extension import (
     ExtensionClientCreate,
     ExtensionClientResponse,
     ExtensionSessionCreate,
+    ExtensionSessionFinishResponse,
     ExtensionSessionResponse,
 )
 from app.repositories.extension_repository import ExtensionRepository
@@ -55,3 +58,14 @@ def create_session(
     service: ExtensionSessionService = Depends(_get_service),
 ):
     return service.create_session(payload.project_id, payload.name)
+
+
+@router.post(
+    "/sessions/{session_id}/finish", response_model=ExtensionSessionFinishResponse
+)
+async def finish_session(
+    session_id: UUID,
+    _: None = Depends(verify_extension_key),
+    service: ExtensionSessionService = Depends(_get_service),
+):
+    return await service.finish_session(session_id)

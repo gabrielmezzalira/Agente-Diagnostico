@@ -41,3 +41,25 @@ class ExtensionRepository:
 
     def insert_session(self, row: dict) -> dict:
         return self._db.table("sessions").insert(row).execute().data[0]
+
+    def get_session(self, session_id: str) -> dict | None:
+        # select mínimo: só o que o encerramento precisa decidir (status e origem).
+        result = (
+            self._db.table("sessions")
+            .select("id, status, source")
+            .eq("id", session_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    def mark_session_finished(self, session_id: str, finished_at: str) -> bool:
+        # compare-and-set: só grava se a sessão AINDA estiver active, para duas
+        # chamadas simultâneas não sobrescreverem finished_at. True se mudou linha.
+        result = (
+            self._db.table("sessions")
+            .update({"status": "finished", "finished_at": finished_at})
+            .eq("id", session_id)
+            .eq("status", "active")
+            .execute()
+        )
+        return bool(result.data)

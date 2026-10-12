@@ -26,6 +26,7 @@ from app.models.extension import (
     ExtensionClientCreate,
     ExtensionClientResponse,
     ExtensionSessionCreate,
+    ExtensionSessionFinishResponse,
     ExtensionSessionResponse,
 )
 from app.routers.webhook import verify_extension_key
@@ -273,3 +274,156 @@ def test_route_create_client_delegates_to_service():
     result = route_fn(payload=ExtensionClientCreate(name="Nova Co"), service=_FakeService())
 
     assert result["client"] == "Nova Co"
+
+
+# --------- Plano 08-15 Task 2: POST /sessions/{id}/finish (B4-b, D-16, Pitfall 1) ---------
+
+_FINISH_SID = UUID("44444444-4444-4444-4444-444444444444")
+
+
+class _FinishRepo:
+    """Repositório fake do finish: sessão fixa, compare-and-set controlável."""
+
+    def __init__(self, session, cas_result=True):
+        self._session = session
+        self._cas_result = cas_result
+        self.finished_calls: list[tuple[str, str]] = []
+
+    def get_session(self, session_id: str):
+        return self._session
+
+    def mark_session_finished(self, session_id: str, finished_at: str) -> bool:
+        self.finished_calls.append((session_id, finished_at))
+        return self._cas_result
+
+
+class _FakeStopper:
+    def __init__(self, fail=False):
+        self.stopped: list[str] = []
+        self._fail = fail
+
+    async def stop_session(self, session_id: str) -> None:
+        self.stopped.append(session_id)
+        if self._fail:
+            raise RuntimeError("stop failed")
+
+
+def _finish_service(session, cas_result=True, fail_stop=False):
+    repo = _FinishRepo(session, cas_result)
+    stopper = _FakeStopper(fail=fail_stop)
+    return ExtensionSessionService(repo, stopper), repo, stopper
+
+
+async def test_finish_active_extension_session_writes_and_stops_pipeline():
+    service, repo, stopper = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"}
+    )
+
+    result = await service.finish_session(_FINISH_SID)
+
+    assert result == {"id": _FINISH_SID, "status": "finished"}
+    assert len(repo.finished_calls) == 1
+    assert repo.finished_calls[0][0] == str(_FINISH_SID)
+    assert "T" in repo.finished_calls[0][1]  # finished_at em ISO
+    assert stopper.stopped == [str(_FINISH_SID)]
+
+
+async def test_finish_already_finished_is_idempotent_and_still_stops_pipeline():
+    service, repo, stopper = _finish_service(
+        {"id": str(_FINISH_SID), "status": "finished", "source": "extension"}
+    )
+
+    result = await service.finish_session(_FINISH_SID)
+
+    assert result["status"] == "finished"
+    assert repo.finished_calls == []  # não regrava
+    assert stopper.stopped == [str(_FINISH_SID)]  # repara finish que parou no meio
+
+
+async def test_finish_unknown_session_is_404_without_side_effects():
+    service, repo, stopper = _finish_service(None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.finish_session(_FINISH_SID)
+
+    assert exc_info.value.status_code == 404
+    assert repo.finished_calls == [] and stopper.stopped == []
+
+
+@pytest.mark.parametrize(
+    "session",
+    [
+        {"id": "x", "status": "active", "source": "recall"},
+        {"id": "x", "status": "active", "source": "import"},
+        {"id": "x", "status": "cancelled", "source": "extension"},
+    ],
+)
+async def test_finish_other_source_or_status_is_409_without_side_effects(session):
+    service, repo, stopper = _finish_service(session)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.finish_session(_FINISH_SID)
+
+    assert exc_info.value.status_code == 409
+    assert repo.finished_calls == [] and stopper.stopped == []
+
+
+async def test_finish_lost_compare_and_set_is_treated_as_already_finished():
+    service, repo, stopper = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"},
+        cas_result=False,
+    )
+
+    result = await service.finish_session(_FINISH_SID)
+
+    assert result["status"] == "finished"
+    assert stopper.stopped == [str(_FINISH_SID)]
+
+
+async def test_finish_stop_failure_keeps_200_finished():
+    service, _, stopper = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"},
+        fail_stop=True,
+    )
+
+    result = await service.finish_session(_FINISH_SID)
+
+    assert result["status"] == "finished"
+    assert stopper.stopped == [str(_FINISH_SID)]
+
+
+def test_service_default_stopper_is_the_pipeline_singleton_adapter():
+    from app.services.pipeline import pipeline_manager
+
+    service = ExtensionSessionService(_FinishRepo(None))
+
+    assert callable(getattr(service._pipeline_stopper, "stop_session", None))
+    assert service._pipeline_stopper is not pipeline_manager  # adaptador, não o singleton
+
+
+def test_finish_route_is_gated_and_has_response_model():
+    route = _routes()[("POST", "/webhook/extension/sessions/{session_id}/finish")]
+
+    assert route.response_model is ExtensionSessionFinishResponse
+    assert verify_extension_key in _gate_calls(route)
+
+
+async def test_route_finish_delegates_to_service():
+    route_fn = _routes()[("POST", "/webhook/extension/sessions/{session_id}/finish")].endpoint
+    service, repo, _ = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"}
+    )
+
+    result = await route_fn(session_id=_FINISH_SID, service=service)
+
+    assert result["status"] == "finished"
+    assert len(repo.finished_calls) == 1
+
+
+def test_router_file_has_no_direct_db_access():
+    from pathlib import Path
+
+    src = Path(router_mod.__file__).read_text(encoding="utf-8")
+    code = "\n".join(l for l in src.splitlines() if not l.strip().startswith("#"))
+
+    assert "db.table" not in code
