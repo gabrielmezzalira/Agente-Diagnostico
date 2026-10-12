@@ -249,7 +249,7 @@ Plans:
 
 **Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). Open and non-blocking: DA-4 (tab navigates away from Meet mid-call) and DA-5 (what closes a session after the Taqciti gave up closing it)
 
-**Plans**: 18/27 plans executed
+**Plans**: 19/27 plans executed
 **UI hint**: yes
 
 **Wave 1**
@@ -279,7 +279,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 08-13-PLAN.md — [D-11 porta sem volta] Evicção protegida do histórico + comando de descarte
-- [ ] 08-15-PLAN.md — [B4-b já respondida] Rota de encerramento da sessão criada pela Taqciti (idempotente, só source extension, parador de pipeline injetado) + correção da corrida do stop_session
+- [x] 08-15-PLAN.md — [B4-b já respondida] Rota de encerramento da sessão criada pela Taqciti (idempotente, só source extension, parador de pipeline injetado) + correção da corrida do stop_session
 - [x] 08-18-PLAN.md — [DECISÃO B5] Tela "Agente Diagnóstico": ID manual só no plano B, sem destino silencioso
 - [ ] 08-19-PLAN.md — Aplica a B3 na Taqciti: chunk_id no corpo + reenvio automático ligado
 
@@ -355,7 +355,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
-| 8. Taqciti Session Association | 18/23 | In Progress | - |
+| 8. Taqciti Session Association | 19/27 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 0/? | Not started | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 
