@@ -269,4 +269,21 @@ describe('buildExtensionChunkRequest', () => {
       speaker: null,
     });
   });
+
+  it('com chunkId no terceiro argumento o corpo ganha chunk_id (D-19)', () => {
+    const { init } = buildExtensionChunkRequest(config, { text: 'oi', speaker: 'Ana' }, 'abc');
+    expect(JSON.parse(init.body as string)).toEqual({
+      session_id: config.agenteSessionId,
+      text: 'oi',
+      speaker: 'Ana',
+      chunk_id: 'abc',
+    });
+  });
+
+  it('sem o terceiro argumento (ou vazio) o corpo não tem a chave chunk_id', () => {
+    const semArgumento = buildExtensionChunkRequest(config, { text: 'oi', speaker: null });
+    const vazio = buildExtensionChunkRequest(config, { text: 'oi', speaker: null }, '');
+    expect(Object.keys(JSON.parse(semArgumento.init.body as string))).not.toContain('chunk_id');
+    expect(Object.keys(JSON.parse(vazio.init.body as string))).not.toContain('chunk_id');
+  });
 });

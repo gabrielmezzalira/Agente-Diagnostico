@@ -111,7 +111,11 @@ async function setup(options: SetupOptions = {}) {
   const bodies = () =>
     send.mock.calls.map(
       ([request]) =>
-        JSON.parse(request.init.body as string) as { session_id: string; text: string },
+        JSON.parse(request.init.body as string) as {
+          session_id: string;
+          text: string;
+          chunk_id?: string;
+        },
     );
   const created = (meetingId = 'm1') =>
     store.applyAssociationEvent(meetingId, { type: 'created' });
@@ -159,6 +163,16 @@ describe('vínculo ao vivo — ID manual', () => {
     });
     expect(onLinked).toHaveBeenCalledTimes(1);
     expect(onLinked).toHaveBeenCalledWith('m1');
+  });
+
+  it('cada parte vai com chunk_id bulk:{meetingId}:{index}, na ordem (D-19)', async () => {
+    const { flow, created, bodies } = await setup({ meeting: meetingState('m2', segmentsOf(3)) });
+    await created('m2');
+
+    await flow.bind('m2', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await flow.whenIdle();
+
+    expect(bodies().map((body) => body.chunk_id)).toEqual(['bulk:m2:0', 'bulk:m2:1', 'bulk:m2:2']);
   });
 
   it('responde antes de o envio terminar; durante ele a associação está em linking com o progresso', async () => {
@@ -493,6 +507,9 @@ describe('enviar a reunião encerrada (D-09, D-10)', () => {
     expect(sessions.calls).toEqual([{ clientId: 'c1', name: 'Reunião guardada' }]);
     const sessionId = '00000000-0000-4000-8000-000000000001';
     expect(bodies().map((body) => body.text)).toEqual(segments.map((item) => item.text));
+    expect(bodies().map((body) => body.chunk_id)).toEqual(
+      segments.map((_, index) => `bulk:m2:${index}`),
+    );
     expect(bodies().every((body) => body.session_id === sessionId)).toBe(true);
     expect(sleep.mock.calls).toEqual([[1000], [1000]]);
     expect(progress).toEqual(Array.from({ length: 45 }, (_, index) => index + 1));

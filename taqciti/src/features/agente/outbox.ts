@@ -32,6 +32,14 @@ export const AGENTE_OUTBOX_RETRY_INTERVAL_MS = 15_000;
  */
 export const AGENTE_OUTBOX_RESEND_ENABLED = false;
 
+/**
+ * Manda o `chunk_id` em cada trecho (D-19). Decisão B3-a = `aprovar-chunk-id` (2026-10-12): a
+ * migração da coluna `chunk_id` + índice único `(session_id, chunk_id)` foi aplicada em produção em
+ * 2026-10-12 (08-09 Task 3). Ordem de rollout: migração -> deploy do backend -> build da Taqciti;
+ * mandar `chunk_id` a um backend sem a coluna daria 500 em todo envio.
+ */
+export const AGENTE_SEND_CHUNK_ID = true;
+
 export interface OutboxItem {
   /** Identificador da fala, para o backend reconhecer um reenvio (B3) e para remover da fila. */
   chunkId: string;
@@ -118,6 +126,7 @@ export function buildOutboxRequest(config: AgenteConfig, item: OutboxItem): Exte
   return buildExtensionChunkRequest(
     { ...config, agenteSessionId: item.sessionId },
     { text: item.text, speaker: item.speaker },
+    AGENTE_SEND_CHUNK_ID ? item.chunkId : undefined,
   );
 }
 

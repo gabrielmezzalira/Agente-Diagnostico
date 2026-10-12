@@ -7,6 +7,7 @@
  * persistido guarda cabeçalho (lista branca do store, T-08-02).
  */
 import type { AssociationEvent } from '@/features/agente/association';
+import { AGENTE_SEND_CHUNK_ID } from '@/features/agente/outbox';
 import { runMeetingUpload } from '@/features/agente/meetingUploadRunner';
 import { seedFromParts, type UploadPart } from '@/features/agente/meetingUploader';
 import type { SendAttemptResult } from '@/features/agente/sendRetryPolicy';
@@ -65,6 +66,7 @@ export async function runBindUpload(
       const request = buildExtensionChunkRequest(
         { ...config, agenteSessionId: sessionId },
         { text: part.text, speaker: part.speaker },
+        AGENTE_SEND_CHUNK_ID ? part.chunkId : undefined,
       );
       const response = await deps.send(request);
       return { kind: 'response', ok: response.ok, status: response.status };

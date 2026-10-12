@@ -209,10 +209,14 @@ export interface ExtensionChunkRequest {
  * Monta a requisição exata do contrato `ExtensionChunk`
  * (backend/app/routers/webhook.py) a partir da config e do texto novo de um
  * segmento. Função pura — nenhum `fetch` aqui.
+ *
+ * `chunkId` (opcional, D-19): identificador estável do trecho; o backend o usa para ignorar uma
+ * cópia reenviada. Sem ele (ou vazio) o corpo fica como sempre foi, sem a chave `chunk_id`.
  */
 export function buildExtensionChunkRequest(
   config: AgenteConfig,
   chunk: { text: string; speaker: string | null },
+  chunkId?: string,
 ): ExtensionChunkRequest {
   const url = `${config.agenteBackendUrl}${AGENTE_WEBHOOK_PATH}`;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -228,6 +232,7 @@ export function buildExtensionChunkRequest(
         session_id: config.agenteSessionId,
         text: chunk.text,
         speaker: chunk.speaker,
+        ...(chunkId ? { chunk_id: chunkId } : {}),
       }),
     },
   };

@@ -10,6 +10,7 @@ import {
   AGENTE_OUTBOX_MAX_ITEMS,
   AGENTE_OUTBOX_RESEND_ENABLED,
   AGENTE_OUTBOX_RETRY_INTERVAL_MS,
+  AGENTE_SEND_CHUNK_ID,
   appendItems,
   buildOutboxRequest,
   countForSession,
@@ -128,8 +129,21 @@ describe('buildOutboxRequest', () => {
   it('monta o request para a URL da config com o session_id do item e a chave ATUAL', () => {
     const request = buildOutboxRequest(config({ agenteApiKey: 's3cr3t', agenteSessionId: S2 }), item(1, { speaker: 'Ana' }));
     expect(request?.url).toBe(`${URL_A}/webhook/extension`);
-    expect(JSON.parse(String(request?.init.body))).toEqual({ session_id: S1, text: 'fala 1', speaker: 'Ana' });
+    expect(JSON.parse(String(request?.init.body))).toEqual({
+      session_id: S1,
+      text: 'fala 1',
+      speaker: 'Ana',
+      chunk_id: 'c1',
+    });
     expect((request?.init.headers as Record<string, string>)['x-agente-key']).toBe('s3cr3t');
+  });
+
+  it('com AGENTE_SEND_CHUNK_ID ligado, o chunk_id do corpo é o do item (estável entre tentativas)', () => {
+    expect(AGENTE_SEND_CHUNK_ID).toBe(true);
+    const first = buildOutboxRequest(config(), item(7));
+    const again = buildOutboxRequest(config(), item(7));
+    expect(JSON.parse(String(first?.init.body)).chunk_id).toBe('c7');
+    expect(again?.init.body).toBe(first?.init.body);
   });
 
   it('item de outro backend não é enviado (a chave do backend novo não vai para o antigo)', () => {

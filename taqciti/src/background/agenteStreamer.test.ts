@@ -30,6 +30,8 @@ import type { MeetingSessionState, MeetingState } from '@/shared/types/domain';
 const AGENTE_URL = 'https://agente.test';
 const OTHER_URL = 'https://outro-agente.test';
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
+/** O `chunk_id` de uma fala ao vivo é um UUID gerado uma vez (D-19). */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
 /** Cruza o flush de 250 ms da Taqciti (STATE_FLUSH_INTERVAL_MS) sem se confundir com ele —
  *  representa duas palavras da mesma fala chegando em ciclos de flush diferentes. */
@@ -152,6 +154,7 @@ describe('streaming ponta a ponta via dispatch real (D-06/D-07)', () => {
       session_id: SESSION_ID,
       text: 'olá tudo bem',
       speaker: 'Ana',
+      chunk_id: expect.stringMatching(UUID_PATTERN),
     });
   });
 
@@ -235,6 +238,7 @@ describe('G-07-1: uma fala vira um envio (janela de agrupamento por fala)', () =
       session_id: SESSION_ID,
       text: 'Olá, boa noite!',
       speaker: 'Você',
+      chunk_id: expect.stringMatching(UUID_PATTERN),
     });
 
     await vi.advanceTimersByTimeAsync(AGENTE_PHRASE_MAX_WAIT_MS);
@@ -1417,6 +1421,7 @@ describe('G-07-2 e bordas da janela por fala (Task 3, plano 07-04)', () => {
       session_id: SESSION_ID,
       text: 'Boa noite boa noite boa noite',
       speaker: 'Você',
+      chunk_id: expect.stringMatching(UUID_PATTERN),
     });
   });
 
