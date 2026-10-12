@@ -10,6 +10,8 @@
  * Nunca guarda segredo: a chave `x-agente-key` fica na config, jamais aqui.
  */
 
+import { carryIdentity, reduceSendFlow } from './associationSend';
+
 export type AssociationState =
   | 'pending'
   | 'choosing'
@@ -57,23 +59,66 @@ export interface MeetingAssociation {
 
 export type AssociationEvent =
   | { type: 'created' }
+  | { type: 'opened' }
+  | { type: 'deferred' }
   | { type: 'link-started'; origin: AssociationOrigin; clientName: string; sessionId?: string }
   | { type: 'session-created'; sessionId: string }
+  | { type: 'link-progress'; done: number; total: number }
+  | { type: 'link-failed'; error: AssociationError }
   | { type: 'link-completed'; seedSent: SeedSent }
-  | { type: 'seed-consumed' };
+  | { type: 'seed-consumed' }
+  /** A reunião terminou (disparado pela máquina da reunião; quem dispara é o plano 08-22). */
+  | { type: 'meeting-ended' }
+  /** A mesma sala voltou dentro da janela de retomada (REJOIN_RESUME_WINDOW_MS). */
+  | { type: 'meeting-resumed' }
+  | { type: 'send-started'; origin: AssociationOrigin; clientName: string; sessionId?: string }
+  | { type: 'send-session-created'; sessionId: string }
+  | { type: 'send-progress'; done: number; total: number }
+  /** `seedSent` = o que o envio em partes cobriu, para a retomada da sala continuar sem repetir palavras. */
+  | { type: 'send-completed'; seedSent: SeedSent }
+  | { type: 'send-failed'; error: AssociationError };
 
-/** Campos que sobrevivem entre estados: o "quem" do vínculo, sem erro, progresso nem semente. */
-function identity(current: MeetingAssociation): Omit<MeetingAssociation, 'state'> {
-  const { meetingId, clientName, sessionId, origin } = current;
-  return {
-    meetingId,
-    ...(clientName !== undefined && { clientName }),
-    ...(sessionId !== undefined && { sessionId }),
-    ...(origin !== undefined && { origin }),
-  };
+const BEFORE_LINK: readonly AssociationState[] = ['pending', 'choosing', 'deferred'];
+
+/**
+ * Falha do vínculo ao vivo. Sem `sessionId` a sessão nem foi criada: volta para `deferred` (com erro
+ * visível). Com `sessionId` a sessão existe e o resumo é que não saiu: fica parado em `send-failed`.
+ */
+function reduceLinkFailed(current: MeetingAssociation, error: AssociationError): MeetingAssociation {
+  if (current.state !== 'linking') return current;
+  if (error === 'create-session' && current.sessionId === undefined) {
+    const { meetingId, clientName } = current;
+    return { meetingId, state: 'deferred', ...(clientName !== undefined && { clientName }), error };
+  }
+  if (error === 'send' && current.sessionId !== undefined) return { ...current, state: 'send-failed', error };
+  return current;
 }
 
-const CAN_START_LINK: readonly AssociationState[] = ['pending', 'choosing', 'deferred'];
+/**
+ * O fim da reunião: quem ainda não escolheu vira `ended-unsent` (o erro, se houver, fica). `linking`
+ * não muda — o vínculo em andamento continua e o fluxo dele (08-10) resolve o fim. O resto já tem destino.
+ */
+function reduceMeetingEnded(current: MeetingAssociation): MeetingAssociation {
+  return BEFORE_LINK.includes(current.state) ? { ...current, state: 'ended-unsent' } : current;
+}
+
+/**
+ * A mesma sala voltou: `ended-unsent` -> `pending` (a bolha reaparece), `sending` -> `linking` (o envio
+ * em partes vira vínculo ao vivo), `sent` -> `linked` e a fala nova segue para a sessão já escolhida — só
+ * quando a associação TEM `sessionId`. `send-failed` fica parado (a barra mostra o aviso).
+ */
+function reduceMeetingResumed(current: MeetingAssociation): MeetingAssociation {
+  switch (current.state) {
+    case 'ended-unsent':
+      return { meetingId: current.meetingId, state: 'pending' };
+    case 'sending':
+      return { ...current, state: 'linking' };
+    case 'sent':
+      return current.sessionId === undefined ? current : { ...current, state: 'linked' };
+    default:
+      return current;
+  }
+}
 
 /**
  * `current` é a associação atual da reunião (`null` = ainda não existe). Devolve a próxima, ou a
@@ -90,8 +135,14 @@ export function reduceAssociation(
   if (current === null) return current;
 
   switch (event.type) {
+    case 'opened':
+      return current.state === 'pending' || current.state === 'deferred'
+        ? { ...current, state: 'choosing' }
+        : current;
+    case 'deferred':
+      return current.state === 'choosing' ? { ...current, state: 'deferred' } : current;
     case 'link-started':
-      if (!CAN_START_LINK.includes(current.state)) return current;
+      if (!BEFORE_LINK.includes(current.state)) return current;
       return {
         meetingId: current.meetingId,
         state: 'linking',
@@ -100,15 +151,28 @@ export function reduceAssociation(
         ...(event.sessionId !== undefined && { sessionId: event.sessionId }),
       };
     case 'session-created':
-      if (current.state !== 'linking') return current;
-      return { ...current, sessionId: event.sessionId };
+      return current.state === 'linking' ? { ...current, sessionId: event.sessionId } : current;
+    case 'link-progress':
+      return current.state === 'linking'
+        ? { ...current, sendProgress: { done: event.done, total: event.total } }
+        : current;
+    case 'link-failed':
+      return reduceLinkFailed(current, event.error);
     case 'link-completed':
       if (current.state !== 'linking' || current.sessionId === undefined) return current;
-      return { ...identity(current), state: 'linked', seedSent: event.seedSent };
+      return { ...carryIdentity(current), state: 'linked', seedSent: event.seedSent };
     case 'seed-consumed':
       if (current.state !== 'linked' || current.seedSent === undefined) return current;
-      return { ...identity(current), state: 'linked' };
-    default:
-      return current;
+      return { ...carryIdentity(current), state: 'linked' };
+    case 'meeting-ended':
+      return reduceMeetingEnded(current);
+    case 'meeting-resumed':
+      return reduceMeetingResumed(current);
+    case 'send-started':
+    case 'send-session-created':
+    case 'send-progress':
+    case 'send-completed':
+    case 'send-failed':
+      return reduceSendFlow(current, event);
   }
 }
