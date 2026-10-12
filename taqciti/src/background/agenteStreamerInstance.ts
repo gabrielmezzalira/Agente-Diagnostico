@@ -16,13 +16,13 @@ import {
 import { planStreamStep, type StreamCursor } from '@/features/agente/wordDelta';
 import {
   appendDeltas,
-  buildPhraseRequests,
   EMPTY_PHRASE_BUFFER,
   nextPhraseDeadline,
   takeReadyPhrases,
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
+import { buildOutboxRequest, phrasesToOutboxItems } from '@/features/agente/outbox';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
@@ -60,12 +60,18 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let unsubscribeConfig: (() => void) | null = null;
   /** WR-01: destino (URL + sessão + chave) dos trechos que estão na fila de envio; `null` = nada visto. */
   let lastDestinationKey: string | null = null;
+  /** Config do destino atual da fila de envio (a mesma que define `lastDestinationKey`); o request sai com ela. */
+  let lastQueueConfig: AgenteConfig | null = null;
   /** CR-01/WR-01: memória do vínculo sessão → última reunião (extraída para não passar de 300 linhas). */
   const bindingRecorder = createBindingRecorder(deps);
   /** Fase 8 (D-01): a regra "para onde vai a fala"; sem política injetada vale a da Fase 7. */
   const destination = deps.destination ?? configDestination;
   const status = createStatusReporter(deps.reportStatus);
-  const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
+  const sender = createAgenteSender({
+    send: deps.send,
+    onOutcome: status.sendOutcome,
+    buildRequest: (item) => Promise.resolve(lastQueueConfig ? buildOutboxRequest(lastQueueConfig, item) : null),
+  });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
@@ -107,6 +113,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     discard();
     cursor = null;
     lastDestinationKey = null;
+    lastQueueConfig = null;
     bindingRecorder.reset();
     status.waitingForMeeting(null);
   }
@@ -116,9 +123,11 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
    * liberados foram montados para o destino antigo e não podem segurar (nem
    * pintar o status de) os novos. Mesma regra da janela (IN-11).
    */
-  function syncDestination(key: string): void {
+  function syncDestination(config: AgenteConfig): void {
+    const key = destination.queueKey(config);
     if (lastDestinationKey !== null && key !== lastDestinationKey) sender.cancelAll();
     lastDestinationKey = key;
+    lastQueueConfig = config;
   }
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
@@ -127,14 +136,10 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     windowTimer.armAt(nextPhraseDeadline(pending, PHRASE_TIMING), now);
   }
 
-  function drain(config: AgenteConfig, now: number, flushAll: boolean): void {
+  function drain(now: number, flushAll: boolean): void {
     const result = takeReadyPhrases(pending, now, PHRASE_TIMING, flushAll);
     pending = result.buffer;
-    const requests = buildPhraseRequests(config, result.ready);
-    // IN-04: o descarte por destino diferente (IN-11) não pode ser silencioso. Só a contagem — nunca o texto.
-    const discarded = result.ready.length - requests.length;
-    if (discarded > 0) logger.warn('falas descartadas: destino diferente da config atual', { discarded });
-    sender.submit(requests);
+    sender.submit(phrasesToOutboxItems(result.ready, () => crypto.randomUUID(), now));
     rearm(now);
   }
 
@@ -165,7 +170,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       status.waitingForMeeting(null);
       return null;
     }
-    syncDestination(destination.queueKey(target.config));
+    syncDestination(target.config);
     if (target.seed !== null && meetingId !== null) {
       cursor = cursorFromSeed(cursor, meetingId, target.config.agenteSessionId, target.seed) ?? cursor;
       await persister?.persist(cursor, pending);
@@ -192,7 +197,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     const now = Date.now();
     const phraseDestination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
     pending = appendDeltas(pending, result.deltas, phraseDestination, now);
-    drain(config, now, state.phase !== 'recording');
+    drain(now, state.phase !== 'recording');
     if (destination.usesMeetingBinding) {
       await bindingRecorder.record(config.agenteSessionId, cursor?.meetingId ?? null, boundMeetingId);
     }
@@ -208,8 +213,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
         stopStreaming();
         return;
       }
-      syncDestination(destination.queueKey(config));
-      drain(config, Date.now(), false);
+      syncDestination(config);
+      drain(Date.now(), false);
     } finally {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
       // isto, uma fala pendente ficava sem timer até alguém falar de novo

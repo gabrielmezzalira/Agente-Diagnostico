@@ -5,12 +5,29 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExtensionChunkRequest } from '@/shared/config/agenteConfig';
+import type { OutboxItem } from '@/features/agente/outbox';
 import { AGENTE_SEND_MAX_QUEUED } from '@/features/agente/sendRetryPolicy';
+import { logger } from '@/shared/services/log';
 import { createAgenteSender } from './agenteSender';
 
 function request(text: string): ExtensionChunkRequest {
   return { url: 'https://agente.test/webhook/extension', init: { method: 'POST', body: text } };
 }
+
+let nextId = 0;
+function item(text: string): OutboxItem {
+  nextId += 1;
+  return {
+    chunkId: `c${nextId}`,
+    backendUrl: 'https://agente.test',
+    sessionId: 's1',
+    text,
+    speaker: null,
+    enqueuedAt: 0,
+  };
+}
+
+const buildRequest = (queued: OutboxItem) => Promise.resolve(request(queued.text));
 
 function response(status: number): Response {
   return { ok: status >= 200 && status < 300, status } as Response;
@@ -34,9 +51,9 @@ describe('agenteSender / novas tentativas', () => {
       .mockResolvedValueOnce(response(503))
       .mockResolvedValueOnce(response(503))
       .mockResolvedValue(response(202));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('olá')]);
+    sender.submit([item('olá')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(send).toHaveBeenCalledTimes(1);
 
@@ -59,9 +76,9 @@ describe('agenteSender / novas tentativas', () => {
       .mockResolvedValueOnce(response(503))
       .mockResolvedValue(response(202));
     const onOutcome = vi.fn();
-    const sender = createAgenteSender({ send, onOutcome });
+    const sender = createAgenteSender({ send, buildRequest, onOutcome });
 
-    sender.submit([request('olá')]);
+    sender.submit([item('olá')]);
     await vi.advanceTimersByTimeAsync(3_000);
     expect(onOutcome.mock.calls).toEqual([
       ['retrying', null],
@@ -72,8 +89,12 @@ describe('agenteSender / novas tentativas', () => {
 
   it('WR-07: 401 reporta rejected; cancelado não reporta nada', async () => {
     const onOutcome = vi.fn();
-    const rejecting = createAgenteSender({ send: () => Promise.resolve(response(401)), onOutcome });
-    rejecting.submit([request('olá')]);
+    const rejecting = createAgenteSender({
+      send: () => Promise.resolve(response(401)),
+      buildRequest,
+      onOutcome,
+    });
+    rejecting.submit([item('olá')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(onOutcome.mock.calls).toEqual([['rejected', 401]]);
 
@@ -81,9 +102,11 @@ describe('agenteSender / novas tentativas', () => {
     let release!: (res: Response) => void;
     const slow = createAgenteSender({
       send: () => new Promise<Response>((resolve) => (release = resolve)),
+      buildRequest,
       onOutcome,
     });
-    slow.submit([request('olá')]);
+    slow.submit([item('olá')]);
+    await vi.advanceTimersByTimeAsync(0); // a fila é assíncrona: o envio começa um instante depois do submit
     slow.cancelAll();
     release(response(202));
     await vi.advanceTimersByTimeAsync(0);
@@ -92,18 +115,18 @@ describe('agenteSender / novas tentativas', () => {
 
   it('401 é definitivo: nenhuma nova tentativa', async () => {
     const send = vi.fn(() => Promise.resolve(response(401)));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('olá')]);
+    sender.submit([item('olá')]);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(send).toHaveBeenCalledTimes(1);
   });
 
   it('erro de rede constante: 1 envio + 3 novas tentativas, depois desiste', async () => {
     const send = vi.fn(() => Promise.reject(new Error('rede caiu')));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('olá')]);
+    sender.submit([item('olá')]);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(send).toHaveBeenCalledTimes(4);
   });
@@ -115,9 +138,9 @@ describe('agenteSender / novas tentativas', () => {
       if (calls === 1) throw new Error('lançou síncrono');
       return Promise.resolve(response(202));
     });
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('a'), request('b')]);
+    sender.submit([item('a'), item('b')]);
     await vi.advanceTimersByTimeAsync(1_000);
     expect(bodies(send)).toEqual(['a', 'a', 'b']);
   });
@@ -130,10 +153,10 @@ describe('agenteSender / ordem', () => {
       .fn<(req: ExtensionChunkRequest) => Promise<Response>>()
       .mockImplementationOnce(() => new Promise<Response>((resolve) => (releaseFirst = resolve)))
       .mockResolvedValue(response(202));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('primeiro')]);
-    sender.submit([request('segundo')]);
+    sender.submit([item('primeiro')]);
+    sender.submit([item('segundo')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(bodies(send)).toEqual(['primeiro']);
 
@@ -149,9 +172,9 @@ describe('agenteSender / ordem', () => {
 describe('agenteSender / cancelamento e teto', () => {
   it('cancelAll durante a espera do retry: nada mais é enviado (D-09)', async () => {
     const send = vi.fn(() => Promise.resolve(response(503)));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('confidencial'), request('depois')]);
+    sender.submit([item('confidencial'), item('depois')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(send).toHaveBeenCalledTimes(1);
 
@@ -162,10 +185,10 @@ describe('agenteSender / cancelamento e teto', () => {
 
   it('depois do cancelAll, um trecho novo volta a ser enviado', async () => {
     const send = vi.fn(() => Promise.resolve(response(202)));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
     sender.cancelAll();
-    sender.submit([request('novo')]);
+    sender.submit([item('novo')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(bodies(send)).toEqual(['novo']);
   });
@@ -176,10 +199,11 @@ describe('agenteSender / cancelamento e teto', () => {
       .fn<(req: ExtensionChunkRequest) => Promise<Response>>()
       .mockImplementationOnce(() => new Promise<Response>((resolve) => (releaseFirst = resolve)))
       .mockResolvedValue(response(202));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
-    sender.submit([request('em-voo')]);
-    const extra = Array.from({ length: AGENTE_SEND_MAX_QUEUED + 1 }, (_, i) => request(`t${i}`));
+    sender.submit([item('em-voo')]);
+    await vi.advanceTimersByTimeAsync(0); // a fila é assíncrona: o 1º envio começa um instante depois do submit
+    const extra = Array.from({ length: AGENTE_SEND_MAX_QUEUED + 1 }, (_, i) => item(`t${i}`));
     sender.submit(extra);
 
     releaseFirst(response(202));
@@ -194,11 +218,29 @@ describe('agenteSender / cancelamento e teto', () => {
 
   it('dispose é terminal: submit depois não envia', async () => {
     const send = vi.fn(() => Promise.resolve(response(202)));
-    const sender = createAgenteSender({ send });
+    const sender = createAgenteSender({ send, buildRequest });
 
     sender.dispose();
-    sender.submit([request('tarde demais')]);
+    sender.submit([item('tarde demais')]);
     await vi.advanceTimersByTimeAsync(0);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('item sem request (outro backend) é removido sem envio; o log registra só a contagem (IN-04)', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const send = vi.fn(() => Promise.resolve(response(202)));
+    const sender = createAgenteSender({
+      send,
+      buildRequest: (queued) => Promise.resolve(queued.text === 'velho' ? null : request(queued.text)),
+    });
+
+    sender.submit([item('velho'), item('novo')]);
+    await vi.advanceTimersByTimeAsync(0);
+    await sender.whenIdle();
+
+    expect(bodies(send)).toEqual(['novo']);
+    expect(warn).toHaveBeenCalledWith('falas descartadas: destino diferente da config atual', { discarded: 1 });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('velho');
+    warn.mockRestore();
   });
 });
