@@ -15,6 +15,7 @@ from supabase import Client
 
 from app.database import get_supabase
 from app.models.extension import (
+    ExtensionClientCreate,
     ExtensionClientResponse,
     ExtensionSessionCreate,
     ExtensionSessionResponse,
@@ -36,6 +37,15 @@ def list_clients(
     service: ExtensionSessionService = Depends(_get_service),
 ):
     return service.list_clients()
+
+
+@router.post("/clients", response_model=ExtensionClientResponse, status_code=201)
+def create_client(
+    payload: ExtensionClientCreate,
+    _: None = Depends(verify_extension_key),
+    service: ExtensionSessionService = Depends(_get_service),
+):
+    return service.create_client(payload.name)
 
 
 @router.post("/sessions", response_model=ExtensionSessionResponse, status_code=201)

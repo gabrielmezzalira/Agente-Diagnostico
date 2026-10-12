@@ -19,9 +19,15 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException
 from fastapi.routing import APIRoute
+from pydantic import ValidationError
 
 from app.routers import extension_clients as router_mod
-from app.models.extension import ExtensionSessionCreate, ExtensionSessionResponse
+from app.models.extension import (
+    ExtensionClientCreate,
+    ExtensionClientResponse,
+    ExtensionSessionCreate,
+    ExtensionSessionResponse,
+)
 from app.routers.webhook import verify_extension_key
 from app.services.extension_session_service import ExtensionSessionService
 
@@ -35,6 +41,14 @@ class _FakeRepo:
         self._clients = clients or []
         self._known_project = known_project
         self.inserted: list[dict] = []
+        self.inserted_projects: list[dict] = []
+
+    def list_client_names(self) -> list[str]:
+        return [c.get("client") or "" for c in self._clients]
+
+    def insert_project(self, row: dict) -> dict:
+        self.inserted_projects.append(row)
+        return {**row, "id": "33333333-3333-3333-3333-333333333333"}
 
     def list_clients(self) -> list[dict]:
         return self._clients
@@ -50,6 +64,9 @@ class _FakeRepo:
 class _FakeService:
     def list_clients(self):
         return [{"id": str(_PROJECT_ID), "client": "Acme", "name": "Pipeline"}]
+
+    def create_client(self, name):
+        return {"id": "33333333-3333-3333-3333-333333333333", "client": name, "name": name}
 
     def create_session(self, project_id, name):
         return {"id": "22222222-2222-2222-2222-222222222222"}
@@ -185,3 +202,74 @@ def test_router_is_registered_once_in_package_and_app():
     assert "extension_clients_router" in init_src
     assert '"extension_clients_router"' in init_src  # __all__
     assert main_src.count("include_router(extension_clients_router)") == 1
+
+
+# --------------------- Plano 08-12 Task 1: POST /clients (B1/B4-a) ---------------------
+
+
+def test_client_create_strips_name():
+    assert ExtensionClientCreate(name="  Nova Co  ").name == "Nova Co"
+
+
+@pytest.mark.parametrize("bad", ["", "   ", "x" * 121])
+def test_client_create_rejects_empty_and_too_long_name(bad):
+    with pytest.raises(ValidationError):
+        ExtensionClientCreate(name=bad)
+
+
+def test_client_create_accepts_120_chars():
+    assert len(ExtensionClientCreate(name="x" * 120).name) == 120
+
+
+def test_create_client_inserts_only_decided_columns():
+    repo = _FakeRepo()
+
+    result = ExtensionSessionService(repo).create_client("Nova Co")
+
+    # B1/B4-a: mode 'discovery', source 'extension', sem chave Gemini.
+    assert repo.inserted_projects == [{
+        "name": "Nova Co",
+        "client": "Nova Co",
+        "mode": "discovery",
+        "source": "extension",
+    }]
+    assert result == {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "client": "Nova Co",
+        "name": "Nova Co",
+    }
+
+
+def test_create_client_duplicate_ignoring_accent_and_case_is_409():
+    repo = _FakeRepo(clients=[{"id": "a", "client": "Açaí Ltda", "name": "Açaí Ltda"}])
+
+    with pytest.raises(HTTPException) as exc_info:
+        ExtensionSessionService(repo).create_client("acai ltda")
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == "Client already exists"
+    assert repo.inserted_projects == []
+
+
+def test_create_client_different_name_is_not_duplicate():
+    repo = _FakeRepo(clients=[{"id": "a", "client": "Acme", "name": "Acme"}])
+
+    ExtensionSessionService(repo).create_client("Acme Brasil")
+
+    assert len(repo.inserted_projects) == 1
+
+
+def test_clients_post_route_is_201_response_model_and_gated():
+    route = _routes()[("POST", "/webhook/extension/clients")]
+
+    assert route.status_code == 201
+    assert route.response_model is ExtensionClientResponse
+    assert verify_extension_key in _gate_calls(route)
+
+
+def test_route_create_client_delegates_to_service():
+    route_fn = _routes()[("POST", "/webhook/extension/clients")].endpoint
+
+    result = route_fn(payload=ExtensionClientCreate(name="Nova Co"), service=_FakeService())
+
+    assert result["client"] == "Nova Co"
