@@ -3,8 +3,8 @@ feature: "Integração Agente Diagnóstico × DocuData — contexto cumulativo d
 modo: "BACK-ONLY"
 tier: "COMPLEXA"
 stack: "FastAPI + Supabase + LangGraph/Gemini (DocuData, repo separado: Agente-Documentador) e FastAPI (Agente). Front da aba de Requisitos: feito sem skill (pedido do usuário)."
-etapa: 0
-etapa_nome: "Requisitos (/brainstorm — requisitos já coletados em PLANO_INTEGRACAO_DOCUDATA.md)"
+etapa: 1
+etapa_nome: "Plano de implementação (/write-plan) — após o usuário revisar as specs 11 e 12"
 gates_reusados: ["knowledge-graph (DocuData: docudata-backend/graphify-out)", "knowledge-graph (Agente: backend/app/graphify-out, gerado agora, só AST)"]
 started_at: "2026-10-12T23:50:07Z"
 last_saved: "2026-10-12T23:50:07Z"
@@ -12,8 +12,8 @@ status: "em_progresso"
 
 ## Concluído
 - [x] Etapa 0 — Grafo de conhecimento (DocuData reaproveitado; Agente gerado, estrutural, sem LLM)
-- [ ] Etapa 1 — Requisitos ← PRÓXIMA
-- [ ] Etapa 2 — Plano via /write-plan
+- [x] Etapa 1 — Requisitos (brainstorm; desenho aprovado, abordagem C; specs 11 e 12 escritas no DocuData, aguardando revisão do usuário)
+- [ ] Etapa 2 — Plano via /write-plan ← PRÓXIMA (bloqueada na revisão das specs)
 - [ ] Etapa 3 — Execução do back-end (Onda 1)
 - [ ] Etapa 12 — Verificação (gsd-verify-work, nunca pulada)
 
