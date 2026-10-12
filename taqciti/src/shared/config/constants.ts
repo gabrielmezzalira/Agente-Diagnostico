@@ -22,6 +22,18 @@ export const STORAGE_KEYS = {
   agenteBinding: 'taq:agenteBinding',
   /** chrome.storage.local — vínculo de cada reunião com a sessão do Agente (Fase 8); só o service worker grava. */
   agenteAssociations: 'taq:agenteAssociations',
+  /**
+   * chrome.storage.local — falas liberadas ainda não entregues ao Agente (Fase 8, D-18); só o service
+   * worker grava; nunca guarda a chave. NÃO reaproveita `outbox` ('taq:outbox', legado).
+   */
+  agenteOutbox: 'taq:agenteOutbox',
+  /** chrome.storage.local — status de entrega para o painel do Meet (Fase 8); só o service worker grava. */
+  agenteDelivery: 'taq:agenteDelivery',
+  /**
+   * chrome.storage.local — rastro de falas descartadas sem entrega (Fase 8); só o service worker
+   * grava; nenhuma gravação de status o apaga.
+   */
+  agenteDropTrace: 'taq:agenteDropTrace',
   /** chrome.storage.session — cursor + falas pendentes do streamer do Agente (sobrevive a restart do service worker, WR-02). */
   agenteStreamer: 'taq:agenteStreamer',
   /**
