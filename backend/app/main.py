@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 _log = logging.getLogger(__name__)
 
 from app.routers import (
+    extension_clients_router,
     pricing_features_router,
     pricings_router,
     projects_router,
@@ -77,6 +78,7 @@ app.include_router(sessions_router)
 app.include_router(questions_router)
 app.include_router(question_bank_router)
 app.include_router(webhook_router)
+app.include_router(extension_clients_router)
 app.include_router(ws_router)
 app.include_router(pricings_router)
 app.include_router(pricing_features_router)

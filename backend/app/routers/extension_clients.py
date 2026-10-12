@@ -14,7 +14,11 @@ from fastapi import APIRouter, Depends
 from supabase import Client
 
 from app.database import get_supabase
-from app.models.extension import ExtensionClientResponse
+from app.models.extension import (
+    ExtensionClientResponse,
+    ExtensionSessionCreate,
+    ExtensionSessionResponse,
+)
 from app.repositories.extension_repository import ExtensionRepository
 from app.routers.webhook import verify_extension_key
 from app.services.extension_session_service import ExtensionSessionService
@@ -32,3 +36,12 @@ def list_clients(
     service: ExtensionSessionService = Depends(_get_service),
 ):
     return service.list_clients()
+
+
+@router.post("/sessions", response_model=ExtensionSessionResponse, status_code=201)
+def create_session(
+    payload: ExtensionSessionCreate,
+    _: None = Depends(verify_extension_key),
+    service: ExtensionSessionService = Depends(_get_service),
+):
+    return service.create_session(payload.project_id, payload.name)

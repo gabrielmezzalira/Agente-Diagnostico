@@ -21,6 +21,7 @@ from fastapi import HTTPException
 from fastapi.routing import APIRoute
 
 from app.routers import extension_clients as router_mod
+from app.models.extension import ExtensionSessionCreate, ExtensionSessionResponse
 from app.routers.webhook import verify_extension_key
 from app.services.extension_session_service import ExtensionSessionService
 
@@ -116,3 +117,71 @@ def test_clients_route_is_behind_extension_key_gate(monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         verify_extension_key(x_agente_key=None)
     assert exc_info.value.status_code == 401
+
+
+# ---------------------------- Task 3: POST /sessions ----------------------------
+
+
+def test_create_session_builds_extension_row_and_returns_id():
+    repo = _FakeRepo()
+
+    result = ExtensionSessionService(repo).create_session(
+        _PROJECT_ID, "Reunião de 11/10 às 14:00"
+    )
+
+    assert repo.inserted == [{
+        "project_id": str(_PROJECT_ID),
+        "name": "Reunião de 11/10 às 14:00",
+        "meeting_url": None,
+        "source": "extension",
+        "status": "active",
+    }]
+    assert result == {"id": "11111111-1111-1111-1111-111111111111"}
+
+
+def test_create_session_without_name_uses_default_name():
+    repo = _FakeRepo()
+
+    ExtensionSessionService(repo).create_session(_PROJECT_ID, None)
+
+    assert repo.inserted[0]["name"] == "Reunião pela Taqciti"
+
+
+def test_create_session_unknown_project_is_404_and_inserts_nothing():
+    repo = _FakeRepo(known_project=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        ExtensionSessionService(repo).create_session(_PROJECT_ID, "x")
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Project not found"
+    assert repo.inserted == []
+
+
+def test_sessions_route_is_201_response_model_and_gated():
+    route = _routes()[("POST", "/webhook/extension/sessions")]
+
+    assert route.status_code == 201
+    assert route.response_model is ExtensionSessionResponse
+    assert verify_extension_key in _gate_calls(route)
+
+
+def test_route_create_session_delegates_to_service():
+    route_fn = _routes()[("POST", "/webhook/extension/sessions")].endpoint
+    payload = ExtensionSessionCreate(project_id=_PROJECT_ID, name="Reunião")
+
+    assert route_fn(payload=payload, service=_FakeService()) == {
+        "id": "22222222-2222-2222-2222-222222222222"
+    }
+
+
+def test_router_is_registered_once_in_package_and_app():
+    from pathlib import Path
+
+    app_dir = Path(router_mod.__file__).resolve().parents[1]
+    init_src = (app_dir / "routers" / "__init__.py").read_text(encoding="utf-8")
+    main_src = (app_dir / "main.py").read_text(encoding="utf-8")
+
+    assert "extension_clients_router" in init_src
+    assert '"extension_clients_router"' in init_src  # __all__
+    assert main_src.count("include_router(extension_clients_router)") == 1
