@@ -14,6 +14,11 @@ import { TextField } from '@/shared/ui/Field';
 import type { ClientPickerError } from './ClientPicker';
 import { containEscape } from './containEscape';
 
+/*
+ * O limite do nome no campo é `maxLength={120}` (nome de 1 a 120 caracteres): suposição do plano
+ * até a decisão B1 definir o contrato real das rotas novas — troca-se num lugar só, no TextField.
+ */
+
 /** Cópia de cada falha (UI-SPEC "Criar cliente" e "Estados da lista"). */
 export const CLIENT_ERROR_COPY: Record<ClientPickerError, string> = {
   duplicate: 'Já existe um cliente com esse nome. Selecione-o na lista.',
@@ -84,9 +89,7 @@ export function ClientCreateForm({
           id="client-create-name"
           autoFocus
           value={name}
-          maxLength={
-            120
-          } /* limite assumido até a decisão B1 (nome de 1 a 120 caracteres) */
+          maxLength={120}
           disabled={busy}
           aria-busy={busy}
           placeholder="Ex.: Empresa XYZ"
