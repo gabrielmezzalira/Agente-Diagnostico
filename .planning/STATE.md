@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 08
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-10-12T02:55:02.351Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-10-12T03:01:57.700Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 08 execution started
-state_head: f08d486944dfa86d92fcbf0c4d5df420a637d630
+state_head: fa4d664240838f9463fe3c4b0f737c608ff82817
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 25
+  completed_plans: 26
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 08 (Taqciti Session Association) — EXECUTING
-Plan: 2 of 23
+Plan: 3 of 23
 Status: Ready to execute
 Last activity: 2026-10-11 — Phase 08 execution started
 
@@ -86,6 +86,7 @@ Progress: [███████░░░] 70%
 | Phase 07 P07-03 | ~35min | 2 tasks | 8 files |
 | Phase 07 P04 | 24min | 3 tasks | 6 files |
 | Phase 08 P01 | 20min | 2 tasks | 14 files |
+| Phase 08 P02 | 15min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,7 @@ Recent decisions affecting current work:
 - [Phase 08]: [Phase 08-01] Destino da fala em producao e so a associacao linked da reuniao (D-01/D-04); configDestination fica como politica explicita usada so pelos testes de mecanica da Fase 7 — O ID global da config deixa de enviar sozinho ate o seletor/plano B (08-10/08-14); nao distribuir build da Taqciti entre 08-01 e 08-14
 - [Phase 08]: [Phase 08-01] createAssociationDestination.usesMeetingBinding=false: o CR-01 (taq:agenteBinding) nao e consultado nem regravado para destinos de associacao; idle nao descarta falas ja enderecadas, so disabled descarta (D-09) — Associacao ja e o vinculo explicito da reuniao; semente {} e valida (nada enviado ainda) e so null significa sem semente
 - [Phase 08]: [Phase 08-01] agenteStreamerInstance.ts ficou com 293 linhas (limite 300): so 7 linhas de folga para o plano 08-23 — Se faltar espaco, mover settleTarget/adocao da semente para agenteStreamDestination.ts em commit mecanico
+- [Phase 08]: [Phase 08-02] AgenteNudge anima o círculo interno (não o botão de 32 px) e, na cápsula, é enfeite aria-hidden/pointer-events-none; AgenteDecisionCard contém o Esc com stopPropagation + stopImmediatePropagation — Alvo de clique fica parado; clique da cápsula é da cápsula inteira; o painel ouve Esc em document e minimizaria junto (Pitfall 11)
 
 ### Pending Todos
 
@@ -167,6 +169,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T02:55:02.124Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-10-12T03:01:57.489Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
