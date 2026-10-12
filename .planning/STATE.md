@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 08
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-10-12T03:23:12.016Z"
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-10-12T03:28:46.529Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 08 execution started
-state_head: 73069c685935ea0ec5519b15e39ae0f93ade7d01
+state_head: 415ec33abca93b94b56777050a4c3ed9d8ce5108
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 08 (Taqciti Session Association) — EXECUTING
-Plan: 5 of 23
+Plan: 6 of 23
 Status: Ready to execute
 Last activity: 2026-10-11 — Phase 08 execution started
 
@@ -89,6 +89,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P02 | 15min | 2 tasks | 8 files |
 | Phase 08 P03 | 25 min | 3 tasks | 10 files |
 | Phase 08 P04 | 5 min | 2 tasks | 6 files |
+| Phase 08 P05 | 4 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-03: seletor de clientes atras das portas ClientDirectory/AgenteSessionGateway; selecao em dois passos; plano B do ID manual (UUID) so com a lista em erro; nome do cliente maxLength 120 ate a decisao B1
 - [Phase 08]: 08-04: barra de vinculo, cartao de fim e selo recebem modelo de visao proprio (BindingBarView/EndPromptView/AssociationBadgeState), sem depender do dominio
 - [Phase 08]: 08-04: falha do envio em partes e warning sem nenhum botao (nem Continuar envio, nem Cancelar) ate a decisao B3 ser aplicada no plano 08-20
+- [Phase 08]: 08-05: a pausa entre blocos do envio em partes conta as partes entregues na execução corrente (retomada com startAt mantém o ritmo de 20 em 20); done = posição da próxima parte a enviar
 
 ### Pending Todos
 
@@ -174,6 +176,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T03:23:11.776Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-10-12T03:28:46.293Z
+Stopped at: Completed 08-05-PLAN.md
 Resume file: None
