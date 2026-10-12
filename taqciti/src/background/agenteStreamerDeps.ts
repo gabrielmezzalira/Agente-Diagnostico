@@ -6,6 +6,7 @@
 import type { AgenteConfig, ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { AgenteBinding } from '@/shared/config/agenteBindingStore';
 import type { AgenteStatusSink } from './agenteStatusReporter';
+import type { StreamDestinationPolicy } from './agenteStreamDestination';
 import type { AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
 
 export interface AgenteStreamerDeps {
@@ -29,4 +30,9 @@ export interface AgenteStreamerDeps {
   bindMeeting?: (sessionId: string, meetingId: string) => Promise<void>;
   /** No boot, troca um status "tentando de novo" herdado do service worker anterior por "interrompido" (WR-04). */
   settleStatusAfterRestart?: () => Promise<void>;
+  /**
+   * Regra "para onde vai a fala" (Fase 8, D-01). Ausente = `configDestination`, a regra da Fase 7
+   * (o ID salvo na config). A composição de produção passa a política da associação da reunião.
+   */
+  destination?: StreamDestinationPolicy;
 }

@@ -11,7 +11,6 @@ import type { MeetingState } from '@/shared/types/domain';
 import {
   AGENTE_PHRASE_MAX_WAIT_MS,
   AGENTE_PHRASE_QUIET_MS,
-  isStreamingReady,
   type AgenteConfig,
 } from '@/shared/config/agenteConfig';
 import { planStreamStep, type StreamCursor } from '@/features/agente/wordDelta';
@@ -27,6 +26,7 @@ import {
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
+import { configDestination } from './agenteStreamDestination';
 import { createBindingRecorder } from './agenteStreamerBindingRecorder';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
 import { createSnapshotPersister } from './agenteStreamerSnapshot';
@@ -62,6 +62,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let lastDestinationKey: string | null = null;
   /** CR-01/WR-01: memória do vínculo sessão → última reunião (extraída para não passar de 300 linhas). */
   const bindingRecorder = createBindingRecorder(deps);
+  /** Fase 8 (D-01): a regra "para onde vai a fala"; sem política injetada vale a da Fase 7. */
+  const destination = deps.destination ?? configDestination;
   const status = createStatusReporter(deps.reportStatus);
   const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
@@ -114,10 +116,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
    * liberados foram montados para o destino antigo e não podem segurar (nem
    * pintar o status de) os novos. Mesma regra da janela (IN-11).
    */
-  function syncDestination(config: AgenteConfig): void {
-    const key = `${config.agenteBackendUrl}
-${config.agenteSessionId}
-${config.agenteApiKey}`;
+  function syncDestination(key: string): void {
     if (lastDestinationKey !== null && key !== lastDestinationKey) sender.cancelAll();
     lastDestinationKey = key;
   }
@@ -143,16 +142,21 @@ ${config.agenteApiKey}`;
     const config = await deps.loadConfig();
     if (disposed) return; // instância descartada enquanto esperava (WR-13)
     lastState = state;
-    if (!isStreamingReady(config)) {
+    const target = await destination.resolve(config, state.session?.meetingId ?? null);
+    if (disposed) return;
+    if (target.kind === 'disabled') {
       stopStreaming();
       return;
     }
-    syncDestination(config);
-    await advance(config, state);
+    if (target.kind !== 'send') return; // `idle` e `hold`: nenhuma política os produz ainda
+    syncDestination(destination.queueKey(target.config));
+    await advance(target.config, state);
   }
 
   async function advance(config: AgenteConfig, state: MeetingState): Promise<void> {
-    const boundMeetingId = await bindingRecorder.boundMeetingFor(config.agenteSessionId);
+    const boundMeetingId = destination.usesMeetingBinding
+      ? await bindingRecorder.boundMeetingFor(config.agenteSessionId)
+      : '';
     const binding = {
       sessionId: config.agenteSessionId,
       confirmedMeetingId: config.confirmedMeetingId,
@@ -163,10 +167,12 @@ ${config.agenteApiKey}`;
     status.waitingForMeeting(result.waitingForNewMeeting ? (state.session?.meetingId ?? null) : null);
 
     const now = Date.now();
-    const destination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
-    pending = appendDeltas(pending, result.deltas, destination, now);
+    const phraseDestination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
+    pending = appendDeltas(pending, result.deltas, phraseDestination, now);
     drain(config, now, state.phase !== 'recording');
-    await bindingRecorder.record(config.agenteSessionId, cursor?.meetingId ?? null, boundMeetingId);
+    if (destination.usesMeetingBinding) {
+      await bindingRecorder.record(config.agenteSessionId, cursor?.meetingId ?? null, boundMeetingId);
+    }
   }
 
   /** Callback do timer da janela: relê a config (pode ter mudado) antes de mandar. */
@@ -175,11 +181,11 @@ ${config.agenteApiKey}`;
     try {
       const config = await deps.loadConfig();
       if (disposed) return; // descartada enquanto esperava loadConfig (WR-13)
-      if (!isStreamingReady(config)) {
+      if (!destination.canDrain(config)) {
         stopStreaming();
         return;
       }
-      syncDestination(config);
+      syncDestination(destination.queueKey(config));
       drain(config, Date.now(), false);
     } finally {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
@@ -192,13 +198,16 @@ ${config.agenteApiKey}`;
   /** Reage na hora a uma mudança de config, dentro da mesma fila (WR-11). */
   async function applyConfigChange(config: AgenteConfig): Promise<void> {
     if (disposed) return;
-    if (!isStreamingReady(config)) {
+    const target = await destination.resolve(config, lastState?.session?.meetingId ?? null);
+    if (disposed) return;
+    if (target.kind === 'disabled') {
       status.resetSendOutcome(); // WR-07
       stopStreaming();
       return;
     }
+    if (target.kind !== 'send') return; // `idle` e `hold`: nenhuma política os produz ainda
     // WR-01: cancela ANTES de zerar o status — assim um trecho antigo não repinta o erro.
-    syncDestination(config);
+    syncDestination(destination.queueKey(target.config));
     status.resetSendOutcome(); // WR-07
     if (lastState === null) return;
     // WR-02: religar (cursor nulo) numa reunião que não é de outro vínculo começa a contar DESTE
@@ -207,7 +216,7 @@ ${config.agenteApiKey}`;
     // Decisão do time (2026-10-10): confirmar essa reunião a libera DESDE O INÍCIO — inclusive o
     // que foi dito com o toggle desligado —, porque a pessoa decidiu mandá-la inteira para a sessão.
     // Confirmar (ou trocar o session_id) libera na hora, sem esperar alguém voltar a falar.
-    await advance(config, lastState);
+    await advance(target.config, lastState);
   }
 
   /** Assina as mudanças de config no primeiro passo — importar continua sem efeito colateral. */
