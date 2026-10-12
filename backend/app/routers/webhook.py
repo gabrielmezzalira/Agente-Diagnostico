@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from supabase import Client
 
 from app.database import get_supabase
+from app.repositories.transcript_chunks_repository import TranscriptChunksRepository
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
@@ -37,11 +38,9 @@ async def extension_webhook(
     if not payload.text.strip():
         return {"accepted": True}
 
-    db.table("transcript_chunks").insert({
-        "session_id": payload.session_id,
-        "speaker": payload.speaker,
-        "text": payload.text.strip(),
-    }).execute()
+    TranscriptChunksRepository(db).insert_chunk(
+        payload.session_id, payload.text.strip(), payload.speaker
+    )
 
     # Push to in-memory pipeline (non-blocking)
     from app.services.pipeline import pipeline_manager
