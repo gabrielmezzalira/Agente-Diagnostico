@@ -23,6 +23,7 @@ import { migrateLocalStorage } from './storageMigrations';
 import { backfillOpenTabs, canInject, ensurePanelInTab } from './injectPanel';
 import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
+import { onMeetingTabRemoved } from './meetingTabClosed';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
@@ -102,14 +103,8 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   // pra ela. Fora do `ready` de propósito: podar a lista não depende do estado.
   void forgetPanelTab(tabId);
 
-  // A aba da reunião fechou depois do fim: o resumo já está salvo no histórico,
-  // então o estado global volta ao idle sozinho — sem tela presa para a próxima.
-  void ready.then(() => {
-    const current = getState();
-    if (current.phase === 'ended' && current.session?.tabId === tabId) {
-      void dispatch({ type: 'RESET' });
-    }
-  });
+  // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts.
+  void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch }));
 });
 
 function defaultTitle(now: Date): string {
