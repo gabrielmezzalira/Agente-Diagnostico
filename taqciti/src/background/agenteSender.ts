@@ -14,13 +14,8 @@
 import type { ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { AgenteSendOutcome } from '@/shared/config/agenteStatus';
 import type { OutboxItem } from '@/features/agente/outbox';
-import {
-  AGENTE_SEND_MAX_RETRIES,
-  classifySendAttempt,
-  retryDelayMs,
-  type SendAttemptResult,
-} from '@/features/agente/sendRetryPolicy';
 import { logger } from '@/shared/services/log';
+import { createRequestDeliverer } from './agenteSendAttempts';
 import { createMemorySendQueue, type SendQueuePort } from './agenteSendQueue';
 
 export interface AgenteSenderDeps {
@@ -54,43 +49,7 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
   let disposed = false;
 
   const isCurrent = (gen: number) => !disposed && gen === generation;
-
-  async function attempt(request: ExtensionChunkRequest): Promise<SendAttemptResult> {
-    try {
-      // `await` dentro do try: um `send` que lança de forma síncrona vira
-      // erro de rede em vez de derrubar a fila (IN-10).
-      const response = await deps.send(request);
-      return { kind: 'response', ok: response.ok, status: response.status };
-    } catch (error) {
-      logger.error('envio ao Agente falhou', error);
-      return { kind: 'network-error' };
-    }
-  }
-
-  async function deliver(request: ExtensionChunkRequest, gen: number): Promise<void> {
-    for (let retry = 0; isCurrent(gen); retry += 1) {
-      const result = await attempt(request);
-      if (!isCurrent(gen)) return;
-      const verdict = classifySendAttempt(result);
-      const status = result.kind === 'response' ? result.status : null;
-      if (verdict === 'delivered') {
-        report('sent', status);
-        return;
-      }
-      if (verdict === 'rejected') {
-        logger.warn('Agente recusou o trecho', { status });
-        report('rejected', status);
-        return;
-      }
-      if (retry >= AGENTE_SEND_MAX_RETRIES) {
-        logger.error('envio ao Agente falhou depois das novas tentativas', { status });
-        report('failed', status);
-        return;
-      }
-      report('retrying', status);
-      await sleep(retryDelayMs(retry));
-    }
-  }
+  const deliver = createRequestDeliverer({ send: deps.send, sleep, report, isCurrent });
 
   async function run(): Promise<void> {
     let skipped = 0;
