@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-19-PLAN.md
-last_updated: "2026-10-12T19:13:20.495Z"
+stopped_at: Completed 08-16-PLAN.md
+last_updated: "2026-10-12T19:23:18.510Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: d0de4321b01dbbe81af9c35aec421892cd6f6659
+state_head: ce9b9b92c2329580bbeddb04afb58fe6b9127dd8
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 51
-  completed_plans: 44
+  completed_plans: 45
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 20 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-19)
+Plan: 21 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-16)
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -105,6 +105,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P23 | 25 min | 3 tasks | 13 files |
 | Phase 08 P15 | ~20min | 3 tasks | 7 files |
 | Phase 08 P19 | 8 min | 2 tasks | 12 files |
+| Phase 08 P16 | 8 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -172,6 +173,7 @@ Recent decisions affecting current work:
 - [Phase 08]: B5 = vincular-ao-vivo: o ID salvo na config só vincula a reunião ao vivo ainda sem cliente; CR-01 sai da tela (08-18)
 - [Phase 08]: 08-13: D-11 confirmar-d11 — Descartar apaga de vez a cópia local (só ended-unsent, fora do ar); evicção do histórico nunca remove reunião não enviada (teto suave)
 - [Phase 08]: 08-19: B3-a aplicada na Taqciti — chunk_id em toda fala ao vivo (UUID da fila) e em toda parte (bulk:{meetingId}:{index}); reenvio automático ligado; B3-b (retirada-nunca) intacta
+- [Phase 08]: 08-16: B4-b aplicada como alicerce inerte — 5 min com envio parado (primeiro prazo vale), reconferência 30 s, backoff de 11 tentativas (~16 h) e só origem picker é elegível; finishGaveUp/sessionFinished sobrevivem a mudança de estado e a reinício
 
 ### Pending Todos
 
@@ -203,6 +205,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T19:13:20.275Z
-Stopped at: Completed 08-19-PLAN.md
+Last session: 2026-10-12T19:23:00.515Z
+Stopped at: Completed 08-16-PLAN.md
 Resume file: None
