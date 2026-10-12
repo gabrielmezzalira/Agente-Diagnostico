@@ -23,9 +23,10 @@ Todas em `taqciti/`; testes automáticos cobrem a regra, mas nenhuma foi vista n
 - [ ] **DA-4 — navegar encerra** (`meetingTabNavigated.ts`): com a reunião gravando, navegar a MESMA aba para outro site.
       Esperado: a reunião vira "encerrada" e a sessão do Agente fecha (na hora com a fila vazia; senão em até 5 min).
       Contra-prova: recarregar a mesma sala, ou mudar só o `?query`, **não** encerra.
-- [ ] **DA-5 — nova rodada no boot** (`agenteSessionFinisherInstance.ts`): com uma associação `picker` marcada
-      `finishGaveUp: true` no `chrome.storage`, recarregar a extensão. Esperado: uma única tentativa de encerrar;
-      se falhar de novo, desiste de novo e não repete até o próximo boot.
+- [ ] **DA-5 — nova rodada ao abrir o navegador** (`restartGaveUpRounds`, disparada por `chrome.runtime.onStartup`):
+      com uma associação `picker` marcada `finishGaveUp: true` no `chrome.storage`, **fechar e abrir o Chrome**
+      (recarregar a extensão NÃO dispara). Esperado: uma única tentativa de encerrar; se falhar de novo, desiste de novo
+      e não repete até a próxima abertura do navegador.
 - [ ] **Retomar envio limpa `finishGaveUp`** (`associationSend.ts`): reunião com envio parado e desistência marcada →
       "Continuar envio" → concluir. Esperado: a sessão passa a ser encerrada normalmente depois.
 
@@ -33,7 +34,8 @@ Todas em `taqciti/`; testes automáticos cobrem a regra, mas nenhuma foi vista n
 
 - [ ] **Confirmar DA-4 e DA-5.** Implementei as opções *recomendadas* do guia (`navegar-encerra`, `nova-rodada-no-boot`)
       a pedido de "continue a implementação". Cada uma está em commit próprio e se desfaz com `git revert`:
-      DA-4 = `566a005`, DA-5 = `32c029b`.
+      DA-4 = `566a005`, DA-5 = `32c029b` + correção `4160d98` (o gatilho passou do boot do worker para o `onStartup`).
+      O code review (`10-REVIEW.md`) achou o problema do gatilho; ver `PENDENCIAS-FASE-10.md` para o que ficou aberto.
 - [ ] **Remover o código da Fase 7** (`confirmNewMeeting`, `confirmedMeetingId`, `configDestination`, texto "confirme abaixo").
       **Não feito:** é remoção de código e mexe no formato da config guardada no navegador de quem já usa.
 - [ ] **Aviso de histórico cheio** de reuniões não enviadas. **Não feito:** precisa de decisão de produto e de UI.

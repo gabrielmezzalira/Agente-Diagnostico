@@ -30,9 +30,9 @@
 - B4-b: Taqciti encerra a sessão **na hora que a call acaba** (fila vazia); envio parado → encerra em **5 min**; reentrar na mesma sala depois de encerrada = **reunião nova** (DA-1); DA-2 continuar-com-aviso; DA-3 fechar-aba-encerra. Motivo: o backend chama o Gemini a cada 15/30 s mesmo sem texto novo, enquanto a sessão estiver aberta.
 
 ## Em aberto (NÃO tratar como aceitas — decidir com o time)
-- **DA-4:** aba navega para outro site no meio da call, sem fechar (recomendada: `navegar-encerra`).
-- **DA-5:** após ~16 h de falha ao encerrar, nada mais encerra a sessão (recomendada: `nova-rodada-no-boot`).
-- `finishGaveUp` não é limpo pela retomada do envio (08-20) — confirmar.
+- **DA-4:** aba navega para outro site no meio da call, sem fechar. **Implementada** com a opção recomendada (`navegar-encerra`, commit `566a005`); falta o time confirmar. Limite conhecido: sem a permissão `tabs`, ir para `chrome://` não dispara (ver `PENDENCIAS-FASE-10.md`).
+- **DA-5:** após ~16 h de falha ao encerrar, nada mais encerrava a sessão. **Implementada** com a opção recomendada, mas disparada pelo `chrome.runtime.onStartup` (uma vez por abertura do navegador), e NÃO pelo boot do service worker — o code review mostrou que o boot do worker acorda sem limite. Falta o time confirmar.
+- ~~`finishGaveUp` não é limpo pela retomada do envio (08-20)~~ — **corrigido** (`a717b64`).
 - Aviso de histórico cheio de reuniões não enviadas; remoção do código da Fase 7 (`confirmNewMeeting`, `confirmedMeetingId`, `configDestination`, texto "confirme abaixo").
 
 ## Acessos que o outro PC pode não ter
