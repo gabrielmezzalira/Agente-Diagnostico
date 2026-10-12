@@ -491,29 +491,41 @@ Legenda: **L** livre agora · **B1/B2/B3** bloqueado pela decisão 1/2/3 do CONT
 | A9 | Retomar o upload do último ack duplica no máximo 1 trecho | Pitfall 12 | Se houver paralelismo no futuro, a margem cresce |
 | A10 | Sessão órfã (criada e nunca usada) não gera custo | Pitfall 8 | Se algo abrir o pipeline sem chunk (ex.: WS do web app), passa a gerar — improvável |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Todas as 8 perguntas têm dono no planejamento (revisão de 2026-10-11): as que são do time viraram
+> `checkpoint:decision` com `gate="blocking-human"`; as de política técnica viraram regra explícita de um plano;
+> a de cota virou medição obrigatória no teste manual D-20. Cada item abaixo diz onde está resolvido.
 
 1. **Quem encerra a sessão criada pela Taqciti, e quando?** (nova decisão do time, não listada no CONTEXT)
    - Sabemos: sem `finish`, o pipeline segue em laço (Pitfall 1); `finish` antes de 10 min após o fim quebra a retomada da mesma sala; o web app tem o botão "Encerrar" (WS `finish_session`) e a rota `POST /sessions/{id}/finish` existe sem proteção.
    - Falta: política (automática pelo SW com rota gated? manual no web app? timeout no backend?).
    - Recomendação: rota `POST /webhook/extension/sessions/{id}/finish` chamada pelo SW após o fim + outbox vazia + janela de 10 min; alternativa menor: timeout de inatividade no backend (mudança interna sem contrato). Planner: `checkpoint:decision` antes das tasks de backend.
+   - **RESOLVIDA — dono:** decisão do time **B4-b**, `checkpoint:decision` da Task 1 do plano **08-15** (rota de finish na Task 2 do 08-15; gatilho por `chrome.alarms` no plano **08-16**). O resíduo "sessão em `send-failed` não retomada" faz parte da mesma resposta.
 
 2. **O que o campo "ID da sessão" da tela de configuração passa a fazer?**
    - Sabemos: o UI-SPEC o mostra só quando a lista falha e também oferece "Vincular com este ID" no picker.
    - Falta: o ID salvo na config vira destino implícito de reuniões futuras? Isso reabre o "palpite" (critério 3).
    - Recomendação: destino **só** via associação; o ID da config pré-existente nunca envia sozinho. O "Vincular com este ID" cria uma associação `origin: 'manual-id'` para aquela reunião. Registrar como decisão do plano.
+   - **RESOLVIDA — dono:** o destino só por associação está garantido em código no plano **08-01** (tracer); o papel do campo na tela é a decisão do time **B5**, `checkpoint:decision` da Task 1 do plano **08-18**.
 
 3. **`mode` do cliente criado pela Taqciti.** Recomendação: `discovery` (milestone v3.0). Confirmar.
+   - **RESOLVIDA — dono:** decisão do time **B4-a**, dentro do `checkpoint:decision` B1 (Task 1 do plano **08-07**); aplicada na Task 1 do plano **08-12** (`EXTENSION_CLIENT_MODE`).
 
 4. **Adicionar `alarms` ao manifesto?** Sem ele, uma fila offline pendente só reenvia no próximo flush (legenda), no boot do SW ou por comando de UI. Com ele, reenvio periódico mesmo em silêncio (mínimo 30 s, Chrome ≥ 120). Recomendação: adicionar, como task própria com a seção 6 do template.
+   - **RESOLVIDA — dono:** parte da decisão do time **B4-b** (opção `sw-com-alarms`, Task 1 do plano **08-15**); a permissão entra na Task 2 do plano **08-16**, com a seção 6 própria.
 
 5. **Política de evicção do histórico (100).** Recomendação: nunca descartar `ended-unsent`/`send-failed`; avisar quando o histórico estiver cheio de não enviados.
+   - **RESOLVIDA — dono:** plano **08-13**, Task 1 (`selectRecordsToKeep`: teto suave, nunca evicta reunião não enviada — suposição protetiva e reversível). O aviso "histórico cheio de não enviadas" não tem cópia no UI-SPEC e fica registrado como DECISÃO EM ABERTO não bloqueante na seção 6 do 08-13; a cota real é medida no D-20 (plano **08-21**, Task 2).
 
 6. **Duplicidade de nome de cliente.** O UI-SPEC tem a cópia "Já existe um cliente com esse nome." Não há índice único em `projects.client` (e dados antigos podem ter nomes repetidos). Recomendação: checar no service (409, sem acento/caixa) + pré-checar na lista do cliente; **não** criar índice único.
+   - **RESOLVIDA — dono:** item do `checkpoint:decision` B1 (Task 1 do plano **08-07**); implementada no service (Task 1 do **08-12**, 409) e na pré-checagem do seletor (Task 3 do **08-03**).
 
 7. **Limite de nome (120).** O UI-SPEC assume `maxLength` 120 até a decisão 1; usar o mesmo valor em `Field(max_length=120)` e no `TextField`.
+   - **RESOLVIDA — dono:** item do `checkpoint:decision` B1 (Task 1 do plano **08-07**); aplicado em `ClientCreateForm` (Task 3 do **08-03**) e em `ExtensionClientCreate` (Task 1 do **08-12**).
 
 8. **`unlimitedStorage`?** Histórico (100 reuniões) + outbox + associações dividem 10 MB. Estimativa `[ASSUMED]`: reunião de 1 h ≈ dezenas de KB de texto (folga grande), mas não medida. Recomendação: medir o `chrome.storage.local.getBytesInUse()` no teste manual e só pedir `unlimitedStorage` se passar de ~50%.
+   - **RESOLVIDA — dono:** medição obrigatória no roteiro manual D-20 (plano **08-21**, Task 2: `chrome.storage.local.getBytesInUse(null)` anotado depois da reunião longa). Pedir `unlimitedStorage` só se passar de ~5 MB (50% da cota) — decisão do time registrada como DECISÃO EM ABERTO não bloqueante na seção 6 dos planos **08-11** e **08-23**.
 
 ## Environment Availability
 

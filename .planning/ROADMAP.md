@@ -246,12 +246,12 @@ Plans:
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Plans**: 21 plans
+**Plans**: 23 plans
 **UI hint**: yes
 
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Tracer: o vínculo por reunião decide o destino do streamer + ciclo de vida da associação (pendente, não enviada, recuperação no boot)
+- [ ] 08-01-PLAN.md — Tracer: o vínculo por reunião decide o destino do streamer (extração mecânica do CR-01, semente `{}`, reevaluate) + reducer completo da associação (fim, retomada e conclusão por estado)
 - [ ] 08-02-PLAN.md — Kit (ícone alert, keyframe nudge, ConfirmModal.cancelLabel) + bolha "!" e cartão de decisão
 - [ ] 08-03-PLAN.md — Portas ClientDirectory/AgenteSessionGateway + busca sem acento + seletor de clientes com plano B
 - [ ] 08-04-PLAN.md — Barra de vínculo, cartão de fim da reunião (envio em partes) e selo do histórico
@@ -262,14 +262,16 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-09-PLAN.md — [DECISÃO B3] Webhook idempotente por chunk_id + migração aplicada por humano
+- [ ] 08-09-PLAN.md — [DECISÃO B3 + B3-b + B3-c] Webhook idempotente por chunk_id + migração aplicada por humano; no mesmo checkpoint, B3-b (desistir ou não de fala recusada com HTTP 500) e B3-c opcional (404 para session_id inexistente)
 - [ ] 08-10-PLAN.md — Comandos ui/agente/* + vínculo ao vivo (backfill + semente) e envio da reunião encerrada
-- [ ] 08-11-PLAN.md — Fila durável de envio + status de entrega em storage.local (reenvio pronto, desligado até a B3)
+- [ ] 08-11-PLAN.md — Fila durável (store) + status de entrega em storage.local (reenvio nasce desligado até a B3) + rastro persistente de falas descartadas e a nota dele na tela "Agente Diagnóstico"
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 08-12-PLAN.md — Criar cliente pela extensão + portas HTTP reais na Taqciti
 - [ ] 08-14-PLAN.md — Painel do Meet: bolha "!", cartão, seletor e barra de vínculo (hooks e contêineres)
+- [ ] 08-22-PLAN.md — Ciclo de vida da associação: pendente ao detectar, não enviada no fim, retomada da mesma sala, recuperação no boot
+- [ ] 08-23-PLAN.md — Sender sobre a fila durável: refactor de API, sem descarte do mais antigo, retirada por HTTP 500 só conforme a resposta B3-b do time, toda fala descartada anotada no rastro, fiação e ponta a ponta de queda/reinício
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
