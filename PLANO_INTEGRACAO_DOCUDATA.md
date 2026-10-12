@@ -41,7 +41,7 @@ integrações, dados, volumetria, restrições; validação → o que foi aceito
 
 ## 2. Como vai ser alterado
 
-### 2.1 Modelo de dados novo (DocuData, aditivo, migration manual v8)
+### 2.1 Modelo de dados novo (DocuData, aditivo, migration manual v9; a v8 é a sub-área Produto)
 Tabelas **próprias** de Discovery. Não mexo em `ingestions` (ela tem `sprint_number NOT NULL` e o Discovery não tem sprint)
 nem em `funcionalidades` (continua sendo o escopo **validado** do Delivery).
 
@@ -56,7 +56,7 @@ nem em `funcionalidades` (continua sendo o escopo **validado** do Delivery).
 ### 2.2 Ordem dos commits
 **DocuData** (branch `feat/discovery-requisitos`, cortada da `main`; **sem** tocar nos arquivos que você já tem modificados):
 1. Spec `docs/superpowers/specs/NN-discovery-requisitos.md` (a convenção do repo é "uma spec por vez"). Só documento.
-2. Migration v8 como bloco **comentado** em `supabase_schema.sql` + SQL de preflight somente-leitura (padrão do arquivo). **Eu não aplico.**
+2. Migration v9 como bloco **comentado** em `supabase_schema.sql` + SQL de preflight somente-leitura (padrão do arquivo). **Eu não aplico.**
 3. Modelos Pydantic e `services/discovery_requisitos.py` (regras puras: mesclar evidência, mudar status, gerar código).
 4. Grafo `graphs/requisitos_graph.py` (LangGraph): recebe a reunião nova + **todos os requisitos já existentes** e devolve
    candidatos novos, evidências para requisitos existentes e conflitos. Foco por `tipo` de reunião. Reaproveita o padrão do
@@ -93,7 +93,7 @@ O que é mecânico: 1, 2 e 8. O que muda comportamento: 5, 10 e 11.
 
 ## 4. Como prevenir
 
-- **2:** SQL idempotente, aditivo, comentado, com preflight somente-leitura; **você** aplica. Conferir a numeração com a Spec 10 antes de fechar `v8`.
+- **2:** SQL idempotente, aditivo, comentado, com preflight somente-leitura; **você** aplica. Conferir a numeração com a Spec 10 antes de fechar a `v9` (e a `v8`).
 - **4:** o grafo só devolve requisito **com trecho de evidência** (o código rejeita candidato sem evidência, como as travas do `generation_graph`);
   a mesclagem compara por similaridade **e** exige confirmação humana quando houver dúvida (status `em_revisao`, nunca auto-fusão silenciosa);
   limite de tamanho do contexto + resumo incremental por reunião; delimitar e redigir segredos do conteúdo enviado ao modelo (regra do `AGENTS.md` §5.3).
@@ -112,11 +112,17 @@ O que é mecânico: 1, 2 e 8. O que muda comportamento: 5, 10 e 11.
 - Requisito promovido a funcionalidade por engano: `funcionalidade_id` é nulo-ável e o histórico fica em `requisito_transicoes`; desfazer = apagar a
   funcionalidade e voltar o requisito a `validado`, por uma rota explícita (passo 5).
 
-## 6. Decisões que são do usuário/time — DECISÃO EM ABERTO
+## 6. Decisões que são do usuário/time
+
+**Decididas em 2026-10-12 (brainstorm):** (1) criar a subárea **Produto já** (Spec 11 do DocuData, separada e feita antes); (2) **chave de serviço dedicada** para o Agente
+(`DOCUDATA_DISCOVERY_KEY`); (3) enviar **a transcrição inteira também** (guardada à parte, só `gerente`+ lê, teto de 2 MB, redigida de segredos); (4) **operacional revisa e gerente valida**;
+(5) análise cumulativa **incremental + botão "reconsolidar"** (abordagem C). Specs escritas em `Agente-Documentador/docs/superpowers/specs/11-*.md` e `12-*.md` (não commitadas, aguardando revisão).
+
+**Ainda em aberto — DECISÃO EM ABERTO:**
 
 1. **Subárea.** O DocuData só tem `dados` e `dev`, e o Discovery é da subárea de **Produto**. Criar a subárea `produto` mexe em permissões, Google Drive e
    templates por subárea. *Proposta para a fatia 1:* usar projetos `dados` com `arquetipo = consultoria_discovery` (já existe) e decidir `produto` depois.
-2. **Quem aplica a migration v8** e **quando**, considerando a Spec 10 em andamento. Eu entrego o SQL; não aplico em banco real.
+2. **Quem aplica as migrations v8 e v9** e **quando**, considerando a Spec 10 em andamento. Eu entrego o SQL; não aplico em banco real.
 3. **Credencial de serviço.** Reusar o `DOCUDATA_APP_SECRET`/`require_app_key` (hoje marcado como "legado/hook") ou criar uma chave dedicada para o Agente.
 4. **Transcrição e LGPD.** O que sai do Agente para o DocuData: só o conteúdo estruturado e trechos de evidência, ou a transcrição inteira? Retenção?
 5. **Papéis.** Operacional revisa e gerente valida (proposta), mas o operacional hoje só vê 4 abas e só os projetos em que está cadastrado. A aba "Requisitos" é visível a ele?
