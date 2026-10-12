@@ -40,6 +40,8 @@ export const agenteUiMessageSchemas = [
     meetingId: AGENTE_MEETING_ID,
     target: agenteBindTargetSchema,
   }),
+  /** Descartar (D-11, one-way): só reunião encerrada e não enviada; apaga a cópia local, nada no backend. */
+  z.object({ type: z.literal('ui/agente/meeting/discard'), meetingId: AGENTE_MEETING_ID }),
 ] as const;
 
 export const agenteCommandErrorSchema = z.enum([

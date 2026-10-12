@@ -7,7 +7,12 @@
  */
 import type { AssociationEvent, AssociationState } from '@/features/agente/association';
 import { sortClients } from '@/features/agente/clientSearch';
-import { applyAssociationEvent } from '@/shared/config/agenteAssociationStore';
+import {
+  applyAssociationEvent,
+  getAssociation,
+  removeAssociation,
+} from '@/shared/config/agenteAssociationStore';
+import type { MeetingPhase, MeetingState } from '@/shared/types/domain';
 import type {
   AgenteBindTarget,
   AgenteCommandResult,
@@ -15,7 +20,18 @@ import type {
 import { createBindFlow, type BindFlowDeps } from './agenteBindFlow';
 
 /** Tudo o que o serviço usa; o vínculo (`bind`) delega ao fluxo, que leva as mesmas portas. */
-export type AgenteAssociationServiceDeps = BindFlowDeps;
+export interface AgenteAssociationServiceDeps extends BindFlowDeps {
+  /** Apaga o registro da reunião do histórico local (nunca toca o backend). */
+  deleteRecord: (meetingId: string) => Promise<void>;
+  /** A reunião está em `ended` na máquina: volta ao ocioso para o painel não ficar preso nela. */
+  resetEndedMeeting: (meetingId: string) => Promise<void>;
+}
+
+const LIVE_PHASES: readonly MeetingPhase[] = ['captionsRequired', 'recording', 'paused'];
+
+function isMeetingLive(state: MeetingState, meetingId: string): boolean {
+  return state.session?.meetingId === meetingId && LIVE_PHASES.includes(state.phase);
+}
 
 export function createAgenteAssociationService(deps: AgenteAssociationServiceDeps) {
   const bindFlow = createBindFlow(deps);
@@ -44,12 +60,32 @@ export function createAgenteAssociationService(deps: AgenteAssociationServiceDep
     }
   }
 
+  /**
+   * Descartar (D-11, T7): porta sem volta, por isso a regra de estado é checada AQUI, não na UI —
+   * só `ended-unsent` e fora do ar. Apaga o registro local e a associação; nada é apagado no backend.
+   */
+  async function discard(meetingId: string): Promise<AgenteCommandResult> {
+    const association = await getAssociation(meetingId);
+    if (association === null) return { ok: false, error: 'not-found' };
+    const meeting = deps.getMeetingState();
+    if (association.state !== 'ended-unsent' || isMeetingLive(meeting, meetingId)) {
+      return { ok: false, error: 'invalid-state' };
+    }
+    if (meeting.session?.meetingId === meetingId && meeting.phase === 'ended') {
+      await deps.resetEndedMeeting(meetingId);
+    }
+    await deps.deleteRecord(meetingId);
+    await removeAssociation(meetingId);
+    return { ok: true };
+  }
+
   return {
     listClients,
     open: (meetingId: string) => transition(meetingId, { type: 'opened' }, 'choosing'),
     defer: (meetingId: string) => transition(meetingId, { type: 'deferred' }, 'deferred'),
     bind: (meetingId: string, target: AgenteBindTarget) =>
       bindFlow.bind(meetingId, target),
+    discard,
     /** Só para testes: espera o envio em partes que roda em segundo plano. */
     whenIdle: () => bindFlow.whenIdle(),
   };

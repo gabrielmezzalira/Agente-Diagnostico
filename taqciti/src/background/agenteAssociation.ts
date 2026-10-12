@@ -18,16 +18,24 @@ import {
   type AgenteAssociationServiceDeps,
 } from './agenteAssociationService';
 import { reevaluateAgenteStreamer } from './agenteStreamer';
-import { getRecord } from './history';
+import { deleteRecord, getRecord } from './history';
 import { createHttpClientDirectory } from './httpClientDirectory';
 import { createHttpSessionGateway } from './httpSessionGateway';
-import { getState } from './sessionController';
+import { dispatch, getState } from './sessionController';
 
 function defaultSend(request: ExtensionChunkRequest): Promise<Response> {
   return fetch(request.url, {
     ...request.init,
     signal: AbortSignal.timeout(AGENTE_REQUEST_TIMEOUT_MS),
   });
+}
+
+/** Descartar a reunião que ainda está em `ended` na máquina: devolve o painel ao ocioso (como o "Apagar"). */
+async function resetEndedMeeting(meetingId: string): Promise<void> {
+  const current = getState();
+  if (current.session?.meetingId === meetingId && current.phase === 'ended') {
+    await dispatch({ type: 'RESET' });
+  }
 }
 
 /**
@@ -41,6 +49,8 @@ let activeDeps: AgenteAssociationServiceDeps = {
   sessions: createHttpSessionGateway({ loadConfig }),
   getMeetingState: getState,
   getRecord,
+  deleteRecord,
+  resetEndedMeeting,
   loadConfig,
   send: defaultSend,
   // Logo depois do vínculo, o que foi dito depois da semente sai uma vez (08-01).
@@ -63,4 +73,5 @@ export const agenteAssociation = {
   defer: (meetingId: string) => activeService.defer(meetingId),
   bind: (meetingId: string, target: AgenteBindTarget) =>
     activeService.bind(meetingId, target),
+  discard: (meetingId: string) => activeService.discard(meetingId),
 };

@@ -8,6 +8,7 @@
  * transcrição.
  */
 import { PROVIDER_GOOGLE_MEET } from '@/shared/config/constants';
+import { removeAssociation } from '@/shared/config/agenteAssociationStore';
 import { onMessage } from '@/shared/services/messaging';
 import { logger } from '@/shared/services/log';
 import {
@@ -213,6 +214,7 @@ onMessage((message, sender) => {
           await dispatch({ type: 'RESET' });
         }
         await deleteRecord(message.id);
+        await removeAssociation(message.id);
         return { ok: true };
       }
       case 'ui/history/rename': {
@@ -231,6 +233,8 @@ onMessage((message, sender) => {
         return agenteAssociation.defer(message.meetingId);
       case 'ui/agente/meeting/bind':
         return agenteAssociation.bind(message.meetingId, message.target);
+      case 'ui/agente/meeting/discard':
+        return agenteAssociation.discard(message.meetingId);
       case 'state/updated':
         return undefined;
     }
