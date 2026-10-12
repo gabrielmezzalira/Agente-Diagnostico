@@ -7,6 +7,9 @@
  */
 import type { HistoryStatus, MeetingRecord } from '@/shared/types/domain';
 import { MAX_HISTORY_RECORDS, STORAGE_KEYS } from '@/shared/config/constants';
+import { loadAssociations, removeAssociations } from '@/shared/config/agenteAssociationStore';
+import { UNSENT_STATES, selectRecordsToKeep } from '@/features/history/eviction';
+import { logger } from '@/shared/services/log';
 import { readLocal, writeLocal } from '@/shared/services/storage';
 
 const VALID_STATUSES: readonly HistoryStatus[] = ['recording', 'ready'];
@@ -21,15 +24,42 @@ export async function listHistory(): Promise<MeetingRecord[]> {
   return raw.map(normalizeRecord);
 }
 
+/**
+ * Quem a evicção não pode tocar: reunião cuja associação ainda não foi enviada (modelo B, D-04).
+ * As associações vêm do cache do store (sem nova leitura de storage a cada gravação). Se não der
+ * para lê-las, protege TUDO — melhor passar do teto por um instante do que apagar às cegas.
+ */
+async function loadProtectionRule(): Promise<(id: string) => boolean> {
+  try {
+    const associations = await loadAssociations();
+    return (id) => {
+      const state = associations[id]?.state;
+      return state !== undefined && UNSENT_STATES.includes(state);
+    };
+  } catch (error) {
+    logger.error('ler as associações para a evicção falhou — nada será removido', error);
+    return () => true;
+  }
+}
+
 export async function upsertRecord(record: MeetingRecord): Promise<void> {
   const history = await listHistory();
   const previous = history.find((item) => item.id === record.id);
   const merged = previous ? { ...previous, ...record } : record;
   const without = history.filter((r) => r.id !== record.id);
-  const next = [merged, ...without]
-    .sort((a, b) => b.startedAt - a.startedAt)
-    .slice(0, MAX_HISTORY_RECORDS);
-  await writeLocal(STORAGE_KEYS.history, next);
+  const sorted = [merged, ...without].sort((a, b) => b.startedAt - a.startedAt);
+  // Modelo B: reunião não enviada nunca é evictada (teto suave); só enviadas/sem associação saem.
+  const { kept, evicted } = selectRecordsToKeep(
+    sorted,
+    MAX_HISTORY_RECORDS,
+    await loadProtectionRule(),
+  );
+  await writeLocal(STORAGE_KEYS.history, kept);
+  if (evicted.length > 0) {
+    await removeAssociations(evicted).catch((error: unknown) =>
+      logger.error('limpar a associação das reuniões evictadas falhou', error),
+    );
+  }
 }
 
 export async function getRecord(id: string): Promise<MeetingRecord | null> {
