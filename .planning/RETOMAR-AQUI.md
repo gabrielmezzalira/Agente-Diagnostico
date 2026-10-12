@@ -9,6 +9,8 @@
 - Falta: (1) **teste manual D-20** (Chrome + Meet reais, por uma pessoa); (2) `/gsd-code-review`; (3) `/gsd-verify-work`; (4) PR da branch para a `main`. O requisito TAQ-02 continua Pending de propósito até o D-20 passar.
 - Estado detalhado: `.planning/STATE.md`, `.planning/ROADMAP.md`, SUMMARYs em `.planning/phases/08-taqciti-session-association/`.
 
+- **Checklist do que fazer e testar (inclui a `GEMINI_API_KEY` no Railway):** `.planning/PENDENCIAS-FASE-08.md`. DA-4 e DA-5 já têm código (opções recomendadas, a confirmar com o time).
+
 ## Passo a passo no outro PC
 1. `git fetch && git checkout feat/fase-08-taqciti-session-association && git pull`
 2. Abra o Claude Code na pasta do repo e leia este arquivo + `CLAUDE.md` (regras do projeto: português, SOLID, **nunca ler `.env`**).
