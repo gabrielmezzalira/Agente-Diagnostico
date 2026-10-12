@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-20-PLAN.md
-last_updated: "2026-10-12T20:16:10.907Z"
+stopped_at: Completed 08-21-PLAN.md (portao automatico verde; aguardando D-20 humano)
+last_updated: "2026-10-12T20:24:48.532Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: 766080a718a11a3a1874c127222a682ea0e7aec6
+state_head: ae28d0eea6880ebe6c94532274e39502eac57257
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 51
-  completed_plans: 50
+  completed_plans: 51
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 26 of 27 concluídos (execução sequencial fora de ordem; último concluído: 08-20; falta 08-21)
+Plan: 27 of 27 planos executados (último: 08-21, portão automático verde). FASE AINDA NÃO CONCLUÍDA: falta o teste manual D-20 (pessoa do time, Chrome + Meet reais, durante o /gsd-verify-work); TAQ-02 segue Pending.
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -111,6 +111,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P26 | 20min | 2 tasks | 4 files |
 | Phase 08 P25 | 12 min | 2 tasks | 8 files |
 | Phase 08 P20 | 22 min | 3 tasks | 18 files |
+| Phase 08 P21 | ~25min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,7 @@ None yet.
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 - [Phase 07] RESOLVIDO (2026-09-27): SC1 e SC2 verificados via /gsd-verify-work. SC1 encontrou G-07-1/G-07-2 (fala fragmentada em varias linhas) na primeira rodada; fechados pelo plano 07-04 (janela de agrupamento por fala) e confirmados OK no reteste ao vivo no Meet. SC2 (Gerar Documento sem regressao) passou de primeira.
+- Fase 8: teste manual D-20 (a-i) pendente (pessoa do time, Chrome+Meet reais, no /gsd-verify-work); nao distribuir build da Taqciti antes; criar GEMINI_API_KEY no Railway antes de deploy/merge; revisar T-08-10; pendencias DA-4, DA-5, B3-b/c, finishGaveUp
 
 ## Deferred Items
 
@@ -214,6 +216,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T20:16:10.547Z
-Stopped at: Completed 08-20-PLAN.md
+Last session: 2026-10-12T20:24:31.810Z
+Stopped at: Completed 08-21-PLAN.md (portao automatico verde; aguardando D-20 humano)
 Resume file: None
