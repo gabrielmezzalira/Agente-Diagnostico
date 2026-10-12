@@ -114,7 +114,7 @@ Cada commit é reversível sozinho. Rollback na ordem inversa: `git revert e9eb1
 - Testes do plano: `npx vitest run src/background/agenteFinishTriggers.test.ts src/background/agenteAssociationLifecycle.test.ts src/background/agenteSessionFinisherInstance.test.ts src/background/agenteBindFlow.test.ts` -> **4 arquivos, 90 testes passando**. Task 1: `agenteAssociationLifecycle` + `agenteStreamerAssociation` -> 42 passando.
 - Portão do plano: `npm test` -> **85 arquivos, 1264 testes passando**; `npm run typecheck`, `npm run lint` e `npm run build` sem erro (o `dist/manifest.json` contém `alarms`).
 - Greps do `<verify>`: permissão fora de comentários = 1; listener de alarme na coluna 1 = 1; `rescheduleAfterRestart()` = 1; `configureAgenteSessionFinisher(` = 1; `await agenteSessionFinisher` no ciclo de vida = 0; `awk 'FNR == 201'` sem saída.
-- Tamanhos: `agenteBindUpload.ts` 140, `agenteAssociation.ts` 80, `agenteAssociationLifecycle.ts` 162 linhas. `index.ts` (240 para 251) e `manifest.config.ts` (199 para 204) já estavam no limite antes da fase (dívida anterior) e só ganharam o mínimo. `package.json` e `package-lock.json` sem diff (T-08-SC).
+- Tamanhos: `agenteBindUpload.ts` 140, `agenteAssociation.ts` 80, `agenteAssociationLifecycle.ts` 162 linhas. `index.ts` (240 para 251) e `manifest.config.ts` (199 para 203) já estavam no limite antes da fase (dívida anterior) e só ganharam o mínimo. `package.json` e `package-lock.json` sem diff (T-08-SC).
 - O ponta a ponta com Chrome e backend reais é o roteiro D-20 do 08-21.
 
 ## Deviations from Plan
