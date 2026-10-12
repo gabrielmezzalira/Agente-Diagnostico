@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-14-PLAN.md
-last_updated: "2026-10-12T15:02:00.264Z"
+stopped_at: Completed 08-22-PLAN.md
+last_updated: "2026-10-12T15:12:11.977Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: fc26c4869aca776b56daacbf3d3e81f35fa2989e
+state_head: 3f657f52ff8f0ca72e869a1f42e5fd1fe7865f4a
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 36
+  completed_plans: 37
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 13 of 23
+Plan: 14 of 23
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -97,6 +97,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P11 | 25min | 3 tasks | 13 files |
 | Phase 08 P12 | 20min | 3 tasks | 13 files |
 | Phase 08 P14 | 11min | 3 tasks | 12 files |
+| Phase 08 P22 | 12 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-10: open/defer idempotentes (repetir o comando que já vale é ok); histórico guardado serve de reserva do 'tudo o que já foi falado' se a reunião saiu da tela durante o vínculo
 - [Phase 08]: 08-11: fila durável (taq:agenteOutbox), status de entrega (taq:agenteDelivery) e rastro de falas descartadas (taq:agenteDropTrace) em storage.local, cada chave com um único dono; o rastro não é apagado por nenhum status; reenvio automático nasce desligado até a decisão B3
 - [Phase 08]: 08-12: mode do cliente criado pela Taqciti = discovery, source extension, 409 sem acento/caixa (B1/B4-a); corte do nome da sessão em 200 na porta HTTP
+- [Phase 08]: 08-22: syncAssociationLifecycle roda no inicio de runSideEffects (fire-and-forget) e a recuperacao do boot captura os proprios erros, para a associacao nunca perder transicao nem quebrar a cadeia ready
 
 ### Pending Todos
 
@@ -191,6 +193,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T15:01:59.977Z
-Stopped at: Completed 08-14-PLAN.md
+Last session: 2026-10-12T15:12:11.770Z
+Stopped at: Completed 08-22-PLAN.md
 Resume file: None
