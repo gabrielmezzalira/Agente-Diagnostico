@@ -14,7 +14,12 @@ import {
 } from '@/shared/config/agenteRoutes';
 import { DEFAULT_AGENTE_CONFIG, type AgenteConfig } from '@/shared/config/agenteConfig';
 import { createHttpClientDirectory } from './httpClientDirectory';
-import { AGENTE_SESSION_NAME_MAX, createHttpSessionGateway } from './httpSessionGateway';
+import { AgenteFinishError } from '@/features/agente/finishPolicy';
+import {
+  AGENTE_SESSION_NAME_MAX,
+  createHttpSessionFinisher,
+  createHttpSessionGateway,
+} from './httpSessionGateway';
 
 const BACKEND = 'https://agente.exemplo';
 const SESSION_UUID = '22222222-2222-4222-8222-222222222222';
@@ -219,6 +224,108 @@ describe('createHttpSessionGateway.createSession', () => {
     const body = JSON.parse(String(lastCall(fetchMock).init.body)) as Record<string, unknown>;
     expect(body).toEqual({ project_id: 'p1' });
     expect(body).not.toHaveProperty('name');
+  });
+});
+
+describe('createHttpSessionFinisher.finishSession (B4-b, plano 08-16)', () => {
+  const finishedBody = { id: SESSION_UUID, status: 'finished' };
+
+  async function failure(promise: Promise<unknown>): Promise<AgenteFinishError> {
+    const error: unknown = await promise.then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(AgenteFinishError);
+    return error as AgenteFinishError;
+  }
+
+  it('POST sem corpo em /sessions/{id}/finish com o header da chave; 200 vira "finished"', async () => {
+    const { deps, fetchMock } = setup(config({ agenteApiKey: 'k' }), jsonResponse(200, finishedBody));
+
+    await expect(createHttpSessionFinisher(deps).finishSession(SESSION_UUID)).resolves.toBe('finished');
+
+    const { url, init } = lastCall(fetchMock);
+    expect(url).toBe(`${BACKEND}/webhook/extension/sessions/${SESSION_UUID}/finish`);
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeUndefined();
+    expect((init.headers as Record<string, string>)['x-agente-key']).toBe('k');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it.each([404, 409])('status %i vira "gone" (não há mais o que encerrar)', async (status) => {
+    const { deps } = setup(config(), jsonResponse(status, { detail: 'x' }));
+
+    await expect(createHttpSessionFinisher(deps).finishSession(SESSION_UUID)).resolves.toBe('gone');
+  });
+
+  it.each([401, 403, 400, 422])('status %i não repete (retryable false)', async (status) => {
+    const { deps } = setup(config(), jsonResponse(status, { detail: 'x' }));
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.retryable).toBe(false);
+    expect(error.httpStatus).toBe(status);
+  });
+
+  it.each([408, 429, 500, 502, 503])('status %i repete (retryable true)', async (status) => {
+    const { deps } = setup(config(), jsonResponse(status, { detail: 'x' }));
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.retryable).toBe(true);
+    expect(error.httpStatus).toBe(status);
+  });
+
+  it('fetch que lança (rede ou timeout) repete, sem status HTTP', async () => {
+    const { deps } = setup(config(), new TypeError('Failed to fetch'));
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.retryable).toBe(true);
+    expect(error.httpStatus).toBeNull();
+  });
+
+  it.each([
+    ['HTML de um proxy', new Response('<html></html>', { status: 200 })],
+    ['JSON fora do formato', jsonResponse(200, { ok: true })],
+    ['status diferente de finished', jsonResponse(200, { id: SESSION_UUID, status: 'active' })],
+  ])('200 com corpo inválido (%s) repete', async (_label, response) => {
+    const { deps } = setup(config(), response);
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.retryable).toBe(true);
+    expect(error.httpStatus).toBe(200);
+  });
+
+  it('URL do backend inválida: não repete e nenhum fetch acontece', async () => {
+    const { deps, fetchMock } = setup(
+      config({ agenteBackendUrl: 'http://agente.exemplo', agenteApiKey: 's3cr3t' }),
+      jsonResponse(200, finishedBody),
+    );
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.retryable).toBe(false);
+    expect(error.httpStatus).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['não-é-uuid', '', '../../clients', `${SESSION_UUID}/../x`])(
+    'id inválido (%j): não repete e nenhum fetch acontece (T-08-48)',
+    async (sessionId) => {
+      const { deps, fetchMock } = setup(config(), jsonResponse(200, finishedBody));
+
+      const error = await failure(createHttpSessionFinisher(deps).finishSession(sessionId));
+      expect(error.retryable).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('a mensagem do erro nunca carrega a chave nem o corpo da resposta', async () => {
+    const { deps } = setup(
+      config({ agenteApiKey: 's3cr3t' }),
+      jsonResponse(500, { detail: 'segredo-do-corpo' }),
+    );
+
+    const error = await failure(createHttpSessionFinisher(deps).finishSession(SESSION_UUID));
+    expect(error.message).not.toContain('s3cr3t');
+    expect(error.message).not.toContain('segredo-do-corpo');
   });
 });
 
