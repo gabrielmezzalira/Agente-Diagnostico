@@ -107,7 +107,7 @@ export default function ProjectFormPage() {
 
     try {
       const payload: Partial<typeof form> = { ...form }
-      if (isEdit && !payload.gemini_api_key) delete payload.gemini_api_key
+      if (!payload.gemini_api_key) delete payload.gemini_api_key
       if (!payload.description) delete payload.description
       if (!payload.pre_meeting_context) delete payload.pre_meeting_context
       if (!payload.meeting_url) delete payload.meeting_url
@@ -119,7 +119,7 @@ export default function ProjectFormPage() {
         await api.projects.update(id, payload)
         navigate(`/projects/${id}`)
       } else {
-        const created = await api.projects.create(payload as ProjectCreate & { gemini_api_key: string })
+        const created = await api.projects.create(payload as ProjectCreate)
         navigate(`/projects/${created.id}`)
       }
     } catch (e: unknown) {
@@ -293,10 +293,9 @@ export default function ProjectFormPage() {
           </div>
         </Field>
 
-        <Field label="Chave de API Gemini" required={!isEdit}>
+        <Field label="Chave de API Gemini">
           <input
             type="password"
-            required={!isEdit && !hasApiKey}
             value={form.gemini_api_key}
             onChange={e => set('gemini_api_key', e.target.value)}
             placeholder={hasApiKey ? '••••••• (deixe em branco para manter)' : 'AIza...'}
@@ -306,6 +305,11 @@ export default function ProjectFormPage() {
           {hasApiKey && (
             <p className="text-xs text-[var(--color-text-secondary)]">
               Chave salva. Preencha apenas para substituir.
+            </p>
+          )}
+          {!isEdit && !hasApiKey && (
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              Opcional. Sem chave própria, o Agente usa a chave do servidor.
             </p>
           )}
         </Field>

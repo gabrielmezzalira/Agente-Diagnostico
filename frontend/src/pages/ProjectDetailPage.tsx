@@ -284,7 +284,7 @@ export default function ProjectDetailPage() {
             {project.has_api_key ? (
               <span className="text-[var(--color-accent)] text-xs font-medium">Configurada</span>
             ) : (
-              <span className="text-[var(--color-red)] text-xs">Não configurada</span>
+              <span className="text-[var(--color-text-secondary)] text-xs">Usando a chave do servidor</span>
             )}
           </Row>
           {project.meeting_url && (
