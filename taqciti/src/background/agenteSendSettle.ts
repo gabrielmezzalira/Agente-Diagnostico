@@ -6,7 +6,11 @@
  * (`tracker.dropped`). Extraído do sender para ele caber em 200 linhas.
  */
 import type { OutboxItem } from '@/features/agente/outbox';
-import { classifyExhausted } from '@/features/agente/sendRetryPolicy';
+import { AGENTE_OUTBOX_RESEND_ENABLED } from '@/features/agente/outbox';
+import {
+  AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS,
+  classifyExhausted,
+} from '@/features/agente/sendRetryPolicy';
 import type { AgenteSendOutcome } from '@/shared/config/agenteStatus';
 import { logger } from '@/shared/services/log';
 import type { Cycle } from './agenteSendAttempts';
@@ -17,8 +21,10 @@ export interface SettleEnv {
   queue: SendQueuePort;
   tracker: DeliveryTracker;
   report: (outcome: AgenteSendOutcome, httpStatus: number | null) => void;
-  resendEnabled: boolean;
-  serverErrorMaxAgeMs: number | null;
+  /** Ausente = `AGENTE_OUTBOX_RESEND_ENABLED` (desligado até a B3). */
+  resendEnabled?: boolean;
+  /** Ausente = `AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS` (B3-b); `null` = nunca retira. */
+  serverErrorMaxAgeMs?: number | null;
   now: () => number;
 }
 
@@ -31,10 +37,13 @@ export function createCycleSettler(env: SettleEnv) {
   async function settleExhausted(item: OutboxItem, statuses: (number | null)[], remaining: number): Promise<Settled> {
     const last = statuses.at(-1) ?? null;
     const verdict = classifyExhausted({
-      resendEnabled: env.resendEnabled,
+      resendEnabled: env.resendEnabled ?? AGENTE_OUTBOX_RESEND_ENABLED,
       attemptStatuses: statuses,
       ageMs: env.now() - item.enqueuedAt,
-      serverErrorMaxAgeMs: env.serverErrorMaxAgeMs,
+      serverErrorMaxAgeMs:
+        env.serverErrorMaxAgeMs === undefined
+          ? AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS
+          : env.serverErrorMaxAgeMs,
     });
     if (verdict === 'hold') {
       report('retrying', last);

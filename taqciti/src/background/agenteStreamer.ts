@@ -10,6 +10,13 @@ import { AGENTE_REQUEST_TIMEOUT_MS, type ExtensionChunkRequest } from '@/shared/
 import { clearSeed, getAssociation } from '@/shared/config/agenteAssociationStore';
 import { loadAgenteBinding, writeAgenteBinding } from '@/shared/config/agenteBindingStore';
 import { createAgenteConfigReader, onAgenteConfigChange } from '@/shared/config/agenteConfigStore';
+import { recordDroppedUtterances, writeDelivery } from '@/shared/config/agenteDeliveryStore';
+import {
+  appendToOutbox,
+  clearOutbox,
+  loadOutbox,
+  removeOutboxItem,
+} from '@/shared/config/agenteOutboxStore';
 import {
   markInterruptedSend,
   writeSendOutcome,
@@ -41,6 +48,9 @@ function logStatusWriteFailure(write: Promise<void>): void {
 const reportStatus: AgenteStatusSink = {
   writeSendOutcome: (record) => logStatusWriteFailure(writeSendOutcome(record)),
   writeWaiting: (meetingId) => logStatusWriteFailure(writeWaitingMeeting(meetingId)),
+  // Fase 8 (D-18): status de entrega para o painel do Meet e rastro das falas que a Taqciti desistiu de entregar.
+  writeDelivery: (record) => logStatusWriteFailure(writeDelivery(record)),
+  recordDropped: (drop) => logStatusWriteFailure(recordDroppedUtterances(drop)),
 };
 
 /**
@@ -63,6 +73,13 @@ let activeDeps: AgenteStreamerDeps = {
   settleStatusAfterRestart: markInterruptedSend,
   // Fase 8 (D-01): o destino é a associação da reunião, não o ID salvo na config — sem `linked`, nada sai.
   destination: createAssociationDestination({ getAssociation, clearSeed }),
+  // Fase 8 (D-18): falas ainda não entregues ficam em chrome.storage.local e sobrevivem ao reinício.
+  outbox: {
+    load: loadOutbox,
+    append: (items) => appendToOutbox(items),
+    remove: removeOutboxItem,
+    clear: clearOutbox,
+  },
 };
 let activeStreamer = createAgenteStreamer(activeDeps);
 

@@ -6,20 +6,14 @@
  * o Agente confirma — um reinício não perde nada e nenhuma fala antiga é descartada por teto (só o
  * excedente NOVO é recusado). O request é montado na hora de enviar, com a chave atual. Com o reenvio
  * ligado, esgotadas as tentativas por queda o item fica no topo e `kick()` só volta a tentar depois do
- * intervalo; a retirada por HTTP 500 segue a B3-b (`agenteSendSettle.ts`). Toda fala que sai sem entrega é
- * avisada por `onDropped` (rastro do 08-11), exceto as saídas pedidas pela pessoa: `cancelAll()` (desligar,
- * trocar URL/chave, D-09) e o item de outro backend (request `null`). `dispose()` é terminal mas NÃO limpa
- * a fila: descartar a instância não é desligar o envio.
+ * intervalo; a retirada por HTTP 500 segue a B3-b (`agenteSendSettle.ts`). Toda fala que sai sem entrega
+ * é avisada por `onDropped`, exceto as pedidas pela pessoa: `cancelAll()` (D-09) e request `null`.
+ * `dispose()` é terminal mas NÃO limpa a fila: descartar a instância não é desligar o envio.
  */
 import type { ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { AgenteSendOutcome } from '@/shared/config/agenteStatus';
 import type { AgenteDelivery, AgenteDrop } from '@/shared/config/agenteDeliveryStore';
-import {
-  AGENTE_OUTBOX_RESEND_ENABLED,
-  AGENTE_OUTBOX_RETRY_INTERVAL_MS,
-  type OutboxItem,
-} from '@/features/agente/outbox';
-import { AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS } from '@/features/agente/sendRetryPolicy';
+import { AGENTE_OUTBOX_RETRY_INTERVAL_MS, type OutboxItem } from '@/features/agente/outbox';
 import { logger } from '@/shared/services/log';
 import { createRequestDeliverer } from './agenteSendAttempts';
 import { createCycleSettler } from './agenteSendSettle';
@@ -50,8 +44,7 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
 export function createAgenteSender(deps: AgenteSenderDeps) {
   const now = deps.now ?? Date.now;
   const queue = deps.queue ?? createMemorySendQueue();
-  const report = (outcome: AgenteSendOutcome, httpStatus: number | null) =>
-    deps.onOutcome?.(outcome, httpStatus);
+  const report = (outcome: AgenteSendOutcome, status: number | null) => deps.onOutcome?.(outcome, status);
   const tracker = createDeliveryTracker({ now, onDelivery: deps.onDelivery, onDropped: deps.onDropped });
   let running = false;
   /** Falas guardadas enquanto o laço já corria: ele relê a fila antes de parar. */
@@ -59,6 +52,8 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
   /** Quando o topo esgotou as tentativas; `null` = não está esperando o Agente voltar. */
   let heldAt: number | null = null;
   let idle: Promise<void> = Promise.resolve();
+  /** Chamado quando o laço vai despachar o 1º envio (ou parou): `accept` só termina depois disso. */
+  let dispatched: () => void = () => undefined;
   /** Entradas de `submit` na ordem recebida: a fila é assíncrona, mas a ordem nunca se inverte. */
   let inbox: Promise<void> = Promise.resolve();
   let generation = 0;
@@ -76,11 +71,8 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
     tracker,
     report,
     now,
-    resendEnabled: deps.resendEnabled ?? AGENTE_OUTBOX_RESEND_ENABLED,
-    serverErrorMaxAgeMs:
-      deps.serverErrorMaxAgeMs === undefined
-        ? AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS
-        : deps.serverErrorMaxAgeMs,
+    resendEnabled: deps.resendEnabled,
+    serverErrorMaxAgeMs: deps.serverErrorMaxAgeMs,
   });
 
   async function run(): Promise<void> {
@@ -108,6 +100,7 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
           skipped += 1;
           continue;
         }
+        dispatched();
         const cycle = await deliver(request, gen);
         if (!isCurrent(gen)) continue;
         if ((await settle(item, cycle, queued.length)) === 'hold') {
@@ -119,24 +112,28 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
       logger.error('a fila de envio ao Agente parou', error);
     } finally {
       running = false;
+      dispatched();
       // IN-04: o descarte por destino diferente (IN-11) não pode ser silencioso. Só a contagem — nunca o texto.
       if (skipped > 0) logger.warn('falas descartadas: destino diferente da config atual', { discarded: skipped });
     }
   }
 
   /** Tenta o topo se não há envio em voo e, havendo espera pelo Agente, o intervalo de nova tentativa passou. */
-  function kick(): void {
-    if (disposed) return;
+  function start(): Promise<void> {
+    if (disposed) return Promise.resolve();
     if (running) {
       rerun = true;
-      return;
+      return Promise.resolve();
     }
-    if (heldAt !== null && now() - heldAt < AGENTE_OUTBOX_RETRY_INTERVAL_MS) return;
+    if (heldAt !== null && now() - heldAt < AGENTE_OUTBOX_RETRY_INTERVAL_MS) return Promise.resolve();
     heldAt = null;
     rerun = false;
     running = true;
+    const started = new Promise<void>((resolve) => (dispatched = resolve));
     idle = run();
+    return started;
   }
+  const kick = (): void => void start();
 
   async function accept(items: readonly OutboxItem[], gen: number): Promise<void> {
     if (!isCurrent(gen)) return; // cancelado entre o submit e a gravação (D-09)
@@ -150,7 +147,7 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
       tracker.overflowed(items);
       return;
     }
-    if (isCurrent(gen)) kick();
+    if (isCurrent(gen)) await start();
   }
 
   /** Enfileira na ordem recebida. */
@@ -194,7 +191,10 @@ export function createAgenteSender(deps: AgenteSenderDeps) {
     await idle;
   }
 
-  return { submit, kick, resume, cancelAll, dispose, whenIdle };
+  /** Só para testes: espera as falas serem guardadas e o 1º envio ser despachado — sem esperar a resposta. */
+  const settled = (): Promise<void> => inbox;
+
+  return { submit, kick, resume, cancelAll, dispose, whenIdle, settled };
 }
 
 export type AgenteSender = ReturnType<typeof createAgenteSender>;

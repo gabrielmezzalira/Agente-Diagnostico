@@ -6,6 +6,7 @@
 import type { AgenteConfig, ExtensionChunkRequest } from '@/shared/config/agenteConfig';
 import type { AgenteBinding } from '@/shared/config/agenteBindingStore';
 import type { AgenteStatusSink } from './agenteStatusReporter';
+import type { SendQueuePort } from './agenteSendQueue';
 import type { StreamDestinationPolicy } from './agenteStreamDestination';
 import type { AgenteStreamerSnapshotStore } from './agenteStreamerSnapshot';
 
@@ -35,4 +36,11 @@ export interface AgenteStreamerDeps {
    * (o ID salvo na config). A composição de produção passa a política da associação da reunião.
    */
   destination?: StreamDestinationPolicy;
+  /**
+   * Fila das falas ainda não entregues (Fase 8, D-18). Produção: a fila durável de `taq:agenteOutbox`, que
+   * sobrevive ao reinício do service worker. Ausente = fila em memória (a mecânica da Fase 7).
+   */
+  outbox?: SendQueuePort;
+  /** Liga o reenvio depois de queda (D-18). Ausente = `AGENTE_OUTBOX_RESEND_ENABLED`, desligado até a B3. */
+  outboxResendEnabled?: boolean;
 }

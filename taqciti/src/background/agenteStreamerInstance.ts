@@ -60,14 +60,12 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let unsubscribeConfig: (() => void) | null = null;
   /** WR-01: destino (URL + sessão + chave) dos trechos que estão na fila de envio; `null` = nada visto. */
   let lastDestinationKey: string | null = null;
-  /** Config do destino atual da fila de envio (a mesma que define `lastDestinationKey`); o request sai com ela. */
-  let lastQueueConfig: AgenteConfig | null = null;
   /** CR-01/WR-01: memória do vínculo sessão → última reunião (extraída para não passar de 300 linhas). */
   const bindingRecorder = createBindingRecorder(deps);
   /** Fase 8 (D-01): a regra "para onde vai a fala"; sem política injetada vale a da Fase 7. */
   const destination = deps.destination ?? configDestination;
   const status = createStatusReporter(deps.reportStatus);
-  const sender = createStreamerSender(deps, status, () => lastQueueConfig);
+  const sender = createStreamerSender(deps, status);
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
   const persister = deps.snapshot ? createSnapshotPersister(deps.snapshot) : null;
 
@@ -95,21 +93,15 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   }
 
   /**
-   * Desliga na hora: nada sai depois disto, inclusive o que estava pendente
-   * na janela e o que esperava nova tentativa na fila de envio (D-09).
+   * Streaming desligado (step, tick, resume e mudança de config iguais): nada sai depois disto — nem o que
+   * estava pendente na janela, nem o que esperava na fila de envio, inclusive a durável (D-09); esquece o cursor.
    */
-  function discard(): void {
+  function stopStreaming(): void {
     pending = EMPTY_PHRASE_BUFFER;
     sender.cancelAll();
     windowTimer.cancel();
-  }
-
-  /** Streaming desligado: descarta tudo e esquece o cursor (step, tick e mudança de config iguais). */
-  function stopStreaming(): void {
-    discard();
     cursor = null;
     lastDestinationKey = null;
-    lastQueueConfig = null;
     bindingRecorder.reset();
     status.waitingForMeeting(null);
   }
@@ -123,7 +115,6 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     const key = destination.queueKey(config);
     if (lastDestinationKey !== null && key !== lastDestinationKey) sender.cancelAll();
     lastDestinationKey = key;
-    lastQueueConfig = config;
   }
 
   /** Rearma o único timer da janela para o próximo prazo do buffer atual. */
@@ -147,7 +138,9 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     const target = await destination.resolve(config, meetingId);
     if (disposed) return;
     const sendConfig = await settleTarget(target, meetingId);
-    if (sendConfig !== null) await advance(sendConfig, state);
+    if (sendConfig === null) return;
+    await advance(sendConfig, state);
+    sender.kick(); // Fase 8: sem falas novas, é este passo que retoma a fila parada esperando o Agente
   }
 
   /**
@@ -211,6 +204,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       }
       syncDestination(config);
       drain(Date.now(), false);
+      sender.kick();
     } finally {
       // WR-12: se loadConfig() falhar, nunca chega em drain/rearm — sem
       // isto, uma fala pendente ficava sem timer até alguém falar de novo
@@ -252,9 +246,9 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   }
 
   /**
-   * Boot do service worker (WR-02): restaura o snapshot sem esperar o próximo flush.
-   * WR-04: e desfaz o "tentando de novo…" que o service worker anterior deixou gravado — esta
-   * instância acabou de nascer, a fila de envio dela está vazia, então nada está tentando.
+   * Boot do service worker (WR-02): restaura o snapshot sem esperar o próximo flush e desfaz o "tentando de
+   * novo…" que o service worker anterior deixou (WR-04). Fase 8 (D-18): retoma a fila durável pelo MESMO
+   * portão de `step`/`tick` — envio desligado ou config não pronta limpa a fila (D-09) e não manda nada.
    */
   function resume(): Promise<void> {
     ensureSubscribed();
@@ -262,6 +256,14 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
       await deps.settleStatusAfterRestart?.().catch((error: unknown) => {
         logger.error('acertar o status do Agente depois do reinício falhou', error);
       });
+      const config = await deps.loadConfig();
+      if (disposed) return;
+      if (!destination.canDrain(config)) {
+        stopStreaming();
+        return;
+      }
+      syncDestination(config);
+      await sender.resume();
     });
   }
 
@@ -276,15 +278,18 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     });
   }
 
-  /** Só para asserções de ausência em teste (WR-10): espera a fila, sem enfileirar nada. */
-  function whenIdle(): Promise<void> {
-    return queue;
+  /** Só para asserções em teste (WR-10): espera a fila e o sender despachar (guardar + 1º envio). */
+  async function whenIdle(): Promise<void> {
+    await queue;
+    await sender.settled();
   }
 
   /** Terminal (WR-13): todo ponto de entrada (`step`/`tick`/`rearm`) passa a virar no-op. */
   function dispose(): void {
     disposed = true;
-    discard();
+    // Descartar a instância NÃO é desligar o envio (Fase 8): a fila durável fica para a instância seguinte.
+    pending = EMPTY_PHRASE_BUFFER;
+    windowTimer.cancel();
     sender.dispose();
     unsubscribeConfig?.();
     unsubscribeConfig = null;
