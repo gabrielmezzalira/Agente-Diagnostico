@@ -77,4 +77,5 @@ export const agenteAssociation = {
   bind: (meetingId: string, target: AgenteBindTarget) =>
     activeService.bind(meetingId, target),
   discard: (meetingId: string) => activeService.discard(meetingId),
+  resumeSend: (meetingId: string) => activeService.resumeSend(meetingId),
 };

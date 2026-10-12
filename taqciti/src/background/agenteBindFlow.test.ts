@@ -831,3 +831,55 @@ describe('continuar o envio parado (plano 08-20, B3)', () => {
     expect(send.mock.calls.length - before).toBe(24);
   });
 });
+
+describe('comando ui/agente/meeting/resume-send (plano 08-20, Task 2)', () => {
+  it('uiMessageSchema aceita o comando e recusa meetingId vazio', async () => {
+    const { uiMessageSchema } = await import('@/shared/types/messages');
+    expect(
+      uiMessageSchema.safeParse({ type: 'ui/agente/meeting/resume-send', meetingId: 'm2' }).success,
+    ).toBe(true);
+    expect(
+      uiMessageSchema.safeParse({ type: 'ui/agente/meeting/resume-send', meetingId: '' }).success,
+    ).toBe(false);
+  });
+
+  it('agenteAssociation.resumeSend chega ao fluxo: retoma do ponto confirmado para a mesma sessão', async () => {
+    installChromeStorageMock({
+      extra: {
+        runtime: { sendMessage: vi.fn(() => Promise.resolve()) },
+        tabs: { sendMessage: vi.fn(() => Promise.resolve()) },
+      },
+    });
+    const { createFakeClientDirectory, createFakeSessionGateway } =
+      await import('@/test/fakeClientDirectory');
+    const { agenteAssociation, configureAgenteAssociation } = await import('./agenteAssociation');
+    const store = await import('@/shared/config/agenteAssociationStore');
+    const send = vi.fn(() => Promise.resolve({ ok: true, status: 202 } as Response));
+    const sessions = createFakeSessionGateway();
+    configureAgenteAssociation({
+      directory: createFakeClientDirectory(CLIENTS),
+      sessions,
+      getMeetingState: () => IDLE_STATE,
+      getRecord: () => Promise.resolve(recordOf('m2', segmentsOf(10))),
+      loadConfig: () => Promise.resolve(READY_CONFIG),
+      send,
+      sleep: () => Promise.resolve(),
+      onSettled: () => Promise.resolve(),
+    });
+    await store.applyAssociationEvent('m2', { type: 'created' });
+    await store.applyAssociationEvent('m2', { type: 'meeting-ended' });
+    await store.applyAssociationEvent('m2', {
+      type: 'send-started',
+      origin: 'manual-id',
+      clientName: 'Sessão 22222222',
+      sessionId: OTHER_SESSION_ID,
+    });
+    await store.applyAssociationEvent('m2', { type: 'send-progress', done: 4, total: 10 });
+    await store.applyAssociationEvent('m2', { type: 'send-failed', error: 'send' });
+
+    expect(await agenteAssociation.resumeSend('m2')).toEqual({ ok: true });
+    await vi.waitFor(async () => expect((await store.getAssociation('m2'))?.state).toBe('sent'));
+    expect(send).toHaveBeenCalledTimes(6); // partes 4..9
+    expect(sessions.calls).toHaveLength(0);
+  });
+});

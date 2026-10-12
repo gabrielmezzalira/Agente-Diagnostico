@@ -86,6 +86,7 @@ export function createAgenteAssociationService(deps: AgenteAssociationServiceDep
     bind: (meetingId: string, target: AgenteBindTarget) =>
       bindFlow.bind(meetingId, target),
     discard,
+    resumeSend: (meetingId: string) => bindFlow.resumeSend(meetingId),
     /** Só para testes: espera o envio em partes que roda em segundo plano. */
     whenIdle: () => bindFlow.whenIdle(),
   };

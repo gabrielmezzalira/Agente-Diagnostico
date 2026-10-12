@@ -52,6 +52,8 @@ export interface MeetingAssociationApi {
   bind: (target: AgenteBindTarget) => Promise<AgenteCommandResult>;
   /** Descarta de vez a cópia local de uma reunião encerrada e não enviada. Quem chama já confirmou. */
   discard: () => Promise<AgenteCommandResult>;
+  /** "Continuar envio" (08-20): retoma o envio em partes parado, da última parte confirmada. */
+  resumeSend: () => Promise<AgenteCommandResult>;
 }
 
 export function useMeetingAssociation(meetingId: string | null): MeetingAssociationApi {
@@ -99,5 +101,13 @@ export function useMeetingAssociation(meetingId: string | null): MeetingAssociat
     [platform, meetingId],
   );
 
-  return { association, delivery, open, defer, bind, discard };
+  const resumeSend = useCallback(
+    () =>
+      meetingId === null
+        ? Promise.resolve(UNAVAILABLE)
+        : sendAgenteCommand(platform, { type: 'ui/agente/meeting/resume-send', meetingId }),
+    [platform, meetingId],
+  );
+
+  return { association, delivery, open, defer, bind, discard, resumeSend };
 }

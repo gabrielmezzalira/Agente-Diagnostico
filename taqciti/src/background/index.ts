@@ -244,6 +244,8 @@ onMessage((message, sender) => {
         return agenteAssociation.bind(message.meetingId, message.target);
       case 'ui/agente/meeting/discard':
         return agenteAssociation.discard(message.meetingId);
+      case 'ui/agente/meeting/resume-send':
+        return agenteAssociation.resumeSend(message.meetingId);
       case 'state/updated':
         return undefined;
     }
