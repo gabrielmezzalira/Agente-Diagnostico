@@ -5,16 +5,16 @@ milestone_name: Pivot Discovery
 current_phase: 8
 current_phase_name: Taqciti Session Association
 status: executing
-stopped_at: Completed 08-11-PLAN.md
-last_updated: "2026-10-12T14:40:33.436Z"
+stopped_at: Completed 08-12-PLAN.md
+last_updated: "2026-10-12T14:48:21.919Z"
 last_activity: 2026-10-12
 last_activity_desc: Phase 8 execution started
-state_head: e01ba73d4bed06d5031dd3a61e77d2d84def22f9
+state_head: 6be42349bd486239aa30e6c285ff1908f7890b2e
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 47
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 ## Current Position
 
 Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 11 of 23
+Plan: 12 of 23
 Status: Ready to execute
 Last activity: 2026-10-12 — Phase 8 execution started
 
@@ -95,6 +95,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P08 | 20 min | 3 tasks | 7 files |
 | Phase 08 P10 | 25min | 3 tasks | 10 files |
 | Phase 08 P11 | 25min | 3 tasks | 13 files |
+| Phase 08 P12 | 20min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-10: eventos do envio em partes escolhidos tentando link-* e depois send-* (o reducer recusa a família errada), sem ler o estado antes; guarda síncrona por reunião impede dois clientes/sessões em bind simultâneo
 - [Phase 08]: 08-10: open/defer idempotentes (repetir o comando que já vale é ok); histórico guardado serve de reserva do 'tudo o que já foi falado' se a reunião saiu da tela durante o vínculo
 - [Phase 08]: 08-11: fila durável (taq:agenteOutbox), status de entrega (taq:agenteDelivery) e rastro de falas descartadas (taq:agenteDropTrace) em storage.local, cada chave com um único dono; o rastro não é apagado por nenhum status; reenvio automático nasce desligado até a decisão B3
+- [Phase 08]: 08-12: mode do cliente criado pela Taqciti = discovery, source extension, 409 sem acento/caixa (B1/B4-a); corte do nome da sessão em 200 na porta HTTP
 
 ### Pending Todos
 
@@ -188,6 +190,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T14:40:33.182Z
-Stopped at: Completed 08-11-PLAN.md
+Last session: 2026-10-12T14:48:21.678Z
+Stopped at: Completed 08-12-PLAN.md
 Resume file: None
