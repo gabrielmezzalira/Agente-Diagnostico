@@ -6,20 +6,20 @@
  * aqui (quem decide é o reducer de `features/agente/association.ts`).
  */
 import type { AssociationEvent, AssociationState } from '@/features/agente/association';
-import type {
-  AgenteSessionGateway,
-  ClientDirectory,
-} from '@/features/agente/clientDirectory';
 import { sortClients } from '@/features/agente/clientSearch';
 import { applyAssociationEvent } from '@/shared/config/agenteAssociationStore';
-import type { AgenteCommandResult } from '@/shared/types/agenteMessages';
+import type {
+  AgenteBindTarget,
+  AgenteCommandResult,
+} from '@/shared/types/agenteMessages';
+import { createBindFlow, type BindFlowDeps } from './agenteBindFlow';
 
-export interface AgenteAssociationServiceDeps {
-  directory: ClientDirectory;
-  sessions: AgenteSessionGateway;
-}
+/** Tudo o que o serviço usa; o vínculo (`bind`) delega ao fluxo, que leva as mesmas portas. */
+export type AgenteAssociationServiceDeps = BindFlowDeps;
 
 export function createAgenteAssociationService(deps: AgenteAssociationServiceDeps) {
+  const bindFlow = createBindFlow(deps);
+
   /**
    * Aplica um evento simples. Repetir o comando que já está valendo (abrir um cartão já aberto,
    * adiar um já adiado) é sucesso, não erro: a UI pode reenviar sem medo.
@@ -48,6 +48,10 @@ export function createAgenteAssociationService(deps: AgenteAssociationServiceDep
     listClients,
     open: (meetingId: string) => transition(meetingId, { type: 'opened' }, 'choosing'),
     defer: (meetingId: string) => transition(meetingId, { type: 'deferred' }, 'deferred'),
+    bind: (meetingId: string, target: AgenteBindTarget) =>
+      bindFlow.bind(meetingId, target),
+    /** Só para testes: espera o envio em partes que roda em segundo plano. */
+    whenIdle: () => bindFlow.whenIdle(),
   };
 }
 

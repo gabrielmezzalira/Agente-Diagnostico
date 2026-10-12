@@ -1,0 +1,453 @@
+/**
+ * Fluxo de vínculo (plano 08-10, Tasks 2 e 3): vincular uma reunião ao vivo (ID manual ou cliente)
+ * mandando em partes tudo o que já foi falado antes de liberar o envio ao vivo, e enviar a reunião
+ * encerrada e guardada. Storage simulado, portas falsas, `send` e `sleep` injetados — nenhuma rede.
+ */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { installChromeStorageMock } from '@/test/chromeStorageMock';
+import type { FakeSessionGateway } from '@/test/fakeClientDirectory';
+import type { AgenteSessionGateway } from '@/features/agente/clientDirectory';
+import { segmentKey, splitWords } from '@/features/agente/wordDelta';
+import type { AgenteConfig, ExtensionChunkRequest } from '@/shared/config/agenteConfig';
+import type {
+  LiveSegment,
+  MeetingPhase,
+  MeetingRecord,
+  MeetingSessionState,
+  MeetingState,
+} from '@/shared/types/domain';
+
+const OTHER_SESSION_ID = '22222222-2222-2222-2222-222222222222';
+const CLIENTS = [{ id: 'c1', client: 'ACME', name: 'Projeto ACME' }];
+
+const READY_CONFIG: AgenteConfig = {
+  agenteBackendUrl: 'https://agente.test',
+  streamingEnabled: true,
+  agenteSessionId: '',
+  agenteApiKey: 's3cr3t',
+  confirmedMeetingId: '',
+};
+
+function segment(index: number, text = `fala numero ${index}`): LiveSegment {
+  return {
+    captionId: `c${index}`,
+    speaker: 'Ana',
+    text,
+    startOffsetMs: index * 1000,
+    endOffsetMs: index * 1000 + 500,
+  };
+}
+
+const segmentsOf = (count: number): LiveSegment[] =>
+  Array.from({ length: count }, (_, index) => segment(index));
+
+function meetingState(
+  meetingId: string,
+  segments: LiveSegment[],
+  phase: MeetingPhase = 'recording',
+): MeetingState {
+  const session = {
+    meetingId,
+    title: 'Reunião de teste',
+    segments,
+  } as MeetingSessionState;
+  return { phase, session };
+}
+
+/** O que a reunião tem "falado": a semente esperada de um vínculo feito agora. */
+function seedOf(segments: LiveSegment[]): Record<string, number> {
+  const seed: Record<string, number> = {};
+  segments.forEach((item, index) => {
+    seed[segmentKey(item, index)] = splitWords(item.text).length;
+  });
+  return seed;
+}
+
+interface SetupOptions {
+  meeting?: MeetingState;
+  records?: Record<string, MeetingRecord>;
+  config?: AgenteConfig;
+  sessions?: AgenteSessionGateway;
+  /** Resposta de cada envio (número da chamada, de 1). Padrão: 202. */
+  respond?: (call: number) => Promise<Response> | Response;
+}
+
+async function setup(options: SetupOptions = {}) {
+  const mock = installChromeStorageMock({});
+  const { createBindFlow } = await import('./agenteBindFlow');
+  const store = await import('@/shared/config/agenteAssociationStore');
+
+  // Importado aqui (depois do resetModules) para a classe de erro ser a mesma do fluxo.
+  const { createFakeClientDirectory, createFakeSessionGateway } =
+    await import('@/test/fakeClientDirectory');
+  const directory = createFakeClientDirectory(CLIENTS);
+  const fakeSessions = createFakeSessionGateway();
+  const sessions = options.sessions ?? fakeSessions;
+  const world = { meeting: options.meeting ?? meetingState('m1', segmentsOf(3)) };
+
+  let calls = 0;
+  const send = vi.fn<(request: ExtensionChunkRequest) => Promise<Response>>(async () => {
+    calls += 1;
+    const call = calls;
+    return options.respond
+      ? options.respond(call)
+      : ({ ok: true, status: 202 } as Response);
+  });
+  const sleep = vi.fn<(ms: number) => Promise<void>>(() => Promise.resolve());
+  const onLinked = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
+
+  const flow = createBindFlow({
+    directory,
+    sessions,
+    getMeetingState: () => world.meeting,
+    getRecord: (id) => Promise.resolve(options.records?.[id] ?? null),
+    loadConfig: () => Promise.resolve(options.config ?? READY_CONFIG),
+    send,
+    sleep,
+    onLinked,
+  });
+
+  const bodies = () =>
+    send.mock.calls.map(
+      ([request]) =>
+        JSON.parse(request.init.body as string) as { session_id: string; text: string },
+    );
+  const created = (meetingId = 'm1') =>
+    store.applyAssociationEvent(meetingId, { type: 'created' });
+  return {
+    flow,
+    mock,
+    store,
+    world,
+    send,
+    sleep,
+    onLinked,
+    bodies,
+    created,
+    sessions: fakeSessions as FakeSessionGateway,
+    directory,
+  };
+}
+
+beforeEach(() => {
+  vi.resetModules();
+});
+
+describe('vínculo ao vivo — ID manual', () => {
+  it('manda as 3 falas em ordem para a sessão manual e só então fica linked, com a semente', async () => {
+    const segments = segmentsOf(3);
+    const { flow, store, created, bodies, onLinked } = await setup({
+      meeting: meetingState('m1', segments),
+    });
+    await created();
+
+    const result = await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    expect(result).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    expect(bodies().map((body) => body.text)).toEqual(segments.map((item) => item.text));
+    expect(bodies().every((body) => body.session_id === OTHER_SESSION_ID)).toBe(true);
+    expect(await store.getAssociation('m1')).toEqual({
+      meetingId: 'm1',
+      state: 'linked',
+      clientName: 'Sessão 22222222',
+      sessionId: OTHER_SESSION_ID,
+      origin: 'manual-id',
+      seedSent: seedOf(segments),
+    });
+    expect(onLinked).toHaveBeenCalledTimes(1);
+    expect(onLinked).toHaveBeenCalledWith('m1');
+  });
+
+  it('responde antes de o envio terminar; durante ele a associação está em linking com o progresso', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { flow, store, created, send } = await setup({
+      respond: async (call) => {
+        if (call === 3) await gate; // a terceira parte espera
+        return { ok: true, status: 202 } as Response;
+      },
+    });
+    await created();
+
+    const result = await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    expect(result).toEqual({ ok: true });
+    await vi.waitFor(async () => {
+      expect((await store.getAssociation('m1'))?.sendProgress).toEqual({
+        done: 2,
+        total: 3,
+      });
+    });
+    expect((await store.getAssociation('m1'))?.state).toBe('linking');
+    expect(send).toHaveBeenCalledTimes(3);
+
+    release();
+    await flow.whenIdle();
+    expect((await store.getAssociation('m1'))?.state).toBe('linked');
+  });
+
+  it('reunião sem nenhuma fala: nada é enviado, a semente é {} e onLinked é chamado', async () => {
+    const { flow, store, created, send, onLinked } = await setup({
+      meeting: meetingState('m1', []),
+    });
+    await created();
+    await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await flow.whenIdle();
+
+    expect(send).not.toHaveBeenCalled();
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'linked',
+      seedSent: {},
+    });
+    expect(onLinked).toHaveBeenCalledTimes(1);
+  });
+
+  it('falha de rede no envio: send-failed com o erro send e o progresso preservado', async () => {
+    const { flow, store, created, send, onLinked } = await setup({
+      respond: (call) => ({ ok: call === 1, status: call === 1 ? 202 : 500 }) as Response,
+    });
+    await created();
+    await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await flow.whenIdle();
+
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'send-failed',
+      error: 'send',
+      sendProgress: { done: 1, total: 3 },
+      sessionId: OTHER_SESSION_ID,
+    });
+    expect(send).toHaveBeenCalledTimes(5); // 1 entregue + 1 tentativa + 3 novas tentativas
+    expect(onLinked).not.toHaveBeenCalled();
+  });
+});
+
+describe('vínculo ao vivo — cliente', () => {
+  it('cria UMA sessão com (clientId, título da reunião) e termina linked com o id do gateway', async () => {
+    const { flow, store, created, sessions, bodies } = await setup();
+    await created();
+
+    const result = await flow.bind('m1', {
+      kind: 'client',
+      clientId: 'c1',
+      clientName: 'ACME',
+    });
+    expect(result).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    expect(sessions.calls).toEqual([{ clientId: 'c1', name: 'Reunião de teste' }]);
+    const association = await store.getAssociation('m1');
+    expect(association).toMatchObject({
+      state: 'linked',
+      clientName: 'ACME',
+      origin: 'picker',
+    });
+    expect(association?.sessionId).toBe('00000000-0000-4000-8000-000000000001');
+    expect(bodies().every((body) => body.session_id === association?.sessionId)).toBe(
+      true,
+    );
+  });
+
+  it('cliente novo: cria o cliente e depois a sessão', async () => {
+    const { flow, store, created, sessions, directory } = await setup();
+    await created();
+
+    const result = await flow.bind('m1', { kind: 'new-client', name: 'Cliente Novo' });
+    expect(result).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    expect(directory.createCalls).toBe(1);
+    expect(sessions.calls).toHaveLength(1);
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'linked',
+      clientName: 'Cliente Novo',
+    });
+  });
+
+  it('nome duplicado: devolve duplicate, não muda o estado e não cria sessão', async () => {
+    const { flow, store, created, sessions } = await setup();
+    await created();
+
+    const result = await flow.bind('m1', { kind: 'new-client', name: 'acme' });
+    expect(result).toEqual({ ok: false, error: 'duplicate' });
+    expect((await store.getAssociation('m1'))?.state).toBe('pending');
+    expect(sessions.calls).toHaveLength(0);
+  });
+
+  it('falha ao criar a sessão: deferred com create-session e nenhum POST de transcrição', async () => {
+    const { createFakeSessionGateway } = await import('@/test/fakeClientDirectory');
+    const failing = createFakeSessionGateway({ failWith: new Error('backend fora') });
+    const { flow, store, created, send, onLinked } = await setup({ sessions: failing });
+    await created();
+
+    const result = await flow.bind('m1', {
+      kind: 'client',
+      clientId: 'c1',
+      clientName: 'ACME',
+    });
+    expect(result).toEqual({ ok: false, error: 'create-session' });
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'deferred',
+      error: 'create-session',
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(onLinked).not.toHaveBeenCalled();
+  });
+
+  it('a reunião termina enquanto a sessão é criada e a criação falha: ended-unsent com create-session', async () => {
+    let fail!: (error: Error) => void;
+    const slowSessions: AgenteSessionGateway = {
+      createSession: () =>
+        new Promise((_resolve, reject) => {
+          fail = reject;
+        }),
+    };
+    const { flow, store, world, created } = await setup({ sessions: slowSessions });
+    await created();
+
+    const pending = flow.bind('m1', {
+      kind: 'client',
+      clientId: 'c1',
+      clientName: 'ACME',
+    });
+    await vi.waitFor(() => expect(fail).toBeTypeOf('function'));
+    world.meeting = meetingState('m1', segmentsOf(3), 'ended'); // MEETING_FINISHED
+    fail(new Error('backend fora'));
+
+    expect(await pending).toEqual({ ok: false, error: 'create-session' });
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'ended-unsent',
+      error: 'create-session',
+    });
+  });
+});
+
+describe('vínculo ao vivo — bordas', () => {
+  it('dois bind simultâneos: um ok, o outro invalid-state, uma única sessão criada', async () => {
+    const { flow, created, sessions } = await setup();
+    await created();
+
+    const target = { kind: 'client', clientId: 'c1', clientName: 'ACME' } as const;
+    const results = await Promise.all([flow.bind('m1', target), flow.bind('m1', target)]);
+    await flow.whenIdle();
+
+    expect(results).toContainEqual({ ok: true });
+    expect(results).toContainEqual({ ok: false, error: 'invalid-state' });
+    expect(sessions.calls).toHaveLength(1);
+  });
+
+  it('dois bind simultâneos com cliente novo: um único cliente e uma única sessão', async () => {
+    const { flow, created, sessions, directory } = await setup();
+    await created();
+
+    const target = { kind: 'new-client', name: 'Cliente Novo' } as const;
+    const results = await Promise.all([flow.bind('m1', target), flow.bind('m1', target)]);
+    await flow.whenIdle();
+
+    expect(results).toContainEqual({ ok: false, error: 'invalid-state' });
+    expect(directory.createCalls).toBe(1);
+    expect(sessions.calls).toHaveLength(1);
+  });
+
+  it('associação já linked: invalid-state', async () => {
+    const { flow, store, created } = await setup();
+    await created();
+    await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await flow.whenIdle();
+
+    const again = await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    expect(again).toEqual({ ok: false, error: 'invalid-state' });
+    expect((await store.getAssociation('m1'))?.state).toBe('linked');
+  });
+
+  it('reunião sem associação: not-found', async () => {
+    const { flow } = await setup();
+    expect(
+      await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID }),
+    ).toEqual({
+      ok: false,
+      error: 'not-found',
+    });
+  });
+
+  it('streaming desligado na config: create-session e o estado não muda', async () => {
+    const { flow, store, created, send, sessions } = await setup({
+      config: { ...READY_CONFIG, streamingEnabled: false },
+    });
+    await created();
+
+    const result = await flow.bind('m1', {
+      kind: 'client',
+      clientId: 'c1',
+      clientName: 'ACME',
+    });
+    expect(result).toEqual({ ok: false, error: 'create-session' });
+    expect((await store.getAssociation('m1'))?.state).toBe('pending');
+    expect(sessions.calls).toHaveLength(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('a chave x-agente-key só vai no request: nunca no JSON salvo da associação', async () => {
+    const { flow, mock, created } = await setup();
+    await created();
+    await flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await flow.whenIdle();
+    expect(JSON.stringify(mock.local.values)).not.toContain('s3cr3t');
+  });
+});
+
+describe('raiz de composição — agenteAssociation', () => {
+  it('padrão de produção: lista indisponível e vínculo por cliente falha sem rede', async () => {
+    installChromeStorageMock({
+      extra: {
+        runtime: { sendMessage: vi.fn(() => Promise.resolve()) },
+        tabs: { sendMessage: vi.fn(() => Promise.resolve()) },
+      },
+    });
+    const { agenteAssociation } = await import('./agenteAssociation');
+    expect(await agenteAssociation.listClients()).toEqual({
+      ok: false,
+      error: 'unavailable',
+    });
+  });
+
+  it('configureAgenteAssociation troca as portas e o comando de vínculo chega ao fluxo', async () => {
+    installChromeStorageMock({
+      extra: {
+        runtime: { sendMessage: vi.fn(() => Promise.resolve()) },
+        tabs: { sendMessage: vi.fn(() => Promise.resolve()) },
+      },
+    });
+    const { createFakeClientDirectory, createFakeSessionGateway } =
+      await import('@/test/fakeClientDirectory');
+    const { agenteAssociation, configureAgenteAssociation } =
+      await import('./agenteAssociation');
+    const store = await import('@/shared/config/agenteAssociationStore');
+    const send = vi.fn(() => Promise.resolve({ ok: true, status: 202 } as Response));
+    const onLinked = vi.fn(() => Promise.resolve());
+    configureAgenteAssociation({
+      directory: createFakeClientDirectory(CLIENTS),
+      sessions: createFakeSessionGateway(),
+      getMeetingState: () => meetingState('m1', segmentsOf(2)),
+      getRecord: () => Promise.resolve(null),
+      loadConfig: () => Promise.resolve(READY_CONFIG),
+      send,
+      sleep: () => Promise.resolve(),
+      onLinked,
+    });
+    expect(await agenteAssociation.listClients()).toMatchObject({ ok: true });
+
+    await store.applyAssociationEvent('m1', { type: 'created' });
+    expect(await agenteAssociation.open('m1')).toEqual({ ok: true });
+    expect(await agenteAssociation.defer('m1')).toEqual({ ok: true });
+    const result = await agenteAssociation.bind('m1', {
+      kind: 'client',
+      clientId: 'c1',
+      clientName: 'ACME',
+    });
+    expect(result).toEqual({ ok: true });
+    await vi.waitFor(() => expect(onLinked).toHaveBeenCalledTimes(1));
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+});

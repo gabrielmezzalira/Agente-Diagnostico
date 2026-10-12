@@ -14,6 +14,8 @@ import {
   type ClientDirectory,
 } from '@/features/agente/clientDirectory';
 import { agenteCommandResultSchema } from '@/shared/types/agenteMessages';
+import { DEFAULT_AGENTE_CONFIG } from '@/shared/config/agenteConfig';
+import { IDLE_STATE } from '@/shared/types/domain';
 import { uiMessageSchema } from '@/shared/types/messages';
 
 const UUID = '22222222-2222-2222-2222-222222222222';
@@ -98,7 +100,15 @@ async function freshService(directory: ClientDirectory = createFakeClientDirecto
   const { createAgenteAssociationService } = await import('./agenteAssociationService');
   const store = await import('@/shared/config/agenteAssociationStore');
   const sessions = createFakeSessionGateway();
-  const service = createAgenteAssociationService({ directory, sessions });
+  const service = createAgenteAssociationService({
+    directory,
+    sessions,
+    // Os comandos deste arquivo não tocam em reunião nem em rede: portas vazias bastam.
+    getMeetingState: () => IDLE_STATE,
+    getRecord: () => Promise.resolve(null),
+    loadConfig: () => Promise.resolve(DEFAULT_AGENTE_CONFIG),
+    send: () => Promise.reject(new Error('sem rede neste teste')),
+  });
   return { mock, service, store };
 }
 

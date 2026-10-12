@@ -22,6 +22,7 @@ import { migrateLocalStorage } from './storageMigrations';
 import { backfillOpenTabs, canInject, ensurePanelInTab } from './injectPanel';
 import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
+import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
@@ -219,6 +220,15 @@ onMessage((message, sender) => {
         }
         return { ok: true };
       }
+      // ---- Vínculo reunião → cliente (Fase 8): toda a lógica mora em agenteAssociation ----
+      case 'ui/agente/clients/list':
+        return agenteAssociation.listClients();
+      case 'ui/agente/meeting/open':
+        return agenteAssociation.open(message.meetingId);
+      case 'ui/agente/meeting/defer':
+        return agenteAssociation.defer(message.meetingId);
+      case 'ui/agente/meeting/bind':
+        return agenteAssociation.bind(message.meetingId, message.target);
       case 'state/updated':
         return undefined;
     }
