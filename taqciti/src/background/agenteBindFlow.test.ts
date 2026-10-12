@@ -96,6 +96,7 @@ async function setup(options: SetupOptions = {}) {
   });
   const sleep = vi.fn<(ms: number) => Promise<void>>(() => Promise.resolve());
   const onLinked = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
+  const onSettled = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
 
   const flow = createBindFlow({
     directory,
@@ -106,6 +107,7 @@ async function setup(options: SetupOptions = {}) {
     send,
     sleep,
     onLinked,
+    onSettled,
   });
 
   const bodies = () =>
@@ -127,6 +129,7 @@ async function setup(options: SetupOptions = {}) {
     send,
     sleep,
     onLinked,
+    onSettled,
     bodies,
     created,
     sessions: fakeSessions as FakeSessionGateway,
@@ -641,5 +644,190 @@ describe('enviar a reunião encerrada (D-09, D-10)', () => {
       seedSent: seedOf(segments),
     });
     expect(onLinked).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('continuar o envio parado (plano 08-20, B3)', () => {
+  const OK = { ok: true, status: 202 } as Response;
+  const DOWN = { ok: false, status: 500 } as Response;
+
+  /** Reunião m2 com `count` falas, enviada ao cliente, que parou na parte 7 (6 confirmadas). */
+  async function setupStopped(count = 30, options: SetupOptions = {}) {
+    const net = { down: true };
+    const context = await setupEnded(count, {
+      respond: (call) => (net.down && call >= 7 ? DOWN : OK),
+      ...options,
+    });
+    await context.flow.bind('m2', { kind: 'client', clientId: 'c1', clientName: 'ACME' });
+    await context.flow.whenIdle();
+    return { ...context, net };
+  }
+
+  it('retoma da 7ª parte (posição 6) para a mesma sessão, sem criar outra, e termina em sent', async () => {
+    const { flow, store, sessions, send, bodies, segments, net, onSettled } = await setupStopped();
+    expect(await store.getAssociation('m2')).toMatchObject({
+      state: 'send-failed',
+      sendProgress: { done: 6, total: 30 },
+    });
+    const sessionId = '00000000-0000-4000-8000-000000000001';
+    const before = send.mock.calls.length;
+    onSettled.mockClear();
+
+    net.down = false;
+    expect(await flow.resumeSend('m2')).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    const resumed = bodies().slice(before);
+    expect(resumed.map((body) => body.chunk_id)).toEqual(
+      Array.from({ length: 24 }, (_, index) => `bulk:m2:${index + 6}`),
+    );
+    expect(resumed.map((body) => body.text)).toEqual(segments.slice(6).map((item) => item.text));
+    expect(resumed.every((body) => body.session_id === sessionId)).toBe(true);
+    expect(sessions.calls).toHaveLength(1);
+    expect(await store.getAssociation('m2')).toEqual({
+      meetingId: 'm2',
+      state: 'sent',
+      clientName: 'ACME',
+      sessionId,
+      origin: 'picker',
+      seedSent: seedOf(segments),
+    });
+    expect(onSettled).toHaveBeenCalledWith('m2');
+  });
+
+  it('responde antes de o envio acabar e cancela o prazo de 5 min (sem finishBy nem finishTries)', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const net = { down: true };
+    const { flow, store } = await setupEnded(30, {
+      respond: async (call) => {
+        if (call === 11) await gate; // a 1ª parte da retomada espera: o envio está no meio
+        return net.down && call >= 7 && call < 11 ? DOWN : OK;
+      },
+    });
+    await flow.bind('m2', { kind: 'client', clientId: 'c1', clientName: 'ACME' });
+    await flow.whenIdle();
+    await store.applyAssociationEvent('m2', { type: 'finish-armed', by: 123 });
+    await store.applyAssociationEvent('m2', { type: 'finish-failed' });
+    expect(await store.getAssociation('m2')).toMatchObject({ finishBy: 123, finishTries: 1 });
+
+    net.down = false;
+    expect(await flow.resumeSend('m2')).toEqual({ ok: true });
+    const during = await store.getAssociation('m2');
+    expect(during?.state).toBe('sending');
+    expect(during).not.toHaveProperty('finishBy');
+    expect(during).not.toHaveProperty('finishTries');
+    expect(during).not.toHaveProperty('error');
+
+    release();
+    await flow.whenIdle();
+    expect((await store.getAssociation('m2'))?.state).toBe('sent');
+  });
+
+  it('nova falha na retomada: volta a send-failed com o novo progresso', async () => {
+    // chamadas 7..10 = a 7ª parte esgota as tentativas; a retomada (11..14) entrega 7..10 e cai na 15ª
+    const { flow, store } = await setupStopped(30, {
+      respond: (call) => (call >= 7 && call < 11 ? DOWN : call >= 15 ? DOWN : OK),
+    });
+    await flow.resumeSend('m2');
+    await flow.whenIdle();
+    expect(await store.getAssociation('m2')).toMatchObject({
+      state: 'send-failed',
+      error: 'send',
+      sendProgress: { done: 10, total: 30 },
+    });
+  });
+
+  it('sessão já encerrada pela B4-b: as partes restantes entram, sessionFinished fica e nada novo é encerrado', async () => {
+    const { flow, store, sessions, net, segments, onSettled } = await setupStopped(10);
+    await store.applyAssociationEvent('m2', { type: 'session-finished' });
+    net.down = false;
+    onSettled.mockClear();
+
+    expect(await flow.resumeSend('m2')).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    const after = await store.getAssociation('m2');
+    expect(after).toMatchObject({ state: 'sent', sessionFinished: true, seedSent: seedOf(segments) });
+    expect(sessions.calls).toHaveLength(1);
+    const { isEligibleForClose } = await import('@/features/agente/associationClose');
+    expect(isEligibleForClose(after!)).toBe(false);
+  });
+
+  it('sessão encerrada e a sala volta durante o envio retomado: pending limpo, nunca linking/linked', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const net = { down: true };
+    const { flow, store } = await setupEnded(10, {
+      respond: async (call) => {
+        if (call === 11) await gate;
+        return net.down && call >= 7 && call < 11 ? DOWN : OK;
+      },
+    });
+    await flow.bind('m2', { kind: 'client', clientId: 'c1', clientName: 'ACME' });
+    await flow.whenIdle();
+    await store.applyAssociationEvent('m2', { type: 'session-finished' });
+    net.down = false;
+    await flow.resumeSend('m2');
+    await store.applyAssociationEvent('m2', { type: 'meeting-resumed' });
+    expect(await store.getAssociation('m2')).toEqual({ meetingId: 'm2', state: 'pending' });
+
+    release();
+    await flow.whenIdle();
+    expect(await store.getAssociation('m2')).toEqual({ meetingId: 'm2', state: 'pending' });
+  });
+
+  it('recusas: pending, sent e reunião ao vivo -> invalid-state; sem associação ou sem registro -> not-found', async () => {
+    const { flow, store, world, send } = await setupStopped();
+    send.mockClear();
+
+    // ao vivo: m2 está acontecendo agora
+    world.meeting = meetingState('m2', segmentsOf(30));
+    expect(await flow.resumeSend('m2')).toEqual({ ok: false, error: 'invalid-state' });
+    world.meeting = IDLE_STATE;
+
+    await store.applyAssociationEvent('m3', { type: 'created' });
+    expect(await flow.resumeSend('m3')).toEqual({ ok: false, error: 'invalid-state' });
+    expect(await flow.resumeSend('m9')).toEqual({ ok: false, error: 'not-found' });
+
+    await store.applyAssociationEvent('m4', { type: 'created' });
+    await store.applyAssociationEvent('m4', { type: 'meeting-ended' });
+    await store.applyAssociationEvent('m4', {
+      type: 'send-started',
+      origin: 'manual-id',
+      clientName: 'X',
+      sessionId: OTHER_SESSION_ID,
+    });
+    await store.applyAssociationEvent('m4', { type: 'send-completed', seedSent: {} });
+    expect((await store.getAssociation('m4'))?.state).toBe('sent');
+    expect(await flow.resumeSend('m4')).toEqual({ ok: false, error: 'invalid-state' });
+
+    // send-failed sem registro no histórico
+    await store.applyAssociationEvent('m5', { type: 'created' });
+    await store.applyAssociationEvent('m5', { type: 'meeting-ended' });
+    await store.applyAssociationEvent('m5', {
+      type: 'send-started',
+      origin: 'manual-id',
+      clientName: 'X',
+      sessionId: OTHER_SESSION_ID,
+    });
+    await store.applyAssociationEvent('m5', { type: 'send-failed', error: 'send' });
+    expect(await flow.resumeSend('m5')).toEqual({ ok: false, error: 'not-found' });
+    expect((await store.getAssociation('m5'))?.state).toBe('send-failed');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('dois comandos simultâneos: um ok, o outro invalid-state, e cada parte sai uma vez', async () => {
+    const { flow, send, net } = await setupStopped();
+    const before = send.mock.calls.length;
+    net.down = false;
+    const results = await Promise.all([flow.resumeSend('m2'), flow.resumeSend('m2')]);
+    await flow.whenIdle();
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(send.mock.calls.length - before).toBe(24);
   });
 });

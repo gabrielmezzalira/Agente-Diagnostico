@@ -10,7 +10,7 @@
  * vivo fica em espera (`linking`) até o fim, e só então a associação vira `linked` com a semente.
  */
 import type { AssociationEvent, AssociationState } from '@/features/agente/association';
-import { planMeetingUpload } from '@/features/agente/meetingUploader';
+import { planMeetingUpload, type UploadPart } from '@/features/agente/meetingUploader';
 import type {
   AgenteSessionGateway,
   ClientDirectory,
@@ -31,6 +31,7 @@ import type {
   MeetingRecord,
   MeetingState,
 } from '@/shared/types/domain';
+import { prepareResume } from './agenteBindResume';
 import { runBindUpload, type BindUploadDeps } from './agenteBindUpload';
 import { bindFail, resolveBindTarget, type ResolvedTarget } from './agenteBindTarget';
 
@@ -73,6 +74,19 @@ function startedEvent(mode: Mode, target: ResolvedTarget): AssociationEvent {
 export function createBindFlow(deps: BindFlowDeps) {
   const inFlight = new Set<string>();
   const uploads = new Set<Promise<void>>();
+
+  /** Dispara o envio em partes em segundo plano, a partir da posição `startAt` (0 = do começo). */
+  function startUpload(
+    meetingId: string,
+    sessionId: string,
+    parts: UploadPart[],
+    startAt: number,
+  ): void {
+    const job: Promise<void> = runBindUpload(deps, meetingId, sessionId, parts, startAt)
+      .catch((error: unknown) => logger.error('envio em partes do vínculo falhou', error))
+      .finally(() => uploads.delete(job));
+    uploads.add(job);
+  }
 
   /** A criação da sessão falhou: volta a poder escolher; se a reunião já acabou, o cartão do fim aparece. */
   async function failCreateSession(mode: Mode, meetingId: string): Promise<void> {
@@ -142,15 +156,7 @@ export function createBindFlow(deps: BindFlowDeps) {
     }
 
     const segments = record?.segments ?? (await spokenSegments(meetingId));
-    const job: Promise<void> = runBindUpload(
-      deps,
-      meetingId,
-      sessionId,
-      planMeetingUpload(meetingId, segments),
-    )
-      .catch((error: unknown) => logger.error('envio em partes do vínculo falhou', error))
-      .finally(() => uploads.delete(job));
-    uploads.add(job);
+    startUpload(meetingId, sessionId, planMeetingUpload(meetingId, segments), 0);
     return { ok: true };
   }
 
@@ -168,12 +174,26 @@ export function createBindFlow(deps: BindFlowDeps) {
     }
   }
 
+  /** "Continuar envio" (08-20): retoma, para a MESMA sessão, o envio parado, da última parte confirmada. */
+  async function resumeSend(meetingId: string): Promise<AgenteCommandResult> {
+    if (inFlight.has(meetingId)) return bindFail('invalid-state');
+    inFlight.add(meetingId);
+    try {
+      const plan = await prepareResume(deps, meetingId, isLive(deps.getMeetingState(), meetingId));
+      if ('failure' in plan) return plan.failure;
+      startUpload(meetingId, plan.sessionId, plan.parts, plan.startAt);
+      return { ok: true };
+    } finally {
+      inFlight.delete(meetingId);
+    }
+  }
+
   /** Só para testes: espera os envios em partes que estão rodando em segundo plano. */
   async function whenIdle(): Promise<void> {
     await Promise.all([...uploads]);
   }
 
-  return { bind, whenIdle };
+  return { bind, resumeSend, whenIdle };
 }
 
 export type BindFlow = ReturnType<typeof createBindFlow>;

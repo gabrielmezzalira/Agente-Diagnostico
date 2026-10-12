@@ -87,6 +87,8 @@ export type AssociationEvent =
   /** `seedSent` = o que o envio em partes cobriu, para a retomada da sala continuar sem repetir palavras. */
   | { type: 'send-completed'; seedSent: SeedSent }
   | { type: 'send-failed'; error: AssociationError }
+  /** "Continuar envio" (08-20): `send-failed` com sessão volta a `sending` do ponto confirmado e cancela o prazo de encerramento. */
+  | { type: 'send-resumed' }
   /** Encerramento da sessão (B4-b): encerrada, prazo armado e tentativa falha (plano 08-16; quem dispara é o 08-27). */
   | { type: 'session-finished' }
   | { type: 'finish-armed'; by: number }
@@ -159,6 +161,7 @@ export function reduceAssociation(
     case 'send-progress':
     case 'send-completed':
     case 'send-failed':
+    case 'send-resumed':
       return reduceSendFlow(current, event);
     case 'session-finished':
     case 'finish-armed':

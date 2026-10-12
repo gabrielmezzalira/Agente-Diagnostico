@@ -230,3 +230,91 @@ describe('transições ilegais devolvem a mesma referência', () => {
     expect(ASSOCIATION_STATES).toHaveLength(9);
   });
 });
+
+describe('retomar o envio parado (send-resumed, plano 08-20)', () => {
+  const stopped = (extra: Partial<MeetingAssociation> = {}) =>
+    assoc('send-failed', {
+      sessionId: SID,
+      origin: 'picker',
+      clientName: 'ACME',
+      sendProgress: { done: 6, total: 30 },
+      error: 'send',
+      ...extra,
+    });
+
+  it('send-failed (com sessionId) -> sending, mantendo sessão e progresso e limpando o erro', () => {
+    expect(reduce(stopped(), { type: 'send-resumed' })).toEqual(
+      assoc('sending', {
+        sessionId: SID,
+        origin: 'picker',
+        clientName: 'ACME',
+        sendProgress: { done: 6, total: 30 },
+      }),
+    );
+  });
+
+  it('cancela o prazo de 5 min da B4-b: sem finishBy nem finishTries', () => {
+    const next = reduce(stopped({ finishBy: 1_000, finishTries: 2 }), { type: 'send-resumed' });
+    expect(next).toEqual(
+      assoc('sending', {
+        sessionId: SID,
+        origin: 'picker',
+        clientName: 'ACME',
+        sendProgress: { done: 6, total: 30 },
+      }),
+    );
+  });
+
+  it('com a sessão já encerrada, sessionFinished é preservado', () => {
+    const next = reduce(stopped({ sessionFinished: true }), { type: 'send-resumed' });
+    expect(next).toMatchObject({ state: 'sending', sessionFinished: true, sessionId: SID });
+  });
+
+  it('send-failed sem sessionId não retoma (mesma referência)', () => {
+    const current = assoc('send-failed', { error: 'send' });
+    expect(reduce(current, { type: 'send-resumed' })).toBe(current);
+  });
+
+  it.each<AssociationState>([
+    'pending',
+    'choosing',
+    'deferred',
+    'linking',
+    'linked',
+    'ended-unsent',
+    'sending',
+    'sent',
+  ])('%s + send-resumed devolve a mesma referência', (state) => {
+    const current = assoc(state, { sessionId: SID });
+    expect(reduce(current, { type: 'send-resumed' })).toBe(current);
+  });
+
+  it('sessão encerrada: a volta à sala durante o envio retomado devolve pending limpo, nunca linking/linked', () => {
+    const resumed = reduce(stopped({ sessionFinished: true }), { type: 'send-resumed' });
+    expect(resumed).not.toBeNull();
+    expect(reduce(resumed, { type: 'meeting-resumed' })).toEqual(assoc('pending'));
+  });
+
+  it('sessão encerrada: o envio retomado que termina vira sent e mantém sessionFinished', () => {
+    const resumed = reduce(stopped({ sessionFinished: true }), { type: 'send-resumed' });
+    const done = reduce(resumed, { type: 'send-completed', seedSent: SEED });
+    expect(done).toEqual(
+      assoc('sent', {
+        sessionId: SID,
+        origin: 'picker',
+        clientName: 'ACME',
+        sessionFinished: true,
+        seedSent: SEED,
+      }),
+    );
+  });
+
+  it('nova falha na retomada volta a send-failed com o progresso novo', () => {
+    const resumed = reduce(stopped(), { type: 'send-resumed' });
+    const progressed = reduce(resumed, { type: 'send-progress', done: 10, total: 30 });
+    expect(reduce(progressed, { type: 'send-failed', error: 'send' })).toMatchObject({
+      state: 'send-failed',
+      sendProgress: { done: 10, total: 30 },
+    });
+  });
+});

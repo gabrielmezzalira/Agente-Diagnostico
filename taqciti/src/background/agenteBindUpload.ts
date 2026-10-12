@@ -73,9 +73,10 @@ export async function runBindUpload(
   meetingId: string,
   sessionId: string,
   parts: readonly UploadPart[],
+  startAt = 0,
 ): Promise<void> {
   try {
-    await uploadParts(deps, meetingId, sessionId, parts);
+    await uploadParts(deps, meetingId, sessionId, parts, startAt);
   } finally {
     notifySettled(deps, meetingId);
   }
@@ -86,11 +87,13 @@ async function uploadParts(
   meetingId: string,
   sessionId: string,
   parts: readonly UploadPart[],
+  startAt: number,
 ): Promise<void> {
   // O progresso é aplicado em cadeia: a conclusão só vem depois do último progresso gravado.
   let progress: Promise<void> = Promise.resolve();
   const outcome = await runMeetingUpload({
     parts,
+    startAt,
     sleep: deps.sleep ?? defaultSleep,
     send: async (part): Promise<SendAttemptResult> => {
       const config = await deps.loadConfig();
