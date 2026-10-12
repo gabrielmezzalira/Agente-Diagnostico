@@ -777,6 +777,14 @@ class PipelineManager:
             await pipeline.push_chunk(text, speaker)
 
     async def stop_session(self, session_id: str) -> None:
+        # Plano 08-15 / B4-b: se uma criação está em andamento (presa no LLM, já tendo
+        # lido a sessão como active), espera ela registrar o pipeline antes de retirá-lo;
+        # senão ela registraria e iniciaria o pipeline DEPOIS do stop — órfão chamando o
+        # Gemini sobre sessão encerrada. Sem criação em andamento, não há espera.
+        lock = self._locks.get(session_id)
+        if lock is not None:
+            async with lock:
+                pass
         pipeline = self._pipelines.pop(session_id, None)
         self._locks.pop(session_id, None)  # sessão encerrada: libera o lock dela
         if pipeline:

@@ -229,3 +229,95 @@ async def test_unknown_session_returns_none_and_leaves_no_lock(pipeline_env):
     assert await pm.get_or_create("inexistente") is None
     assert pm._locks == {}
     assert counters["start"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# Plano 08-15 / Task 3 — stop_session espera a criação em andamento (B4-b)
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture
+def stop_counter(monkeypatch):
+    """Conta quantas vezes SessionPipeline.stop foi chamado (sem rede)."""
+    counter = {"stop": 0}
+
+    async def _fake_stop(self):
+        counter["stop"] += 1
+
+    monkeypatch.setattr(SessionPipeline, "stop", _fake_stop)
+    return counter
+
+
+async def test_stop_session_waits_for_creation_in_progress(pipeline_env, stop_counter, monkeypatch):
+    install, counters = pipeline_env
+    install(_FakeDB({_SID: _session_row(_SID)}))
+    release = asyncio.Event()
+
+    async def _held_infer(key, context):
+        await release.wait()  # a criação já leu a sessão como active e fica presa no LLM
+        return "bi", 0, 0
+
+    monkeypatch.setattr(pipeline_mod.llm_service, "infer_project_type", _held_infer)
+    pm = PipelineManager()
+
+    creation = asyncio.create_task(pm.get_or_create(_SID))
+    await asyncio.sleep(0)  # a criação entra no lock
+    stopping = asyncio.create_task(pm.stop_session(_SID))
+    await asyncio.sleep(0.05)
+
+    assert not stopping.done()  # stop espera a criação, não passa por cima dela
+    assert stop_counter["stop"] == 0
+
+    release.set()
+    await asyncio.wait_for(asyncio.gather(creation, stopping), timeout=1.0)
+
+    assert counters["start"] == 1
+    assert stop_counter["stop"] == 1  # o pipeline recém-criado foi parado
+    assert pm._pipelines == {}
+    assert pm._locks == {}
+
+
+async def test_stop_session_without_creation_in_progress_is_idempotent(stop_counter):
+    pm = PipelineManager()
+
+    await pm.stop_session(_SID)
+    await pm.stop_session(_SID)
+
+    assert stop_counter["stop"] == 0
+    assert pm._locks == {}
+
+
+async def test_stop_session_does_not_wait_for_other_session_creation(pipeline_env, stop_counter, monkeypatch):
+    install, _ = pipeline_env
+    install(_FakeDB({_SID_A: _session_row(_SID_A, context="lenta-A")}))
+    gate_a = asyncio.Event()
+
+    async def _slow_infer(key, context):
+        await gate_a.wait()
+        return "bi", 0, 0
+
+    monkeypatch.setattr(pipeline_mod.llm_service, "infer_project_type", _slow_infer)
+    pm = PipelineManager()
+    task_a = asyncio.create_task(pm.get_or_create(_SID_A))
+    await asyncio.sleep(0)
+
+    # parar a sessão B não pode esperar a criação (travada) da sessão A
+    await asyncio.wait_for(pm.stop_session(_SID_B), timeout=1.0)
+    assert not task_a.done()
+
+    gate_a.set()
+    await asyncio.wait_for(task_a, timeout=1.0)
+
+
+async def test_get_or_create_after_stop_of_finished_session_returns_none(pipeline_env, stop_counter):
+    install, counters = pipeline_env
+    db = install(_FakeDB({_SID: _session_row(_SID)}))
+    pm = PipelineManager()
+    assert await pm.get_or_create(_SID) is not None
+
+    db.sessions[_SID]["status"] = "finished"  # o finish grava finished antes de parar
+    await pm.stop_session(_SID)
+
+    assert await pm.get_or_create(_SID) is None
+    assert counters["start"] == 1  # não recriou pipeline
+    assert pm._pipelines == {}
+    assert pm._locks == {}
