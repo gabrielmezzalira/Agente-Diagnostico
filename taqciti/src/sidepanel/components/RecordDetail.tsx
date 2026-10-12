@@ -19,6 +19,9 @@ import { EditableTitle } from '@/shared/ui/EditableTitle';
 import { Icon } from '@/shared/ui/Icon';
 import { TranscriptView } from '@/shared/ui/TranscriptView';
 import { formatDate, formatDurationHuman, formatTime, hostName } from '@/shared/ui/format';
+import { toBadgeState } from '@/features/agente/bindingView';
+import { useAssociation } from '@/shared/hooks/useAssociations';
+import { AgenteEndSlot } from './AgenteEndSlot';
 import { AssociationBadgeFor } from './AssociationBadgeFor';
 import { StatusBadge } from './StatusBadge';
 
@@ -32,6 +35,9 @@ export function RecordDetail({ record, onBack }: RecordDetailProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generated, setGenerated] = useState<DocumentoPronto | null>(null);
+  // Reunião que já foi (total ou parcialmente) enviada: apagar aqui não apaga a cópia do Agente (D-11).
+  const badge = toBadgeState(useAssociation(record.id), false);
+  const hasAgenteCopy = badge === 'sent' || badge === 'stopped';
 
   const copy = async () => {
     await navigator.clipboard.writeText(transcriptToText(record.segments));
@@ -71,6 +77,13 @@ export function RecordDetail({ record, onBack }: RecordDetailProps) {
 
           <div className="mt-3 space-y-2">
             <GenerateDocumentMenu source={record} onGenerated={setGenerated} />
+            <AgenteEndSlot
+              meetingId={record.id}
+              title={record.title}
+              variant="button"
+              surface="wide"
+              onDiscarded={onBack}
+            />
             <div className="flex gap-1.5">
               <Button
                 variant="secondary"
@@ -122,8 +135,12 @@ export function RecordDetail({ record, onBack }: RecordDetailProps) {
       <ConfirmModal
         open={confirmDelete}
         title="Apagar do histórico?"
-        description={`"${record.title}" será removida para sempre, incluindo a transcrição.`}
+        description={
+          `"${record.title}" será removida para sempre, incluindo a transcrição.` +
+          (hasAgenteCopy ? ' A cópia que já foi enviada ao Agente continua lá.' : '')
+        }
         confirmLabel="Apagar"
+        cancelLabel={hasAgenteCopy ? 'Manter no histórico' : 'Cancelar'}
         danger
         onConfirm={() => {
           setConfirmDelete(false);

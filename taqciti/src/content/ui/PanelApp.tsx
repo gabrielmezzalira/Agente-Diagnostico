@@ -71,6 +71,7 @@ import {
   hostName,
 } from '@/shared/ui/format';
 import { detectNextMeeting, type NextMeetingHypothesis } from '@/features/meeting/nextMeeting';
+import { AgenteEndSlot } from '@/sidepanel/components/AgenteEndSlot';
 import { AgenteLiveSlot } from '@/sidepanel/components/AgenteLiveSlot';
 import { AgenteNudgeAnchor } from '@/sidepanel/components/AgenteNudgeAnchor';
 import { useFloating } from './useFloating';
@@ -541,6 +542,7 @@ function PanelBody({
         onDownload={() => onDownload(record)}
         onHistory={() => onRoute({ kind: 'history' })}
         historyLabel="Voltar ao histórico"
+        agenteVariant="button"
         onOpenWide={() => callbacks.onOpenSidePanel({ recordId: record.id })}
       />
     );
@@ -601,6 +603,7 @@ function PanelBody({
           onRoute({ kind: 'record', id: record.id });
         }}
         historyLabel="Ver no histórico"
+        agenteVariant="card"
         onOpenWide={() => callbacks.onOpenSidePanel({ recordId: record.id })}
       />
     );
@@ -647,6 +650,7 @@ function MeetingScreen({
   onDownload,
   onHistory,
   historyLabel,
+  agenteVariant,
   onOpenWide,
 }: {
   record: MeetingRecord;
@@ -656,6 +660,8 @@ function MeetingScreen({
   onDownload: () => void;
   onHistory: () => void;
   historyLabel: string;
+  /** Fim da reunião: cartão (tela "Transcrição salva") ou botão (reunião aberta pelo histórico). */
+  agenteVariant: 'card' | 'button';
   /** Abre ESTA reunião na saída larga. */
   onOpenWide: () => void;
 }) {
@@ -671,6 +677,8 @@ function MeetingScreen({
           <p className="mt-1 text-body leading-relaxed text-muted">{subtitle}</p>
         )}
       </div>
+
+      <AgenteEndSlot meetingId={record.id} title={record.title} variant={agenteVariant} surface="panel" />
 
       <div className="flex shrink-0 gap-2">
         <Button variant="secondary" size="compact" className="flex-1" onClick={onCopy}>
