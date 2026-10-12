@@ -24,10 +24,10 @@ import {
   type PhraseBuffer,
   type PhraseTiming,
 } from '@/features/agente/phraseBatcher';
-import { boundMeetingFor, type AgenteBinding } from '@/shared/config/agenteBindingStore';
 import { logger } from '@/shared/services/log';
 import type { AgenteStreamerDeps } from './agenteStreamerDeps';
 import { createAgenteSender } from './agenteSender';
+import { createBindingRecorder } from './agenteStreamerBindingRecorder';
 import { createPhraseWindowTimer } from './phraseWindowTimer';
 import { createSnapshotPersister } from './agenteStreamerSnapshot';
 import { createStatusReporter } from './agenteStatusReporter';
@@ -60,10 +60,8 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
   let unsubscribeConfig: (() => void) | null = null;
   /** WR-01: destino (URL + sessão + chave) dos trechos que estão na fila de envio; `null` = nada visto. */
   let lastDestinationKey: string | null = null;
-  /** CR-01: última dupla (sessão, reunião) cujo vínculo já foi pedido ao storage — evita regravar a cada flush. */
-  let lastBoundKey: string | null = null;
-  /** WR-01: cópia em memória do vínculo salvo (`undefined` = ainda não lido neste boot). */
-  let storedBinding: AgenteBinding | null | undefined;
+  /** CR-01/WR-01: memória do vínculo sessão → última reunião (extraída para não passar de 300 linhas). */
+  const bindingRecorder = createBindingRecorder(deps);
   const status = createStatusReporter(deps.reportStatus);
   const sender = createAgenteSender({ send: deps.send, onOutcome: status.sendOutcome });
   const windowTimer = createPhraseWindowTimer(() => void enqueueStep(tick));
@@ -107,7 +105,7 @@ export function createAgenteStreamer(deps: AgenteStreamerDeps) {
     discard();
     cursor = null;
     lastDestinationKey = null;
-    lastBoundKey = null;
+    bindingRecorder.reset();
     status.waitingForMeeting(null);
   }
 
@@ -154,7 +152,7 @@ ${config.agenteApiKey}`;
   }
 
   async function advance(config: AgenteConfig, state: MeetingState): Promise<void> {
-    const boundMeetingId = boundMeetingFor(await currentBinding(), config.agenteSessionId);
+    const boundMeetingId = await bindingRecorder.boundMeetingFor(config.agenteSessionId);
     const binding = {
       sessionId: config.agenteSessionId,
       confirmedMeetingId: config.confirmedMeetingId,
@@ -168,38 +166,7 @@ ${config.agenteApiKey}`;
     const destination = { backendUrl: config.agenteBackendUrl, sessionId: binding.sessionId };
     pending = appendDeltas(pending, result.deltas, destination, now);
     drain(config, now, state.phase !== 'recording');
-    await recordBinding(config.agenteSessionId, boundMeetingId);
-  }
-
-  /**
-   * WR-01: o vínculo é lido de `storage.local` uma vez e depois vive em memória — o service
-   * worker é o único escritor da chave, então a cópia não fica velha. `undefined` = não lido.
-   */
-  async function currentBinding(): Promise<AgenteBinding | null> {
-    if (storedBinding === undefined) storedBinding = (await deps.loadBinding?.()) ?? null;
-    return storedBinding;
-  }
-
-  /**
-   * CR-01: anota em `storage.local` a reunião que o cursor atende. É o que sobra de memória
-   * quando o cursor se perde (navegador fechado, extensão atualizada, toggle religado), e é
-   * por ele que a reunião do dia seguinte é reconhecida como diferente. Depois do envio, para
-   * nunca atrasá-lo; só ids, nunca texto. Com o cursor nulo (inclusive à espera de confirmação)
-   * nada é gravado. Falhar só vai para o log e tenta de novo no próximo passo.
-   */
-  async function recordBinding(sessionId: string, boundMeetingId: string): Promise<void> {
-    if (!deps.bindMeeting || cursor === null) return;
-    const meetingId = cursor.meetingId;
-    const key = `${sessionId}\n${meetingId}`;
-    if (meetingId === boundMeetingId || key === lastBoundKey) return;
-    lastBoundKey = key;
-    try {
-      await deps.bindMeeting(sessionId, meetingId);
-      storedBinding = { sessionId, meetingId };
-    } catch (error) {
-      lastBoundKey = null;
-      logger.error('gravar a reunião vinculada do Agente falhou', error);
-    }
+    await bindingRecorder.record(config.agenteSessionId, cursor?.meetingId ?? null, boundMeetingId);
   }
 
   /** Callback do timer da janela: relê a config (pode ter mudado) antes de mandar. */
