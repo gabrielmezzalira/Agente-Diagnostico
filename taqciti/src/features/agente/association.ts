@@ -10,6 +10,7 @@
  * Nunca guarda segredo: a chave `x-agente-key` fica na config, jamais aqui.
  */
 
+import { reduceCloseFlow } from './associationClose';
 import { carryIdentity, reduceSendFlow } from './associationSend';
 
 export type AssociationState =
@@ -55,6 +56,14 @@ export interface MeetingAssociation {
   /** Semente do vínculo: o que já saiu quando virou `linked`. Consumida (apagada) depois de adotada. */
   seedSent?: SeedSent;
   error?: AssociationError;
+  /** A sessão do Agente já foi encerrada (B4-b). */
+  sessionFinished?: true;
+  /** Prazo (epoch ms) depois do qual a Taqciti encerra mesmo com o envio parado; só o PRIMEIRO vale. */
+  finishBy?: number;
+  /** Quantas tentativas de encerrar falharam. */
+  finishTries?: number;
+  /** A Taqciti desistiu de encerrar sozinha (tentativas esgotadas ou recusa definitiva). */
+  finishGaveUp?: true;
 }
 
 export type AssociationEvent =
@@ -76,7 +85,11 @@ export type AssociationEvent =
   | { type: 'send-progress'; done: number; total: number }
   /** `seedSent` = o que o envio em partes cobriu, para a retomada da sala continuar sem repetir palavras. */
   | { type: 'send-completed'; seedSent: SeedSent }
-  | { type: 'send-failed'; error: AssociationError };
+  | { type: 'send-failed'; error: AssociationError }
+  /** Encerramento da sessão (B4-b): encerrada, prazo armado e tentativa falha (plano 08-16; quem dispara é o 08-27). */
+  | { type: 'session-finished' }
+  | { type: 'finish-armed'; by: number }
+  | { type: 'finish-failed'; definitive?: boolean };
 
 const BEFORE_LINK: readonly AssociationState[] = ['pending', 'choosing', 'deferred'];
 
@@ -174,5 +187,9 @@ export function reduceAssociation(
     case 'send-completed':
     case 'send-failed':
       return reduceSendFlow(current, event);
+    case 'session-finished':
+    case 'finish-armed':
+    case 'finish-failed':
+      return reduceCloseFlow(current, event);
   }
 }

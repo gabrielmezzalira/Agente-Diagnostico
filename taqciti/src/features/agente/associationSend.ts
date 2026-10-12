@@ -6,14 +6,22 @@
  */
 import type { AssociationEvent, MeetingAssociation } from './association';
 
-/** Campos que sobrevivem entre estados: o "quem" do vínculo, sem erro, progresso nem semente. */
+/**
+ * Campos que sobrevivem entre estados: o "quem" do vínculo e o encerramento (B4-b), sem erro, progresso
+ * nem semente. Sem levar o prazo, as tentativas e a desistência, os 5 minutos reiniciariam a cada mudança.
+ */
 export function carryIdentity(current: MeetingAssociation): Omit<MeetingAssociation, 'state'> {
   const { meetingId, clientName, sessionId, origin } = current;
+  const { sessionFinished, finishBy, finishTries, finishGaveUp } = current;
   return {
     meetingId,
     ...(clientName !== undefined && { clientName }),
     ...(sessionId !== undefined && { sessionId }),
     ...(origin !== undefined && { origin }),
+    ...(sessionFinished !== undefined && { sessionFinished }),
+    ...(finishBy !== undefined && { finishBy }),
+    ...(finishTries !== undefined && { finishTries }),
+    ...(finishGaveUp !== undefined && { finishGaveUp }),
   };
 }
 

@@ -92,6 +92,72 @@ describe('normalizeAssociations: lista branca (T-08-02)', () => {
     expect(map.m3).not.toHaveProperty('seedSent');
   });
 
+  it('os campos do encerramento (B4-b) sobrevivem; valores inválidos são ignorados', async () => {
+    const { store } = await loadStore();
+    const map = store.normalizeAssociations({
+      m1: {
+        meetingId: 'm1',
+        state: 'linked',
+        sessionId: SID,
+        sessionFinished: true,
+        finishBy: 1_700_000_000_000,
+        finishTries: 3,
+        finishGaveUp: true,
+      },
+      m2: {
+        meetingId: 'm2',
+        state: 'linked',
+        sessionId: SID,
+        sessionFinished: false,
+        finishBy: 'amanhã',
+        finishTries: -1,
+        finishGaveUp: 'sim',
+      },
+    });
+    expect(map.m1).toEqual({
+      meetingId: 'm1',
+      state: 'linked',
+      sessionId: SID,
+      sessionFinished: true,
+      finishBy: 1_700_000_000_000,
+      finishTries: 3,
+      finishGaveUp: true,
+    });
+    expect(map.m2).toEqual({ meetingId: 'm2', state: 'linked', sessionId: SID });
+  });
+
+  it('prazo, tentativas e desistência gravados voltam iguais depois de um reinício', async () => {
+    const { store } = await loadStore();
+    await store.applyAssociationEvent('m1', { type: 'created' });
+    await store.applyAssociationEvent('m1', { type: 'link-started', origin: 'picker', clientName: 'ACME', sessionId: SID });
+    await store.applyAssociationEvent('m1', { type: 'link-completed', seedSent: {} });
+    await store.applyAssociationEvent('m1', { type: 'finish-armed', by: 1_700_000_000_000 });
+    await store.applyAssociationEvent('m1', { type: 'finish-failed' });
+    await store.applyAssociationEvent('m1', { type: 'finish-failed', definitive: true });
+    await store.clearSeed('m1');
+
+    vi.resetModules();
+    const reloaded = await import('./agenteAssociationStore');
+    expect(await reloaded.getAssociation('m1')).toMatchObject({
+      state: 'linked',
+      finishBy: 1_700_000_000_000,
+      finishTries: 2,
+      finishGaveUp: true,
+    });
+  });
+
+  it('a marca "sessão encerrada" volta depois de um reinício', async () => {
+    const { store } = await loadStore();
+    await store.applyAssociationEvent('m1', { type: 'created' });
+    await store.applyAssociationEvent('m1', { type: 'link-started', origin: 'picker', clientName: 'ACME', sessionId: SID });
+    await store.applyAssociationEvent('m1', { type: 'link-completed', seedSent: {} });
+    await store.applyAssociationEvent('m1', { type: 'session-finished' });
+
+    vi.resetModules();
+    const reloaded = await import('./agenteAssociationStore');
+    expect(await reloaded.getAssociation('m1')).toMatchObject({ sessionFinished: true });
+  });
+
   it('valor ausente ou que não é objeto vira mapa vazio', async () => {
     const { store } = await loadStore();
     expect(store.normalizeAssociations(null)).toEqual({});

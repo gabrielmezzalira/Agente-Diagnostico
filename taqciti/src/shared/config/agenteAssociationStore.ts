@@ -43,6 +43,14 @@ function normalizeSeed(raw: unknown): SeedSent | undefined {
   return seed;
 }
 
+/** Campos do encerramento (B4-b): `true` só vale como `true`; prazo e tentativas, inteiros >= 0. */
+function normalizeClose(entry: MeetingAssociation, raw: Record<string, unknown>): void {
+  if (raw.sessionFinished === true) entry.sessionFinished = true;
+  if (isCount(raw.finishBy)) entry.finishBy = raw.finishBy;
+  if (isCount(raw.finishTries)) entry.finishTries = raw.finishTries;
+  if (raw.finishGaveUp === true) entry.finishGaveUp = true;
+}
+
 function normalizeEntry(key: string, raw: unknown): MeetingAssociation | null {
   if (!isRecord(raw) || raw.meetingId !== key) return null;
   const state = ASSOCIATION_STATES.find((candidate) => candidate === raw.state);
@@ -60,6 +68,7 @@ function normalizeEntry(key: string, raw: unknown): MeetingAssociation | null {
   }
   const seedSent = normalizeSeed(raw.seedSent);
   if (seedSent !== undefined) entry.seedSent = seedSent;
+  normalizeClose(entry, raw);
   return entry;
 }
 
