@@ -22,7 +22,6 @@ _TAREFAS: set[asyncio.Task] = set()  # referência forte: tarefa solta pode ser 
 
 # Tetos (o DocuData recusa transcrição acima de 2 MB; ficamos abaixo disso).
 LIMITE_TRANSCRICAO_BYTES = 1_500_000
-MAX_TEXTO_LINHA = 20_000
 MAX_PERGUNTAS = 200
 MAX_RED_FLAGS = 100
 MAX_AREAS = 100
@@ -69,22 +68,36 @@ def _texto(valor: Any, limite: int = MAX_TEXTO) -> str | None:
     return str(seguro)[:limite]
 
 
+def _linha_do_chunk(chunk: dict) -> str | None:
+    """"Falante: texto" (speaker limitado, surrogates trocados); None para chunk sem texto."""
+    if not chunk.get("text"):
+        return None
+    return f"{_texto(chunk.get('speaker'), MAX_SPEAKER) or 'Participante'}: {_limpo(str(chunk['text']))}"
+
+
 def _transcricao(chunks: list[dict]) -> tuple[str | None, bool]:
-    """Linhas "Falante: texto" na ordem recebida, cortadas em linha inteira abaixo do limite em bytes."""
-    linhas, usado, truncada = [], 0, False
+    """Linhas na ordem recebida, abaixo do teto total em bytes UTF-8 (único teto da transcrição).
+
+    Uma linha que não cabe é descartada inteira (e o resto também); só uma linha maior que o
+    próprio teto (ex.: PDF inteiro num chunk) é incluída cortada no espaço restante, em caractere inteiro.
+    """
+    linhas, usado = [], 0
     for c in chunks:
-        if not c.get("text"):
+        linha = _linha_do_chunk(c)
+        if linha is None:
             continue
-        texto = _limpo(str(c["text"]))
-        if len(texto) > MAX_TEXTO_LINHA:
-            texto, truncada = texto[:MAX_TEXTO_LINHA], True
-        linha = f"{_texto(c.get('speaker'), MAX_SPEAKER) or 'Participante'}: {texto}"
-        custo = len(linha.encode("utf-8")) + (1 if linhas else 0)
-        if usado + custo > LIMITE_TRANSCRICAO_BYTES:
-            return "\n".join(linhas) or None, True
-        linhas.append(linha)
-        usado += custo
-    return "\n".join(linhas) or None, truncada
+        bruto = linha.encode("utf-8")
+        custo = len(bruto) + (1 if linhas else 0)
+        if usado + custo <= LIMITE_TRANSCRICAO_BYTES:
+            linhas.append(linha)
+            usado += custo
+            continue
+        if len(bruto) > LIMITE_TRANSCRICAO_BYTES:
+            restante = LIMITE_TRANSCRICAO_BYTES - usado - (1 if linhas else 0)
+            if restante > 0:
+                linhas.append(bruto[:restante].decode("utf-8", "ignore"))
+        return "\n".join(linhas) or None, True
+    return "\n".join(linhas) or None, False
 
 
 def montar_pacote(
@@ -135,7 +148,7 @@ def _chunks_paginados(db: Any, session_id: str) -> tuple[list[dict], bool]:
             .order("timestamp").order("id").range(inicio, inicio + TAMANHO_PAGINA - 1).execute().data or []
         )
         chunks.extend(lote)
-        bytes_acumulados += sum(len(str(c.get("text") or "").encode("utf-8", "replace")) for c in lote)
+        bytes_acumulados += sum(len(l.encode("utf-8")) + 1 for l in map(_linha_do_chunk, lote) if l)
         if bytes_acumulados > LIMITE_TRANSCRICAO_BYTES:
             return chunks, True
         if len(lote) < TAMANHO_PAGINA:
