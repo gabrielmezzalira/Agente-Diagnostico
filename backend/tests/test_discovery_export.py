@@ -368,3 +368,32 @@ async def test_leituras_rodam_fora_do_event_loop(monkeypatch):
     monkeypatch.setattr(export, "_ler_dados", lambda *a: (visto.append(threading.current_thread()), original(*a))[1])
     await export.exportar_sessao(_db(), SID, _Gateway())
     assert visto and visto[0] is not threading.main_thread()
+
+
+# --- Revisão final: chunk gigante (PDF) e id com espaços ---------------------------------------------
+def test_chunk_unico_de_300_mil_caracteres_entra_inteiro_sem_truncar():
+    texto = "a" * 300_000
+    pacote = _montar(chunks=[{"speaker": "transcript_upload", "text": texto}])
+    assert pacote["transcricao"] == f"transcript_upload: {texto}"
+    assert pacote["conteudo_estruturado"]["transcricao_truncada"] is False
+
+
+def test_chunk_de_2mb_e_cortado_no_teto_com_utf8_valido_na_fronteira():
+    for prefixo in ("", "b"):  # desloca a fronteira para cair no meio de "é" (2 bytes) em um dos casos
+        pacote = _montar(chunks=[{"speaker": "S", "text": prefixo + "é" * 1_000_000}])
+        bruto = pacote["transcricao"].encode("utf-8")
+        assert LIMITE_MENOS_UM <= len(bruto) <= export.LIMITE_TRANSCRICAO_BYTES
+        bruto.decode("utf-8")
+        assert pacote["conteudo_estruturado"]["transcricao_truncada"] is True
+
+
+LIMITE_MENOS_UM = export.LIMITE_TRANSCRICAO_BYTES - 3
+
+
+async def test_paginacao_conta_bytes_reais_da_linha_e_para_cedo_com_chunk_gigante():
+    chunks = [_chunk(0, "z" * 2_000_000)] + [_chunk(i) for i in range(1, 3000)]
+    _Query.requisicoes = 0
+    gateway = _Gateway()
+    await export.exportar_sessao(_db_com_chunks(chunks), SID, gateway)
+    assert gateway.pacotes[0]["conteudo_estruturado"]["transcricao_truncada"] is True
+    assert _Query.requisicoes <= 6  # 5 leituras fixas + 1 página de chunks
