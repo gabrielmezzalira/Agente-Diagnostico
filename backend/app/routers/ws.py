@@ -79,13 +79,14 @@ async def websocket_endpoint(session_id: str, ws: WebSocket):
                     "tokens_used": pipeline.state.tokens_used,
                     "cost_usd": str(round(pipeline.state.cost_usd, 8)),
                 }).eq("id", session_id).execute()
-                await pipeline_manager.stop_session(session_id)
-                # Integração de Discovery: a linha já está 'finished'. Nada aqui pode
+                # Integração de Discovery: a linha já está 'finished'. Agendado ANTES do stop_session (que no
+                # WS não tem try/except: se levantar, a exportação não pode ser pulada). Nada aqui pode
                 # quebrar o encerramento; log sem conteúdo (classe + id da sessão).
                 try:
                     agendar_exportacao(session_id)
                 except Exception as exc:
                     _log.error("falha ao agendar exportação ao DocuData (%s) sessão %s", type(exc).__name__, session_id)
+                await pipeline_manager.stop_session(session_id)
                 break
 
     except WebSocketDisconnect:
