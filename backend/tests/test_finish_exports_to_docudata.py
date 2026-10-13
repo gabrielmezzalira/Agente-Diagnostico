@@ -172,7 +172,7 @@ async def test_ws_finish_agenda_exatamente_uma_vez_apos_gravar(monkeypatch):
     monkeypatch.setattr(ws_mod, "agendar_exportacao", lambda sid: eventos.append(("agendar", sid)))
     ws = _FakeWS([json.dumps({"event": "finish_session"})])
     await ws_mod.websocket_endpoint(_SID, ws)
-    assert eventos == ["update:finished", "stop", ("agendar", _SID)]
+    assert eventos == ["update:finished", ("agendar", _SID), "stop"]
 
 
 async def test_ws_falha_ao_agendar_nao_quebra(monkeypatch):
@@ -195,3 +195,25 @@ async def test_ws_sem_finish_nao_agenda(monkeypatch):
     ws = _FakeWS([json.dumps({"event": "ping"})])  # depois desconecta
     await ws_mod.websocket_endpoint(_SID, ws)
     assert "agendar" not in eventos
+
+
+async def test_ws_stop_session_levantando_nao_pula_a_exportacao(monkeypatch):
+    eventos = []
+    _preparar_ws(monkeypatch, eventos)
+
+    class _PMQuebra:
+        async def get_or_create(self, sid):
+            return _FakePipeline()
+
+        async def stop_session(self, sid):
+            eventos.append("stop")
+            raise RuntimeError("falha ao parar")
+
+    monkeypatch.setattr(ws_mod, "pipeline_manager", _PMQuebra())
+    monkeypatch.setattr(ws_mod, "agendar_exportacao", lambda sid: eventos.append(("agendar", sid)))
+    ws = _FakeWS([json.dumps({"event": "finish_session"})])
+    try:
+        await ws_mod.websocket_endpoint(_SID, ws)
+    except RuntimeError:
+        pass
+    assert ("agendar", _SID) in eventos and eventos.index(("agendar", _SID)) < eventos.index("stop")
