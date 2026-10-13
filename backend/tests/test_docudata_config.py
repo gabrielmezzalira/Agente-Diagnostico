@@ -90,3 +90,66 @@ def test_config_e_imutavel(monkeypatch):
     cfg = load_docudata_config()
     with pytest.raises(Exception):
         cfg.url = "https://outro.com"
+
+
+# --- Fix round 1: chave/URL com caracteres perigosos e hosts enganosos ---
+
+_CHAVES_RUINS = [
+    "a" + "\r\n" + "X-Evil: 1",
+    "a" + " " + "b",
+    "a" + "\t" + "b",
+    "chav" + "é",
+    "\x01\x02",
+]
+
+
+@pytest.mark.parametrize("chave", _CHAVES_RUINS)
+def test_chave_com_caracteres_invalidos_desliga(monkeypatch, caplog, chave):
+    monkeypatch.setenv("DOCUDATA_URL", "https://docudata.exemplo.com")
+    monkeypatch.setenv("DOCUDATA_DISCOVERY_KEY", chave)
+    with caplog.at_level("DEBUG"):
+        assert load_docudata_config() is None
+    assert chave not in caplog.text and "docudata.exemplo.com" not in caplog.text
+
+
+@pytest.mark.parametrize("url", [
+    "https://docudata.exemplo.com\n",  # \n final e removido pelo strip; precisa de \n interno
+    "https://docudata.exemplo.com/a b",
+    "https://docudata.exemplo.com/" + "\r\n" + "X: y",
+    "https://docudata.exemplo.com/" + "\n" + "x",
+])
+def test_url_com_espaco_ou_controle_desliga(monkeypatch, caplog, url):
+    segredo = "seg" + "redo-xyz"
+    monkeypatch.setenv("DOCUDATA_URL", url)
+    monkeypatch.setenv("DOCUDATA_DISCOVERY_KEY", segredo)
+    with caplog.at_level("DEBUG"):
+        r = load_docudata_config()
+    if url.strip() == "https://docudata.exemplo.com":
+        assert r is not None  # so whitespace nas pontas: aparado
+    else:
+        assert r is None
+    assert segredo not in caplog.text and "docudata.exemplo.com" not in caplog.text
+
+
+@pytest.mark.parametrize("url", [
+    "http://localhost.evil.com",
+    "http://127.0.0.1.evil.com",
+    "http://localhost@evil.com",
+])
+def test_hosts_enganosos_desligam(monkeypatch, url):
+    monkeypatch.setenv("DOCUDATA_URL", url)
+    monkeypatch.setenv("DOCUDATA_DISCOVERY_KEY", "chave")
+    assert load_docudata_config() is None
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:8000", "http://localhost:8000"])
+def test_http_loopback_com_porta_aceito(monkeypatch, url):
+    monkeypatch.setenv("DOCUDATA_URL", url)
+    monkeypatch.setenv("DOCUDATA_DISCOVERY_KEY", "chave")
+    assert load_docudata_config().url == url
+
+
+def test_https_com_barra_final_normalizada(monkeypatch):
+    monkeypatch.setenv("DOCUDATA_URL", "https://docudata.exemplo.com/api/")
+    monkeypatch.setenv("DOCUDATA_DISCOVERY_KEY", "chave")
+    assert load_docudata_config().url == "https://docudata.exemplo.com/api"

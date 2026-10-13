@@ -72,6 +72,12 @@ def load_docudata_config() -> DocudataConfig | None:
     key = os.environ.get("DOCUDATA_DISCOVERY_KEY", "").strip()
     if not url or not key:
         return None
+    if any(c.isspace() or not c.isprintable() for c in url):
+        _log.warning("DOCUDATA_URL ignorada: caracteres inválidos")
+        return None
+    if not (key.isascii() and key.isprintable() and not any(c.isspace() for c in key)):
+        _log.warning("DOCUDATA_DISCOVERY_KEY inválida")
+        return None
     try:
         parsed = urlparse(url)
         _ = parsed.port  # valida a porta (levanta ValueError se inválida)
