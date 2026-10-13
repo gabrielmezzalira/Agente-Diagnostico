@@ -150,3 +150,100 @@ async def test_chave_nao_vaza_em_repr_str_nem_logs(caplog):
     assert "chave-secreta" not in caplog.text
     assert "sessao-0001" not in caplog.text
     assert "chave-secreta" not in repr(e.value)
+
+
+async def test_prazo_total_por_tentativa_estoura_e_repete():
+    import asyncio
+    chamadas = []
+
+    async def handler(req):
+        chamadas.append(1)
+        await asyncio.sleep(1)
+        return httpx.Response(202, json={"id": "ok"})
+
+    async def dormir(s):
+        pass
+
+    gw = HttpDocudataGateway("https://docudata.exemplo.com", "chave-secreta", timeout=0.05,
+                             transporte=httpx.MockTransport(handler), dormir=dormir)
+    with pytest.raises(EnvioFalhouErro):
+        await gw.enviar_reuniao(PACOTE)
+    assert len(chamadas) == 3
+
+
+async def test_cancelamento_externo_nao_e_engolido():
+    import asyncio
+    iniciou = asyncio.Event()
+
+    async def handler(req):
+        iniciou.set()
+        await asyncio.sleep(10)
+        return httpx.Response(202, json={"id": "ok"})
+
+    gw = _gateway(handler, [])
+    tarefa = asyncio.create_task(gw.enviar_reuniao(PACOTE))
+    await iniciou.wait()
+    tarefa.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await tarefa
+
+
+async def test_retry_after_gigante_usa_backoff_normal():
+    respostas = iter([httpx.Response(429, headers={"Retry-After": "9" * 5000}),
+                      httpx.Response(202, json={"id": "ok"})])
+    esperas: list[float] = []
+    assert await _gateway(lambda r: next(respostas), esperas).enviar_reuniao(PACOTE) == "ok"
+    assert esperas == [1.0]
+
+
+async def test_read_timeout_do_transporte_e_repetido():
+    chamadas = []
+
+    def handler(req):
+        chamadas.append(1)
+        raise httpx.ReadTimeout("lento")
+
+    with pytest.raises(EnvioFalhouErro):
+        await _gateway(handler, []).enviar_reuniao(PACOTE)
+    assert len(chamadas) == 3
+
+
+@pytest.mark.parametrize("status", [307, 308])
+async def test_307_e_308_sao_definitivos_com_uma_requisicao(status):
+    chamadas = []
+
+    def handler(req):
+        chamadas.append(1)
+        return httpx.Response(status, headers={"Location": "https://outro.exemplo.com/"})
+
+    with pytest.raises(EnvioDefinitivoErro):
+        await _gateway(handler, []).enviar_reuniao(PACOTE)
+    assert len(chamadas) == 1
+
+
+@pytest.mark.parametrize("tentativas", [0, -3])
+async def test_tentativas_nao_positivas_fazem_uma_requisicao(tentativas):
+    chamadas = []
+
+    def handler(req):
+        chamadas.append(1)
+        return httpx.Response(503)
+
+    gw = HttpDocudataGateway("https://docudata.exemplo.com", "k", tentativas=tentativas,
+                             transporte=httpx.MockTransport(handler))
+    with pytest.raises(EnvioFalhouErro):
+        await gw.enviar_reuniao(PACOTE)
+    assert len(chamadas) == 1
+
+
+async def test_espera_base_negativa_espera_zero():
+    esperas: list[float] = []
+
+    async def dormir(s):
+        esperas.append(s)
+
+    respostas = iter([httpx.Response(503), httpx.Response(202, json={"id": "ok"})])
+    gw = HttpDocudataGateway("https://docudata.exemplo.com", "k", espera_base=-1.0,
+                             transporte=httpx.MockTransport(lambda r: next(respostas)), dormir=dormir)
+    assert await gw.enviar_reuniao(PACOTE) == "ok"
+    assert esperas == [0.0]

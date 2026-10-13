@@ -54,7 +54,8 @@ def _extrair_id(resposta: httpx.Response) -> str | None:
 def _espera_retry_after(resposta: httpx.Response) -> float:
     """Lê `Retry-After` em segundos (apenas inteiro), limitado a um teto; 0 se ausente/inválido."""
     bruto = resposta.headers.get("Retry-After", "")
-    if not bruto.isascii() or not bruto.isdigit():
+    bruto = bruto.strip()
+    if len(bruto) > 6 or not bruto.isascii() or not bruto.isdigit():
         return 0.0
     return min(float(int(bruto)), ESPERA_MAXIMA_RETRY_AFTER)
 
@@ -86,6 +87,9 @@ class HttpDocudataGateway:
         O `pacote` precisa conter só tipos JSON (str/int/float/bool/None/list/dict): quem monta
         converte datas e UUIDs antes. Levanta `EnvioDefinitivoErro` em recusa e `EnvioFalhouErro`
         quando o DocuData não responde de forma utilizável após as tentativas.
+
+        Pior caso de tempo: tentativas x timeout + soma das esperas (backoff exponencial ou
+        Retry-After, teto de 30 s cada); com os padrões, cerca de 3x15 + 60 s.
         """
         try:
             corpo = json.dumps(pacote, allow_nan=False).encode("utf-8")
@@ -101,8 +105,11 @@ class HttpDocudataGateway:
             for tentativa in range(self._tentativas):
                 espera_extra = 0.0
                 try:
-                    resposta = await http.post(url, content=corpo, headers=cabecalhos)
-                except httpx.HTTPError:
+                    # Prazo TOTAL por tentativa (o timeout do httpx é por fase). Um estouro vira
+                    # erro repetível; CancelledError (cancelamento externo) continua propagando.
+                    async with asyncio.timeout(self._timeout):
+                        resposta = await http.post(url, content=corpo, headers=cabecalhos)
+                except (httpx.HTTPError, TimeoutError):
                     resposta = None
                     logger.warning("DocuData: erro de rede (tentativa %d/%d)", tentativa + 1, self._tentativas)
 
