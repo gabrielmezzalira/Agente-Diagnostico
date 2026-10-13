@@ -14,6 +14,7 @@ from supabase import Client, create_client
 from app.database import get_supabase
 from app.models.sessions import ReportResponse, SessionCreate, SessionRename, SessionResponse
 from app.services import llm as llm_service
+from app.services.discovery_export import agendar_exportacao
 from app.services.llm import tokens_to_usd
 from app.services.tunnel import tunnel_manager
 from app.services.recall import RecallService
@@ -263,6 +264,14 @@ async def finish_session(session_id: UUID, db: Client = Depends(get_supabase)):
         await pipeline_manager.stop_session(str(session_id))
     except Exception:
         _log.exception("falha ao parar pipeline da sessão %s no finish", session_id)
+
+    # Integração de Discovery: manda a sessão ao DocuData em segundo plano (a linha já está
+    # 'finished'). No-op sem DOCUDATA_URL/chave ou fora do modo discovery; nada aqui pode
+    # quebrar o encerramento. Log sem conteúdo: só classe da exceção e id da sessão.
+    try:
+        agendar_exportacao(str(session_id))
+    except Exception as exc:
+        _log.error("falha ao agendar exportação ao DocuData (%s) sessão %s", type(exc).__name__, session_id)
 
     return result.data[0]
 
