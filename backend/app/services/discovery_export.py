@@ -109,7 +109,7 @@ def montar_pacote(
     truncada = truncada or transcricao_cortada
     cobertura = _json_seguro(coverage_json, max_str=MAX_TEXTO) if isinstance(coverage_json, dict) else {}
     return {
-        "docudata_project_id": _texto(projeto["docudata_project_id"], 100),
+        "docudata_project_id": (_texto(projeto["docudata_project_id"], 100) or "").strip(),
         "fonte_session_id": str(sessao["id"]),
         "tipo": "outra",
         "ocorrida_em": _texto(sessao.get("started_at"), 64),

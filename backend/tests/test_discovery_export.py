@@ -397,3 +397,8 @@ async def test_paginacao_conta_bytes_reais_da_linha_e_para_cedo_com_chunk_gigant
     await export.exportar_sessao(_db_com_chunks(chunks), SID, gateway)
     assert gateway.pacotes[0]["conteudo_estruturado"]["transcricao_truncada"] is True
     assert _Query.requisicoes <= 6  # 5 leituras fixas + 1 página de chunks
+
+
+def test_docudata_project_id_vai_sem_espacos():
+    pacote = _montar(projeto={"docudata_project_id": " abc-123 ", "pre_meeting_context": None})
+    assert pacote["docudata_project_id"] == "abc-123"
