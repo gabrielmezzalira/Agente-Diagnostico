@@ -10,8 +10,11 @@ class _Resp:
 
 
 class _Query:
+    requisicoes = 0  # contador global de execute() (para testar paginação)
+
     def __init__(self, linhas):
         self._linhas, self._filtros, self._limite = linhas, [], None
+        self._ordem, self._faixa = [], None
 
     def select(self, *_a, **_k):
         return self
@@ -20,7 +23,12 @@ class _Query:
         self._filtros.append((col, val))
         return self
 
-    def order(self, *_a, **_k):
+    def order(self, col, desc=False, **_k):
+        self._ordem.append((col, desc))
+        return self
+
+    def range(self, ini, fim):
+        self._faixa = (ini, fim)
         return self
 
     def limit(self, n):
@@ -29,6 +37,11 @@ class _Query:
 
     def execute(self):
         saida = [dict(l) for l in self._linhas if all(l.get(c) == v for c, v in self._filtros)]
+        for col, desc in reversed(self._ordem):  # ordenações estáveis encadeadas
+            saida.sort(key=lambda l: (l.get(col) is not None, str(l.get(col))), reverse=desc)
+        if self._faixa:
+            saida = saida[self._faixa[0]: self._faixa[1] + 1]
+        _Query.requisicoes += 1
         return _Resp(saida[: self._limite] if self._limite else saida)
 
 
@@ -259,3 +272,99 @@ async def test_falha_ao_obter_banco_tambem_e_engolida(_config, monkeypatch):
     export.agendar_exportacao(SID)
     await asyncio.gather(*list(export._TAREFAS))
     assert len(export._TAREFAS) == 0
+
+
+# --- Fix round 1: paginação, ordem, speaker, surrogate, cobertura, thread ---------------------------
+def _db_com_chunks(chunks):
+    db = _db()
+    db._t["transcript_chunks"] = chunks
+    return db
+
+
+def _chunk(i, texto="fala", speaker="A"):
+    return {"id": f"{i:08d}", "session_id": SID, "speaker": speaker, "text": f"{texto} {i}",
+            "timestamp": f"2026-10-12T20:{i // 3600:02d}:{(i // 60) % 60:02d}:{i % 60:02d}+00:00"}
+
+
+async def test_paginacao_traz_todos_os_chunks_em_ordem_sem_truncar():
+    chunks = [_chunk(i) for i in range(2300)]
+    chunks.reverse()  # fora de ordem na fonte: a ordenação do banco é que decide
+    gateway = _Gateway()
+    await export.exportar_sessao(_db_com_chunks(chunks), SID, gateway)
+    pacote = gateway.pacotes[0]
+    linhas = pacote["transcricao"].split("\n")
+    assert linhas == [f"A: fala {i}" for i in range(2300)]
+    assert pacote["conteudo_estruturado"]["transcricao_truncada"] is False
+
+
+async def test_paginacao_para_cedo_e_marca_truncado_ao_estourar_o_teto():
+    grande = "x" * 15_000  # 1000 chunks = 15 MB: a 1a página já estoura
+    chunks = [_chunk(i, grande) for i in range(5000)]
+    _Query.requisicoes = 0
+    db = _db_com_chunks(chunks)
+    gateway = _Gateway()
+    await export.exportar_sessao(db, SID, gateway)
+    pacote = gateway.pacotes[0]
+    assert pacote["conteudo_estruturado"]["transcricao_truncada"] is True
+    assert len(pacote["transcricao"].encode("utf-8")) <= export.LIMITE_TRANSCRICAO_BYTES
+    # 6 leituras fixas (sessão, projeto, cobertura, perguntas, red flags) + 1 página de chunks
+    assert _Query.requisicoes <= 7
+
+
+async def test_paginacao_termina_quando_a_fonte_sempre_devolve_pagina_cheia(monkeypatch):
+    class _Sempre(_Query):
+        def execute(self):
+            _Query.requisicoes += 1
+            return _Resp([{"id": "x", "speaker": "A", "text": "a", "timestamp": "t"}] * export.TAMANHO_PAGINA)
+
+    class _DbSempre(_Db):
+        def table(self, nome):
+            return _Sempre([]) if nome == "transcript_chunks" else super().table(nome)
+
+    _Query.requisicoes = 0
+    gateway = _Gateway()
+    await export.exportar_sessao(_DbSempre(_db()._t), SID, gateway)
+    assert gateway.pacotes[0]["conteudo_estruturado"]["transcricao_truncada"] is True
+    assert _Query.requisicoes <= export.MAX_PAGINAS + 6
+
+
+async def test_perguntas_e_red_flags_vem_em_ordem_cronologica_e_com_teto():
+    db = _db()
+    db._t["questions"] = [{"id": f"{i:04d}", "session_id": SID, "text": f"q{i}", "block": "b", "lens": None,
+                           "status": "queued", "generated_at": f"2026-10-12T20:{i // 60:02d}:{i % 60:02d}+00:00"}
+                          for i in reversed(range(export.MAX_PERGUNTAS + 30))]
+    gateway = _Gateway()
+    await export.exportar_sessao(db, SID, gateway)
+    textos = [q["text"] for q in gateway.pacotes[0]["conteudo_estruturado"]["perguntas"]]
+    assert textos == [f"q{i}" for i in range(export.MAX_PERGUNTAS)]
+
+
+def test_speaker_gigante_e_cortado_e_o_chunk_continua_entrando():
+    pacote = _montar(chunks=[{"speaker": "S" * 2_000_000, "text": "oi"}])
+    assert pacote["transcricao"] is not None and len(pacote["transcricao"]) <= export.MAX_SPEAKER + 4
+    assert pacote["transcricao"].endswith(": oi")
+
+
+async def test_surrogate_solto_nao_derruba_montar_nem_exportar():
+    db = _db_com_chunks([{"id": "1", "session_id": SID, "speaker": "A\ud800", "text": "oi\ud800", "timestamp": "t"}])
+    db._t["questions"][0]["text"] = "pergunta\udfff"
+    gateway = _Gateway()
+    await export.exportar_sessao(db, SID, gateway)
+    json.dumps(gateway.pacotes[0], allow_nan=False).encode("utf-8")
+    gateway.pacotes[0]["transcricao"].encode("utf-8")
+    _montar(chunks=[{"speaker": None, "text": "\ud800"}], coverage_json={"a": {"notes": "\ud800"}})
+
+
+def test_textos_dentro_das_areas_cobertas_tem_teto():
+    cov = {"a": {"notes": "n" * 100_000, "sub": {"x": ["y" * 100_000]}}}
+    areas = _montar(coverage_json=cov)["conteudo_estruturado"]["areas_cobertas"]
+    assert len(areas["a"]["notes"]) == export.MAX_TEXTO and len(areas["a"]["sub"]["x"][0]) == export.MAX_TEXTO
+
+
+async def test_leituras_rodam_fora_do_event_loop(monkeypatch):
+    import threading
+    visto = []
+    original = export._ler_dados
+    monkeypatch.setattr(export, "_ler_dados", lambda *a: (visto.append(threading.current_thread()), original(*a))[1])
+    await export.exportar_sessao(_db(), SID, _Gateway())
+    assert visto and visto[0] is not threading.main_thread()
