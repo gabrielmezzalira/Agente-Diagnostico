@@ -1,13 +1,17 @@
 import json
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.database import get_supabase
+from app.services.discovery_export import agendar_exportacao
 from app.services.pipeline import pipeline_manager
 from app.services.ws_manager import ws_manager
 
 router = APIRouter(tags=["websocket"])
+
+_log = logging.getLogger(__name__)
 
 
 @router.websocket("/ws/{session_id}")
@@ -76,6 +80,12 @@ async def websocket_endpoint(session_id: str, ws: WebSocket):
                     "cost_usd": str(round(pipeline.state.cost_usd, 8)),
                 }).eq("id", session_id).execute()
                 await pipeline_manager.stop_session(session_id)
+                # Integração de Discovery: a linha já está 'finished'. Nada aqui pode
+                # quebrar o encerramento; log sem conteúdo (classe + id da sessão).
+                try:
+                    agendar_exportacao(session_id)
+                except Exception as exc:
+                    _log.error("falha ao agendar exportação ao DocuData (%s) sessão %s", type(exc).__name__, session_id)
                 break
 
     except WebSocketDisconnect:
