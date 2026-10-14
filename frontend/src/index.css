@@ -1,62 +1,91 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
+/*
+ * Design system CITi — tema escuro (ver DESIGN.md na raiz do repositório).
+ * Os nomes antigos --color-* continuam existindo e agora apontam para os valores escuros,
+ * para que telas ainda não migradas não quebrem. Código novo usa os tokens "ds-*".
+ */
 @theme {
-  /* ---- Color Palette — CITi Brand (light + green smoke) ---- */
+  /* ---- Tokens do design system ---- */
+  --color-ds-bg:          #030504;
+  --color-ds-sidebar:     #070b09;
+  --color-ds-card-top:    #0e1913;
+  --color-ds-card-bottom: #0a120d;
+  --color-ds-inner:       rgba(62, 224, 111, 0.055);
+  --color-ds-inner-border: rgba(62, 224, 111, 0.17);
+  --color-ds-border:      rgba(255, 255, 255, 0.08);
+  --color-ds-border-strong: rgba(255, 255, 255, 0.14);
+  --color-ds-text:        #f2f5f3;
+  --color-ds-text-2:      #c3cbc6;
+  --color-ds-muted:       #8a948e;
+  --color-ds-dim:         #5d6661;
+  --color-ds-green:       #3ee06f;
+  --color-ds-green-hover: #7cf0a0;
+  --color-ds-green-soft:  rgba(62, 224, 111, 0.12);
+  --color-ds-green-line:  rgba(62, 224, 111, 0.35);
+  --color-ds-red:         #ff6b6b;
+  --color-ds-amber:       #f2c14e;
+  --color-ds-violet:      #b197fc;
+  --color-ds-chart-grey:  #4a5550;
+
+  /* ---- Nomes legados (mesmos valores, tema escuro) ---- */
   --color-bg-page:        transparent;
-  --color-surface:        #ffffff;
-  --color-surface-2:      #f5f5f2;
-  --color-border-std:     #e0e0dc;
-  --color-border-hover:   #b0b8a8;
-  --color-text-primary:   #111111;
-  --color-text-secondary: #888888;
-  --color-accent:         #50d060;
-  --color-accent-hover:   #3aac48;
-  --color-green-bg-light: #e0f2e4;
-  --color-green-bg-tag:   #e0f2e4;
-  --color-border-green:   #84d49a;
-  --color-red:            #cc3333;
-  --color-yellow:         #d4880a;
-  --color-red-bg:         #fff2f2;
-  --color-yellow-bg:      #fff8ee;
-  --color-border-red:     #f0b8b8;
-  --color-border-yellow:  #f0d8a0;
-  --color-muted:          #f0f0ed;
+  --color-surface:        #0e1913;
+  --color-surface-2:      rgba(62, 224, 111, 0.055);
+  --color-border-std:     rgba(255, 255, 255, 0.08);
+  --color-border-hover:   rgba(255, 255, 255, 0.14);
+  --color-text-primary:   #f2f5f3;
+  --color-text-secondary: #8a948e;
+  --color-accent:         #3ee06f;
+  --color-accent-hover:   #7cf0a0;
+  --color-green-bg-light: rgba(62, 224, 111, 0.12);
+  --color-green-bg-tag:   rgba(62, 224, 111, 0.12);
+  --color-border-green:   rgba(62, 224, 111, 0.35);
+  --color-red:            #ff6b6b;
+  --color-yellow:         #f2c14e;
+  --color-red-bg:         rgba(255, 107, 107, 0.1);
+  --color-yellow-bg:      rgba(242, 193, 78, 0.1);
+  --color-border-red:     rgba(255, 107, 107, 0.3);
+  --color-border-yellow:  rgba(242, 193, 78, 0.3);
+  --color-muted:          rgba(255, 255, 255, 0.05);
 
-  /* ---- Typography ---- */
-  --font-family-sans: 'Barlow', sans-serif;
-  --font-family-mono: 'DM Mono', monospace;
+  /* ---- Tipografia ---- */
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-family-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* ---- Structural Heights ---- */
-  --height-topbar:     52px;
+  /* ---- Alturas estruturais ---- */
+  --height-topbar:     72px;
   --height-budget-bar: 36px;
-  --height-btn:        34px;
+  --height-btn:        38px;
 
-  /* ---- Border Radius ---- */
-  --radius-card:  10px;
-  --radius-panel: 8px;
-  --radius-input: 7px;
-  --radius-tag:   4px;
-  --radius-pill:  99px;
-  --radius-btn:   7px;
+  /* ---- Raios ---- */
+  --radius-card:  16px;
+  --radius-panel: 12px;
+  --radius-input: 10px;
+  --radius-tag:   6px;
+  --radius-pill:  999px;
+  --radius-btn:   10px;
 }
 
-/* ---- Base Styles ---- */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  font-family: var(--font-family-sans);
-  background-color: #eeeeea;
-  background-image:
-    radial-gradient(ellipse 140% 55% at 50% -5%, rgba(80, 208, 96, 0.28) 0%, rgba(80, 208, 96, 0.08) 45%, transparent 68%),
-    radial-gradient(ellipse 70% 40% at 5% 80%,   rgba(80, 208, 96, 0.10) 0%, transparent 55%);
-  background-attachment: fixed;
-  color: #111111;
+  font-family: var(--font-sans);
+  background-color: #030504;
+  color: #f2f5f3;
+  font-size: 14px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -65,12 +94,69 @@ body {
   min-height: 100vh;
 }
 
-/* ---- Form inputs — dark mode tweaks ---- */
+::selection {
+  background: rgba(62, 224, 111, 0.3);
+  color: #ffffff;
+}
+
+/* Foco visível em tudo que é interativo (WCAG AA) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #3ee06f;
+  outline-offset: 2px;
+}
+
+/* Campos nativos no tema escuro */
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
 }
 
 select option {
-  background-color: #182018;
-  color: #e8f0e8;
+  background-color: #0a120d;
+  color: #f2f5f3;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #5d6661;
+}
+
+/* Barras de rolagem discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Componentes base do design system ---- */
+@layer components {
+  .ds-card {
+    background: linear-gradient(180deg, #0e1913 0%, #0a120d 100%);
+    border: 1px solid rgba(62, 224, 111, 0.2);
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 rgba(62, 224, 111, 0.12), 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+  .ds-card-highlight {
+    background: rgba(62, 224, 111, 0.06);
+    border-color: rgba(62, 224, 111, 0.35);
+  }
+  .ds-page-glow {
+    background: radial-gradient(900px 420px at 85% -10%, rgba(62, 224, 111, 0.08), rgba(62, 224, 111, 0) 70%);
+  }
+  .ds-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8a948e;
+    font-weight: 500;
+  }
 }
