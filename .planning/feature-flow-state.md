@@ -7,7 +7,7 @@ etapa: 11
 etapa_nome: "Revisão do usuário do Agente; depois DocuData (mesmo kit). Etapa 12 (verificação) pendente."
 gates_reusados: ["design-system+DESIGN.md (~/Downloads/Documento visual pontos_positivos/DESIGN.md)", "prototype (telas de referência prontas nos 2 .dc.html)"]
 started_at: "2026-10-14T03:50:00Z"
-last_saved: "2026-10-14T20:58:59Z"
+last_saved: "2026-10-16T01:54:50Z"
 status: "em_progresso"
 branch_agente: "feat/redesign-ui-citi (cortada de origin/main em 6d0c60e; pushada em origin/feat/redesign-ui-citi)"
 
