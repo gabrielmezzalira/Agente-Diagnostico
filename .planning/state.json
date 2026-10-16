@@ -31,12 +31,12 @@
     {
       "number": "6",
       "name": "Opt-In Webhook Auth",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "7",
       "name": "Taqciti Config + Background Streamer",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "8",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step (plan phase 6)",
-    "reason": "Phase 6 of 10 — needs a plan"
+    "label": "Advance to the next step (plan phase 8)",
+    "reason": "Phase 8 of 10 — needs a plan"
   },
-  "updated_at": "2026-09-24T12:27:35.779Z"
+  "updated_at": "2026-09-27T13:18:52.152Z"
 }

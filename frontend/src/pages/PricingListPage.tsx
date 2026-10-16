@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react'
 import { api, type DiagnosticSummary, type Pricing } from '../lib/api'
+import AppShell from '../components/layout/AppShell'
+import { Button, Card, Chip, EmptyState, ErrorNotice } from '../components/ui'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
@@ -64,93 +66,65 @@ export default function PricingListPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-text-secondary)]">Carregando...</span>
-      </div>
-    )
+    return <AppShell><p className="text-[14px] text-ds-muted">Carregando…</p></AppShell>
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-page)]">
-      {/* Topbar */}
-      <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              to={`/projects/${id}`}
-              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </Link>
-            <h1 className="font-semibold text-sm text-[var(--color-text-primary)]">
-              Precificações
-            </h1>
-          </div>
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-accent)] text-white rounded-md text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
-          >
-            <Plus size={13} />
-            {creating ? 'Criando...' : 'Nova Precificação'}
-          </button>
-        </div>
+    <AppShell>
+      <div className="flex items-center gap-4">
+        <Link
+          to={`/projects/${id}`}
+          aria-label="Voltar para o projeto"
+          className="w-[38px] h-[38px] rounded-[10px] border border-ds-border-strong flex items-center justify-center text-ds-text-2 hover:bg-white/[0.05] transition-colors"
+        >
+          <ChevronLeft size={18} aria-hidden />
+        </Link>
+        <h1 className="m-0 text-[24px] font-bold tracking-[-0.02em] text-white">Precificações</h1>
+        <Button variant="primary" onClick={handleCreate} disabled={creating} className="ml-auto">
+          <Plus size={14} aria-hidden /> {creating ? 'Criando…' : 'Nova precificação'}
+        </Button>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-3">
-        {(error || deleteError) && (
-          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
-            {error ?? deleteError}
-          </div>
-        )}
+      {(error || deleteError) && <ErrorNotice>{error ?? deleteError}</ErrorNotice>}
 
-        {pricings.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-secondary)]">Nenhuma precificação ainda.</p>
-        ) : (
-          pricings.map(p => {
+      {pricings.length === 0 ? (
+        <EmptyState>Nenhuma precificação ainda.</EmptyState>
+      ) : (
+        <Card>
+          {pricings.map((p, i) => {
             const linked = diagnostics.find(d => d.session_id === p.session_id)
             return (
               <Link
                 key={p.id}
                 to={`/pricings/${p.id}`}
-                className="flex items-center justify-between gap-3 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
+                className={`flex items-center justify-between gap-3 px-6 py-[18px] hover:bg-white/[0.03] transition-colors ${i > 0 ? 'border-t border-ds-border' : ''}`}
               >
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium text-[var(--color-text-primary)] block truncate">
-                    {p.name ?? formatDate(p.created_at)}
-                  </span>
-                  <span className="text-xs text-[var(--color-text-secondary)]">
+                <div className="min-w-0 flex-1 flex flex-col gap-1">
+                  <span className="text-[15px] font-semibold text-white truncate">{p.name ?? formatDate(p.created_at)}</span>
+                  <span className="font-mono text-[12px] text-ds-muted">
                     {formatDate(p.created_at)}
                     {linked && <> · diagnóstico: {formatDate(linked.session_started_at)}</>}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {p.status === 'approved' ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-                      aprovada
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
-                      rascunho
-                    </span>
-                  )}
+                <div className="flex items-center gap-3 shrink-0">
+                  {p.status === 'approved' ? <Chip tone="green" dot>aprovada</Chip> : <Chip>rascunho</Chip>}
                   {p.status !== 'approved' && (
                     <button
+                      type="button"
                       onClick={e => handleDelete(p.id, e)}
-                      className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] rounded transition-colors"
+                      aria-label="Excluir precificação"
                       title="Excluir"
+                      className="p-1.5 rounded-md text-ds-muted hover:text-ds-red transition-colors"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} aria-hidden />
                     </button>
                   )}
                 </div>
               </Link>
             )
-          })
-        )}
-      </div>
-    </div>
+          })}
+        </Card>
+      )}
+    </AppShell>
   )
 }

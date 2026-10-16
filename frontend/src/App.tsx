@@ -6,6 +6,9 @@ import SessionSetupPage from './pages/SessionSetupPage'
 import SessionActivePage from './pages/SessionActivePage'
 import PricingListPage from './pages/PricingListPage'
 import PricingEditorPage from './pages/PricingEditorPage'
+import SessionsPage from './pages/SessionsPage'
+import ExtensionPage from './pages/ExtensionPage'
+import SettingsPage from './pages/SettingsPage'
 
 function App() {
   return (
@@ -15,7 +18,10 @@ function App() {
       <Route path="/projects/:id/edit" element={<ProjectFormPage />} />
       <Route path="/projects/:id" element={<ProjectDetailPage />} />
       <Route path="/projects/:id/sessions/new" element={<SessionSetupPage />} />
+      <Route path="/sessions" element={<SessionsPage />} />
       <Route path="/sessions/:sessionId" element={<SessionActivePage />} />
+      <Route path="/extension" element={<ExtensionPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route path="/projects/:id/pricings" element={<PricingListPage />} />
       <Route path="/pricings/:id" element={<PricingEditorPage />} />
     </Routes>

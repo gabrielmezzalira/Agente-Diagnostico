@@ -37,12 +37,14 @@ Discovery teams map the bottleneck and its solution **completely during the call
 - ✓ LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging — Phase 3
 - ✓ REP: Discovery report with "Métricas para Precificação" section feeding the Precificador — Phase 4
 - ✓ UI: Two-lens monitoring (coverage grouped by lens, lens badges, server-driven areas) — Phase 5
+- ✓ TAQ-03: Opt-in shared-secret header (`x-agente-key`) gates `/webhook/extension`; unset key leaves current production traffic unaffected — Phase 6
+- ✓ TAQ-01: Taqciti streams live captions (merged, phrase-grouped segments) to the backend during the call via `/webhook/extension`, without disturbing the existing batch flow — Phase 7
 
 ### Active
 
 <!-- Milestone v3.0 — Pivot Discovery. See REQUIREMENTS.md for full list. -->
 
-- [ ] TAQ: Taqciti live streaming as transcription source; retire custom extension
+- [ ] TAQ-02/04/05: Session binding for the Taqciti stream; retire custom extension; AGP question panel
 
 ### Out of Scope
 
@@ -86,7 +88,8 @@ Existing codebase in `./diagnostico/`:
 | Supabase Vault for API key storage | pgsodium column encryption; key never exposed in frontend (SPEC) | — Pending |
 | Pivot sales → discovery, keep sales behind `mode` flag | Company now requires every solution to pass through discovery; deleting sales framing is irreversible, so gate it (Open/Closed) until discovery is validated (v3.0) | — Pending |
 | Two agents only at the question stage (coverage + red-flags stay 1×) | Produto/Dados biases diverge only in questions; keeps LLM cost near 1× while honoring "dois agentes" (v3.0) | — Pending |
-| Adopt Taqciti capture engine + add live streaming; retire custom extension | Taqciti is the more complete/tested Meet capturer (speakers + timestamps + roster); both scraped Meet, so removing the custom extension kills duplication (v3.0) | — Pending |
+| Adopt Taqciti capture engine + add live streaming; retire custom extension | Taqciti is the more complete/tested Meet capturer (speakers + timestamps + roster); both scraped Meet, so removing the custom extension kills duplication (v3.0) | ✓ Live streaming shipped — Phase 7 (extension retirement still pending, Phase 9) |
+| Streamer groups words into phrases before sending (silence 1500ms / cap 5000ms), not a straight per-flush send | UAT found per-flush sending (reusing Taqciti's 250ms local debounce) fragmented speech into one line per word/chunk over the network; the fix needed its own send-side window, decoupled from local persistence cadence (Phase 7, D-06 refinement) | ✓ Shipped — Phase 7 (07-04), confirmed by live Meet retest |
 | Single coverage-area registry (kill 8 hardcoded areas) | 8 areas were duplicated across 6 files; a registry is the SOLID seam that lets discovery areas coexist with sales areas (v3.0) | — Pending |
 
 ## Evolution
@@ -107,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-24 after Phase 5 (Two-Lens Monitoring Frontend)*
+*Last updated: 2026-09-27 after Phase 7 (Taqciti Config + Background Streamer)*
