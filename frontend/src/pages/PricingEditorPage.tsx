@@ -9,9 +9,10 @@ import { usePricingFeatures } from '../hooks/usePricingFeatures'
 import { useLLMSuggestions } from '../hooks/useLLMSuggestions'
 import { usePricingChat } from '../hooks/usePricingChat'
 import { featureDias } from '../lib/pricingCalculator'
+import AppShell from '../components/layout/AppShell'
 
 const inputCls =
-  'w-full px-3 py-2 text-sm border border-[var(--color-border-std)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+  'w-full px-3 py-2 text-sm border border-[var(--color-ds-inner-border)] rounded-[10px] bg-[var(--color-ds-inner)] text-[var(--color-text-primary)] placeholder:text-[var(--color-ds-dim)] hover:border-[var(--color-border-green)] focus:outline-none focus:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
 
 const tdCls = 'px-3 py-2 text-sm text-[var(--color-text-primary)]'
 
@@ -202,7 +203,7 @@ function SuggestionCard({
   onReject: () => void
 }) {
   return (
-    <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4 flex items-start justify-between gap-4">
+    <div className="ds-card p-4 flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs px-2 py-0.5 bg-[var(--color-muted)] rounded-full text-[var(--color-text-secondary)]">
@@ -234,7 +235,7 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
       <div
         className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
           isUser
-            ? 'bg-[var(--color-accent)] text-white'
+            ? 'bg-[var(--color-accent)] text-[#04120a]'
             : 'bg-[var(--color-muted)] text-[var(--color-text-primary)]'
         }`}
       >
@@ -251,7 +252,7 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
               ol: ({ children }) => <ol className="list-decimal pl-4 mb-1 space-y-0.5">{children}</ol>,
               li: ({ children }) => <li>{children}</li>,
               code: ({ children }) => (
-                <code className="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+                <code className="bg-white/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
               ),
             }}
           >
@@ -292,7 +293,7 @@ function ChatPanel({
   }
 
   return (
-    <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden flex flex-col" style={{ height: '420px' }}>
+    <div className="ds-card overflow-hidden flex flex-col" style={{ height: '420px' }}>
       <div className="px-4 py-3 border-b border-[var(--color-border-std)] flex items-center gap-2">
         <MessageSquare size={13} className="text-[var(--color-text-secondary)]" />
         <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
@@ -337,7 +338,7 @@ function ChatPanel({
         <button
           type="submit"
           disabled={sending || isApproved || !input.trim()}
-          className="p-2 rounded-md bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-md bg-[var(--color-accent)] text-[#04120a] hover:bg-[var(--color-accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Send size={14} />
         </button>
@@ -469,20 +470,16 @@ export default function PricingEditorPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-text-secondary)]">Carregando...</span>
-      </div>
-    )
+    return <AppShell><p className="text-[14px] text-ds-muted">Carregando…</p></AppShell>
   }
 
   if (error || !pricing) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-red)]">
+      <AppShell>
+        <div role="alert" className="text-[13.5px] text-ds-red bg-ds-red/10 border border-ds-red/30 rounded-xl px-4 py-3">
           {error ?? 'Precificação não encontrada'}
-        </span>
-      </div>
+        </div>
+      </AppShell>
     )
   }
 
@@ -491,11 +488,11 @@ export default function PricingEditorPage() {
   const hoursPerDay = Number(pricing.hours_per_day ?? 0)
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-page)]">
-      {/* Topbar */}
-      <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <AppShell>
+      {/* Cabeçalho da página */}
+      <div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 mr-auto">
             <Link
               to={backTo}
               className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
@@ -582,7 +579,7 @@ export default function PricingEditorPage() {
             onClick={() => setShowChat(v => !v)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
               showChat
-                ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
+                ? 'bg-[var(--color-accent)] text-[#04120a] border-[var(--color-accent)]'
                 : 'border-[var(--color-border-std)] text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)]'
             }`}
           >
@@ -610,7 +607,7 @@ export default function PricingEditorPage() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               isApproved
                 ? 'bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] cursor-default'
-                : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50'
+                : 'bg-[var(--color-accent)] text-[#04120a] hover:bg-[var(--color-accent-hover)] disabled:opacity-50'
             }`}
           >
             {isApproved ? (
@@ -628,14 +625,14 @@ export default function PricingEditorPage() {
       </div>
 
       {importError && (
-        <div className="max-w-5xl mx-auto px-6 pt-4">
+        <div>
           <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
             {importError}
           </div>
         </div>
       )}
       {suggestError && (
-        <div className="max-w-5xl mx-auto px-6 pt-4">
+        <div>
           <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
             {suggestError}
           </div>
@@ -643,11 +640,11 @@ export default function PricingEditorPage() {
       )}
 
       {/* Main layout: two column on large screens */}
-      <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-8">
         {/* Left: Inputs + Outputs */}
         <div className="lg:w-72 shrink-0 space-y-5">
           {/* Inputs form */}
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-5 space-y-4">
+          <div className="ds-card p-5 space-y-4">
             <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
               Parâmetros
             </p>
@@ -710,7 +707,7 @@ export default function PricingEditorPage() {
           </div>
 
           {/* Outputs card */}
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+          <div className="ds-card overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--color-border-std)]">
               <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
                 Resultados
@@ -762,7 +759,7 @@ export default function PricingEditorPage() {
 
         {/* Right: Feature table */}
         <div className="flex-1 min-w-0">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+          <div className="ds-card overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--color-border-std)] flex items-center justify-between">
               <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
                 Funcionalidades
@@ -843,7 +840,7 @@ export default function PricingEditorPage() {
           </div>
 
           {showSuggestions && suggestions.length > 0 && (
-            <div className="mt-6 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+            <div className="mt-6 ds-card overflow-hidden">
               <div className="px-4 py-3 border-b border-[var(--color-border-std)] flex items-center justify-between">
                 <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
                   Sugestões do LLM ({suggestions.length})
@@ -869,7 +866,7 @@ export default function PricingEditorPage() {
 
       {/* Chat panel — full width below the two-column layout */}
       {showChat && (
-        <div className="max-w-5xl mx-auto px-6 pb-8">
+        <div>
           <ChatPanel
             messages={chatMessages}
             sending={chatSending}
@@ -879,6 +876,6 @@ export default function PricingEditorPage() {
           />
         </div>
       )}
-    </div>
+    </AppShell>
   )
 }

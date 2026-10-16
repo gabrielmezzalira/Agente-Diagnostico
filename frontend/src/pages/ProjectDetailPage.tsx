@@ -1,36 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Activity, ChevronLeft, Clock, Edit2, Pencil, Play, Trash2 } from 'lucide-react'
+import { ChevronLeft, Play } from 'lucide-react'
 import { api, type Project, type Session, type Pricing, type Readiness } from '../lib/api'
+import { PROJECT_TYPE_LABELS } from '../lib/labels'
+import AppShell from '../components/layout/AppShell'
+import DmsMeter from '../components/project/DmsMeter'
+import DocudataLinkCard from '../components/project/DocudataLinkCard'
+import PrdCard from '../components/project/PrdCard'
+import SessionHistory from '../components/project/SessionHistory'
+import {
+  ButtonLink, Button, Card, Chip, DetailRows, ErrorNotice, SectionLabel, StatusDot,
+} from '../components/ui'
 
-const PROJECT_TYPE_LABELS: Record<string, string> = {
-  bi: 'BI',
-  ml: 'ML',
-  data_engineering: 'Eng. de Dados',
-  automation: 'Automação',
-  integration: 'Integração',
-  science: 'Ciência de Dados',
-}
-
-const DMS_LABELS: Record<number, string> = {
-  1: 'Inicial',
-  2: 'Gerenciado',
-  3: 'Definido',
-  4: 'Quantificado',
-  5: 'Otimizado',
-}
-
-// D-47: mapa fechado dos 4 sinais de READINESS_WEIGHTS (session_state.py:23-29)
-// para frases curtas em PT, usadas no tooltip do botão "Gerar PRD".
-const READINESS_SIGNAL_LABELS: Record<string, string> = {
-  cobertura_por_lente: 'cobertura por lente',
-  cobertura_global: 'cobertura geral',
-  perguntas_transcricao: 'perguntas respondidas ou transcrição',
-  secoes_chave: 'seções-chave do relatório',
-}
-
-// D-47: escolhe deterministicamente a sessão de discovery associada ao
-// "Gerar PRD" — a mais recente por started_at.
+// D-47: escolhe deterministicamente a sessão de discovery associada ao "Gerar PRD" — a mais recente.
 function pickDiscoverySession(sessions: Session[]): Session | null {
   if (sessions.length === 0) return null
   return [...sessions].sort(
@@ -38,44 +20,13 @@ function pickDiscoverySession(sessions: Session[]): Session | null {
   )[0]
 }
 
-// D-47: clone visual do BudgetBar (SessionActivePage.tsx:153-198) — barra fina,
-// secundária ao botão "Gerar PRD" (Visual Hierarchy do UI-SPEC).
-function ReadinessBar({ pct }: { pct: number }) {
+function TextCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="h-1.5 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-500 bg-[var(--color-accent)]"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
+    <Card className="px-[26px] py-6 flex flex-col gap-4">
+      <SectionLabel>{label}</SectionLabel>
+      <p className="m-0 text-[15px] leading-[1.7] text-ds-text-2 whitespace-pre-wrap text-pretty">{children}</p>
+    </Card>
   )
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <span className="text-sm text-[var(--color-text-secondary)] shrink-0">{label}</span>
-      <span className="text-sm text-[var(--color-text-primary)] text-right">{children}</span>
-    </div>
-  )
-}
-
-function sessionDuration(session: Session): string {
-  const start = new Date(session.started_at)
-  const end = session.finished_at ? new Date(session.finished_at) : new Date()
-  const mins = Math.floor((end.getTime() - start.getTime()) / 60000)
-  if (mins < 1) return '< 1 min'
-  return `${mins} min`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export default function ProjectDetailPage() {
@@ -87,17 +38,12 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState('')
 
-  // D-47: readiness da sessão de discovery + estado do botão "Gerar PRD" —
-  // escopado a este bloco, não à página toda (backstop de loading/erro).
+  // D-47: readiness da sessão de discovery + estado do botão "Gerar PRD" (escopado a este bloco).
   const [readiness, setReadiness] = useState<Readiness | null>(null)
   const [readinessLoading, setReadinessLoading] = useState(false)
   const [readinessError, setReadinessError] = useState<string | null>(null)
-  // CR-02: erro dedicado à falha de geração do PRD (POST), separado de
-  // readinessError (falha do GET). Fora da condição `disabled` do botão —
-  // uma falha transitória de geração não trava o retry.
+  // CR-02: erro da geração (POST) separado do erro do GET; uma falha transitória não trava o retry.
   const [prdError, setPrdError] = useState<string | null>(null)
   const [generatingPrd, setGeneratingPrd] = useState(false)
 
@@ -113,10 +59,8 @@ export default function ProjectDetailPage() {
     api.pricings.listByProject(id).then(setPricings).catch(() => {})
   }, [id])
 
-  // D-42 (nuance de superfície): aqui a detecção de modo usa project.mode,
-  // não o payload de WS — caminho separado do da tela de monitoramento.
-  const discoverySession =
-    project && project.mode === 'discovery' ? pickDiscoverySession(sessions) : null
+  // D-42: aqui a detecção de modo usa project.mode, não o payload de WS.
+  const discoverySession = project && project.mode === 'discovery' ? pickDiscoverySession(sessions) : null
   const discoverySessionId = discoverySession?.id ?? null
 
   useEffect(() => {
@@ -144,9 +88,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  async function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
+  async function handleDeleteSession(sessionId: string) {
     if (!confirm('Excluir esta sessão? A transcrição e relatório serão perdidos.')) return
     try {
       await api.sessions.delete(sessionId)
@@ -156,20 +98,11 @@ export default function ProjectDetailPage() {
     }
   }
 
-  function startRenameSession(s: Session, e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setRenamingSessionId(s.id)
-    setRenameValue(s.name ?? '')
-  }
-
-  async function commitRenameSession(sessionId: string) {
-    if (!renameValue.trim()) { setRenamingSessionId(null); return }
+  async function handleRenameSession(sessionId: string, name: string) {
     try {
-      const updated = await api.sessions.rename(sessionId, renameValue.trim())
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, name: updated.name } : s))
+      const updated = await api.sessions.rename(sessionId, name)
+      setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, name: updated.name } : s)))
     } catch { /* ignore */ }
-    setRenamingSessionId(null)
   }
 
   async function handleDelete() {
@@ -184,289 +117,131 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const newProject = (
+    <ButtonLink to="/projects/new" variant="primary">+ Novo projeto</ButtonLink>
+  )
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-text-secondary)]">Carregando...</span>
-      </div>
-    )
+    return <AppShell actions={newProject}><p className="text-[14px] text-ds-muted">Carregando…</p></AppShell>
   }
 
-  if (error || !project) {
+  if (!project) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-red)]">{error ?? 'Projeto não encontrado'}</span>
-      </div>
+      <AppShell actions={newProject}>
+        <ErrorNotice>{error ?? 'Projeto não encontrado'}</ErrorNotice>
+      </AppShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-page)]">
-      <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              <ChevronLeft size={18} />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-semibold text-sm text-[var(--color-text-primary)]">
-                  {project.name}
-                </h1>
-                {project.has_active_session && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-                    <Activity size={9} />
-                    ao vivo
+    <AppShell actions={newProject}>
+      <div className="flex items-center gap-4">
+        <Link
+          to="/"
+          aria-label="Voltar para projetos"
+          className="w-[38px] h-[38px] rounded-[10px] border border-ds-border-strong flex items-center justify-center text-ds-text-2 hover:bg-white/[0.05] transition-colors"
+        >
+          <ChevronLeft size={18} aria-hidden />
+        </Link>
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="flex items-center gap-2.5 min-w-0">
+            <h1 className="m-0 text-[24px] font-bold tracking-[-0.02em] text-white truncate">{project.name}</h1>
+            {project.has_active_session && <Chip tone="green" dot>ao vivo</Chip>}
+          </span>
+          <span className="text-[13.5px] text-ds-muted">{project.client}</span>
+        </div>
+        <div className="ml-auto flex gap-2">
+          <ButtonLink to={`/projects/${id}/edit`}>Editar</ButtonLink>
+          <Button variant="danger" onClick={handleDelete} disabled={deleting}>Excluir</Button>
+        </div>
+      </div>
+
+      {error && <ErrorNotice>{error}</ErrorNotice>}
+
+      <ButtonLink to={`/projects/${id}/sessions/new`} variant="primary" size="hero">
+        <Play size={18} aria-hidden /> Nova sessão
+      </ButtonLink>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.15fr] gap-4 items-start">
+        <DetailRows
+          rows={[
+            { label: 'Tipo de projeto', value: project.project_type ? (PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type) : '—' },
+            { label: 'Data Maturity Score', value: <DmsMeter score={project.data_maturity_score} /> },
+            { label: 'Fonte de transcrição', value: <span className="capitalize">{project.source}</span> },
+            { label: 'Budget de IA', value: project.budget_usd ? <span className="font-mono">${project.budget_usd}</span> : 'Sem limite' },
+            { label: 'TTL de perguntas', value: <span className="font-mono">{project.question_ttl_seconds}s</span> },
+            {
+              label: 'Chave Gemini',
+              value: project.has_api_key ? <Chip tone="green">Configurada</Chip> : <Chip tone="red">Não configurada</Chip>,
+            },
+            ...(project.meeting_url
+              ? [{
+                  label: 'URL da reunião',
+                  value: (
+                    <a href={project.meeting_url} target="_blank" rel="noreferrer" className="text-ds-green font-mono text-[13px] hover:underline break-all">
+                      {project.meeting_url.replace(/^https?:\/\//, '')}
+                    </a>
+                  ),
+                }]
+              : []),
+          ]}
+        />
+        <div className="flex flex-col gap-4">
+          {project.pre_meeting_context && <TextCard label="Contexto pré-reunião">{project.pre_meeting_context}</TextCard>}
+          {project.description && <TextCard label="Descrição">{project.description}</TextCard>}
+          <DocudataLinkCard project={project} />
+        </div>
+      </div>
+
+      {sessions.length > 0 && (
+        <SessionHistory sessions={sessions} onRename={handleRenameSession} onDelete={handleDeleteSession} />
+      )}
+
+      {project.mode === 'discovery' && discoverySession && (
+        <PrdCard
+          readiness={readiness}
+          loading={readinessLoading}
+          loadError={readinessError}
+          generating={generatingPrd}
+          generateError={prdError}
+          onGenerate={() => handleGeneratePrd(discoverySession.id)}
+        />
+      )}
+
+      <section className="flex flex-col gap-3" aria-label="Precificações">
+        <div className="flex items-center justify-between">
+          <SectionLabel>Precificações · {pricings.length}</SectionLabel>
+          <ButtonLink to={`/projects/${id}/pricings`} size="sm" variant="active">Nova precificação</ButtonLink>
+        </div>
+        {pricings.length === 0 ? (
+          <div className="px-3 py-7 border border-dashed border-ds-border-strong rounded-xl text-center text-[13px] text-ds-dim">
+            Nenhuma precificação ainda.
+          </div>
+        ) : (
+          <Card>
+            {pricings.map((p, i) => (
+              <Link
+                key={p.id}
+                to={`/pricings/${p.id}`}
+                className={`flex items-center justify-between gap-4 px-6 py-4 hover:bg-white/[0.03] transition-colors ${i > 0 ? 'border-t border-ds-border' : ''}`}
+              >
+                <span className="font-mono text-[13px] text-ds-text-2">
+                  {new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </span>
+                {p.status === 'approved' ? (
+                  <span className="inline-flex items-center gap-2 text-[13px] text-ds-green">
+                    <StatusDot tone="green" /> aprovada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 text-[13px] text-ds-muted">
+                    <StatusDot tone="neutral" /> rascunho
                   </span>
                 )}
-              </div>
-              <p className="text-xs text-[var(--color-text-secondary)]">{project.client}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Link
-              to={`/projects/${id}/edit`}
-              className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-md transition-colors"
-            >
-              <Edit2 size={15} />
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] rounded-md transition-colors disabled:opacity-50"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-5">
-        {error && (
-          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
-            {error}
-          </div>
+              </Link>
+            ))}
+          </Card>
         )}
-
-        {/* CTA principal */}
-        <Link
-          to={`/projects/${id}/sessions/new`}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
-        >
-          <Play size={15} />
-          Nova sessão
-        </Link>
-
-        {/* Dados do projeto */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg divide-y divide-[var(--color-border-std)]">
-          <Row label="Tipo de projeto">
-            {project.project_type
-              ? (PROJECT_TYPE_LABELS[project.project_type] ?? project.project_type)
-              : '—'}
-          </Row>
-          <Row label="Data Maturity Score">
-            {project.data_maturity_score
-              ? `${project.data_maturity_score} · ${DMS_LABELS[project.data_maturity_score]}`
-              : '—'}
-          </Row>
-          <Row label="Fonte de transcrição">
-            <span className="capitalize">{project.source}</span>
-          </Row>
-          <Row label="Budget de IA">
-            {project.budget_usd ? `$${project.budget_usd}` : 'Sem limite'}
-          </Row>
-          <Row label="TTL de perguntas">{project.question_ttl_seconds}s</Row>
-          <Row label="Chave Gemini">
-            {project.has_api_key ? (
-              <span className="text-[var(--color-accent)] text-xs font-medium">Configurada</span>
-            ) : (
-              <span className="text-[var(--color-red)] text-xs">Não configurada</span>
-            )}
-          </Row>
-          {project.meeting_url && (
-            <Row label="URL da reunião">
-              <a
-                href={project.meeting_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[var(--color-accent)] hover:underline truncate max-w-xs block"
-              >
-                {project.meeting_url}
-              </a>
-            </Row>
-          )}
-        </div>
-
-        {project.pre_meeting_context && (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4">
-            <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">
-              Contexto pré-reunião
-            </p>
-            <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">
-              {project.pre_meeting_context}
-            </p>
-          </div>
-        )}
-
-        {project.description && (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4">
-            <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Descrição</p>
-            <p className="text-sm text-[var(--color-text-primary)]">{project.description}</p>
-          </div>
-        )}
-
-        {/* Histórico de sessões */}
-        {sessions.length > 0 && (
-          <div>
-            <h2 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Sessões</h2>
-            <div className="space-y-2">
-              {sessions.map(s => (
-                <Link
-                  key={s.id}
-                  to={`/sessions/${s.id}`}
-                  className="flex items-center justify-between gap-3 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-3 hover:border-[var(--color-border-hover)] transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {s.status === 'active' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] shrink-0">
-                        <Activity size={9} />
-                        ativa
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)] shrink-0">
-                        encerrada
-                      </span>
-                    )}
-                    <div className="min-w-0">
-                      {renamingSessionId === s.id ? (
-                        <input
-                          autoFocus
-                          value={renameValue}
-                          onChange={e => setRenameValue(e.target.value)}
-                          onBlur={() => commitRenameSession(s.id)}
-                          onKeyDown={e => { if (e.key === 'Enter') commitRenameSession(s.id); if (e.key === 'Escape') setRenamingSessionId(null) }}
-                          onClick={e => e.preventDefault()}
-                          className="text-xs font-medium text-[var(--color-text-primary)] border-b border-[var(--color-accent)] bg-transparent outline-none w-40"
-                        />
-                      ) : (
-                        <span className="text-xs font-medium text-[var(--color-text-primary)] truncate block">
-                          {s.name ?? formatDate(s.started_at)}
-                        </span>
-                      )}
-                      <span className="text-xs text-[var(--color-text-secondary)]">{formatDate(s.started_at)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
-                      <Clock size={11} />{sessionDuration(s)}
-                    </span>
-                    {parseFloat(s.cost_usd) > 0 && (
-                      <span className="text-xs text-[var(--color-text-secondary)]">${parseFloat(s.cost_usd).toFixed(4)}</span>
-                    )}
-                    <button
-                      onClick={e => startRenameSession(s, e)}
-                      className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] rounded transition-colors"
-                      title="Renomear"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    {s.status !== 'active' && (
-                      <button
-                        onClick={e => handleDeleteSession(s.id, e)}
-                        className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-red)] rounded transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Gerar PRD (D-47) — só em discovery, associado à sessão mais recente */}
-        {project.mode === 'discovery' && discoverySession && (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[var(--color-text-primary)]">Gerar PRD</span>
-              <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
-                {readinessLoading
-                  ? '0% pronto'
-                  : `${Math.round((readiness?.score ?? 0) * 100)}% pronto`}
-              </span>
-            </div>
-            {readinessError ? (
-              <p className="text-xs text-[var(--color-red)]">Erro ao carregar readiness</p>
-            ) : (
-              <ReadinessBar pct={readinessLoading ? 0 : Math.round((readiness?.score ?? 0) * 100)} />
-            )}
-            <button
-              onClick={() => handleGeneratePrd(discoverySession.id)}
-              disabled={!readiness?.ready || readinessLoading || !!readinessError || generatingPrd}
-              title={
-                readiness && !readiness.ready
-                  ? `Faltam: ${readiness.low_signals.map(k => READINESS_SIGNAL_LABELS[k] ?? k).join(', ')}`
-                  : undefined
-              }
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--color-accent)] text-white rounded-lg text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
-            >
-              {readinessLoading ? 'Carregando...' : generatingPrd ? 'Gerando...' : 'Gerar PRD'}
-            </button>
-            {prdError && (
-              <p className="text-xs text-[var(--color-red)]">{prdError}</p>
-            )}
-          </div>
-        )}
-
-        {/* Precificações */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-[var(--color-text-primary)]">Precificações</h2>
-            <Link
-              to={`/projects/${id}/pricings`}
-              className="px-3 py-1.5 bg-[var(--color-accent)] text-white rounded-md text-xs font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
-            >
-              Nova Precificação
-            </Link>
-          </div>
-          {pricings.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">Nenhuma precificação ainda.</p>
-          ) : (
-            <div className="space-y-2">
-              {pricings.map(p => (
-                <Link
-                  key={p.id}
-                  to={`/pricings/${p.id}`}
-                  className="flex items-center justify-between gap-4 bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg px-4 py-2.5 hover:border-[var(--color-border-hover)] transition-colors"
-                >
-                  <span className="text-xs text-[var(--color-text-secondary)]">
-                    {new Date(p.created_at).toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
-                  </span>
-                  {p.status === 'approved' ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]">
-                      aprovada
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-muted)] text-[var(--color-text-secondary)]">
-                      rascunho
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      </section>
+    </AppShell>
   )
 }
