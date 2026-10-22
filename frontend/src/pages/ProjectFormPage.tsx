@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { api, type ProjectCreate } from '../lib/api'
+import AppShell from '../components/layout/AppShell'
+import FormSection from '../components/FormSection'
+import {
+  Button, ButtonLink, Card, ChoiceGroup, ErrorNotice, Field, Input, Select, Textarea,
+} from '../components/ui'
 
 const DMS_META: Record<number, { title: string; description: string }> = {
   1: { title: 'Inicial', description: 'Dados em planilhas manuais, sem integração' },
@@ -22,33 +27,11 @@ const DEFAULT_FORM: ProjectCreate & { gemini_api_key: string } = {
   meeting_url: '',
   source: 'extension',
   mode: 'sales',
+  docudata_project_id: '',
   question_ttl_seconds: 60,
   pricing_llm_provider: undefined,
   pricing_llm_model: undefined,
   pricing_api_key: undefined,
-}
-
-const inputCls =
-  'w-full px-3 py-2 text-sm border border-[var(--color-border-std)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors'
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-[var(--color-text-primary)]">
-        {label}
-        {required && <span className="text-[var(--color-red)] ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
 }
 
 export default function ProjectFormPage() {
@@ -59,6 +42,7 @@ export default function ProjectFormPage() {
   const [form, setForm] = useState({ ...DEFAULT_FORM })
   const [hasApiKey, setHasApiKey] = useState(false)
   const [hasPricingApiKey, setHasPricingApiKey] = useState(false)
+  const [linkedBefore, setLinkedBefore] = useState(false)
   const [showLlmConfig, setShowLlmConfig] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [submitting, setSubmitting] = useState(false)
@@ -80,6 +64,7 @@ export default function ProjectFormPage() {
           meeting_url: p.meeting_url ?? '',
           source: (p.source === 'recall' ? 'recall' : 'extension') as 'extension' | 'recall',
           mode: (p.mode === 'discovery' ? 'discovery' : 'sales') as 'sales' | 'discovery',
+          docudata_project_id: p.docudata_project_id ?? '',
           question_ttl_seconds: p.question_ttl_seconds,
           pricing_llm_provider: p.pricing_llm_provider ?? undefined,
           pricing_llm_model: p.pricing_llm_model ?? undefined,
@@ -87,6 +72,7 @@ export default function ProjectFormPage() {
         })
         setHasApiKey(p.has_api_key)
         setHasPricingApiKey(p.has_pricing_api_key ?? false)
+        setLinkedBefore(!!p.docudata_project_id)
         if (p.pricing_llm_provider || p.pricing_llm_model) setShowLlmConfig(true)
         setLoading(false)
       })
@@ -114,6 +100,10 @@ export default function ProjectFormPage() {
       if (!payload.pricing_llm_provider) delete payload.pricing_llm_provider
       if (!payload.pricing_llm_model) delete payload.pricing_llm_model
       if (!payload.pricing_api_key) delete payload.pricing_api_key
+      // Vínculo vazio = sem vínculo (não envia a coluna). O backend não desvincula.
+      const link = payload.docudata_project_id?.trim()
+      if (link) payload.docudata_project_id = link
+      else delete payload.docudata_project_id
 
       if (id) {
         await api.projects.update(id, payload)
@@ -129,285 +119,195 @@ export default function ProjectFormPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-text-secondary)]">Carregando...</span>
-      </div>
-    )
+    return <AppShell><p className="text-[14px] text-ds-muted">Carregando…</p></AppShell>
   }
 
   const dms = form.data_maturity_score
+  const backTo = id ? `/projects/${id}` : '/'
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-page)]">
-      <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link
-            to={id ? `/projects/${id}` : '/'}
-            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-          >
-            <ChevronLeft size={18} />
-          </Link>
-          <h1 className="font-semibold text-sm text-[var(--color-text-primary)]">
-            {isEdit ? 'Editar projeto' : 'Novo projeto'}
-          </h1>
-        </div>
+    <AppShell>
+      <div className="flex items-center gap-4">
+        <Link
+          to={backTo}
+          aria-label="Voltar"
+          className="w-[38px] h-[38px] rounded-[10px] border border-ds-border-strong flex items-center justify-center text-ds-text-2 hover:bg-white/[0.05] transition-colors"
+        >
+          <ChevronLeft size={18} aria-hidden />
+        </Link>
+        <h1 className="m-0 text-[24px] font-bold tracking-[-0.02em] text-white">
+          {isEdit ? 'Editar projeto' : 'Novo projeto'}
+        </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-6 py-8 space-y-5">
-        {error && (
-          <div className="text-sm text-[var(--color-red)] bg-[var(--color-red-bg)] border border-[var(--color-border-red)] rounded-md px-4 py-3">
-            {error}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-7 max-w-[860px]">
+        {error && <ErrorNotice>{error}</ErrorNotice>}
+
+        <FormSection title="Identificação">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Nome do projeto" htmlFor="f-name" required>
+              <Input id="f-name" required value={form.name} onChange={e => set('name', e.target.value)} placeholder="Pipeline de Vendas" />
+            </Field>
+            <Field label="Cliente" htmlFor="f-client" required>
+              <Input id="f-client" required value={form.client} onChange={e => set('client', e.target.value)} placeholder="Empresa XYZ" />
+            </Field>
           </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Nome do projeto" required>
-            <input
-              type="text"
-              required
-              value={form.name}
-              onChange={e => set('name', e.target.value)}
-              placeholder="Pipeline de Vendas"
-              className={inputCls}
-            />
+          <Field label="Descrição" htmlFor="f-desc">
+            <Textarea id="f-desc" rows={2} value={form.description ?? ''} onChange={e => set('description', e.target.value)} placeholder="Breve descrição do escopo" />
           </Field>
-          <Field label="Cliente" required>
-            <input
-              type="text"
-              required
-              value={form.client}
-              onChange={e => set('client', e.target.value)}
-              placeholder="Empresa XYZ"
-              className={inputCls}
-            />
-          </Field>
-        </div>
+        </FormSection>
 
-        <Field label="Descrição">
-          <textarea
-            rows={2}
-            value={form.description ?? ''}
-            onChange={e => set('description', e.target.value)}
-            placeholder="Breve descrição do escopo"
-            className={inputCls}
-          />
-        </Field>
-
-        <Field label={dms != null ? `Data Maturity Score — ${dms} · ${DMS_META[dms].title}` : 'Data Maturity Score'}>
-          {dms == null ? (
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-sm text-[var(--color-text-secondary)] italic">Não mapeado</span>
-              <button
-                type="button"
-                onClick={() => set('data_maturity_score', 3)}
-                className="text-xs text-[var(--color-accent)] hover:underline"
-              >
-                Definir nível
-              </button>
-            </div>
-          ) : (
-            <>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                step={1}
-                value={dms}
-                onChange={e => set('data_maturity_score', Number(e.target.value))}
-                className="w-full accent-[var(--color-accent)] mt-1"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-[var(--color-text-secondary)]">{DMS_META[dms].description}</p>
-                <button
-                  type="button"
-                  onClick={() => set('data_maturity_score', undefined)}
-                  className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] ml-3 shrink-0"
-                >
-                  Limpar
-                </button>
+        <FormSection title="Contexto da reunião">
+          <Field
+            label={dms != null ? `Data Maturity Score — ${dms} · ${DMS_META[dms].title}` : 'Data Maturity Score'}
+            htmlFor="f-dms"
+            hint={dms != null ? DMS_META[dms].description : undefined}
+          >
+            {dms == null ? (
+              <div className="flex items-center gap-3">
+                <span className="text-[14px] text-ds-muted italic">Não mapeado</span>
+                <Button size="sm" variant="active" onClick={() => set('data_maturity_score', 3)}>Definir nível</Button>
               </div>
-            </>
-          )}
-        </Field>
-
-        <Field label="Contexto pré-reunião">
-          <textarea
-            rows={4}
-            value={form.pre_meeting_context ?? ''}
-            onChange={e => set('pre_meeting_context', e.target.value)}
-            placeholder="O que você já sabe sobre o cliente antes da reunião..."
-            className={inputCls}
-          />
-        </Field>
-
-        <Field label="URL da reunião">
-          <input
-            type="url"
-            value={form.meeting_url ?? ''}
-            onChange={e => set('meeting_url', e.target.value)}
-            placeholder="https://meet.google.com/..."
-            className={inputCls}
-          />
-        </Field>
-
-        <Field label="Modo do projeto" required>
-          <div className="flex gap-5 mt-0.5">
-            {([
-              { value: 'sales', label: 'Vendas' },
-              { value: 'discovery', label: 'Discovery' },
-            ] as const).map(({ value, label }) => (
-              <label key={value} className="flex items-center gap-2 cursor-pointer">
+            ) : (
+              <div className="flex items-center gap-4">
                 <input
-                  type="radio"
-                  name="mode"
-                  value={value}
-                  checked={form.mode === value}
-                  onChange={() => set('mode', value)}
-                  className="accent-[var(--color-accent)]"
+                  id="f-dms"
+                  type="range"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={dms}
+                  onChange={e => set('data_maturity_score', Number(e.target.value))}
+                  className="flex-1 accent-[var(--color-accent)]"
                 />
-                <span className="text-sm">{label}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
+                <Button size="sm" variant="ghost" onClick={() => set('data_maturity_score', undefined)}>Limpar</Button>
+              </div>
+            )}
+          </Field>
+          <Field label="Contexto pré-reunião" htmlFor="f-ctx">
+            <Textarea id="f-ctx" rows={4} value={form.pre_meeting_context ?? ''} onChange={e => set('pre_meeting_context', e.target.value)} placeholder="O que você já sabe sobre o cliente antes da reunião…" />
+          </Field>
+          <Field label="URL da reunião" htmlFor="f-url">
+            <Input id="f-url" type="url" value={form.meeting_url ?? ''} onChange={e => set('meeting_url', e.target.value)} placeholder="https://meet.google.com/…" />
+          </Field>
+        </FormSection>
 
-        <Field label="Fonte de transcrição" required>
-          <div className="flex gap-5 mt-0.5">
-            {([
-              { value: 'extension', label: 'Extensão Chrome (gratuito)' },
-              { value: 'recall', label: 'Recall.ai (bot automático)' },
-            ] as const).map(({ value, label }) => (
-              <label key={value} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="source"
-                  value={value}
-                  checked={form.source === value}
-                  onChange={() => set('source', value)}
-                  className="accent-[var(--color-accent)]"
-                />
-                <span className="text-sm">{label}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <Field label="Chave de API Gemini">
-          <input
-            type="password"
-            value={form.gemini_api_key}
-            onChange={e => set('gemini_api_key', e.target.value)}
-            placeholder={hasApiKey ? '••••••• (deixe em branco para manter)' : 'AIza...'}
-            autoComplete="new-password"
-            className={inputCls}
-          />
-          {hasApiKey && (
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Chave salva. Preencha apenas para substituir.
-            </p>
-          )}
-          {!isEdit && !hasApiKey && (
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Opcional. Sem chave própria, o Agente usa a chave do servidor.
-            </p>
-          )}
-        </Field>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Budget de IA (USD)">
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={form.budget_usd ?? ''}
-              onChange={e => set('budget_usd', e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="Sem limite"
-              className={inputCls}
+        <FormSection title="Captura e IA">
+          <Field label="Modo do projeto" required>
+            <ChoiceGroup
+              name="mode"
+              value={form.mode}
+              onChange={v => set('mode', v)}
+              options={[
+                { value: 'sales', label: 'Vendas', description: 'Diagnóstico comercial antes de fechar contrato' },
+                { value: 'discovery', label: 'Discovery', description: 'Levantamento de requisitos; envia ao DocuData' },
+              ]}
             />
           </Field>
-          <Field label="TTL de perguntas (s)">
-            <input
-              type="number"
-              min={5}
-              value={form.question_ttl_seconds}
-              onChange={e => set('question_ttl_seconds', Number(e.target.value))}
-              className={inputCls}
+          <Field label="Fonte de transcrição" required>
+            <ChoiceGroup
+              name="source"
+              value={form.source}
+              onChange={v => set('source', v)}
+              options={[
+                { value: 'extension', label: 'Extensão Chrome', description: 'Gratuito' },
+                { value: 'recall', label: 'Recall.ai', description: 'Bot automático na reunião' },
+              ]}
             />
           </Field>
-        </div>
+          <Field
+            label="Chave de API Gemini"
+            htmlFor="f-key"
+            hint={
+              hasApiKey
+                ? 'Chave salva. Preencha apenas para substituir.'
+                : !isEdit
+                  ? 'Opcional. Sem chave própria, o Agente usa a chave do servidor.'
+                  : undefined
+            }
+          >
+            <Input
+              id="f-key"
+              type="password"
+              value={form.gemini_api_key}
+              onChange={e => set('gemini_api_key', e.target.value)}
+              placeholder={hasApiKey ? '••••••• (deixe em branco para manter)' : 'AIza…'}
+              autoComplete="new-password"
+            />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Budget de IA (USD)" htmlFor="f-budget">
+              <Input id="f-budget" type="number" min={0} step={0.01} value={form.budget_usd ?? ''} onChange={e => set('budget_usd', e.target.value ? Number(e.target.value) : undefined)} placeholder="Sem limite" />
+            </Field>
+            <Field label="TTL de perguntas (s)" htmlFor="f-ttl">
+              <Input id="f-ttl" type="number" min={5} value={form.question_ttl_seconds} onChange={e => set('question_ttl_seconds', Number(e.target.value))} />
+            </Field>
+          </div>
+        </FormSection>
 
-        {/* Collapsible: Configuração IA do Precificador */}
-        <div className="border border-[var(--color-border-std)] rounded-lg overflow-hidden">
+        <FormSection
+          title="Integração DocuData"
+          description="Opcional. Em projetos no modo Discovery, ao encerrar a sessão a reunião é enviada ao projeto vinculado."
+        >
+          <Field
+            label="ID do projeto no DocuData"
+            htmlFor="f-docudata"
+            hint={
+              linkedBefore
+                ? 'Já vinculado. Depois de vinculado, o vínculo não pode ser removido por aqui.'
+                : 'Copie o ID do projeto no DocuData. Deixe em branco para não enviar nada.'
+            }
+          >
+            <Input
+              id="f-docudata"
+              className="font-mono"
+              value={form.docudata_project_id ?? ''}
+              onChange={e => set('docudata_project_id', e.target.value)}
+              placeholder="00000000-0000-0000-0000-000000000000"
+              maxLength={100}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </Field>
+        </FormSection>
+
+        <Card>
           <button
             type="button"
             onClick={() => setShowLlmConfig(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-[var(--color-surface)] text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-muted)] transition-colors"
+            aria-expanded={showLlmConfig}
+            className="w-full flex items-center justify-between px-[26px] py-5 text-left cursor-pointer"
           >
-            Configuração IA do Precificador
-            <ChevronDown
-              size={16}
-              className={`text-[var(--color-text-secondary)] transition-transform duration-200 ${showLlmConfig ? 'rotate-180' : ''}`}
-            />
+            <span className="ds-label">Configuração IA do Precificador</span>
+            <ChevronDown size={16} aria-hidden className={`text-ds-muted transition-transform duration-200 ${showLlmConfig ? 'rotate-180' : ''}`} />
           </button>
           {showLlmConfig && (
-            <div className="px-4 pb-4 pt-3 space-y-4 border-t border-[var(--color-border-std)] bg-[var(--color-surface)]">
-              <Field label="Provider">
-                <select
-                  value={form.pricing_llm_provider ?? ''}
-                  onChange={e => set('pricing_llm_provider', e.target.value || undefined)}
-                  className={inputCls}
-                >
+            <div className="px-[26px] pb-6 pt-5 flex flex-col gap-5 border-t border-ds-border">
+              <Field label="Provider" htmlFor="f-provider">
+                <Select id="f-provider" value={form.pricing_llm_provider ?? ''} onChange={e => set('pricing_llm_provider', e.target.value || undefined)}>
                   <option value="">Selecione</option>
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic</option>
                   <option value="google">Google</option>
-                </select>
+                </Select>
               </Field>
-              <Field label="Modelo">
-                <input
-                  type="text"
-                  value={form.pricing_llm_model ?? ''}
-                  onChange={e => set('pricing_llm_model', e.target.value || undefined)}
-                  placeholder="gpt-4o, claude-3-5-sonnet-20241022, gemini-2.0-flash"
-                  className={inputCls}
-                />
+              <Field label="Modelo" htmlFor="f-model">
+                <Input id="f-model" value={form.pricing_llm_model ?? ''} onChange={e => set('pricing_llm_model', e.target.value || undefined)} placeholder="gpt-4o, claude-3-5-sonnet-20241022, gemini-2.0-flash" />
               </Field>
-              <Field label="API Key do Precificador">
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={form.pricing_api_key ?? ''}
-                  onChange={e => set('pricing_api_key', e.target.value || undefined)}
-                  placeholder={hasPricingApiKey ? '••••• (deixe em branco para manter)' : 'sk-...'}
-                  className={inputCls}
-                />
-                {hasPricingApiKey && (
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    Chave salva. Preencha apenas para substituir.
-                  </p>
-                )}
+              <Field label="API Key do Precificador" htmlFor="f-pkey" hint={hasPricingApiKey ? 'Chave salva. Preencha apenas para substituir.' : undefined}>
+                <Input id="f-pkey" type="password" autoComplete="new-password" value={form.pricing_api_key ?? ''} onChange={e => set('pricing_api_key', e.target.value || undefined)} placeholder={hasPricingApiKey ? '••••• (deixe em branco para manter)' : 'sk-…'} />
               </Field>
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="flex items-center gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-md text-sm font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
-          >
-            {submitting ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Criar projeto'}
-          </button>
-          <Link
-            to={id ? `/projects/${id}` : '/'}
-            className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-          >
-            Cancelar
-          </Link>
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="primary" disabled={submitting}>
+            {submitting ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar projeto'}
+          </Button>
+          <ButtonLink to={backTo} variant="ghost">Cancelar</ButtonLink>
         </div>
       </form>
-    </div>
+    </AppShell>
   )
 }

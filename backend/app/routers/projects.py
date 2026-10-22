@@ -53,6 +53,10 @@ async def list_projects(db: Client = Depends(get_supabase)):
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(payload: ProjectCreate, db: Client = Depends(get_supabase)):
     row = payload.model_dump(mode="json", exclude={"gemini_api_key", "pricing_api_key"})
+    if not row.get("docudata_project_id"):
+        # Sem vínculo, a coluna nem é enviada: o create segue funcionando mesmo se a migration
+        # do DocuData ainda não foi aplicada (integração desligada = zero mudança de comportamento).
+        row.pop("docudata_project_id", None)
     # D-15: a chave Gemini do projeto é opcional; sem ela o pipeline usa GEMINI_API_KEY do servidor.
     if payload.gemini_api_key:
         row["gemini_api_key_secret_id"] = _vault_store(

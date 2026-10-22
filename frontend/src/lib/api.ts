@@ -14,6 +14,7 @@ export interface Project {
   meeting_url: string | null
   source: string
   mode: 'sales' | 'discovery'
+  docudata_project_id: string | null
   question_ttl_seconds: number
   has_api_key: boolean
   has_active_session: boolean
@@ -59,6 +60,7 @@ export interface ProjectCreate {
   meeting_url?: string
   source: 'extension' | 'recall'
   mode: 'sales' | 'discovery'
+  docudata_project_id?: string
   question_ttl_seconds: number
   pricing_llm_provider?: string
   pricing_llm_model?: string

@@ -1,13 +1,33 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, AfterValidator, BeforeValidator, field_validator
 
 ProjectType = Literal["bi", "ml", "data_engineering", "automation", "integration", "science"]
 TranscriptSource = Literal["extension", "recall"]
 ProjectMode = Literal["sales", "discovery"]
+
+
+def _blank_to_none(value: Any) -> Any:
+    """Remove espaços das pontas; texto vazio vira None (campo de formulário em branco)."""
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return value
+
+
+def _limit_length(value: Optional[str]) -> Optional[str]:
+    if value is not None and len(value) > 100:
+        raise ValueError("docudata_project_id deve ter no máximo 100 caracteres")
+    return value
+
+
+# Id do projeto no DocuData (string livre, sem exigir formato UUID).
+DocudataProjectId = Annotated[
+    Optional[str], BeforeValidator(_blank_to_none), AfterValidator(_limit_length)
+]
 
 
 class ProjectCreate(BaseModel):
@@ -27,6 +47,7 @@ class ProjectCreate(BaseModel):
     pricing_api_key: Optional[str] = None
     citi_flow_run_id: Optional[str] = None
     mode: ProjectMode = "sales"
+    docudata_project_id: DocudataProjectId = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -53,6 +74,7 @@ class ProjectUpdate(BaseModel):
     pricing_api_key: Optional[str] = None
     citi_flow_run_id: Optional[str] = None
     mode: Optional[ProjectMode] = None
+    docudata_project_id: DocudataProjectId = None
 
     @field_validator("data_maturity_score")
     @classmethod
@@ -82,3 +104,4 @@ class ProjectResponse(BaseModel):
     pricing_llm_model: Optional[str] = None
     has_pricing_api_key: bool = False
     mode: ProjectMode
+    docudata_project_id: Optional[str] = None

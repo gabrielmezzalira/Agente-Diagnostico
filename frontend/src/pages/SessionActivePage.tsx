@@ -1,643 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import {
-  AlertTriangle,
-  Check,
-  ChevronLeft,
-  Clock,
-  Copy,
-  FileText,
-  MessageSquarePlus,
-  Pin,
-  Radio,
-  RefreshCw,
-  Square,
-  Upload,
-  X,
-} from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { Check, ChevronLeft, Copy, FileText, Square } from 'lucide-react'
 import { api, type Report, type Session } from '../lib/api'
-import { useSessionWS, type CoverageArea, type CoverageState, type WSQuestion } from '../lib/useSessionWS'
-import {
-  blockLabel,
-  groupCoverageByLens,
-  isDiscoveryCoverage,
-  lensBadgeVariant,
-  lensLabel,
-  shouldShowManualReportButton,
-} from '../lib/lens'
-
-// ---------------------------------------------------------------------------
-// Session timer
-// ---------------------------------------------------------------------------
-
-function SessionTimer({ startedAt }: { startedAt: string }) {
-  const [elapsed, setElapsed] = useState(0)
-
-  useEffect(() => {
-    const start = new Date(startedAt).getTime()
-    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [startedAt])
-
-  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0')
-  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0')
-  const s = String(elapsed % 60).padStart(2, '0')
-
-  return (
-    <span className="font-mono text-sm text-[var(--color-text-secondary)]">
-      {h}:{m}:{s}
-    </span>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Coverage panel (left column)
-// ---------------------------------------------------------------------------
-
-function CoveragePanel({
-  coverage,
-  onForceClassify,
-}: {
-  coverage: CoverageState
-  onForceClassify: () => void
-}) {
-  const statusColor: Record<string, string> = {
-    covered: 'bg-[var(--color-accent)]',
-    partial: 'bg-[var(--color-yellow)]',
-    uncovered: 'bg-[var(--color-border-std)]',
-    not_applicable: 'bg-transparent',
-  }
-  const statusDot: Record<string, string> = {
-    covered: 'bg-[var(--color-accent)]',
-    partial: 'bg-[var(--color-yellow)]',
-    uncovered: 'bg-[var(--color-border-hover)]',
-    not_applicable: 'bg-[var(--color-border-std)]',
-  }
-
-  function renderAreaRow([area, info]: [string, CoverageArea]) {
-    return (
-      <div
-        key={area}
-        className="px-3 py-2 hover:bg-[var(--color-muted)] rounded-sm transition-colors"
-        title={info.notes || undefined}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <span className={`shrink-0 w-2 h-2 rounded-full ${statusDot[info.status] ?? statusDot.uncovered}`} />
-          <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">
-            {info.name || area}
-          </span>
-          <span className="text-xs text-[var(--color-text-secondary)] tabular-nums">
-            {info.score}%
-          </span>
-        </div>
-        <div className="ml-4 h-1 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${statusColor[info.status] ?? statusColor.uncovered}`}
-            style={{ width: `${info.score}%` }}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  const isEmpty = Object.keys(coverage).length === 0
-  const isDiscovery = !isEmpty && isDiscoveryCoverage(coverage)
-
-  let body: React.ReactNode
-
-  if (isEmpty) {
-    // D-46: nunca inventar áreas fixas — placeholder discreto até o initial_state chegar.
-    body = (
-      <p className="text-xs text-[var(--color-text-secondary)] text-center pt-8">
-        aguardando classificação…
-      </p>
-    )
-  } else if (isDiscovery) {
-    // D-43: duas seções empilhadas por lente, na ordem do payload; cabeçalho
-    // renderizado mesmo se o grupo ficar com 0 áreas ativas (backstop zero-one-many).
-    const grouped = groupCoverageByLens(coverage)
-    body = (
-      <>
-        {(['produto', 'dados'] as const).map(lensKey => {
-          const entries = grouped[lensKey].filter(([, i]) => i.status !== 'not_applicable')
-          return (
-            <div key={lensKey}>
-              <div className="px-3 py-1.5">
-                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                  {lensKey === 'produto' ? 'Produto' : 'Dados'}
-                </span>
-              </div>
-              {entries.map(renderAreaRow)}
-            </div>
-          )
-        })}
-      </>
-    )
-  } else {
-    // Sales (lens todo null): lista plana byte-idêntica ao comportamento atual.
-    const active = Object.entries(coverage).filter(([, i]) => i.status !== 'not_applicable')
-    const inactive = Object.entries(coverage).filter(([, i]) => i.status === 'not_applicable')
-    body = (
-      <>
-        {active.map(renderAreaRow)}
-
-        {inactive.length > 0 && (
-          <>
-            <div className="mx-3 my-1 border-t border-[var(--color-border-std)]" />
-            {inactive.map(([area, info]) => (
-              <div key={area} className="px-3 py-1.5 flex items-center gap-2 opacity-35">
-                <span className="shrink-0 w-2 h-2 rounded-full border border-[var(--color-border-std)]" />
-                <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
-                  {info.name || area}
-                </span>
-                <span className="text-xs text-[var(--color-text-secondary)]">N/A</span>
-              </div>
-            ))}
-          </>
-        )}
-      </>
-    )
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-border-std)]">
-        <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-          Cobertura
-        </span>
-        <button
-          onClick={onForceClassify}
-          title="Forçar classificação"
-          className="p-1 rounded hover:bg-[var(--color-muted)] text-[var(--color-text-secondary)] transition-colors"
-        >
-          <RefreshCw size={12} />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto py-1">{body}</div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Budget bar
-// ---------------------------------------------------------------------------
-
-function BudgetBar({
-  used,
-  limit,
-  estimated,
-  status,
-}: {
-  used: number
-  limit: number | null
-  estimated: number
-  status: string
-}) {
-  const pct = limit ? Math.min((used / limit) * 100, 100) : 0
-  const barColor =
-    status === 'insufficient' || status === 'critical'
-      ? 'bg-[var(--color-red)]'
-      : status === 'warning'
-        ? 'bg-[var(--color-yellow)]'
-        : 'bg-[var(--color-accent)]'
-
-  const fmt = (v: number) => `$${v.toFixed(4)}`
-
-  return (
-    <div className="flex items-center gap-3 px-4 h-9 border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-      <div className="flex-1 h-1.5 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-        {limit ? (
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-            style={{ width: `${pct.toFixed(1)}%` }}
-          />
-        ) : (
-          <div className="h-full w-full bg-[var(--color-border-std)]" />
-        )}
-      </div>
-      <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
-        {limit
-          ? `${fmt(used)} / ${fmt(limit)}`
-          : `${fmt(used)} consumido`}
-      </span>
-      {status === 'insufficient' && (
-        <span className="text-xs text-[var(--color-red)] font-medium whitespace-nowrap">
-          Saldo insuficiente para relatório (~{fmt(estimated)})
-        </span>
-      )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Lens badge (Produto/Dados) — UI-02/D-44. Tag principal em discovery;
-// não renderiza nada quando lens é null (sales, byte-idêntico).
-// ---------------------------------------------------------------------------
-
-const LENS_BADGE_CLASSES: Record<'produto' | 'dados', string> = {
-  produto:
-    'bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)]',
-  dados:
-    'bg-[var(--color-muted)] text-[var(--color-text-secondary)] border border-[var(--color-border-std)]',
-}
-
-function LensBadge({ lens }: { lens: 'produto' | 'dados' | null }) {
-  const variant = lensBadgeVariant(lens)
-  if (variant === 'none') return null
-
-  return (
-    <span
-      className={`text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] w-fit ${LENS_BADGE_CLASSES[variant]}`}
-    >
-      {lensLabel(lens)}
-    </span>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Transcript + red flags (center column)
-// ---------------------------------------------------------------------------
-
-function TranscriptPanel({
-  transcript,
-  redFlags,
-}: {
-  transcript: Array<{ text: string; speaker: string | null; timestamp: string }>
-  redFlags: Array<{
-    id: string
-    text: string
-    severity: string
-    evidence: string
-    detected_at: string
-    lens?: 'produto' | 'dados' | null
-  }>
-}) {
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [transcript.length])
-
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Red flags */}
-      {redFlags.length > 0 && (
-        <div className="border-b border-[var(--color-border-std)] max-h-48 overflow-y-auto">
-          <div className="px-4 py-2 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider border-b border-[var(--color-border-std)]">
-            Alertas
-          </div>
-          <div className="divide-y divide-[var(--color-border-std)]">
-            {redFlags.map(rf => (
-              <div
-                key={rf.id}
-                className={`px-4 py-3 flex gap-3 ${
-                  rf.severity === 'critical'
-                    ? 'bg-[var(--color-red-bg)]'
-                    : 'bg-[var(--color-yellow-bg)]'
-                }`}
-              >
-                <AlertTriangle
-                  size={14}
-                  className={`shrink-0 mt-0.5 ${
-                    rf.severity === 'critical'
-                      ? 'text-[var(--color-red)]'
-                      : 'text-[var(--color-yellow)]'
-                  }`}
-                />
-                <div className="min-w-0">
-                  {rf.lens != null && (
-                    <div className="mb-1">
-                      <LensBadge lens={rf.lens} />
-                    </div>
-                  )}
-                  <p className="text-sm text-[var(--color-text-primary)]">{rf.text}</p>
-                  {rf.evidence && (
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 italic truncate">
-                      "{rf.evidence}"
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Transcript */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        {transcript.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-secondary)] text-center pt-8">
-            Aguardando transcrição...
-          </p>
-        ) : (
-          transcript.map((chunk, i) => (
-            <div key={i} className="text-sm leading-relaxed">
-              {chunk.speaker && (
-                <span className="font-medium text-[var(--color-text-secondary)] mr-1.5">
-                  {chunk.speaker}:
-                </span>
-              )}
-              <span className="text-[var(--color-text-primary)]">{chunk.text}</span>
-            </div>
-          ))
-        )}
-        <div ref={bottomRef} />
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// TTL progress bar (per-question)
-// ---------------------------------------------------------------------------
-
-function TTLBar({ expiresAt }: { expiresAt: string }) {
-  const [pct, setPct] = useState(100)
-
-  useEffect(() => {
-    const exp = new Date(expiresAt).getTime()
-    const total = exp - Date.now()
-    if (total <= 0) return
-
-    const tick = () => {
-      const remaining = exp - Date.now()
-      setPct(Math.max(0, (remaining / total) * 100))
-    }
-    tick()
-    const id = setInterval(tick, 200)
-    return () => clearInterval(id)
-  }, [expiresAt])
-
-  const color =
-    pct > 60
-      ? 'bg-[var(--color-accent)]'
-      : pct > 30
-        ? 'bg-[var(--color-yellow)]'
-        : 'bg-[var(--color-red)]'
-
-  return (
-    <div className="mt-2 h-0.5 bg-[var(--color-border-std)] rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-none ${color}`}
-        style={{ width: `${pct.toFixed(1)}%` }}
-      />
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Question card
-// ---------------------------------------------------------------------------
-
-function QuestionCard({
-  question,
-  onPin,
-  onDismiss,
-  onUse,
-}: {
-  question: WSQuestion
-  onPin: () => void
-  onDismiss: () => void
-  onUse: () => void
-}) {
-  return (
-    <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-[var(--radius-card)] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-1 mb-1">
-        {question.lens != null ? (
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <LensBadge lens={question.lens} />
-            <span className="text-[10px] text-[var(--color-text-secondary)] truncate">
-              {blockLabel(question.block)}
-            </span>
-          </div>
-        ) : (
-          <span className="text-xs px-1.5 py-0.5 rounded-[var(--radius-tag)] bg-[var(--color-green-bg-tag)] text-[var(--color-accent)] border border-[var(--color-border-green)] w-fit">
-            {blockLabel(question.block)}
-          </span>
-        )}
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            onClick={onPin}
-            title="Fixar"
-            className="p-1 rounded hover:bg-[var(--color-muted)] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
-          >
-            <Pin size={11} />
-          </button>
-          <button
-            onClick={onUse}
-            title="Marcar como usada"
-            className="p-1 rounded hover:bg-[var(--color-muted)] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
-          >
-            <Check size={11} />
-          </button>
-          <button
-            onClick={onDismiss}
-            title="Descartar"
-            className="p-1 rounded hover:bg-[var(--color-muted)] text-[var(--color-text-secondary)] hover:text-[var(--color-red)] transition-colors"
-          >
-            <X size={11} />
-          </button>
-        </div>
-      </div>
-      <p className="text-sm text-[var(--color-text-primary)] leading-snug">{question.text}</p>
-      {question.source === 'pre_mapped' && (
-        <p className="text-[10px] text-[var(--color-text-secondary)] mt-1 opacity-70">pré-mapeada</p>
-      )}
-      {question.status === 'queued' && question.expires_at && (
-        <TTLBar expiresAt={question.expires_at} />
-      )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Questions panel (right column)
-// ---------------------------------------------------------------------------
-
-function QuestionsPanel({
-  questions,
-  onGenerateQuestions,
-  onPin,
-  onDismiss,
-  onUse,
-}: {
-  questions: WSQuestion[]
-  onGenerateQuestions: () => void
-  onPin: (id: string) => void
-  onDismiss: (id: string) => void
-  onUse: (id: string) => void
-}) {
-  const preMapped = questions.filter(q => q.status === 'pinned' && q.source === 'pre_mapped')
-  const pinned = questions.filter(q => q.status === 'pinned' && q.source !== 'pre_mapped')
-  const queued = questions.filter(q => q.status === 'queued')
-
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-border-std)]">
-        <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-          Perguntas
-        </span>
-        <button
-          onClick={onGenerateQuestions}
-          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--color-accent)] border border-[var(--color-border-green)] rounded-[var(--radius-btn)] hover:bg-[var(--color-green-bg-tag)] transition-colors"
-        >
-          <MessageSquarePlus size={11} />
-          Gerar
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        {preMapped.length > 0 && (
-          <div>
-            <p className="text-xs text-[var(--color-text-secondary)] mb-1.5 font-medium">
-              Pré-reunião
-            </p>
-            <div className="space-y-2">
-              {preMapped.map(q => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  onPin={() => onPin(q.id)}
-                  onDismiss={() => onDismiss(q.id)}
-                  onUse={() => onUse(q.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {pinned.length > 0 && (
-          <div>
-            <p className="text-xs text-[var(--color-text-secondary)] mb-1.5 font-medium">
-              Fixadas
-            </p>
-            <div className="space-y-2">
-              {pinned.map(q => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  onPin={() => onPin(q.id)}
-                  onDismiss={() => onDismiss(q.id)}
-                  onUse={() => onUse(q.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {queued.length > 0 && (
-          <div>
-            {pinned.length > 0 && (
-              <p className="text-xs text-[var(--color-text-secondary)] mb-1.5 font-medium">
-                Fila
-              </p>
-            )}
-            <div className="space-y-2">
-              {queued.map(q => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  onPin={() => onPin(q.id)}
-                  onDismiss={() => onDismiss(q.id)}
-                  onUse={() => onUse(q.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {preMapped.length === 0 && pinned.length === 0 && queued.length === 0 && (
-          <p className="text-sm text-[var(--color-text-secondary)] text-center pt-8">
-            Nenhuma pergunta na fila
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Report modal
-// ---------------------------------------------------------------------------
-
-function ReportModal({
-  markdown,
-  onClose,
-}: {
-  markdown: string
-  onClose: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col shadow-xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-std)]">
-          <div className="flex items-center gap-2">
-            <FileText size={14} className="text-[var(--color-accent)]" />
-            <span className="text-sm font-semibold text-[var(--color-text-primary)]">Relatório de Diagnóstico</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-[var(--color-muted)] text-[var(--color-text-secondary)] transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5">
-          <div className="prose prose-sm max-w-none text-[var(--color-text-primary)]
-            [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2
-            [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1.5
-            [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-2
-            [&_ul]:text-sm [&_ul]:pl-4 [&_ul]:space-y-1 [&_ul]:list-disc
-            [&_ol]:text-sm [&_ol]:pl-4 [&_ol]:space-y-1 [&_ol]:list-decimal
-            [&_li]:leading-relaxed
-            [&_strong]:font-semibold
-            [&_hr]:border-[var(--color-border-std)] [&_hr]:my-4
-            [&_table]:w-full [&_table]:text-sm [&_table]:border-collapse
-            [&_th]:text-left [&_th]:font-semibold [&_th]:px-3 [&_th]:py-2
-              [&_th]:border [&_th]:border-[var(--color-border-std)]
-              [&_th]:bg-[var(--color-muted)]
-            [&_td]:px-3 [&_td]:py-2
-              [&_td]:border [&_td]:border-[var(--color-border-std)]
-              [&_td]:align-top [&_td]:leading-snug
-            [&_tr:nth-child(even)_td]:bg-[var(--color-muted)]
-            [&_code]:font-mono [&_code]:text-xs [&_code]:px-1 [&_code]:py-0.5
-              [&_code]:bg-[var(--color-muted)] [&_code]:rounded
-          ">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {markdown}
-            </ReactMarkdown>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-[var(--color-border-std)]">
-          <button
-            onClick={() => navigator.clipboard.writeText(markdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors text-[var(--color-text-secondary)]"
-          >
-            <Copy size={11} />
-            Copiar Markdown
-          </button>
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 text-xs bg-[var(--color-accent)] text-white rounded-[var(--radius-btn)] hover:bg-[var(--color-accent-hover)] transition-colors"
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Copy helper
-// ---------------------------------------------------------------------------
+import { useSessionWS } from '../lib/useSessionWS'
+import { shouldShowManualReportButton } from '../lib/lens'
+import CITiLogo from '../components/CITiLogo'
+import AppShell from '../components/layout/AppShell'
+import BudgetMeter from '../components/session/BudgetMeter'
+import CoveragePanel from '../components/session/CoveragePanel'
+import FinishedSession from '../components/session/FinishedSession'
+import QuestionsPanel from '../components/session/QuestionsPanel'
+import ReportModal from '../components/session/ReportModal'
+import SessionTimer from '../components/session/SessionTimer'
+import TranscriptPanel from '../components/session/TranscriptPanel'
+import { Button, Chip, ErrorNotice } from '../components/ui'
 
 function useCopy(text: string) {
   const [copied, setCopied] = useState(false)
@@ -649,15 +25,12 @@ function useCopy(text: string) {
   return { copied, copy }
 }
 
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
-
 export default function SessionActivePage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
 
   const [session, setSession] = useState<Session | null>(null)
+  const [projectName, setProjectName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [finishing, setFinishing] = useState(false)
@@ -667,7 +40,6 @@ export default function SessionActivePage() {
   const [finishedReport, setFinishedReport] = useState<Report | null>(null)
   const [uploadingPdf, setUploadingPdf] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
-  const pdfInputRef = useRef<HTMLInputElement>(null)
 
   const { state: ws, send, updateQuestionStatus } = useSessionWS(sessionId)
   const { copied, copy } = useCopy(session?.id ?? '')
@@ -683,6 +55,7 @@ export default function SessionActivePage() {
           localStorage.setItem('agente_session_id', s.id)
         } else {
           api.sessions.getReport(sessionId).then(setFinishedReport).catch(() => null)
+          api.projects.get(s.project_id).then(p => setProjectName(p.name)).catch(() => null)
         }
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Erro ao carregar sessão'))
@@ -695,11 +68,9 @@ export default function SessionActivePage() {
     if (!sessionId || !confirm('Encerrar a sessão?')) return
     setFinishing(true)
     try {
-      // Caminho único via REST: o endpoint /finish é autossuficiente (grava
-      // status=finished e para o pipeline, idempotente). Disparar também o
-      // evento WS 'finish_session' criava uma corrida — o WS encerrava primeiro
-      // e o POST /finish respondia 409 "Session is not active", cuja exceção
-      // impedia o navigate() e travava a tela em "reconectando...".
+      // Caminho único via REST: o endpoint /finish é autossuficiente (grava status=finished e para o
+      // pipeline, idempotente). Disparar também o evento WS 'finish_session' criava uma corrida — o WS
+      // encerrava primeiro e o POST /finish respondia 409, cuja exceção impedia o navigate().
       await api.sessions.finish(sessionId)
       navigate(`/projects/${session?.project_id}`)
     } catch (e: unknown) {
@@ -723,14 +94,6 @@ export default function SessionActivePage() {
     send('use_question', { question_id: id })
   }
 
-  function handleGenerateQuestions() {
-    send('generate_questions')
-  }
-
-  function handleForceClassify() {
-    send('force_classify')
-  }
-
   async function handleRegenerate() {
     if (!sessionId || regenerating) return
     setRegenerating(true)
@@ -746,15 +109,13 @@ export default function SessionActivePage() {
     }
   }
 
-  // D-48: seletor de status/aprovação do relatório na sessão encerrada —
-  // mesmo padrão disable-while-mutating de handleRegenerate/handleUploadPdf.
+  // D-48: seletor de status/aprovação do relatório na sessão encerrada.
   async function handleUpdateReportStatus(newStatus: NonNullable<Report['status']>) {
     if (!sessionId || updatingStatus) return
     setUpdatingStatus(true)
     setError(null)
     try {
-      const updated = await api.sessions.updateReportStatus(sessionId, newStatus)
-      setFinishedReport(updated)
+      setFinishedReport(await api.sessions.updateReportStatus(sessionId, newStatus))
     } catch {
       setError('Erro ao atualizar status')
     } finally {
@@ -804,331 +165,125 @@ export default function SessionActivePage() {
   }, [ws.reportMarkdown])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-text-secondary)]">Carregando...</span>
-      </div>
-    )
+    return <AppShell><p className="text-[14px] text-ds-muted">Carregando…</p></AppShell>
   }
 
   if (error && !session) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg-page)] flex items-center justify-center">
-        <span className="text-sm text-[var(--color-red)]">{error}</span>
-      </div>
-    )
+    return <AppShell><ErrorNotice>{error}</ErrorNotice></AppShell>
   }
 
   if (!session) return null
 
   const isExtension = session.source === 'extension'
-  const isActive = session.status === 'active'
 
-  function sessionDuration(s: Session): string {
-    const start = new Date(s.started_at)
-    const end = s.finished_at ? new Date(s.finished_at) : new Date()
-    const mins = Math.floor((end.getTime() - start.getTime()) / 60000)
-    return mins < 1 ? '< 1 min' : `${mins} min`
-  }
-
-  // Non-active session: history view
-  if (!isActive) {
+  // Sessão encerrada: visão de histórico
+  if (session.status !== 'active') {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-page)]">
-        {reportModal && (
-          <ReportModal markdown={reportModal} onClose={() => setReportModal(null)} />
-        )}
-        <div className="border-b border-[var(--color-border-std)] bg-[var(--color-surface)]">
-          <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link
-                to={`/projects/${session.project_id}`}
-                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-              >
-                <ChevronLeft size={18} />
-              </Link>
-              <span className="text-sm font-medium text-[var(--color-text-primary)]">Sessão encerrada</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {finishedReport && (
-                <button
-                  onClick={() => setReportModal(finishedReport.markdown_content)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-accent)] border border-[var(--color-border-green)] rounded-[var(--radius-btn)] hover:bg-[var(--color-green-bg-tag)] transition-colors"
-                >
-                  <FileText size={12} />
-                  Ver Relatório
-                </button>
-              )}
-              <button
-                onClick={handleRegenerate}
-                disabled={regenerating || uploadingPdf}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-50"
-              >
-                <RefreshCw size={12} />
-                {regenerating ? 'Gerando...' : 'Regenerar'}
-              </button>
-              <input
-                ref={pdfInputRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handleUploadPdf}
-              />
-              <button
-                onClick={() => pdfInputRef.current?.click()}
-                disabled={uploadingPdf || regenerating}
-                title="Importar transcrição em PDF para gerar relatório"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-50"
-              >
-                <Upload size={12} />
-                {uploadingPdf ? 'Processando...' : 'Importar PDF'}
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg divide-y divide-[var(--color-border-std)]">
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-[var(--color-text-secondary)]">Status</span>
-              <span className="text-sm text-[var(--color-text-primary)] capitalize">{session.status}</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-[var(--color-text-secondary)]">Início</span>
-              <span className="text-sm text-[var(--color-text-primary)]">
-                {new Date(session.started_at).toLocaleString('pt-BR')}
-              </span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-[var(--color-text-secondary)]">Duração</span>
-              <span className="text-sm text-[var(--color-text-primary)]">{sessionDuration(session)}</span>
-            </div>
-            {parseFloat(session.cost_usd) > 0 && (
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-[var(--color-text-secondary)]">Custo de IA</span>
-                <span className="text-sm text-[var(--color-text-primary)]">${parseFloat(session.cost_usd).toFixed(4)}</span>
-              </div>
-            )}
-            {session.tokens_used > 0 && (
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-[var(--color-text-secondary)]">Tokens usados</span>
-                <span className="text-sm text-[var(--color-text-primary)]">{session.tokens_used.toLocaleString('pt-BR')}</span>
-              </div>
-            )}
-          </div>
-
-          {finishedReport && (
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <FileText size={13} className="text-[var(--color-accent)]" />
-                  <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Relatório gerado</span>
-                </div>
-                <span className="text-xs text-[var(--color-text-secondary)]">
-                  {new Date(finishedReport.generated_at).toLocaleString('pt-BR')}
-                </span>
-              </div>
-
-              {/* D-48: seletor de status/aprovação — só relatório de discovery (status != null) */}
-              {finishedReport.status != null && (
-                <div className="flex items-center gap-2 mb-3">
-                  <label
-                    htmlFor="report-status-select"
-                    className="text-xs text-[var(--color-text-secondary)]"
-                  >
-                    Status
-                  </label>
-                  <select
-                    id="report-status-select"
-                    value={finishedReport.status}
-                    disabled={updatingStatus}
-                    onChange={e =>
-                      handleUpdateReportStatus(e.target.value as NonNullable<Report['status']>)
-                    }
-                    className="text-xs border border-[var(--color-border-std)] rounded-[var(--radius-btn)] px-2 py-1 bg-[var(--color-surface)] text-[var(--color-text-primary)] disabled:opacity-50"
-                  >
-                    <option value="Rascunho">Rascunho</option>
-                    <option value="Em revisão">Em revisão</option>
-                    <option value="Aprovado para build">Aprovado para build</option>
-                  </select>
-                  {finishedReport.status === 'Aprovado para build' && (
-                    <span className="text-xs text-[var(--color-text-secondary)]">
-                      Libera a importação no Precificador
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div className="text-sm text-[var(--color-text-primary)] leading-relaxed line-clamp-6 overflow-hidden
-                [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1
-                [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-1
-                [&_p]:mb-1 [&_ul]:pl-3 [&_ul]:list-disc [&_li]:leading-snug
-                [&_table]:w-full [&_table]:text-xs [&_table]:border-collapse
-                [&_th]:px-2 [&_th]:py-1 [&_th]:border [&_th]:border-[var(--color-border-std)] [&_th]:bg-[var(--color-muted)] [&_th]:font-semibold
-                [&_td]:px-2 [&_td]:py-1 [&_td]:border [&_td]:border-[var(--color-border-std)]
-              ">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {finishedReport.markdown_content}
-                </ReactMarkdown>
-              </div>
-              <button
-                onClick={() => setReportModal(finishedReport.markdown_content)}
-                className="mt-3 text-xs text-[var(--color-accent)] hover:underline"
-              >
-                Ver relatório completo →
-              </button>
-            </div>
-          )}
-
-          {ws.transcript.length > 0 && (
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border-std)] rounded-lg overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-[var(--color-border-std)]">
-                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                  Transcrição ({ws.transcript.length} blocos)
-                </span>
-              </div>
-              <div className="overflow-y-auto max-h-96 px-4 py-3 space-y-2">
-                {ws.transcript.map((c, i) => (
-                  <div key={i} className="text-sm">
-                    {c.speaker && (
-                      <span className="text-xs font-medium text-[var(--color-accent)] mr-1">{c.speaker}:</span>
-                    )}
-                    <span className="text-[var(--color-text-primary)]">{c.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <>
+        {reportModal && <ReportModal markdown={reportModal} onClose={() => setReportModal(null)} />}
+        <FinishedSession
+          session={session}
+          projectName={projectName}
+          report={finishedReport}
+          transcript={ws.transcript}
+          error={error}
+          regenerating={regenerating}
+          uploadingPdf={uploadingPdf}
+          updatingStatus={updatingStatus}
+          onOpenReport={setReportModal}
+          onRegenerate={handleRegenerate}
+          onUploadPdf={handleUploadPdf}
+          onUpdateStatus={handleUpdateReportStatus}
+        />
+      </>
     )
   }
 
-  // Active session: full monitoring layout
+  // Sessão ao vivo: monitoramento em 3 colunas (300 | 1fr | 360)
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-bg-page)] overflow-hidden">
-      {reportModal && (
-        <ReportModal markdown={reportModal} onClose={() => setReportModal(null)} />
-      )}
+    <div className="flex flex-col h-screen bg-ds-bg text-ds-text overflow-hidden">
+      {reportModal && <ReportModal markdown={reportModal} onClose={() => setReportModal(null)} />}
 
-      {/* Topbar */}
-      <div
-        className="shrink-0 border-b border-[var(--color-border-std)] bg-[var(--color-surface)] flex items-center justify-between px-4"
-        style={{ height: 'var(--height-topbar)' }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            to={`/projects/${session.project_id}`}
-            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors shrink-0"
-          >
-            <ChevronLeft size={18} />
-          </Link>
+      <header className="h-[68px] shrink-0 flex items-center gap-4 px-7 border-b border-ds-border">
+        <Link
+          to={`/projects/${session.project_id}`}
+          aria-label="Voltar para o projeto"
+          className="text-ds-text-2 hover:text-white transition-colors shrink-0"
+        >
+          <ChevronLeft size={20} aria-hidden />
+        </Link>
+        <CITiLogo height={22} />
+        <span aria-hidden className="w-px h-[18px] bg-ds-border-strong" />
+        {ws.connected ? (
+          <Chip tone="green" dot>AO VIVO</Chip>
+        ) : (
+          <Chip tone="amber">reconectando…</Chip>
+        )}
+        <SessionTimer startedAt={session.started_at} />
 
-          <div className="flex items-center gap-2 min-w-0">
-            {ws.connected ? (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] shrink-0">
-                <Radio size={12} className="animate-pulse" />
-                ao vivo
-              </span>
-            ) : (
-              <span className="text-xs text-[var(--color-yellow)] shrink-0">
-                reconectando...
-              </span>
-            )}
-            <span className="text-[var(--color-border-std)]">·</span>
-            <Clock size={12} className="text-[var(--color-text-secondary)] shrink-0" />
-            <SessionTimer startedAt={session.started_at} />
-          </div>
-        </div>
-
-        {/* Extension instructions (compact) */}
         {isExtension && (
-          <div className="hidden md:flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-            <span>ID:</span>
-            <code className="px-2 py-0.5 bg-[var(--color-muted)] rounded font-mono text-xs max-w-[160px] truncate">
+          <div className="hidden lg:flex items-center gap-2 ml-6 text-[12.5px] text-ds-muted">
+            <span>ID</span>
+            <code className="font-mono text-[12px] px-2.5 py-1 rounded-lg bg-ds-inner border border-ds-inner-border text-ds-text-2 max-w-[190px] truncate">
               {session.id}
             </code>
             <button
+              type="button"
               onClick={copy}
-              className="flex items-center gap-1 hover:text-[var(--color-text-primary)] transition-colors"
+              aria-label="Copiar ID da sessão"
+              className="p-1 rounded-md hover:text-white transition-colors"
             >
-              {copied ? <Check size={12} className="text-[var(--color-accent)]" /> : <Copy size={12} />}
+              {copied ? <Check size={13} aria-hidden className="text-ds-green" /> : <Copy size={13} aria-hidden />}
             </button>
           </div>
         )}
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          <div className="hidden md:block">
+            <BudgetMeter
+              used={ws.budget.used_usd}
+              limit={ws.budget.limit_usd}
+              estimated={ws.budget.estimated_report_cost}
+              status={ws.budget.status}
+            />
+          </div>
           {shouldShowManualReportButton(ws.hasReceivedInitialState, ws.coverage) && (
-            <button
+            <Button
               onClick={handleGenerateReport}
               disabled={generatingReport || ws.budget.status === 'insufficient'}
               title={ws.budget.status === 'insufficient' ? 'Saldo insuficiente' : 'Gerar relatório (R)'}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] border border-[var(--color-border-std)] rounded-[var(--radius-btn)] hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
             >
-              <FileText size={12} />
-              {generatingReport ? 'Gerando...' : 'Relatório'}
-            </button>
+              <FileText size={14} aria-hidden /> {generatingReport ? 'Gerando…' : 'Relatório'}
+            </Button>
           )}
-          <button
-            onClick={handleFinish}
-            disabled={finishing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[var(--color-red)] border border-[var(--color-border-red)] rounded-[var(--radius-btn)] hover:bg-[var(--color-red-bg)] transition-colors disabled:opacity-50"
-          >
-            <Square size={12} />
-            {finishing ? 'Encerrando...' : 'Encerrar'}
-          </button>
+          <Button variant="danger" onClick={handleFinish} disabled={finishing}>
+            <Square size={12} aria-hidden /> {finishing ? 'Encerrando…' : 'Encerrar'}
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Budget bar */}
-      <BudgetBar
-        used={ws.budget.used_usd}
-        limit={ws.budget.limit_usd}
-        estimated={ws.budget.estimated_report_cost}
-        status={ws.budget.status}
-      />
-
-      {/* Error banner */}
       {(error || ws.wsError) && (
-        <div className="shrink-0 text-xs text-[var(--color-red)] bg-[var(--color-red-bg)] border-b border-[var(--color-border-red)] px-4 py-2">
-          {error || ws.wsError}
-        </div>
+        <div className="shrink-0 px-7 py-2"><ErrorNotice>{error || ws.wsError}</ErrorNotice></div>
       )}
 
-      {/* 3-column layout */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+        <aside className="hidden lg:block border-r border-ds-border bg-ds-sidebar min-h-0 overflow-hidden" aria-label="Cobertura">
+          <CoveragePanel coverage={ws.coverage} onForceClassify={() => send('force_classify')} />
+        </aside>
 
-        {/* Left — Coverage (220px) */}
-        <div
-          className="shrink-0 border-r border-[var(--color-border-std)] bg-[var(--color-surface)] overflow-hidden"
-          style={{ width: 220 }}
-        >
-          <CoveragePanel
-            coverage={ws.coverage}
-            onForceClassify={handleForceClassify}
-          />
-        </div>
+        <main className="min-h-0 overflow-hidden" aria-label="Transcrição">
+          <TranscriptPanel transcript={ws.transcript} redFlags={ws.redFlags} />
+        </main>
 
-        {/* Center — Transcript + alerts */}
-        <div className="flex-1 bg-[var(--color-bg-page)] overflow-hidden">
-          <TranscriptPanel
-            transcript={ws.transcript}
-            redFlags={ws.redFlags}
-          />
-        </div>
-
-        {/* Right — Questions (280px) */}
-        <div
-          className="shrink-0 border-l border-[var(--color-border-std)] bg-[var(--color-surface)] overflow-hidden"
-          style={{ width: 280 }}
-        >
+        <aside className="hidden xl:block border-l border-ds-border bg-ds-sidebar min-h-0 overflow-hidden" aria-label="Perguntas">
           <QuestionsPanel
             questions={ws.questions}
-            onGenerateQuestions={handleGenerateQuestions}
+            onGenerateQuestions={() => send('generate_questions')}
             onPin={handlePinQuestion}
             onDismiss={handleDismissQuestion}
             onUse={handleUseQuestion}
           />
-        </div>
+        </aside>
       </div>
     </div>
   )
