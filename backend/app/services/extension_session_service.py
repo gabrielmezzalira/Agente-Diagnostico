@@ -15,6 +15,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app.repositories.extension_repository import ExtensionRepository
+from app.services.discovery_export import agendar_exportacao
 
 _log = logging.getLogger(__name__)
 
@@ -49,14 +50,30 @@ class _DefaultPipelineStopper:
         await pipeline_manager.stop_session(session_id)
 
 
+class DiscoveryExportScheduler(Protocol):
+    """Porta: quem sabe agendar o envio da sessão encerrada ao DocuData."""
+
+    def schedule(self, session_id: str) -> None: ...
+
+
+class _DefaultDiscoveryExportScheduler:
+    """Adaptador padrão: delega ao agendador da integração de Discovery. Ele é
+    no-op sem DOCUDATA_URL/chave ou fora do modo discovery, e nunca levanta."""
+
+    def schedule(self, session_id: str) -> None:
+        agendar_exportacao(session_id)
+
+
 class ExtensionSessionService:
     def __init__(
         self,
         repo: ExtensionRepository,
         pipeline_stopper: PipelineStopper | None = None,
+        export_scheduler: DiscoveryExportScheduler | None = None,
     ) -> None:
         self._repo = repo
         self._pipeline_stopper = pipeline_stopper or _DefaultPipelineStopper()
+        self._export_scheduler = export_scheduler or _DefaultDiscoveryExportScheduler()
 
     def list_clients(self) -> list[dict]:
         """Reconstrói cada item só com id, client e name, mesmo que o
@@ -123,4 +140,15 @@ class ExtensionSessionService:
             await self._pipeline_stopper.stop_session(sid)
         except Exception:
             _log.exception("falha ao parar pipeline da sessão %s no finish da extensão", sid)
+
+        # Integração de Discovery (mesmo gancho do finish REST e do WebSocket): manda a sessão
+        # ao DocuData em segundo plano. Roda também no finish repetido — o envio é idempotente
+        # por fonte_session_id, e assim um finish que gravou e falhou no meio não perde o envio.
+        # Nada aqui pode quebrar o encerramento; log sem conteúdo (classe + id da sessão).
+        try:
+            self._export_scheduler.schedule(sid)
+        except Exception as exc:
+            _log.error(
+                "falha ao agendar exportação ao DocuData (%s) sessão %s", type(exc).__name__, sid
+            )
         return {"id": session_id, "status": "finished"}

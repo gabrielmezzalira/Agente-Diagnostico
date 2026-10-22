@@ -308,10 +308,24 @@ class _FakeStopper:
             raise RuntimeError("stop failed")
 
 
-def _finish_service(session, cas_result=True, fail_stop=False):
+class _FakeExportScheduler:
+    """Agendador de envio ao DocuData fake: só registra os ids (sem rede, sem env)."""
+
+    def __init__(self, fail=False):
+        self.scheduled: list[str] = []
+        self._fail = fail
+
+    def schedule(self, session_id: str) -> None:
+        self.scheduled.append(session_id)
+        if self._fail:
+            raise RuntimeError("schedule failed")
+
+
+def _finish_service(session, cas_result=True, fail_stop=False, fail_schedule=False):
     repo = _FinishRepo(session, cas_result)
     stopper = _FakeStopper(fail=fail_stop)
-    return ExtensionSessionService(repo, stopper), repo, stopper
+    scheduler = _FakeExportScheduler(fail=fail_schedule)
+    return ExtensionSessionService(repo, stopper, scheduler), repo, stopper
 
 
 async def test_finish_active_extension_session_writes_and_stops_pipeline():
@@ -427,3 +441,80 @@ def test_router_file_has_no_direct_db_access():
     code = "\n".join(l for l in src.splitlines() if not l.strip().startswith("#"))
 
     assert "db.table" not in code
+
+
+# --------- Envio ao DocuData no finish da Taqciti (mesmo gancho do finish REST e do WebSocket) ---------
+
+
+async def test_finish_active_extension_session_schedules_docudata_export():
+    service, _, _ = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"}
+    )
+
+    await service.finish_session(_FINISH_SID)
+
+    assert service._export_scheduler.scheduled == [str(_FINISH_SID)]
+
+
+async def test_finish_already_finished_schedules_export_again_because_it_is_idempotent():
+    # Um finish que gravou e falhou no meio não pode perder o envio: o retry da Taqciti agenda de novo.
+    service, repo, _ = _finish_service(
+        {"id": str(_FINISH_SID), "status": "finished", "source": "extension"}
+    )
+
+    await service.finish_session(_FINISH_SID)
+
+    assert repo.finished_calls == []
+    assert service._export_scheduler.scheduled == [str(_FINISH_SID)]
+
+
+async def test_finish_unknown_session_does_not_schedule_export():
+    service, _, _ = _finish_service(None)
+
+    with pytest.raises(HTTPException):
+        await service.finish_session(_FINISH_SID)
+
+    assert service._export_scheduler.scheduled == []
+
+
+async def test_finish_other_source_does_not_schedule_export():
+    service, _, _ = _finish_service({"id": "x", "status": "active", "source": "recall"})
+
+    with pytest.raises(HTTPException):
+        await service.finish_session(_FINISH_SID)
+
+    assert service._export_scheduler.scheduled == []
+
+
+async def test_finish_schedule_failure_keeps_200_finished():
+    service, _, stopper = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"},
+        fail_schedule=True,
+    )
+
+    result = await service.finish_session(_FINISH_SID)
+
+    assert result == {"id": _FINISH_SID, "status": "finished"}
+    assert stopper.stopped == [str(_FINISH_SID)]
+
+
+async def test_finish_schedules_export_even_when_pipeline_stop_fails():
+    service, _, _ = _finish_service(
+        {"id": str(_FINISH_SID), "status": "active", "source": "extension"},
+        fail_stop=True,
+    )
+
+    await service.finish_session(_FINISH_SID)
+
+    assert service._export_scheduler.scheduled == [str(_FINISH_SID)]
+
+
+def test_service_default_export_scheduler_delegates_to_agendar_exportacao(monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "app.services.extension_session_service.agendar_exportacao", calls.append
+    )
+
+    ExtensionSessionService(_FinishRepo(None))._export_scheduler.schedule("abc")
+
+    assert calls == ["abc"]
