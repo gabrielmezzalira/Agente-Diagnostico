@@ -68,7 +68,7 @@ coverage:
       - kind: unit
         ref: "taqciti/src/features/agente/clientSearch.test.ts#implementações indisponível"
         status: pass
-      - kind: command
+      - kind: other
         ref: "grep de platform.send|fetch|chrome. nos componentes do seletor = 0"
         status: pass
     human_judgment: false
@@ -111,7 +111,7 @@ coverage:
       - kind: unit
         ref: "taqciti/src/sidepanel/components/ClientPicker.test.tsx#nome com HTML aparece como texto literal"
         status: pass
-      - kind: command
+      - kind: other
         ref: "awk de dangerouslySetInnerHTML fora de comentários nos 4 componentes = 0"
         status: pass
     human_judgment: false

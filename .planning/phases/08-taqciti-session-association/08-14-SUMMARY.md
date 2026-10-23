@@ -88,7 +88,7 @@ coverage:
     description: "Painel sem storage.session nem fetch; PanelApp com no máximo 25 linhas novas e sem hook novo"
     requirement: TAQ-02
     verification:
-      - kind: command
+      - kind: other
         ref: "awk de storage.session|readSession|fetch( nos 3 arquivos = 0; git show --numstat do PanelApp = 25; awk de hooks novos = 0"
         status: pass
     human_judgment: false

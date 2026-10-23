@@ -66,6 +66,7 @@ coverage:
       - kind: unit
         ref: "backend/tests/test_extension_clients.py#test_finish_route_is_gated_and_has_response_model"
         status: pass
+    human_judgment: false
   - id: D2
     description: "stop_session espera a criação do pipeline em andamento; sessões diferentes não se bloqueiam; stop idempotente; sem recriar pipeline depois do stop"
     requirement: TAQ-02
@@ -76,6 +77,7 @@ coverage:
       - kind: unit
         ref: "backend/tests/test_pipeline_get_or_create_lock.py#test_stop_session_does_not_wait_for_other_session_creation"
         status: pass
+    human_judgment: false
 ---
 
 # Phase 8 Plan 15: Rota de finish da extensão e correção da corrida do stop_session — Summary

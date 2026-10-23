@@ -121,7 +121,7 @@ coverage:
   - id: D6
     description: "Mecânica da Fase 7 (janela por fala, retry, vínculo CR-01, boot WR-02/WR-04) e o tracer da Fase 8 intactos, sem alterar agenteStreamer.test.ts nem agenteStreamerAssociation.test.ts"
     verification:
-      - kind: command
+      - kind: other
         ref: "cd taqciti && npm test (73 arquivos, 1045 testes)"
         status: pass
     human_judgment: false

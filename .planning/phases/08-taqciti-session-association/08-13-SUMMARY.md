@@ -49,19 +49,22 @@ key-decisions:
 requirements-completed: []
 
 coverage:
-  - deliverable: "Evicção do histórico protege reuniões não enviadas e limpa a associação das removidas"
+  - id: D1
+    description: "Evicção do histórico protege reuniões não enviadas e limpa a associação das removidas"
     verification:
-      - kind: test
+      - kind: unit
         ref: "taqciti/src/background/history.test.ts"
         status: pass
     human_judgment: false
-  - deliverable: "Comando de descarte validado por estado (só ended-unsent fora do ar), local, com zod no meetingId"
+  - id: D2
+    description: "Comando de descarte validado por estado (só ended-unsent fora do ar), local, com zod no meetingId"
     verification:
-      - kind: test
+      - kind: unit
         ref: "taqciti/src/background/agenteAssociationService.test.ts#discard"
         status: pass
     human_judgment: false
-  - deliverable: "Apagar (ui/history/delete) remove também a associação"
+  - id: D3
+    description: "Apagar (ui/history/delete) remove também a associação"
     verification: []
     human_judgment: true
     rationale: "index.ts não tem harness de teste (sem teste de roteamento no repositório); coberto por grep + typecheck e pelo teste manual D-20(c)"

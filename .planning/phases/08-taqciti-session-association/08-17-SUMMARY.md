@@ -52,19 +52,22 @@ key-decisions:
 requirements-completed: []
 
 coverage:
-  - deliverable: "Selo de associação no histórico, com uma única assinatura do storage para todos os cartões"
+  - id: D1
+    description: "Selo de associação no histórico, com uma única assinatura do storage para todos os cartões"
     verification:
-      - kind: test
+      - kind: unit
         ref: "taqciti/src/sidepanel/components/AssociationBadgeFor.test.tsx"
         status: pass
     human_judgment: false
-  - deliverable: "Fim da reunião: cartão/botão, seletor encerrado, progresso '3 de 30', 'Reunião enviada para {cliente}.' e descarte confirmado"
+  - id: D2
+    description: "Fim da reunião: cartão/botão, seletor encerrado, progresso '3 de 30', 'Reunião enviada para {cliente}.' e descarte confirmado"
     verification:
-      - kind: test
+      - kind: unit
         ref: "taqciti/src/sidepanel/components/AgenteEndSlot.test.tsx"
         status: pass
     human_judgment: false
-  - deliverable: "Fiação no PanelApp/RecordDetail e frase 'A cópia que já foi enviada ao Agente continua lá.' no Apagar"
+  - id: D3
+    description: "Fiação no PanelApp/RecordDetail e frase 'A cópia que já foi enviada ao Agente continua lá.' no Apagar"
     verification: []
     human_judgment: true
     rationale: "PanelApp e RecordDetail não têm teste de composição no repositório; coberto por typecheck, build e greps de gate. Falta a checagem visual D-20 (a, c), inclusive o ConfirmModal contido no painel do Meet (scale-100)."

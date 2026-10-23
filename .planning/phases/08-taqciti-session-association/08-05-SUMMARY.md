@@ -71,7 +71,7 @@ coverage:
       - kind: unit
         ref: "taqciti/src/features/agente/meetingUploadRunner.test.ts#envia 45 partes / nunca tem mais de uma requisição em voo"
         status: pass
-      - kind: command
+      - kind: other
         ref: "awk de Promise.all|fetch(|chrome.|setTimeout fora de comentários nos dois módulos = 0"
         status: pass
     human_judgment: false

@@ -111,7 +111,7 @@ coverage:
       - kind: integration
         ref: "taqciti/src/sidepanel/screens/AgenteConfigScreenDropTrace.test.tsx"
         status: pass
-      - kind: command
+      - kind: other
         ref: "git show --name-only HEAD (commit da Task 3) não lista AgenteConfigScreen.tsx nem AgenteConfigScreen.test.tsx"
         status: pass
     human_judgment: false

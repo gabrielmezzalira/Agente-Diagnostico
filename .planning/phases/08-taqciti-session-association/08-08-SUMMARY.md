@@ -86,7 +86,7 @@ coverage:
     description: "Formulário sem campo obrigatório e com apoio 'Opcional...'; tela do projeto com 'Usando a chave do servidor' (build e testes do frontend verdes)"
     requirement: TAQ-02
     verification:
-      - kind: command
+      - kind: other
         ref: "npm --prefix frontend run build && npm --prefix frontend test"
         status: pass
     human_judgment: true

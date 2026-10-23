@@ -66,7 +66,7 @@ coverage:
       - kind: unit
         ref: "taqciti/src/background/agenteAssociationService.test.ts#uiMessageSchema — comandos ui/agente/*"
         status: pass
-      - kind: command
+      - kind: other
         ref: "awk dos cases ui/agente/* do index.ts (todo case seguido de 'return agenteAssociation.') imprime 0"
         status: pass
     human_judgment: false

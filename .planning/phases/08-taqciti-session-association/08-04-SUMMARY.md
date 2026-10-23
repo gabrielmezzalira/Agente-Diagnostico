@@ -75,7 +75,7 @@ coverage:
       - kind: unit
         ref: "taqciti/src/sidepanel/components/AgenteEndPrompt.test.tsx#sending"
         status: pass
-      - kind: command
+      - kind: other
         ref: "awk de 'Continuar envio|Cancelar' fora de comentários em AgenteEndPrompt.tsx e AgenteBindingBar.tsx = 0"
         status: pass
     human_judgment: false

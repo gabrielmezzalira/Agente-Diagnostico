@@ -57,7 +57,7 @@ coverage:
     description: "O kit tem o ícone alert (traço 1.8, currentColor) e o keyframe nudge de 5 s só com transform; o bloco do keyframe não contém opacity"
     requirement: TAQ-02
     verification:
-      - kind: command
+      - kind: other
         ref: "awk no bloco nudge de taqciti/tailwind.config.ts: bloco encontrado (1), ocorrências de opacity (0); grep -c 'nudge 5s' = 1"
         status: pass
     human_judgment: false
@@ -89,7 +89,7 @@ coverage:
     description: "O aviso de reunião detectada não interrompe a reunião (sem som, sem notificação do sistema, sem foco roubado) e o pulo/aparência estão fiéis ao UI-SPEC no Meet real"
     requirement: TAQ-02
     verification:
-      - kind: command
+      - kind: other
         ref: "awk sem autoFocus/bg-primary/Notification/new Audio nos dois componentes = 0; testes de foco verdes"
         status: pass
     human_judgment: true
