@@ -14,9 +14,11 @@
 import asyncio
 
 import pytest
+from fastapi import HTTPException
 from postgrest.exceptions import APIError
 from pydantic import ValidationError
 
+from app.core.exceptions import SessionNotFoundError
 from app.repositories.transcript_chunks_repository import TranscriptChunksRepository
 from app.routers.webhook import ExtensionChunk, extension_webhook
 from app.services import pipeline as pipeline_mod
@@ -171,3 +173,51 @@ async def test_webhook_without_chunk_id_keeps_current_behavior(monkeypatch):
 
     assert db.inserts == [{"session_id": "s", "speaker": "Ana", "text": "t"}]
     assert pushed == [("s", "t", "Ana")]
+
+
+# --------- CR-01 (revisão da Fase 8): sessão inexistente não pode virar 500 ---------
+#
+# transcript_chunks.session_id é FK para sessions. Fala para sessão apagada (ou id que nem é UUID)
+# virava 500; a Taqciti trata 5xx como "tentar de novo" e a B3-b nunca retira, então a fala
+# travava a fila única de envio para sempre. 404 é 4xx definitivo: a fala é descartada e a fila anda.
+
+
+@pytest.mark.parametrize("code", ["23503", "22P02"])
+def test_insert_chunk_raises_session_not_found_when_session_is_missing(code):
+    db = _FakeDB(raise_code=code)
+
+    with pytest.raises(SessionNotFoundError) as exc_info:
+        TranscriptChunksRepository(db).insert_chunk("sess-x", "olá", None, chunk_id="c1")
+
+    assert exc_info.value.session_id == "sess-x"
+    assert db.inserts == []
+
+
+@pytest.mark.parametrize("code", ["23503", "22P02"])
+async def test_webhook_unknown_session_is_404_without_push(monkeypatch, code):
+    pushed: list = []
+
+    async def _fake_push_chunk(session_id, text, speaker=None):
+        pushed.append((session_id, text, speaker))
+
+    monkeypatch.setattr(pipeline_mod.pipeline_manager, "push_chunk", _fake_push_chunk)
+    db = _FakeDB(raise_code=code)
+    payload = ExtensionChunk.model_validate({"session_id": "s", "text": "t", "chunk_id": "c1"})
+
+    with pytest.raises(HTTPException) as exc_info:
+        await extension_webhook(payload, db=db, _=None)
+    await asyncio.sleep(0)
+
+    assert exc_info.value.status_code == 404
+    assert pushed == []
+
+
+async def test_webhook_other_database_errors_still_surface_as_server_errors(monkeypatch):
+    # Queda real de banco continua sendo erro de servidor (a Taqciti segura e reenvia): só a
+    # sessão inexistente é rejeitada de vez.
+    monkeypatch.setattr(pipeline_mod.pipeline_manager, "push_chunk", lambda *a, **k: None)
+    db = _FakeDB(raise_code="42703")
+    payload = ExtensionChunk.model_validate({"session_id": "s", "text": "t", "chunk_id": "c1"})
+
+    with pytest.raises(APIError):
+        await extension_webhook(payload, db=db, _=None)

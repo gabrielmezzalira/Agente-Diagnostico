@@ -8,8 +8,15 @@
 from postgrest.exceptions import APIError
 from supabase import Client
 
-# Código SQLSTATE de unique_violation no Postgres.
+from app.core.exceptions import SessionNotFoundError
+
+# Códigos SQLSTATE do Postgres.
 _UNIQUE_VIOLATION = "23505"
+# Sessão inexistente (FK de transcript_chunks.session_id) ou id que nem é um UUID
+# (invalid_text_representation): nos dois casos não existe sessão para receber a fala.
+_FOREIGN_KEY_VIOLATION = "23503"
+_INVALID_TEXT_REPRESENTATION = "22P02"
+_SESSION_MISSING_CODES = frozenset({_FOREIGN_KEY_VIOLATION, _INVALID_TEXT_REPRESENTATION})
 
 
 class TranscriptChunksRepository:
@@ -24,7 +31,8 @@ class TranscriptChunksRepository:
         chunk_id: str | None = None,
     ) -> bool:
         """Grava o trecho. Devolve False se (session_id, chunk_id) já existia
-        (reenvio da mesma fala, D-19); qualquer outro erro é relançado."""
+        (reenvio da mesma fala, D-19). Levanta SessionNotFoundError se a sessão não
+        existe (ou o id não é UUID); qualquer outro erro é relançado."""
         row = {"session_id": session_id, "speaker": speaker, "text": text}
         if chunk_id:
             # Só inclui a chave quando preenchida: clientes antigos e o recall
@@ -35,5 +43,7 @@ class TranscriptChunksRepository:
         except APIError as exc:
             if exc.code == _UNIQUE_VIOLATION:
                 return False
+            if exc.code in _SESSION_MISSING_CODES:
+                raise SessionNotFoundError(session_id) from exc
             raise
         return True

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from supabase import Client
 
+from app.core.exceptions import SessionNotFoundError
 from app.database import get_supabase
 from app.repositories.transcript_chunks_repository import TranscriptChunksRepository
 
@@ -39,12 +40,17 @@ async def extension_webhook(
     if not payload.text.strip():
         return {"accepted": True}
 
-    inserted = TranscriptChunksRepository(db).insert_chunk(
-        payload.session_id,
-        payload.text.strip(),
-        payload.speaker,
-        chunk_id=payload.chunk_id,
-    )
+    try:
+        inserted = TranscriptChunksRepository(db).insert_chunk(
+            payload.session_id,
+            payload.text.strip(),
+            payload.speaker,
+            chunk_id=payload.chunk_id,
+        )
+    except SessionNotFoundError:
+        # 404 (4xx definitivo para a Taqciti): sessão apagada ou id inválido nunca vai existir,
+        # então repetir só prenderia a fila de envio no topo (CR-01 da revisão da Fase 8).
+        raise HTTPException(status_code=404, detail="Session not found")
     if not inserted:
         # Fala reenviada (mesmo chunk_id já gravado): 202 sem reprocessar (D-19).
         return {"accepted": True}
