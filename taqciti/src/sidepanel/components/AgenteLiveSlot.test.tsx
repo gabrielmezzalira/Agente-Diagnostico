@@ -3,6 +3,8 @@
  * reunião. Plataforma falsa + storage simulado (`agentePanelHarness`); o painel só lê o storage e
  * manda comandos, como em produção.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AssociationState, MeetingAssociation } from '@/features/agente/association';
@@ -10,6 +12,9 @@ import { EMPTY_DELIVERY } from '@/shared/config/agenteDeliveryStore';
 import type { PanelSize } from '@/shared/types/domain';
 import { createAgenteHarness } from '@/test/agentePanelHarness';
 import { AgenteLiveSlot } from './AgenteLiveSlot';
+
+/** O CSS cru do painel: o Vitest esvazia `?raw` de .css, então a leitura é direto do arquivo. */
+const PANEL_CSS = readFileSync(resolve(process.cwd(), 'src/content/ui/panel.css'), 'utf-8');
 
 const MEETING = 'm1';
 const VALID_UUID = '11111111-2222-4333-8444-555555555555';
@@ -218,6 +223,28 @@ describe('AgenteLiveSlot — seletor', () => {
     await h.click(h.buttonByText('Selecionar cliente agora'));
     await h.click(h.buttonByText('Voltar'));
     expect(h.commandsOf('ui/agente/meeting/defer')).toHaveLength(1);
+  });
+
+  it('o seletor se marca como dono do corpo do painel e usa a densidade compacta', async () => {
+    await h.render(slot());
+    await h.click(h.buttonByText('Selecionar cliente agora'));
+
+    const dono = h.host.querySelector('[data-live-picker]');
+    expect(dono).not.toBeNull();
+    expect(dono!.className).toContain('flex-1');
+    expect(dono!.className).not.toContain('flex-[2]');
+    expect(h.buttonByText('Vincular reunião')!.className).toContain('min-h-[34px]');
+  });
+
+  it('com o cartão ou a barra à vista, nada se marca como dono do corpo', async () => {
+    await h.render(slot());
+    expect(h.host.querySelector('[data-live-picker]')).toBeNull();
+  });
+
+  it('o painel tem a regra que esconde o resto do corpo enquanto o seletor está aberto', () => {
+    expect(PANEL_CSS).toMatch(
+      /:has\(>\s*\[data-live-picker\]\)\s*>\s*:not\(\[data-live-picker\]\)\s*\{\s*display:\s*none/,
+    );
   });
 });
 

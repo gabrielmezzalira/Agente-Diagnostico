@@ -41,6 +41,16 @@ const BUSY_LABEL: Record<PickerMode, string> = {
 const LOAD_ERROR =
   'Não consegui carregar os clientes. Confira a conexão e tente de novo — ou cole abaixo o ID de uma sessão que já existe.';
 
+/**
+ * `comfortable` é a saída larga (aba / painel lateral), com folga de sobra. `compact` é o painel do Meet:
+ * 564 px de altura com cabeçalho, busca, "Criar cliente novo" e rodapé em volta da lista — sem apertar
+ * esses quatro a lista fica com 0 px e o rodapé escorre para cima da transcrição.
+ */
+export type PickerDensity = 'comfortable' | 'compact';
+const ROOT_GAP: Record<PickerDensity, string> = { comfortable: 'gap-3', compact: 'gap-2' };
+const FOOTER_PADDING: Record<PickerDensity, string> = { comfortable: 'p-3', compact: 'p-1.5' };
+const CTA_SIZE = { comfortable: 'default', compact: 'compact' } as const;
+
 interface ClientPickerProps {
   status: 'loading' | 'ready' | 'error';
   clients: readonly ClientSummary[];
@@ -52,6 +62,8 @@ interface ClientPickerProps {
   onManualId: (sessionId: string) => void;
   onRetry: () => void;
   onBack: () => void;
+  /** Padrão `comfortable`; o painel do Meet passa `compact`. */
+  density?: PickerDensity;
 }
 
 export function ClientPicker({
@@ -65,6 +77,7 @@ export function ClientPicker({
   onManualId,
   onRetry,
   onBack,
+  density = 'comfortable',
 }: ClientPickerProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -87,6 +100,13 @@ export function ClientPicker({
       </p>
     ) : null;
 
+  const backButton = (
+    <Button variant="ghost" size="compact" onClick={onBack} className="-ml-2">
+      <Icon name="chevron" size={14} className="rotate-90" />
+      Voltar
+    </Button>
+  );
+
   const toggle = (item: ClientSummary): void => {
     if (busy) return;
     setSelectedId((current) => (current === item.id ? null : item.id));
@@ -94,20 +114,26 @@ export function ClientPicker({
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col gap-3"
+      className={`flex min-h-0 flex-1 flex-col ${ROOT_GAP[density]}`}
       onKeyDown={(event) => {
         containEscape(event, onBack);
       }}
     >
       {createSeed === null && (
         <header className="shrink-0">
-          <Button variant="ghost" size="compact" onClick={onBack} className="-ml-2">
-            <Icon name="chevron" size={14} className="rotate-90" />
-            Voltar
-          </Button>
-          <h2 className="mt-2 text-title font-semibold text-foreground">
-            Escolher cliente
-          </h2>
+          {density === 'compact' ? (
+            <div className="flex items-center gap-2">
+              {backButton}
+              <h2 className="text-title font-semibold text-foreground">Escolher cliente</h2>
+            </div>
+          ) : (
+            <>
+              {backButton}
+              <h2 className="mt-2 text-title font-semibold text-foreground">
+                Escolher cliente
+              </h2>
+            </>
+          )}
           <p className="mt-1 text-caption text-muted">{SUBTITLE[mode]}</p>
         </header>
       )}
@@ -169,9 +195,10 @@ export function ClientPicker({
             onCreateFromQuery={setCreateSeed}
           />
           {sessionError}
-          <footer className="glass shrink-0 rounded-panel p-3">
+          <footer className={`glass shrink-0 rounded-panel ${FOOTER_PADDING[density]}`}>
             <Button
               variant="primary"
+              size={CTA_SIZE[density]}
               disabled={selected === null || busy}
               onClick={() => selected && onConfirm(selected)}
               className="w-full"

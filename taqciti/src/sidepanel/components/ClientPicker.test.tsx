@@ -440,3 +440,32 @@ describe('ClientPicker — plano B do ID manual (D-02)', () => {
     expect(h.buttonByText('Enviando…')!.disabled).toBe(true);
   });
 });
+
+describe('ClientPicker — densidade (painel do Meet x saída larga)', () => {
+  const h = usePickerHarness();
+
+  it('padrão (saída larga): botão do rodapé com a altura cheia e cabeçalho empilhado', () => {
+    h.render();
+    const cta = h.buttonByText('Vincular reunião')!;
+    expect(cta.className).toContain('min-h-[44px]');
+    const titulo = h.host.querySelector('h2')!;
+    // Empilhado: "Voltar" e o título são filhos diretos do <header>, um embaixo do outro.
+    expect(h.buttonByText('Voltar')!.parentElement!.tagName).toBe('HEADER');
+    expect(titulo.parentElement!.tagName).toBe('HEADER');
+  });
+
+  it('compact (painel do Meet): botão do rodapé de 34 px e "Voltar" + título na mesma linha, com o subtítulo mantido', () => {
+    h.render({ density: 'compact' });
+    const cta = h.buttonByText('Vincular reunião')!;
+    expect(cta.className).toContain('min-h-[34px]');
+    expect(cta.className).not.toContain('min-h-[44px]');
+    const titulo = h.host.querySelector('h2')!;
+    // Uma linha só: os dois dividem uma <div> própria, dentro do <header>.
+    const linha = h.buttonByText('Voltar')!.parentElement!;
+    expect(linha.tagName).toBe('DIV');
+    expect(titulo.parentElement).toBe(linha);
+    expect(h.host.textContent).toContain(
+      'Tudo o que já foi falado vai junto para a sessão deste cliente.',
+    );
+  });
+});
