@@ -70,7 +70,7 @@ export function AgenteBindingBar({ view, onSelectClient }: AgenteBindingBarProps
         <Surface level="item" className={`${ROW} text-muted`}>
           <span className="min-w-0 flex-1">Sem cliente. A transcrição fica só aqui.</span>
           <Button
-            variant="ghost"
+            variant="solid"
             size="compact"
             onClick={onSelectClient}
             className="shrink-0"

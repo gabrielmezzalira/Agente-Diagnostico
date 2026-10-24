@@ -26,7 +26,7 @@
 import type { ButtonHTMLAttributes, PointerEvent, ReactNode } from 'react';
 import { Sheen, SHEEN_HOST, trackSheen, type SheenTone } from './Sheen';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'solid';
 type Size = 'default' | 'compact';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -64,6 +64,7 @@ const SHEEN: Record<Variant, SheenTone | null> = {
   secondary: 'green',
   ghost: 'green',
   danger: null,
+  solid: null,
 };
 
 const SIZES: Record<Size, string> = {
@@ -87,6 +88,16 @@ const VARIANTS: Record<Variant, string> = {
     'text-danger [background:var(--tint-danger)] ' +
     'shadow-[inset_0_0_0_1px_rgba(248,141,141,0.18)] ' +
     'hover:brightness-125 active:scale-[0.99]',
+  /*
+   * O verde da CITi CHAPADO, sem vidro: nenhuma transparência e nenhum reflexo. O `primary` é de propósito um
+   * vidro com alpha abaixo de 1 (ver o comentário do topo) e, sobre um fundo escuro ou uma faixa de vidro, lê
+   * como "apagado". Esta variante existe para a ação que precisa chamar atenção dentro de uma superfície que já
+   * é de vidro — hoje, "Selecionar cliente" na barra "Sem cliente" do painel.
+   */
+  solid:
+    'bg-primary text-primary-deep ' +
+    'hover:-translate-y-px hover:brightness-110 ' +
+    'active:translate-y-0 active:scale-[0.99] active:brightness-95',
 };
 
 export function Button({

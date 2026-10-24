@@ -47,6 +47,10 @@ describe('AgenteBindingBar', () => {
     const button = host.querySelector<HTMLButtonElement>('button')!;
     expect(button.textContent).toBe('Selecionar cliente');
     expect(button.className).toContain('shrink-0');
+    // Verde sólido da CITi (não o vidro translúcido do primário, nem o fantasma sem fundo).
+    expect(button.className).toContain('bg-primary');
+    expect(button.className).not.toContain('glass-tint');
+    expect(button.className).not.toContain('text-muted');
 
     act(() => button.click());
     expect(onSelectClient).toHaveBeenCalledTimes(1);
