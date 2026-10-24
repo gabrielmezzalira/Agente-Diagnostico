@@ -107,3 +107,36 @@ describe('GoogleMeetProvider — captura degradada explícita', () => {
     expect(health).toContainEqual([false, 'parser']);
   });
 });
+
+describe('GoogleMeetProvider — detecção de reunião pelo endereço', () => {
+  const LEAVE_BUTTON = '<button aria-label="Sair da chamada"></button>';
+
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
+  });
+
+  function detectAt(pathname: string, html: string = LEAVE_BUTTON) {
+    window.history.replaceState({}, '', pathname);
+    render(html);
+    return new GoogleMeetProvider().detectMeeting();
+  }
+
+  it('reconhece o endereço antigo /abc-defg-hij', () => {
+    expect(detectAt('/abc-defg-hij')?.meetingCode).toBe('abc-defg-hij');
+  });
+
+  it('reconhece o formato novo /meet/abc-defg-hij com o mesmo código', () => {
+    expect(detectAt('/meet/abc-defg-hij')?.meetingCode).toBe('abc-defg-hij');
+  });
+
+  it.each(['/', '/landing', '/meet', '/meet/', '/meet/abc', '/meet/abc-defg-hij/extra', '/outro/abc-defg-hij'])(
+    'não trata %s como reunião',
+    (pathname) => {
+      expect(detectAt(pathname)).toBeNull();
+    },
+  );
+
+  it('sem o botão de sair (tela de pré-entrada) não há reunião, mesmo no formato novo', () => {
+    expect(detectAt('/meet/abc-defg-hij', '')).toBeNull();
+  });
+});

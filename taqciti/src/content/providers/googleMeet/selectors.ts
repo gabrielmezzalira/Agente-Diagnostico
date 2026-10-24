@@ -51,8 +51,13 @@ export const PARTICIPANT_NAME_SELECTORS = [
  */
 export const SELF_NAME_SELECTORS = ['[data-self-name]', '[data-self-name] *'];
 
-/** URL de reunião: meet.google.com/abc-defg-hij */
-export const MEETING_CODE_PATTERN = /^\/([a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3})$/i;
+/**
+ * URL de reunião: meet.google.com/abc-defg-hij ou, desde que o Meet passou a
+ * reescrever o endereço, meet.google.com/meet/abc-defg-hij. O grupo capturado é
+ * só o código, então nada abaixo precisa saber qual das duas formas chegou.
+ */
+export const MEETING_CODE_PATTERN =
+  /^\/(?:meet\/)?([a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{3})$/i;
 
 export function queryFirst(
   root: ParentNode,
