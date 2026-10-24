@@ -15,6 +15,7 @@
  *   - na saída larga o seletor ocupa a tela inteira dentro do `AppShell`; no painel, ele entra no lugar.
  */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toEndPromptView } from '@/features/agente/bindingView';
 import { useClientDirectory } from '@/shared/hooks/useClientDirectory';
 import { useMeetingAssociation } from '@/shared/hooks/useMeetingAssociation';
@@ -115,12 +116,22 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
         onBack={() => setPickerOpen(false)}
       />
     );
+    /*
+     * Na saída larga o seletor é uma camada de tela cheia. Ela vai para um portal no <body> porque este slot vive
+     * dentro do cabeçalho de vidro do RecordDetail, e `.glass` tem backdrop-filter — que faz do cabeçalho o bloco
+     * de referência de todo `fixed` dentro dele. Sem o portal a "tela cheia" ficava presa à caixa do cabeçalho,
+     * o AppShell interno (altura mínima de 460 px) transbordava para baixo e a transcrição, que vem depois no
+     * documento, aparecia por cima das linhas do seletor.
+     */
     return surface === 'wide' ? (
-      <div className="fixed inset-0 z-40 bg-background">
-        <AppShell>
-          <div className="flex min-h-0 flex-1 flex-col p-4">{picker}</div>
-        </AppShell>
-      </div>
+      createPortal(
+        <div className="fixed inset-0 z-40 bg-background">
+          <AppShell>
+            <div className="flex min-h-0 flex-1 flex-col p-4">{picker}</div>
+          </AppShell>
+        </div>,
+        document.body,
+      )
     ) : (
       <div className="mb-2 flex min-h-0 flex-[2] flex-col">{picker}</div>
     );

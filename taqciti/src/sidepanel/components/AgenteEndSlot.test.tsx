@@ -132,9 +132,40 @@ describe('AgenteEndSlot — cartão, seletor e envio', () => {
     await h.render(slot('button', 'wide'));
     await h.click(h.buttonByText('Enviar ao Agente'));
 
-    const shell = h.host.querySelector('.fixed [style*="grid-template-rows"]');
+    // A camada vive num portal no <body> (ver o teste abaixo), então a busca parte do documento.
+    const shell = document.body.querySelector('.fixed [style*="grid-template-rows"]');
     expect(shell).not.toBeNull();
     expect(shell!.textContent).toContain('Escolher cliente');
+  });
+
+  it('saída larga: a camada do seletor é filha direta do <body>, fora do cabeçalho de vidro', async () => {
+    // `.glass` tem backdrop-filter, e backdrop-filter faz do elemento o bloco de referência de todo `fixed`
+    // dentro dele: a "tela cheia" ficava presa à caixa do cabeçalho do RecordDetail e o AppShell interno
+    // (altura mínima de 460 px) transbordava por baixo da transcrição, que ficava na frente da lista.
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    await h.render(slot('button', 'wide'));
+    await h.click(h.buttonByText('Enviar ao Agente'));
+
+    const camada = document.body.querySelector<HTMLElement>(':scope > .fixed.inset-0');
+    expect(camada).not.toBeNull();
+    expect(h.host.contains(camada)).toBe(false);
+    expect(camada!.textContent).toContain('Escolher cliente');
+  });
+
+  it('saída larga: "Voltar" tira a camada do <body> e o botão "Enviar ao Agente" volta', async () => {
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    await h.render(slot('button', 'wide'));
+    await h.click(h.buttonByText('Enviar ao Agente'));
+
+    const voltar = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Voltar',
+    );
+    await h.click(voltar);
+
+    expect(document.body.querySelector(':scope > .fixed.inset-0')).toBeNull();
+    expect(h.buttonByText('Enviar ao Agente')).toBeDefined();
   });
 });
 
