@@ -396,7 +396,7 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
           height: floating.geometry.panel.height,
           transformOrigin: floating.geometry.panel.origin,
         }}
-        className={`glass fixed z-[2147483001] grid grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-card transition-all duration-300 ease-flow ${
+        className={`glass fixed z-[2147483001] grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-card transition-all duration-300 ease-flow ${
           expanded
             ? 'pointer-events-auto scale-100 opacity-100'
             : 'pointer-events-none scale-90 opacity-0'
