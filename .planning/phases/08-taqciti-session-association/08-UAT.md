@@ -8,7 +8,7 @@ updated: 2026-10-25T01:55:02.420Z
 
 ## Current Test
 
-[testing complete]
+[testing paused — 13 items outstanding: testes 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 e 24. Ver "Retomada" no fim do arquivo.]
 
 ## Tests
 
