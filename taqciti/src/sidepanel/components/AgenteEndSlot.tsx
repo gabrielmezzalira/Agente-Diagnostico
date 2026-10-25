@@ -104,6 +104,7 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
   if (asking && pickerOpen) {
     const picker = (
       <ClientPicker
+        density={surface === 'wide' ? 'comfortable' : 'compact'}
         status={directory.status}
         clients={directory.clients}
         mode="ended"
@@ -133,7 +134,12 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
         document.body,
       )
     ) : (
-      <div className="mb-2 flex min-h-0 flex-[2] flex-col">{picker}</div>
+      // No painel do Meet o seletor toma o corpo (ver `data-picker-takeover` em panel.css): na tela "Transcrição
+      // salva" ele dividia a altura com Copiar/Baixar, o menu de documento e a transcrição, a lista ficava com 0 px
+      // e o rodapé escorria por cima de "Copiar".
+      <div data-picker-takeover className="mb-2 flex min-h-0 flex-1 flex-col">
+        {picker}
+      </div>
     );
   }
 

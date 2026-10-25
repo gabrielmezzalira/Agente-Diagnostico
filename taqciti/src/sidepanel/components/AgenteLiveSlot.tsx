@@ -117,7 +117,7 @@ export function AgenteLiveSlot({
 
   if (pickerOpen) {
     return (
-      <div data-live-picker className="mb-2 flex min-h-0 flex-1 flex-col">
+      <div data-picker-takeover className="mb-2 flex min-h-0 flex-1 flex-col">
         <ClientPicker
           density="compact"
           status={directory.status}

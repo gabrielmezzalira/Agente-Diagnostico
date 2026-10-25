@@ -87,13 +87,13 @@
 }
 
 /*
- * Seletor de cliente aberto no painel (AgenteLiveSlot marca o dono com `data-live-picker`): ele toma o corpo
+ * Seletor de cliente aberto no painel (AgenteLiveSlot e AgenteEndSlot marcam o dono com `data-picker-takeover`): ele toma o corpo
  * inteiro e o resto — transcrição, contadores, controles — sai de cena até a pessoa voltar. Sem isso o seletor
  * divide a altura com a transcrição, a lista fica com 0 px e o rodapé escorre por cima dela.
  *
  * Fora de `@layer` de propósito: o Tailwind só emite regra de camada quando acha a CLASSE dela no código, e esta
  * não tem classe — ficaria de fora do build em silêncio. A especificidade (0,2,0) já vence `.flex` & cia.
  */
-:has(> [data-live-picker]) > :not([data-live-picker]) {
+:has(> [data-picker-takeover]) > :not([data-picker-takeover]) {
   display: none;
 }

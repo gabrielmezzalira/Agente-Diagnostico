@@ -229,7 +229,7 @@ describe('AgenteLiveSlot — seletor', () => {
     await h.render(slot());
     await h.click(h.buttonByText('Selecionar cliente agora'));
 
-    const dono = h.host.querySelector('[data-live-picker]');
+    const dono = h.host.querySelector('[data-picker-takeover]');
     expect(dono).not.toBeNull();
     expect(dono!.className).toContain('flex-1');
     expect(dono!.className).not.toContain('flex-[2]');
@@ -238,12 +238,12 @@ describe('AgenteLiveSlot — seletor', () => {
 
   it('com o cartão ou a barra à vista, nada se marca como dono do corpo', async () => {
     await h.render(slot());
-    expect(h.host.querySelector('[data-live-picker]')).toBeNull();
+    expect(h.host.querySelector('[data-picker-takeover]')).toBeNull();
   });
 
   it('o painel tem a regra que esconde o resto do corpo enquanto o seletor está aberto', () => {
     expect(PANEL_CSS).toMatch(
-      /:has\(>\s*\[data-live-picker\]\)\s*>\s*:not\(\[data-live-picker\]\)\s*\{\s*display:\s*none/,
+      /:has\(>\s*\[data-picker-takeover\]\)\s*>\s*:not\(\[data-picker-takeover\]\)\s*\{\s*display:\s*none/,
     );
   });
 });

@@ -286,3 +286,34 @@ describe('AgenteEndSlot — variante botão e demais estados', () => {
     expect(h.sent).toHaveLength(0);
   });
 });
+
+describe('AgenteEndSlot — seletor no painel do Meet (dono do corpo e densidade)', () => {
+  it('painel: o seletor toma o corpo (data-picker-takeover, flex-1) e usa a densidade compacta', async () => {
+    // Na tela "Transcrição salva" o seletor dividia a altura (flex-[2]) com "Copiar/Baixar", o menu de documento e a
+    // transcrição: a lista ficava com 0 px e o rodapé "Enviar reunião" escorria por cima de "Copiar".
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    await h.render(slot('card', 'panel'));
+    await h.click(h.buttonByText('Selecionar cliente'));
+
+    const dono = h.host.querySelector('[data-picker-takeover]');
+    expect(dono).not.toBeNull();
+    expect(dono!.className).toContain('flex-1');
+    expect(dono!.className).not.toContain('flex-[2]');
+    expect(h.buttonByText('Enviar reunião')!.className).toContain('min-h-[34px]');
+  });
+
+  it('saída larga: nada se marca como dono do corpo e o botão do rodapé mantém a altura cheia', async () => {
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    await h.render(slot('button', 'wide'));
+    await h.click(h.buttonByText('Enviar ao Agente'));
+
+    expect(document.body.querySelector('[data-picker-takeover]')).toBeNull();
+    const cta = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Enviar reunião',
+    );
+    expect(cta!.className).toContain('min-h-[44px]');
+  });
+});
+
