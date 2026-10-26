@@ -47,6 +47,10 @@ describe('isStillInMeetingRoom', () => {
     `https://meet.google.com/${ROOM}?authuser=1`,
     `https://meet.google.com/${ROOM}#fim`,
     `https://meet.google.com/${ROOM.toUpperCase()}`,
+    `https://meet.google.com/meet/${ROOM}`,
+    `https://meet.google.com/meet/${ROOM}?authuser=1`,
+    `https://meet.google.com/meet/${ROOM}#x`,
+    `https://meet.google.com/meet/${ROOM.toUpperCase()}`,
   ])('%s -> ainda na sala', (url) => {
     expect(isStillInMeetingRoom(url, ROOM)).toBe(true);
   });
@@ -59,6 +63,10 @@ describe('isStillInMeetingRoom', () => {
     'https://meet.google.com/',
     'chrome://newtab/',
     'não é uma url',
+    'https://meet.google.com/meet/',
+    'https://meet.google.com/meet/xyz-abcd-efg',
+    `https://example.com/meet/${ROOM}`,
+    `https://meet.google.com.evil.com/meet/${ROOM}`,
   ])('%s -> saiu da sala', (url) => {
     expect(isStillInMeetingRoom(url, ROOM)).toBe(false);
   });
@@ -109,5 +117,57 @@ describe('aba da reunião navegou no meio da call (DA-4 = navegar-encerra)', () 
     const { dispatch, deps } = setup(IDLE_STATE);
     await onMeetingTabNavigated(7, 'https://example.com/', deps);
     expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('endereço /meet/<código> no meio da call (CR-02)', () => {
+  it.each(['captionsRequired', 'recording', 'paused'] as const)(
+    'fase %s + mesma aba + /meet/<código>?authuser=1 -> nada',
+    async (phase) => {
+      const { dispatch, deps } = setup(stateOf(phase));
+      await onMeetingTabNavigated(7, `https://meet.google.com/meet/${ROOM}?authuser=1`, deps);
+      expect(dispatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('fase recording + /meet/<código> puro -> nada', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    await onMeetingTabNavigated(7, `https://meet.google.com/meet/${ROOM}`, deps);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('fase recording + troca de /<código> para /meet/<código> (duas chamadas em sequência) -> nada', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    await onMeetingTabNavigated(7, `https://meet.google.com/${ROOM}`, deps);
+    await onMeetingTabNavigated(7, `https://meet.google.com/meet/${ROOM}`, deps);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('fase recording + duas chamadas simultâneas na mesma sala -> nada', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    const url = `https://meet.google.com/meet/${ROOM}#x`;
+    await Promise.all([onMeetingTabNavigated(7, url, deps), onMeetingTabNavigated(7, url, deps)]);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('fase recording + a mesma URL repetida -> nada nas duas vezes (idempotente)', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    const url = `https://meet.google.com/meet/${ROOM}?authuser=1`;
+    await onMeetingTabNavigated(7, url, deps);
+    await onMeetingTabNavigated(7, url, deps);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('DA-4 no formato novo: fase recording + outra sala em /meet/<outro código> -> MEETING_FINISHED uma vez', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    await onMeetingTabNavigated(7, 'https://meet.google.com/meet/xyz-abcd-efg', deps);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'MEETING_FINISHED', at: NOW });
+  });
+
+  it('DA-4: fase recording + /landing -> MEETING_FINISHED', async () => {
+    const { dispatch, deps } = setup(stateOf('recording'));
+    await onMeetingTabNavigated(7, 'https://meet.google.com/landing', deps);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'MEETING_FINISHED', at: NOW });
   });
 });

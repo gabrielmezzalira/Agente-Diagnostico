@@ -9,10 +9,12 @@
  * Quem chama é o `chrome.tabs.onUpdated` do `index.ts`, DEPOIS do `ready`. Só importa a mudança de URL:
  * - Reunião AO VIVO na aba e a URL já não é a sala dela: dispara o MESMO `MEETING_FINISHED` do `meet/ended`
  *   (sem RESET — a reentrada na mesma sala, plano 08-24, só vale com a fase `ended`).
- * - Mesma sala (recarregar, mudar `?query` ou `#hash`): nada.
+ * - Mesma sala (recarregar, mudar `?query` ou `#hash`), nos dois formatos do endereço (`/<código>` e
+ *   `/meet/<código>`, CR-02): nada.
  * - Qualquer outra aba, aba nula, fase `ended` ou ociosa: nada.
  */
 import type { MeetingEvent } from '@/features/meeting/machine';
+import { meetingCodeFromPath } from '@/features/meeting/meetingCode';
 import type { MeetingState } from '@/shared/types/domain';
 
 export interface MeetingTabNavigatedDeps {
@@ -33,8 +35,8 @@ export function isStillInMeetingRoom(url: string, meetingCode: string): boolean 
     return false;
   }
   if (parsed.hostname !== MEET_HOST) return false;
-  const [firstSegment] = parsed.pathname.split('/').filter(Boolean);
-  return firstSegment?.toLowerCase() === meetingCode.toLowerCase();
+  const roomCode = meetingCodeFromPath(parsed.pathname, { allowSubpath: true });
+  return roomCode !== null && roomCode.toLowerCase() === meetingCode.toLowerCase();
 }
 
 export async function onMeetingTabNavigated(
