@@ -249,7 +249,7 @@ Plans:
 
 **Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). Open and non-blocking: DA-4 (tab navigates away from Meet mid-call) and DA-5 (what closes a session after the Taqciti gave up closing it)
 
-**Plans**: 27/27 plans executed
+**Plans**: 27/28 plans executed (+1 gap closure: 08-28)
 **UI hint**: yes
 
 **Wave 1**
@@ -311,6 +311,10 @@ Plans:
 **Wave 11** *(blocked on Wave 10 completion)*
 
 - [x] 08-21-PLAN.md — Portão automático completo + roteiro manual D-20 (a-i) numa reunião real
+
+**Gap closure** *(fecha o CR-02 do 08-VERIFICATION.md — reunião no endereço `/meet/<código>` encerrada no meio da call por qualquer mudança de URL; SC5)*
+
+- [ ] 08-28-PLAN.md — GAP CR-02: regra única e pura `meetingCodeFromPath` (aceita o prefixo `meet/`) usada pelo service worker (`isStillInMeetingRoom`, commit de correção) e pelo content script (`detectMeeting`, commit de refator separado); casos `/meet/<código>`, `?authuser=1` e troca de formato esperando "nada acontece"; DA-4 intocada; portão completo + CR-02 `fixed` no registro de achados (TAQ-02)
 
 ### Phase 9: Cutover + Retire Custom Extension
 
