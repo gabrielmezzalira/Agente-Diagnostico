@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Uma fala para sessão inexistente trava a fila durável de envio para sempre (HTTP 500 + \"retirada-nunca\")"
   - id: CR-02
     severity: critical
@@ -95,7 +95,7 @@ findings:
     severity: info
     disposition: open
     title: "O status de entrega é global, e um 404 de uma sessão antiga aparece na barra da reunião atual"
-open: 23
+open: 22
 total: 23
 recorded: 2026-10-26T22:45:42.307Z
 ---
@@ -104,7 +104,7 @@ recorded: 2026-10-26T22:45:42.307Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
+| CR-01 | critical | fixed | commit 664c033 (sessão inexistente / id não-UUID devolve 404); reconferido na re-revisão de 2026-10-26, seção "Resolvidos" do 08-REVIEW.md |
 | CR-02 | critical | open | - |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
