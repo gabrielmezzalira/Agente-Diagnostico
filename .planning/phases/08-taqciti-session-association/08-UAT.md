@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 08-taqciti-session-association
 source: 08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md, 08-05-SUMMARY.md, 08-06-SUMMARY.md, 08-07-SUMMARY.md, 08-08-SUMMARY.md, 08-09-SUMMARY.md, 08-10-SUMMARY.md, 08-11-SUMMARY.md, 08-12-SUMMARY.md, 08-13-SUMMARY.md, 08-14-SUMMARY.md, 08-15-SUMMARY.md, 08-16-SUMMARY.md, 08-17-SUMMARY.md, 08-18-SUMMARY.md, 08-19-SUMMARY.md, 08-20-SUMMARY.md, 08-21-SUMMARY.md, 08-22-SUMMARY.md, 08-23-SUMMARY.md, 08-24-SUMMARY.md, 08-25-SUMMARY.md, 08-26-SUMMARY.md, 08-27-SUMMARY.md
 started: 2026-10-23T01:10:57.993Z
-updated: 2026-10-25T01:55:02.420Z
+updated: 2026-10-26T22:13:04.507Z
 ---
 
 ## Current Test
 
-[testing paused — 13 items outstanding: testes 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 e 24. Ver "Retomada" no fim do arquivo.]
+[testing complete]
 
 ## Tests
 
@@ -77,7 +77,9 @@ rationale: Nenhuma tela dispara os comandos ainda (fiação nos planos 08-14, 08
 
 ### 11. 08-11 D6 — Queda do Agente, reinício do service worker e reenvio de…
 expected: Queda do Agente, reinício do service worker e reenvio de ponta a ponta com a fila
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 1 / Blocos B, C e E no Chrome e Meet reais. Bloco E (fila durável): backend derrubado às 13:55:10, falas novas ficaram na fila com a faixa amarela; Stop do service worker COM falas pendentes: a faixa continuou e seguiu registrando falas novas (relato do usuário); saída da call às 13:57:57 e recarga da extensão (E5) sem problema (relato do usuário). Backend religado às 14:03:50: em 26 s as 7 falas pendentes chegaram na sessão 04dc47ee (13 para 20 falas), 0 chunk_id duplicado, nenhuma sessão nova. Detalhe: o log mostra o finish (200) ANTES das falas pendentes, porque o prazo de 5 min já tinha vencido (regra B4-b); as falas atrasadas foram aceitas na sessão já encerrada.
+evidence_parcial: 2026-10-26, Bloco B: queda do Agente, faixa amarela com contagem ("2 falas na fila"), reenvio automático na volta e toast conferidos no Chrome real (ver teste 17). Bloco C: Stop do service worker (DevTools) com o vínculo em pé e a fila VAZIA: a barra seguiu "Enviando ao vivo para ZZ-TESTE-D20", sem faixa amarela; 2 falas novas entraram na MESMA sessão 04dc47ee (11 para 13, 0 duplicatas, nenhuma sessão nova). FALTA só reiniciar o service worker com falas PENDENTES na fila (fila durável): fica no Bloco E, junto com a queda do backend antes de sair da call.
 rationale: Neste plano a fila e o status só existem e são testados isolados (nada os usa); o sender e a prova ponta a ponta ficam no plano 08-23 e no teste manual D-20.
 
 ### 12. 08-12 D5 — Ponta a ponta com o backend local e a extensão carregada:…
@@ -88,62 +90,77 @@ rationale: Human-check consolidado no teste manual D-20 do fim da fase; este pla
 
 ### 13. 08-13 D3 — Apagar (ui/history/delete) remove também a associação
 expected: Apagar (ui/history/delete) remove também a associação
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): fez e viu funcionar no sábado 24/10 o "Apagar" de uma reunião já enviada e o "Descartar" com "Manter reunião". São ações só da interface da Taqciti, sem rastro no banco; o relato é a única evidência.
 rationale: index.ts não tem harness de teste (sem teste de roteamento no repositório); coberto por grep + typecheck e pelo teste manual D-20(c)
 
 ### 14. 08-14 D5 — Experiência real no Meet: bolha pulando a cada ~5 s na…
 expected: Experiência real no Meet: bolha pulando a cada ~5 s na cápsula, clique abrindo o painel com o cartão, arraste da cápsula intacto, Esc no cartão sem minimizar, seletor com ao menos 3 linhas em 564 px
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 1 / Bloco A no Meet real, confirmado pelo usuário passo a passo: cápsula arrastada para outro canto fica onde soltou sem abrir o painel; clique na bolha "!" abre o cartão e Esc fecha o cartão sem minimizar o painel e sem enviar nada; vínculo ao cliente ZZ-TESTE-D20 mostrou "Enviando o que já foi falado…" e depois "Enviando ao vivo para…" em uma linha. Banco conferido: sessão 04dc47ee, ZZ-TESTE-D20, source extension, active, 2 falas com chunk_id bulk:<reunião>:0 e :1 em ordem (13:35:15 e 13:35:17), 0 duplicatas. Os itens bolha pulando, clique abrindo o cartão e seletor com 3 linhas já tinham passado nos testes 2 e 3 (2026-10-24).
 rationale: Animação, arraste (useFloating), captura de ponteiro, altura real do seletor no painel e shadow DOM não são exercitados pelo jsdom; é o human-check da Task 3 e o teste manual D-20
 
 ### 15. 08-16 D4 — O encerramento automático funcionando de ponta a ponta com o…
 expected: O encerramento automático funcionando de ponta a ponta com o Chrome e o backend (agendador, fiação e permissão alarms são dos planos 08-27 e 08-25)
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): no sábado 24/10 saiu da call no Chrome real e viu a sessão encerrar. Corroboração parcial no banco: as sessões de teste de sábado estão todas com status finished e finished_at preenchido. Os gatilhos "5 min com o envio parado" e "no boot" NÃO foram vistos; ficam no teste 22.
 rationale: Este plano é só o alicerce inerte; o comportamento real depende do agendador (08-27) e é exercitado no roteiro D-20 do 08-21.
 
 ### 16. 08-17 D3 — Fiação no PanelApp/RecordDetail e frase 'A cópia que já foi…
 expected: Fiação no PanelApp/RecordDetail e frase 'A cópia que já foi enviada ao Agente continua lá.' no Apagar
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): fez e viu funcionar no sábado 24/10 o "Apagar" de reunião já enviada. Ressalva a confirmar: o relato não detalha se o ConfirmModal ficou contido dentro do painel do Meet (risco anotado na Retomada, mesmo mecanismo do ca1993a). Se não ficou, reabrir como defeito.
 rationale: PanelApp e RecordDetail não têm teste de composição no repositório; coberto por typecheck, build e greps de gate. Falta a checagem visual D-20 (a, c), inclusive o ConfirmModal contido no painel do Meet (scale-100).
 
 ### 17. 08-19 D4 — Dedup real contra o Supabase (reenvio de fala já gravada não…
 expected: Dedup real contra o Supabase (reenvio de fala já gravada não vira duplicata na transcrição) e comportamento com o backend local derrubado durante uma reunião
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 1 / Bloco B no Chrome e Meet reais, com o backend local derrubado de verdade (13:40:07, conexão recusada) e religado (~13:43). Duas vozes (PC e celular na mesma sala) geraram falas novas. Com o Agente fora do ar a faixa amarela apareceu com "2 falas na fila" (as 2 faladas na queda); com a volta, o banco ficou com 11 falas na sessão 04dc47ee (9 antes + 2 reenviadas às 13:43:10 e 13:43:13), em ordem e com 0 chunk_id duplicado. Confirmado pelo usuário: "deu tudo certo".
 rationale: Depende do backend real e do índice único em produção; é o teste manual D-20 (b) no fim da fase.
 
 ### 18. 08-20 D7 — Retomada de ponta a ponta com o Chrome e o backend reais:…
 expected: Retomada de ponta a ponta com o Chrome e o backend reais: derrubar a rede no meio do envio de uma reunião longa, voltar, clicar em 'Continuar envio' e conferir que o Agente recebe cada fala uma vez; repetir com a sessão já encerrada (envio parado há mais de 5 min) e ler o aviso da DA-2
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 2, Chrome e Meet reais, reunião de 10 falas enviada no fim ("Selecionar cliente" na tela "Transcrição salva") ao cliente ZZ-TESTE-D20. O corte foi feito com um filtro de teste na frente do backend local (embrulho ASGI numa pasta temporária, fora do repositório) que segura as falas depois de N liberadas; a fala segurada nunca chega ao backend real. Sessão f0120ad3. (1) Corte depois de 3 falas: painel "O envio parou na parte 3 de 10. O que já chegou continua no Agente." + "Continuar envio"; banco com exatamente 3 falas (bulk:…:0 a 2), 0 duplicadas, sessão ativa. (2) Retomada em tempo (19:02): "Continuar envio" mandou as partes 4 e 5 sem repetir as 3 primeiras e parou de novo em "parte 5 de 10", SEM o aviso de sessão encerrada; banco com 5 falas (0 a 4), 0 duplicadas, sessão ativa. (3) Sem clicar em nada, a Taqciti encerrou a sessão sozinha às 19:09:22 (5 min depois da parada; log: POST …/finish 200; banco: finished, 5 falas). (4) A tela de "parou" passou a mostrar também o aviso DA-2 ("A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo."); "Continuar envio" levou a "Reunião enviada para ZZ-TESTE-D20…"; banco com 10 falas (0 a 9), 0 duplicadas e a sessão continuando encerrada (finished_at inalterado). Bônus: uma reunião de 7 falas enviada sem corte (sessão 87c8bc5f) chegou inteira, sem duplicata, e a sessão encerrou ao fim do envio. Ressalva: o "Continuar envio" cruzando o bloco de 20 falas (reunião com 24+ falas) não foi exercitado na prática; fica como extra opcional, decisão do usuário/time. Ver também a observação sobre a primeira tentativa (sessão e5bc6cd3) em "Observações para o time".
 rationale: Depende do Chrome real, do backend com a dedup por chunk_id (migration do 08-19) aplicada no banco e da rota de finish (08-15); é o roteiro manual D-20 do 08-21.
 
 ### 19. 08-22 D6 — Bolha '!' e barra de vínculo aparecendo de verdade numa…
 expected: Bolha '!' e barra de vínculo aparecendo de verdade numa reunião real do Meet, e o reinício do service worker no meio de um vínculo
-result: [pending]
+result: pass
+evidence: 2026-10-26 (18:49 a 18:55), Rodada 2, Chrome e Meet reais: reunião ao vivo SEM cliente, com falas. O backend local passou a SEGURAR só o pedido de "criar sessão" (filtro de teste fora do repositório; o pedido segurado nunca chega ao backend real, então não nasce sessão-fantasma). O usuário abriu "Selecionar cliente", escolheu ZZ-TESTE-D20, clicou em "Vincular reunião" e, em menos de 10 s, parou o service worker (DevTools, Application, Service workers, Stop). A barra mostrava "Enviando o que já foi falado…" ANTES do Stop e não mudou sozinha (o timeout de 10 s da Taqciti não ganhou, a janela estrita foi atingida). Depois do Stop e da volta ao painel a barra ficou em "Sem cliente. A transcrição fica só aqui." (não ficou presa). Banco: 0 sessão criada (41 sessões no total, 0 ativas). O log mostra 3 tentativas de criar sessão seguradas (o usuário repetiu até acertar a janela); vale a última.
+evidence_parcial: 2026-10-26, Rodada 1: a bolha "!" e a barra de vínculo já foram vistas no Meet real (testes 2, 4 e 6 e Bloco A de hoje). O Stop do service worker com o vínculo JÁ EM PÉ (não no meio) passou no Bloco C: a barra seguiu "Enviando ao vivo para ZZ-TESTE-D20" e a sessão 04dc47ee recebeu mais 2 falas, sem sessão nova. (O reinício DURANTE o vínculo ficou para a Rodada 2 e foi fechado lá: ver `evidence`.)
 rationale: Nenhum teste automático abre o Meet nem reinicia o service worker de verdade; só o teste manual D-20 prova a cadeia com as telas montadas.
 
 ### 20. 08-23 D7 — Reenvio automático ligado de verdade em produção,…
 expected: Reenvio automático ligado de verdade em produção, deduplicação por chunk_id e o comportamento num Chrome real (reinício real do service worker, cota do storage)
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 1 / Blocos B, C e E: reenvio automático real depois de DUAS quedas do Agente (13:40 a 13:43 e 13:55 a 14:03), dedup por chunk_id em uso (0 duplicatas nas 20 falas da sessão 04dc47ee), reinícios reais do service worker (Stop com fila vazia no Bloco C, Stop com falas pendentes e recarga da extensão no Bloco E) sem perder vínculo nem fila, e cota do storage medida: getBytesInUse(null) = 573916 bytes (~560 KB), bem abaixo dos ~5 MB; unlimitedStorage NÃO é necessário.
+evidence_parcial: 2026-10-26, Bloco B: reenvio automático real, dedup por chunk_id (0 duplicatas) e cota do storage medida no service worker: chrome.storage.local.getBytesInUse(null) = 573916 bytes (~560 KB, bem abaixo dos ~5 MB; não precisa de unlimitedStorage). Bloco C: Stop real do service worker com vínculo em pé e fila vazia, sem perder o vínculo nem duplicar (sessão 04dc47ee, 13 falas, 0 duplicatas). FALTA só reiniciar o service worker com falas PENDENTES na fila: fica no Bloco E.
 rationale: O reenvio nasce desligado até a decisão B3 (plano 08-19) e o chunk_id ainda não vai no corpo; o reinício real e a medição de getBytesInUse ficam no teste manual D-20 (08-21).
 
 ### 21. 08-24 D6 — Voltar à mesma sala depois do encerramento no Chrome real…
 expected: Voltar à mesma sala depois do encerramento no Chrome real mostra a bolha '!' de reunião nova e a escolha do cliente cria uma sessão NOVA só com o que foi dito depois da volta
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): voltou à mesma sala depois de encerrar no sábado 24/10 e viu a bolha "!" de reunião nova e a sessão NOVA. O banco não guarda a sala da reunião, então não há como corroborar; o relato é a única evidência.
 rationale: Ponta a ponta com Chrome, Meet e backend: é o roteiro manual D-20 do 08-21, depois da fiação do 08-25.
 
 ### 22. 08-25 D5 — A sessão é de fato encerrada no backend, de ponta a ponta,…
 expected: A sessão é de fato encerrada no backend, de ponta a ponta, com o Chrome real: ao terminar a reunião, 5 minutos depois com o envio parado, no boot, e nunca durante a reunião ao vivo
-result: [pending]
+result: pass
+evidence: 2026-10-26, Rodada 1 / Bloco E, Chrome e backend reais, os quatro gatilhos vistos: (1) "ao terminar a reunião": relato do usuário (testes 15 e 24); (2) "nunca ao vivo": sessão 04dc47ee ativa por mais de 16 min ao vivo, inclusive com ~3 min de queda do Agente; (3) "5 min com o envio parado": saída da call às 13:57:57 com o backend fora do ar e falas pendentes; com o backend de volta às 14:03:50 (5 min 53 s depois da saída) a sessão foi encerrada sozinha em 26 s (finish 200, fim 14:04:16); (4) "no boot": a extensão foi recarregada (E5, ~13:59:57, o que limpa os alarmes do Chrome) e mesmo assim o encerramento aconteceu quando o backend voltou. Banco: status finished, 20 falas, 0 chunk_id duplicado. Observação para o time (não é defeito do teste): como o encerramento sai ao vencer o prazo mesmo com falas pendentes, as últimas falas chegam DEPOIS do finish e a exportação ao DocuData agendada no finish pode sair sem elas.
+evidence_parcial: 2026-10-26: (a) "ao terminar a reunião": coberto pelo relato do usuário nos testes 15 e 24. (b) "nunca durante a reunião ao vivo": a sessão 04dc47ee seguiu ativa por mais de 16 min ao vivo (iniciada 13:35:14, conferida 13:51:15), inclusive com ~3 min de queda do Agente (13:40 a 13:43) e dois reinícios de fila, sem nenhum encerramento automático. FALTAM: "5 min com o envio parado" e "no boot" (Bloco E).
 rationale: Depende do Chrome real (alarme que acorda o service worker, reinício do navegador) e do backend com a rota de finish (08-15) no ar; é o roteiro manual D-20 do 08-21.
 
 ### 23. 08-26 D6 — No Chrome real, fechar a aba do Meet no meio da call encerra…
 expected: No Chrome real, fechar a aba do Meet no meio da call encerra a sessão no web app em poucos segundos (com o 08-25 ligado) e a volta à sala mostra a bolha '!' de reunião nova
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): fechou a aba do Meet no meio da call no sábado 24/10 e a sessão encerrou. Ação só da interface e do navegador, sem rastro específico no banco; o relato é a única evidência.
 rationale: Ponta a ponta com Chrome, Meet e backend: é o roteiro manual D-20 do 08-21, passo i, depois da fiação do 08-25.
 
 ### 24. 08-27 D5 — O encerramento automático funcionando de ponta a ponta com o…
 expected: O encerramento automático funcionando de ponta a ponta com o Chrome e o backend (fiação, permissão alarms e gatilhos são do plano 08-25)
-result: [pending]
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato): mesmo encerramento automático do teste 15 (sair da call e a sessão encerrar), visto de ponta a ponta no Chrome real. Gatilhos "5 min com o envio parado" e "no boot" seguem no teste 22.
 rationale: Este plano entrega o agendador INERTE; o comportamento real depende da fiação do 08-25 e é exercitado no roteiro D-20 do 08-21.
 
 ### 25. 08-01 D1 — Na composição de produção nenhuma fala sai se a reunião não…
@@ -797,9 +814,9 @@ coverage_id: 08-27/D4
 ## Summary
 
 total: 132
-passed: 119
+passed: 132
 issues: 0
-pending: 13
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -818,9 +835,19 @@ Corrigidos na hora, cada um em commit atômico na branch `feat/fase-08-taqciti-s
 | `14e94cd` | Botão "Selecionar cliente" da barra "Sem cliente" no verde sólido da CITi (variante `solid` do Button). |
 | `79690b8` | Nome de cliente comprido alargava a coluna do grid do painel para 684 px e empurrava os botões do cabeçalho e o "Finalizar" para fora. |
 | `ca1993a` | Seletor da saída larga preso ao cabeçalho de vidro (backdrop-filter prende `fixed`): a transcrição aparecia por cima da lista. Agora num portal no `<body>`. |
-| `0a9c23e` | Seletor da tela "Transcrição salva" do painel: mesmo defeito do `5f20a3d`, no `AgenteEndSlot`. **Falta o reteste ao vivo** (ver Retomada). |
+| `0a9c23e` | Seletor da tela "Transcrição salva" do painel: mesmo defeito do `5f20a3d`, no `AgenteEndSlot`. Reteste ao vivo feito em 2026-10-26 (Rodada 2), com o relato do usuário: a lista veio inteira (3 ou mais linhas de cliente), rodapé pequeno e nada cobrindo. |
+
+## Observações para o time (não são gaps; decisão do time se viram gap)
+
+**1. Segunda parada que ficou presa em "Enviando…" (não reproduzida).** Na primeira tentativa do teste 18 (sessão `e5bc6cd3`, 9 falas), depois de "Continuar envio" o envio parou de novo na parte 5, mas o painel continuou em "Enviando para ZZ-TESTE-D20… 5 de 9", sem "O envio parou…" e sem "Continuar envio". O backend só recebeu 3 tentativas da parte 6 (a última às 15:59:12) e nenhum pedido de encerramento por mais de 2 h 45 min: a sessão ficou ATIVA (o laço de IA de uma sessão aberta gasta dinheiro à toa). Só às 18:46 chegaram as 4 falas que faltavam e a sessão foi encerrada (log: 4 POSTs e `…/finish` 200), o que bate com um "Continuar envio" feito depois de o painel voltar à tela de "parou" (o usuário não confirmou o clique). Hipótese NÃO confirmada: o Chrome desligou o service worker no meio da rodada (as tentativas seguradas duram ~35 s sem eventos de extensão); o estado `sending` ficou gravado sem trabalho rodando, o prazo de 5 min nunca foi armado (quem arma é o `onSettled`, que não rodou) e a recuperação `recoverAssociationsAfterRestart` (`sending` com sessão vira `send-failed`) só roda quando o service worker acorda. Na segunda tentativa (sessão `f0120ad3`, DevTools do service worker fechado) as duas paradas chegaram à tela de "parou" (com 3 e 4 tentativas seguradas) e a sessão foi encerrada aos 5 min, então não houve reprodução. Se acontecer em produção, o efeito é uma sessão aberta e uma tela "Enviando…" sem fim até o service worker acordar (um backend que PENDURA, em vez de recusar, é o cenário que o provoca). Sugestão ao time: decidir se vale uma guarda (alarme que reavalie `sending` parado) ou se aceita como risco.
+
+**2. Falas finais depois do encerramento no prazo (do teste 22).** Já registrado no teste 22: no encerramento pelo prazo as últimas falas chegam depois do `finish` e o envio ao DocuData agendado no encerramento pode deixá-las de fora.
+
+**3. Como os cortes foram feitos (para repetir).** Um embrulho ASGI do `app` do backend, em pasta temporária fora do repositório, lia um arquivo de controle (`pass`, `cut:N`, `hang`, `hold-create`) e segurava as falas depois de N liberadas (ou só o pedido de criar sessão). Congelar o processo logo depois de N falas NÃO funciona: a Taqciti manda cada fala em poucos milissegundos e o envio de 7 falas terminou antes do congelamento chegar.
 
 ## Retomada (pausado em 2026-10-25 com 119 de 132 passados e 13 pendentes)
+
+*Histórico: todos os pendentes abaixo foram fechados até 2026-10-26 (Rodadas 1 e 2). Fica só como registro do plano original.*
 
 **Pendentes:** testes 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 e 24. Todos exigem Chrome + Meet reais. Agrupar em rodadas:
 - **Reteste do `0a9c23e` (primeiro):** recarregar a extensão (↻), terminar uma reunião com falas e, em "Transcrição salva", clicar em "Selecionar cliente": 3 linhas inteiras de cliente, rodapé pequeno, sem sobreposição; "Voltar" devolve Copiar/Baixar/transcrição.
