@@ -31,6 +31,7 @@ import {
   identityKey,
   type SpeakerRename,
 } from '@/features/transcription/speakerIdentity';
+import { meetingCodeFromPath } from '@/features/meeting/meetingCode';
 import { cleanMeetingTitle } from '@/features/meeting/naming';
 import { resolveAgainstBaseline } from '@/features/transcription/recut';
 import { logger } from '@/shared/services/log';
@@ -40,7 +41,6 @@ import {
   CAPTION_REGION_SELECTORS,
   CAPTIONS_TOGGLE_SELECTORS,
   LEAVE_CALL_SELECTORS,
-  MEETING_CODE_PATTERN,
   PARTICIPANT_NAME_SELECTORS,
   PARTICIPANT_TILE_SELECTOR,
   SELF_NAME_SELECTORS,
@@ -143,11 +143,11 @@ export class GoogleMeetProvider implements MeetingProvider {
     return safely(
       'detecção de reunião',
       () => {
-        const match = MEETING_CODE_PATTERN.exec(window.location.pathname);
-        if (!match || !match[1]) return null;
+        const meetingCode = meetingCodeFromPath(window.location.pathname);
+        if (meetingCode === null) return null;
         if (!queryFirst(document, LEAVE_CALL_SELECTORS)) return null;
         // Título vazio (código cru do Meet) é sinal para o background auto-nomear.
-        return { meetingCode: match[1], title: cleanMeetingTitle(document.title, match[1]) };
+        return { meetingCode, title: cleanMeetingTitle(document.title, meetingCode) };
       },
       null,
     );
