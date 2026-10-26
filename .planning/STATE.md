@@ -2,14 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 8
+current_phase: 08
 current_phase_name: Taqciti Session Association
 status: executing
 stopped_at: Completed 08-21-PLAN.md (portao automatico verde; aguardando D-20 humano)
-last_updated: "2026-10-12T20:24:48.532Z"
-last_activity: 2026-10-12
-last_activity_desc: Phase 8 execution started
-state_head: ae28d0eea6880ebe6c94532274e39502eac57257
+last_updated: "2026-10-26T22:23:03.056Z"
+last_activity: 2026-10-26
+last_activity_desc: Phase 08 execution started
+state_head: c3733a49f3fe1a16f8fc5320e53f4504d6890b26
 progress:
   total_phases: 10
   completed_phases: 7
@@ -27,14 +27,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 8 — Taqciti Session Association
+**Current focus:** Phase 08 — Taqciti Session Association
 
 ## Current Position
 
-Phase: 8 (Taqciti Session Association) — EXECUTING
-Plan: 27 of 27 planos executados (último: 08-21, portão automático verde). FASE AINDA NÃO CONCLUÍDA: falta o teste manual D-20 (pessoa do time, Chrome + Meet reais, durante o /gsd-verify-work); TAQ-02 segue Pending.
-Status: Ready to execute
-Last activity: 2026-10-12 — Phase 8 execution started
+Phase: 08 (Taqciti Session Association) — EXECUTING
+Plan: 27 of 27 planos executados; UAT 132/132 (2026-10-26). Verificação de 2026-10-26 = gaps_found: CR-02 (reunião no endereço /meet/<código> é encerrada no meio da call por qualquer mudança de URL — `meetingTabNavigated.ts`). Próximo: /gsd-plan-phase 08 --gaps. TAQ-02 segue Pending.
+Status: Executing Phase 08 (lacuna de verificação aberta)
+Last activity: 2026-10-26 — Phase 08 execution started
 
 Progress: [███████░░░] 70%
 
@@ -201,7 +201,7 @@ None yet.
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 - [Phase 07] RESOLVIDO (2026-09-27): SC1 e SC2 verificados via /gsd-verify-work. SC1 encontrou G-07-1/G-07-2 (fala fragmentada em varias linhas) na primeira rodada; fechados pelo plano 07-04 (janela de agrupamento por fala) e confirmados OK no reteste ao vivo no Meet. SC2 (Gerar Documento sem regressao) passou de primeira.
-- Fase 8: teste manual D-20 (a-i) pendente (pessoa do time, Chrome+Meet reais, no /gsd-verify-work); nao distribuir build da Taqciti antes; criar GEMINI_API_KEY no Railway antes de deploy/merge; revisar T-08-10; pendencias DA-4, DA-5, B3-b/c, finishGaveUp
+- Fase 8: D-20/UAT concluido (132/132, 2026-10-26), mas a verificacao deu gaps_found por causa do CR-02 (08-VERIFICATION.md); nao distribuir build da Taqciti antes de fechar o CR-02; criar GEMINI_API_KEY no Railway antes de deploy/merge; revisar T-08-10; pendencias DA-4, DA-5, B3-b/c, finishGaveUp; 22 achados do 08-REVIEW em aberto (08-REVIEW-DISPOSITION.md)
 
 ## Deferred Items
 
