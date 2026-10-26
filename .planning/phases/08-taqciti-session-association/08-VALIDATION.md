@@ -3,8 +3,8 @@ phase: "8"
 slug: "taqciti-session-association"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
+status: validated
+nyquist_compliant: true
 wave_0_complete: true
 created: "2026-10-11"
 ---
@@ -190,7 +190,7 @@ Todas as linhas do mapa de verificação acima estão `✅ green` (nenhuma `não
 
 **Quem executa: uma pessoa do time (quem conduz a fase), com Chrome ≥ 116 e o backend local e o web app que ela mesma sobe com o próprio .env. Quando: durante o /gsd-verify-work da Fase 8, depois do plano 08-21. O executor só prepara o build e este roteiro; nunca marca o teste como aprovado.**
 
-**Estado: NÃO EXECUTADO.** A coluna "Resultado" fica vazia até a pessoa voltar com "ok" ou a descrição do problema. Nada abaixo foi marcado como aprovado.
+**Estado: EXECUTADO no `/gsd-verify-work` de 2026-10-26** (duas rodadas, Chrome + Meet reais). Os resultados de cada item (a)-(i), dos backstops visuais e da cota estão no `08-UAT.md` (`status: complete`, 132 passaram, 0 problemas, 0 pendentes, commit `4c8804d`); as tabelas abaixo ficam como roteiro e não foram reescritas linha a linha.
 
 **Pré-requisitos** (a pessoa do time faz; o executor não sobe backend nem lê `.env`):
 - Backend local em `:8000` com as rotas novas (clientes, sessões, finish) e a migração `chunk_id` aplicada no Supabase que esse backend usa (em produção ela já está aplicada); web app em `:5173` (`npm --prefix frontend run dev`).
@@ -219,7 +219,7 @@ Todas as linhas do mapa de verificação acima estão `✅ green` (nenhuma `não
 | Modal de descarte com “{título}” longo | O texto não estoura o modal | |
 | Seletor de clientes em 320 px e 564 px | O painel sobe para regular ao abrir o seletor; em 564 px, pelo menos 3 linhas de cliente visíveis | |
 
-**Cota do storage:** no DevTools do service worker, rodar `chrome.storage.local.getBytesInUse(null)` depois de uma reunião longa e anotar o valor aqui: ____ bytes. Pedir `unlimitedStorage` ao time só se passar de ~5 MB (Open Question 8).
+**Cota do storage:** no DevTools do service worker, rodar `chrome.storage.local.getBytesInUse(null)` depois de uma reunião longa e anotar o valor aqui: **573916 bytes (~560 KB, medido no UAT de 2026-10-26; `unlimitedStorage` não é necessário)**. Pedir `unlimitedStorage` ao time só se passar de ~5 MB (Open Question 8).
 
 **Depois do teste:** a pessoa registra os resultados nesta tabela e no UAT (`/gsd-verify-work`). Só então a fase pode ser dada como concluída e o TAQ-02 marcado.
 
@@ -232,7 +232,26 @@ Todas as linhas do mapa de verificação acima estão `✅ green` (nenhuma `não
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency por task < 30s (só o portão da fase, 08-21 Task 1, roda a suíte completa)
-- [ ] Teste manual D-20 executado pela pessoa do time durante o `/gsd-verify-work` e registrado
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] Teste manual D-20 executado pela pessoa do time durante o `/gsd-verify-work` e registrado (`08-UAT.md`, 2026-10-26, 132/132)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-10-26 (`/gsd-validate-phase 08`, dentro do `/gsd-execute-phase 08`)
+
+## Reconferência do portão (2026-10-26, depois do UAT)
+
+Rodado na branch `feat/fase-08-taqciti-session-association`, sem ler `.env`, depois dos 7 commits de correção posteriores à revisão de código (`664c033` CR-01 e os 6 ajustes do UAT: `861db11`, `5f20a3d`, `14e94cd`, `79690b8`, `ca1993a`, `0a9c23e`). Todos os 7 trouxeram teste junto.
+
+| Verificação | Comando | Resultado |
+|-------------|---------|-----------|
+| Suíte da Taqciti | `cd taqciti && npm test` | **87 arquivos / 1340 testes passando** (eram 85 / 1294 no 08-21) |
+| Typecheck | `npm run typecheck` | sem erros (exit 0) |
+| Lint | `npm run lint` | sem erros (exit 0) |
+| Backend (testes puros da fase, mesma `LISTA`) | `python -m pytest <LISTA> -q` | **85 passed, 4 skipped** (eram 73; os novos vieram com o CR-01; os 4 skipped são os stubs antigos de `test_projects.py`) |
+
+## Validation Audit 2026-10-26
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
