@@ -146,3 +146,41 @@ describe('upsertRecord com evicção protegida', () => {
     expect(saved).not.toContain('m1');
   });
 });
+
+describe('escritas concorrentes no histórico (WR-08)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  const savedIds = (mock: { local: { values: Record<string, unknown> } }) =>
+    (mock.local.values[STORAGE_KEYS.history] as MeetingRecord[]).map((r) => r.id).sort();
+
+  it('vários upserts em paralelo: nenhum registro se perde', async () => {
+    const { mock, history } = await freshHistory([], {});
+    await Promise.all([1, 2, 3, 4, 5].map((n) => history.upsertRecord(makeRecord(n))));
+    expect(savedIds(mock)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
+  });
+
+  it('upsert + rename + delete em paralelo: cada escrita enxerga o resultado da anterior', async () => {
+    const { mock, history } = await freshHistory(makeHistory(3), {}); // m1, m2, m3
+    await Promise.all([
+      history.upsertRecord(makeRecord(4)),
+      history.patchRecord('m1', { title: 'Renomeada' }),
+      history.deleteRecord('m2'),
+    ]);
+
+    expect(savedIds(mock)).toEqual(['m1', 'm3', 'm4']);
+    const m1 = (mock.local.values[STORAGE_KEYS.history] as MeetingRecord[]).find((r) => r.id === 'm1');
+    expect(m1?.title).toBe('Renomeada');
+  });
+
+  it('uma escrita que falha não trava a fila: a seguinte ainda roda', async () => {
+    const { mock, history } = await freshHistory([], {});
+    mock.local.set.mockRejectedValueOnce(new Error('cota'));
+    const failing = history.upsertRecord(makeRecord(1));
+    const next = history.upsertRecord(makeRecord(2));
+    await expect(failing).rejects.toThrow('cota');
+    await next;
+    expect(savedIds(mock)).toEqual(['m2']);
+  });
+});

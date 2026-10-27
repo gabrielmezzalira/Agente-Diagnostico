@@ -4,6 +4,12 @@
  * antigo, com teto de tamanho. Statuses de eras anteriores da extensão
  * ("pending", "ignored", "discarded", "sent") são normalizados para "ready"
  * na leitura: nenhuma transcrição antiga se perde na migração.
+ *
+ * Toda escrita (upsert, rename, delete, finalizar gravações presas) é leitura-modifica-grava do array INTEIRO e
+ * passa por UMA fila (WR-08): duas escritas simultâneas nunca partem do mesmo retrato e se apagam, e a segunda
+ * enxerga o resultado da primeira — mesmo `enqueue` de `agenteAssociationStore`. Sem cache em memória, ao
+ * contrário do store de associações: `storageMigrations` e os painéis mexem em `taq:history` por fora e só a
+ * leitura dentro da fila é sempre fresca.
  */
 import type { HistoryStatus, MeetingRecord } from '@/shared/types/domain';
 import { MAX_HISTORY_RECORDS, STORAGE_KEYS } from '@/shared/config/constants';
@@ -18,6 +24,15 @@ const VALID_STATUSES: readonly HistoryStatus[] = ['recording', 'ready'];
 function normalizeRecord(record: MeetingRecord): MeetingRecord {
   if ((VALID_STATUSES as readonly string[]).includes(record.status)) return record;
   return { ...record, status: 'ready' };
+}
+
+let queue: Promise<unknown> = Promise.resolve();
+
+/** Fila única de escrita: cada operação espera a anterior (e sobrevive à falha dela). */
+function enqueue<T>(run: () => Promise<T>): Promise<T> {
+  const next = queue.catch(() => undefined).then(run);
+  queue = next;
+  return next;
 }
 
 export async function listHistory(): Promise<MeetingRecord[]> {
@@ -43,7 +58,11 @@ async function loadProtectionRule(): Promise<(id: string) => boolean> {
   }
 }
 
-export async function upsertRecord(record: MeetingRecord): Promise<void> {
+export function upsertRecord(record: MeetingRecord): Promise<void> {
+  return enqueue(() => upsertNow(record));
+}
+
+async function upsertNow(record: MeetingRecord): Promise<void> {
   const history = await listHistory();
   const previous = history.find((item) => item.id === record.id);
   const merged = previous ? { ...previous, ...record } : record;
@@ -70,21 +89,25 @@ export async function getRecord(id: string): Promise<MeetingRecord | null> {
   return history.find((r) => r.id === id) ?? null;
 }
 
-export async function patchRecord(
+export function patchRecord(
   id: string,
   patch: Partial<Pick<MeetingRecord, 'title' | 'status'>>,
 ): Promise<void> {
-  const history = await listHistory();
-  const next = history.map((r) => (r.id === id ? { ...r, ...patch } : r));
-  await writeLocal(STORAGE_KEYS.history, next);
+  return enqueue(async () => {
+    const history = await listHistory();
+    const next = history.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    await writeLocal(STORAGE_KEYS.history, next);
+  });
 }
 
-export async function deleteRecord(id: string): Promise<void> {
-  const history = await listHistory();
-  await writeLocal(
-    STORAGE_KEYS.history,
-    history.filter((r) => r.id !== id),
-  );
+export function deleteRecord(id: string): Promise<void> {
+  return enqueue(async () => {
+    const history = await listHistory();
+    await writeLocal(
+      STORAGE_KEYS.history,
+      history.filter((r) => r.id !== id),
+    );
+  });
 }
 
 /**
@@ -92,15 +115,17 @@ export async function deleteRecord(id: string): Promise<void> {
  * no meio da reunião) viram "ready": a transcrição capturada até a queda
  * fica disponível no histórico — nada se perde.
  */
-export async function finalizeStaleRecordings(liveMeetingId: string | null): Promise<void> {
-  const history = await listHistory();
-  let changed = false;
-  const next = history.map((r) => {
-    if (r.status === 'recording' && r.id !== liveMeetingId) {
-      changed = true;
-      return { ...r, status: 'ready' as const };
-    }
-    return r;
+export function finalizeStaleRecordings(liveMeetingId: string | null): Promise<void> {
+  return enqueue(async () => {
+    const history = await listHistory();
+    let changed = false;
+    const next = history.map((r) => {
+      if (r.status === 'recording' && r.id !== liveMeetingId) {
+        changed = true;
+        return { ...r, status: 'ready' as const };
+      }
+      return r;
+    });
+    if (changed) await writeLocal(STORAGE_KEYS.history, next);
   });
-  if (changed) await writeLocal(STORAGE_KEYS.history, next);
 }
