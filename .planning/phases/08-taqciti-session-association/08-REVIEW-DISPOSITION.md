@@ -13,39 +13,39 @@ findings:
     title: "Reunião no endereço novo `/meet/abc-defg-hij` é encerrada no meio da call por qualquer mudança de URL, e a captura para em silêncio"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "As rotas novas da extensão ficam abertas a qualquer um quando `EXTENSION_SHARED_KEY` não está definida"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Apagar a reunião do histórico (ou a evicção) deixa a sessão do Agente aberta para sempre, gastando Gemini"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "HTTP 401/403 descarta, uma a uma, todas as falas da fila durável, e corrigir a chave apaga o que sobrou"
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "\"Continuar envio\" pode pular palavras do último segmento que estava sendo falado na hora do vínculo"
   - id: WR-05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Reinício do service worker durante o vínculo ao vivo corta o envio pelo resto da reunião, sem saída"
   - id: WR-06
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "Checagem de cliente duplicado no backend não é atômica e não bate com a regra da Taqciti"
   - id: WR-07
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "Edição de projeto não consegue limpar campos (DMS \"Limpar\", budget, vínculo DocuData), e a UI promete que consegue"
   - id: WR-08
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`taq:history` continua com leitura-modifica-grava sem fila, agora com mais escritores concorrentes"
   - id: WR-09
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Na tela \"Transcrição salva\" com o painel compacto (320 px), o seletor de cliente continua com a lista em 0 px"
   - id: IN-01
     severity: info
@@ -107,9 +107,9 @@ findings:
     severity: info
     disposition: open
     title: "Não há teste que trave a propriedade que de fato fecha o CR-02 (\"o modo exato está contido no modo com subcaminho\")"
-open: 24
+open: 15
 total: 26
-recorded: 2026-10-27T00:09:16.742Z
+recorded: 2026-10-27T14:30:39.636Z
 ---
 
 # Phase 08: Code Review Disposition
@@ -118,15 +118,15 @@ recorded: 2026-10-27T00:09:16.742Z
 |---------|----------|-------------|--------|
 | CR-01 | critical | fixed | commit 664c033 (sessão inexistente / id não-UUID devolve 404); reconferido na re-revisão de 2026-10-26, seção "Resolvidos" do 08-REVIEW.md |
 | CR-02 | critical | fixed | commits ed6b961 (correção: service worker reconhece /meet/<código>) e 2b40de1 (content script usa a mesma meetingCodeFromPath); plano 08-28 |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| WR-05 | warning | open | - |
-| WR-06 | warning | open | - |
-| WR-07 | warning | open | - |
-| WR-08 | warning | open | - |
-| WR-09 | warning | open | - |
+| WR-01 | warning | deferred | decisão do time (2026-10-27): follow-up — risco T-08-10 já aceito até o login do AGM (AR-08-01 em 08-SECURITY.md); conferir EXTENSION_SHARED_KEY no Railway antes do deploy |
+| WR-02 | warning | fixed | 08-REVIEW-FIX.md |
+| WR-03 | warning | deferred | decisão do time (2026-10-27): follow-up — muda a política de reenvio da Fase 7 (DECISÃO EM ABERTO) |
+| WR-04 | warning | fixed | 08-REVIEW-FIX.md |
+| WR-05 | warning | fixed | 08-REVIEW-FIX.md |
+| WR-06 | warning | deferred | decisão do time (2026-10-27): follow-up — exige índice único/migração no schema (DECISÃO EM ABERTO) |
+| WR-07 | warning | deferred | decisão do time (2026-10-27): follow-up — muda o contrato do PUT /projects (DECISÃO EM ABERTO) |
+| WR-08 | warning | fixed | 08-REVIEW-FIX.md |
+| WR-09 | warning | fixed | 08-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
