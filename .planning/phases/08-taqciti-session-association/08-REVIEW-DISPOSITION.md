@@ -95,9 +95,21 @@ findings:
     severity: info
     disposition: open
     title: "O status de entrega é global, e um 404 de uma sessão antiga aparece na barra da reunião atual"
-open: 21
-total: 23
-recorded: 2026-10-26T22:45:42.307Z
+  - id: IN-13
+    severity: info
+    disposition: open
+    title: "A regra de maiúsculas e minúsculas do código da sala continua espalhada, cada lugar decide de um jeito"
+  - id: IN-14
+    severity: info
+    disposition: open
+    title: "Terceira cópia da gramática do código da sala em `naming.ts`"
+  - id: IN-15
+    severity: info
+    disposition: open
+    title: "Não há teste que trave a propriedade que de fato fecha o CR-02 (\"o modo exato está contido no modo com subcaminho\")"
+open: 24
+total: 26
+recorded: 2026-10-27T00:09:16.742Z
 ---
 
 # Phase 08: Code Review Disposition
@@ -127,6 +139,9 @@ recorded: 2026-10-26T22:45:42.307Z
 | IN-10 | info | open | - |
 | IN-11 | info | open | - |
 | IN-12 | info | open | - |
+| IN-13 | info | open | - |
+| IN-14 | info | open | - |
+| IN-15 | info | open | - |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
