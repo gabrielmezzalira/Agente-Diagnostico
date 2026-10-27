@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 08-taqciti-session-association
-source: 08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md, 08-05-SUMMARY.md, 08-06-SUMMARY.md, 08-07-SUMMARY.md, 08-08-SUMMARY.md, 08-09-SUMMARY.md, 08-10-SUMMARY.md, 08-11-SUMMARY.md, 08-12-SUMMARY.md, 08-13-SUMMARY.md, 08-14-SUMMARY.md, 08-15-SUMMARY.md, 08-16-SUMMARY.md, 08-17-SUMMARY.md, 08-18-SUMMARY.md, 08-19-SUMMARY.md, 08-20-SUMMARY.md, 08-21-SUMMARY.md, 08-22-SUMMARY.md, 08-23-SUMMARY.md, 08-24-SUMMARY.md, 08-25-SUMMARY.md, 08-26-SUMMARY.md, 08-27-SUMMARY.md
+source: 08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md, 08-04-SUMMARY.md, 08-05-SUMMARY.md, 08-06-SUMMARY.md, 08-07-SUMMARY.md, 08-08-SUMMARY.md, 08-09-SUMMARY.md, 08-10-SUMMARY.md, 08-11-SUMMARY.md, 08-12-SUMMARY.md, 08-13-SUMMARY.md, 08-14-SUMMARY.md, 08-15-SUMMARY.md, 08-16-SUMMARY.md, 08-17-SUMMARY.md, 08-18-SUMMARY.md, 08-19-SUMMARY.md, 08-20-SUMMARY.md, 08-21-SUMMARY.md, 08-22-SUMMARY.md, 08-23-SUMMARY.md, 08-24-SUMMARY.md, 08-25-SUMMARY.md, 08-26-SUMMARY.md, 08-27-SUMMARY.md, 08-28-SUMMARY.md
 started: 2026-10-23T01:10:57.993Z
-updated: 2026-10-26T22:13:04.507Z
+updated: 2026-10-27T00:28:51.655Z
 ---
 
 ## Current Test
@@ -811,10 +811,25 @@ result: pass
 source: automated
 coverage_id: 08-27/D4
 
+### 133. 08-28 CR-02 — Mudar a URL no meio da call (/meet/<código>) não tira o painel da reunião ao vivo nem encerra a sessão
+expected: Depois de cada mudança de URL sem sair da sala (#teste, ?authuser=1, troca de formato): o painel da Taqciti segue na tela da reunião ao vivo (não vai para "Transcrição salva"), a barra segue "Enviando ao vivo para ...", uma frase nova aparece na Taqciti e no web app, e depois de 1 minuto a sessão no web app continua ativa.
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário (relato "passou") no Meet real, com a build nova da Taqciti (npm run build) e o backend local em 127.0.0.1:8000. Sem detalhe adicional de log ou banco.
+
+### 134. 08-28 DA-4 — Sair de verdade da sala continua encerrando a reunião e a sessão
+expected: Na mesma aba da call, digitar https://example.com e Enter: a reunião termina (aparece no histórico da Taqciti) e a sessão no web app é encerrada em poucos segundos.
+result: pass
+evidence: 2026-10-26, confirmado pelo usuário no Meet real: ao sair da sala a transcrição ficou salva na Taqciti. Log do backend local: POST /webhook/extension/sessions/ce75b9af-d3d9-40de-b6e5-00ae38553f91/finish 200 e POST /webhook/extension/sessions/6cd362ad-cdc1-425f-8aca-d23d6a451d03/finish 200 (as duas sessões criadas nesta rodada foram encerradas).
+
+### 135. 08-28 Limpeza — Sessão de teste da rodada registrada para remoção
+expected: O id da sessão criada nos testes 133/134 fica anotado na lista "Dados de teste em produção" deste arquivo.
+result: pass
+evidence: 2026-10-26, as duas sessões da rodada do 08-28 (log do backend local) foram anotadas na lista "Dados de teste em produção" abaixo: ce75b9af-d3d9-40de-b6e5-00ae38553f91 e 6cd362ad-cdc1-425f-8aca-d23d6a451d03.
+
 ## Summary
 
-total: 132
-passed: 132
+total: 135
+passed: 135
 issues: 0
 pending: 0
 skipped: 0
@@ -845,6 +860,8 @@ Corrigidos na hora, cada um em commit atômico na branch `feat/fase-08-taqciti-s
 
 **3. Como os cortes foram feitos (para repetir).** Um embrulho ASGI do `app` do backend, em pasta temporária fora do repositório, lia um arquivo de controle (`pass`, `cut:N`, `hang`, `hold-create`) e segurava as falas depois de N liberadas (ou só o pedido de criar sessão). Congelar o processo logo depois de N falas NÃO funciona: a Taqciti manda cada fala em poucos milissegundos e o envio de 7 falas terminou antes do congelamento chegar.
 
+**4. "Selecionar cliente" só aparece depois de clicar na bolha "!" (relato do usuário, 2026-10-26, no teste 134).** Ao entrar numa reunião, a bolha amarela aparece na cápsula como esperado, mas a escolha de cliente só abre quando o usuário clica nela. É o comportamento desenhado (a bolha é um aviso que não interrompe a reunião; o clique abre o cartão com "Selecionar cliente"), então não é gap. Se o time achar pouco visível, vira follow-up de UX (parente do backlog 999.2).
+
 ## Retomada (pausado em 2026-10-25 com 119 de 132 passados e 13 pendentes)
 
 *Histórico: todos os pendentes abaixo foram fechados até 2026-10-26 (Rodadas 1 e 2). Fica só como registro do plano original.*
@@ -873,4 +890,5 @@ Apagar primeiro as sessões e depois os projetos. NÃO apagar o cliente real `vi
 
 - Projetos: `vis` (`bb3b10d7-e15a-4947-a7cc-ec86a5b278a8`) e `ZZ-TESTE-D20 cliente de teste com um nome propositalmente bem comprido para conferir o truncamento` (`4e542168-78e4-4b26-9328-3c64af0d5789`).
 - Sessões (todas encerradas): `c59f17f6-222d-4a59-a325-5f95ac4f785b` (vis), `1d4c19c9-2145-4f73-bf8d-f6b96145340d`, `ecd48b0f-e9b8-4bb3-a03f-b5efb04e70e7`, `fa3cd913-1cc4-47a0-b312-ce347497c78d`, `dcb62c06-15e2-4694-84f4-3b9bfa3f3455`, `e4ef42f4-859b-4074-9810-b6fc67e5d800`, `ef759a4c-b592-42af-a627-571362e82387`, e as de simulação `68e38421-8e3a-4c60-8514-0cdce91dc744`, `93b18c84-df39-4a63-9a06-e0e4ed321e1c`, `e3295f4f-f2dc-4d8b-8baa-4fae83497b53`.
+- Rodada do 08-28 (2026-10-26, ambas encerradas): `ce75b9af-d3d9-40de-b6e5-00ae38553f91`, `6cd362ad-cdc1-425f-8aca-d23d6a451d03`.
 - Para achar tudo (inclusive o que as próximas rodadas criarem): sessões e projetos cujo cliente começa com `ZZ-TESTE` ou é `vis`, e sessões com nome `SIMULACAO%`.
