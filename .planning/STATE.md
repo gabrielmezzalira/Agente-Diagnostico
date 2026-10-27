@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 08
-current_phase_name: Taqciti Session Association
-status: verifying
-stopped_at: Completed 08-28-PLAN.md
-last_updated: "2026-10-27T00:01:14.444Z"
-last_activity: 2026-10-26
-last_activity_desc: Phase 08 execution started
-state_head: 32d6cf88ccad3777b163f9955b99dac430a30962
+current_phase: 09
+current_phase_name: Cutover + Retire Custom Extension
+status: executing
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-10-27T16:41:06.722Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 09 execution started
+state_head: b6b15a405025d0d2bf1b6be128ec81e727fb2ddc
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 52
-  completed_plans: 52
+  total_plans: 59
+  completed_plans: 53
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -27,14 +27,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 08 — Taqciti Session Association
+**Current focus:** Phase 09 — Cutover + Retire Custom Extension
 
 ## Current Position
 
-Phase: 08 (Taqciti Session Association) — EXECUTING
-Plan: 28 of 28
-Status: Phase complete — ready for verification
-Last activity: 2026-10-26 — Phase 08 execution started
+Phase: 09 (Cutover + Retire Custom Extension) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-10-27 — Phase 09 execution started
 
 Progress: [███████░░░] 70%
 
@@ -116,6 +116,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P20 | 22 min | 3 tasks | 18 files |
 | Phase 08 P21 | ~25min | 2 tasks | 1 files |
 | Phase 08 P28 | 5 min | 3 tasks | 8 files |
+| Phase 09 P01 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,8 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-25: encerramento automático ligado (alarms + gatilhos); DA-4 e DA-5 seguem em aberto
 - [Phase 08]: 08-20: Continuar envio (B3-a chunk_id) retoma da ultima parte confirmada para a mesma sessao; DA-2 continuar-com-aviso mostra o aviso de sessao ja encerrada; retomar cancela o prazo de 5 min (finishBy/finishTries)
 - [Phase 08]: 08-28: meetingCodeFromPath e a regra unica de 'qual e a sala desta URL' (content script em modo exato, service worker com subcaminho); DA-4/DA-5 nao tocadas
+- [Phase 09]: Semente SC3 estendeu test_extension_chunk_extra_fields.py (163 linhas) em vez de test_extension_clients.py (520 linhas)
+- [Phase 09]: Branch oficial da Fase 9 mantida como feat/fase-09-cutover-retire-custom-extension (decisao do usuario); push da main (196 commits a frente de origin) fica pendente do time
 
 ### Pending Todos
 
@@ -221,8 +224,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-27T00:01:12.328Z
-Stopped at: Completed 08-28-PLAN.md
+Last session: 2026-10-27T16:41:03.660Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
 
 ---
