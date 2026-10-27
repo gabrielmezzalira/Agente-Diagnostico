@@ -38,7 +38,7 @@ Rodadas finais (dentro de `taqciti/`):
 
 ## Fixed Issues
 
-### WR-09: Seletor de cliente do "Transcrição salva" com o painel compacto (320 px) ficava com a lista em 0 px
+### WR-09: Na tela "Transcrição salva" com o painel compacto (320 px), o seletor de cliente continua com a lista em 0 px
 
 **Status:** fixed
 **Commit:** `27d215e`
@@ -50,7 +50,7 @@ e `openPicker` chama `onPanelSizeChange('regular')` quando o painel está `compa
 **Testes:** 3 novos em `AgenteEndSlot.test.tsx` (compacto sobe uma vez; regular não sobe; saída larga nunca sobe).
 `AgenteEndSlot.test.tsx` + `src/content/ui`: 23 passando.
 
-### WR-02: Apagar a reunião do histórico (ou a evicção) deixava a sessão do Agente aberta para sempre
+### WR-02: Apagar a reunião do histórico (ou a evicção) deixa a sessão do Agente aberta para sempre, gastando Gemini
 
 **Status:** fixed: requires human verification
 **Commits:** `d1aaa1b` (correção) e `99d1a26` (ajuste de lint no teste)
@@ -82,7 +82,7 @@ quando o finish falha, não quando a sala volta ao vivo, falha dele não desfaz 
 `agenteSessionFinisher.test.ts` (reunião apagada: encerra e recolhe a associação) e `agenteAssociationStore.test.ts`
 (`keep`).
 
-### WR-08: `taq:history` com leitura-modifica-grava sem fila
+### WR-08: `taq:history` continua com leitura-modifica-grava sem fila, agora com mais escritores concorrentes
 
 **Status:** fixed (commit separado do WR-02, como pedido)
 **Commit:** `62ffe01`
@@ -96,7 +96,7 @@ fresca e resolve a corrida. Se o time preferir o cache também, é um follow-up 
 **Testes:** 3 novos em `history.test.ts`. Antes da correção, 2 deles falhavam (corrida reproduzida: um `delete`
 concorrente com `upsert`/`rename` trazia a reunião apagada de volta). Agora passam.
 
-### WR-04: "Continuar envio" pulava as palavras da fala que cresceu depois do vínculo
+### WR-04: "Continuar envio" pode pular palavras do último segmento que estava sendo falado na hora do vínculo
 
 **Status:** fixed: requires human verification
 **Commit:** `1669564`
@@ -116,7 +116,7 @@ deixar a reunião acabar e usar "Continuar envio"; conferir que a transcrição 
 falha e retoma depois, `sentWords` gravado na falha), 3 em `meetingUploader.test.ts`, 2 em `association.test.ts`
 e 1 em `agenteAssociationStore.test.ts`.
 
-### WR-05: Reinício do service worker durante o vínculo ao vivo cortava o envio, sem saída
+### WR-05: Reinício do service worker durante o vínculo ao vivo corta o envio pelo resto da reunião, sem saída
 
 **Status:** fixed: requires human verification
 **Commit:** `156d63c`
@@ -137,13 +137,13 @@ varredura do boot).
 
 ## Skipped Issues
 
-### WR-01: Rotas novas da extensão abertas quando `EXTENSION_SHARED_KEY` não está definida
+### WR-01: As rotas novas da extensão ficam abertas a qualquer um quando `EXTENSION_SHARED_KEY` não está definida
 
 **Arquivos:** `backend/app/routers/webhook.py:23-30`, `backend/app/routers/extension_clients.py:37-71`, `backend/app/main.py:47-53`
 **Motivo:** decisão do time (2026-10-27): follow-up, fora deste --fix — risco T-08-10 já aceito pelo time até o login do AGM (AR-08-01 em `08-SECURITY.md`); mudar o gate contradiz a decisão registrada.
 **Problema original:** `verify_extension_key` só valida quando a variável existe; com `allow_origins=["*"]`, qualquer site aberto por alguém da equipe pode listar clientes e criar projetos se a variável faltar no Railway.
 
-### WR-03: HTTP 401/403 descarta, uma a uma, a fila durável, e corrigir a chave apaga o resto
+### WR-03: HTTP 401/403 descarta, uma a uma, todas as falas da fila durável, e corrigir a chave apaga o que sobrou
 
 **Arquivos:** `taqciti/src/features/agente/sendRetryPolicy.ts:40-45`, `taqciti/src/background/agenteSendSettle.ts:64-72`, `taqciti/src/background/agenteStreamerInstance.ts:114-118`, `taqciti/src/background/agenteStreamDestination.ts:93`
 **Motivo:** decisão do time (2026-10-27): follow-up, fora deste --fix — muda a política de reenvio da Fase 7 (DECISÃO EM ABERTO).
@@ -155,7 +155,7 @@ varredura do boot).
 **Motivo:** decisão do time (2026-10-27): follow-up, fora deste --fix — exige índice único/migração no schema (DECISÃO EM ABERTO).
 **Problema original:** `create_client` lê e depois insere sem índice único, e a normalização do backend (NFKD + `casefold`) difere da da Taqciti (NFD + `toLocaleLowerCase('pt-BR')`).
 
-### WR-07: Edição de projeto não consegue limpar campos (DMS, budget, vínculo DocuData)
+### WR-07: Edição de projeto não consegue limpar campos (DMS "Limpar", budget, vínculo DocuData), e a UI promete que consegue
 
 **Arquivos:** `backend/app/routers/projects.py:100-102`, `frontend/src/pages/ProjectFormPage.tsx:95-106,203`
 **Motivo:** decisão do time (2026-10-27): follow-up, fora deste --fix — muda o contrato do `PUT /projects` (DECISÃO EM ABERTO).
