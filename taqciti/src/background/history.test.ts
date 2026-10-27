@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installChromeStorageMock } from '@/test/chromeStorageMock';
 import { selectRecordsToKeep, UNSENT_STATES } from '@/features/history/eviction';
 import { MAX_HISTORY_RECORDS, STORAGE_KEYS } from '@/shared/config/constants';
-import type { AssociationState } from '@/features/agente/association';
+import type { AssociationState, MeetingAssociation } from '@/features/agente/association';
 import type { MeetingRecord } from '@/shared/types/domain';
 
 function makeRecord(index: number): MeetingRecord {
@@ -65,9 +65,13 @@ describe('selectRecordsToKeep', () => {
   });
 });
 
-async function freshHistory(seed: MeetingRecord[], states: Record<string, AssociationState>) {
+async function freshHistory(
+  seed: MeetingRecord[],
+  states: Record<string, AssociationState>,
+  extra: Record<string, Partial<MeetingAssociation>> = {},
+) {
   const associations = Object.fromEntries(
-    Object.entries(states).map(([id, state]) => [id, { meetingId: id, state }]),
+    Object.entries(states).map(([id, state]) => [id, { meetingId: id, state, ...extra[id] }]),
   );
   const mock = installChromeStorageMock({
     local: {
@@ -110,6 +114,27 @@ describe('upsertRecord com evicção protegida', () => {
     const map = mock.local.values[STORAGE_KEYS.agenteAssociations] as Record<string, unknown>;
     expect(map).not.toHaveProperty('m1');
     expect(map).toHaveProperty('m2');
+  });
+
+  it('WR-02: evicção NÃO leva a associação que ainda deve o encerramento da sessão (picker, aberta)', async () => {
+    const SID = '33333333-3333-3333-3333-333333333333';
+    const { mock, history } = await freshHistory(
+      makeHistory(MAX_HISTORY_RECORDS),
+      { m1: 'sent', m2: 'sent' },
+      {
+        m1: { sessionId: SID, origin: 'picker' }, // deve o encerramento: fica
+        m2: { sessionId: SID, origin: 'picker', sessionFinished: true }, // já encerrada: sai junto
+      },
+    );
+    await history.upsertRecord(makeRecord(101));
+    await history.upsertRecord(makeRecord(102));
+
+    const saved = (mock.local.values[STORAGE_KEYS.history] as MeetingRecord[]).map((r) => r.id);
+    expect(saved).not.toContain('m1'); // a reunião foi evictada...
+    expect(saved).not.toContain('m2');
+    const map = mock.local.values[STORAGE_KEYS.agenteAssociations] as Record<string, unknown>;
+    expect(map).toHaveProperty('m1'); // ...mas a associação de m1 ficou para o agendador encerrar a sessão
+    expect(map).not.toHaveProperty('m2');
   });
 
   it('reunião sem associação (anterior à Fase 8) é evictável', async () => {

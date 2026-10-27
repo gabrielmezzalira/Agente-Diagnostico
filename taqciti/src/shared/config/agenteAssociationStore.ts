@@ -138,24 +138,40 @@ export function applyAssociationEvent(meetingId: string, event: AssociationEvent
   });
 }
 
-/** Remove as associações pedidas (descartar um cliente, limpeza de reuniões antigas). */
-export function removeAssociations(meetingIds: readonly string[]): Promise<void> {
+/**
+ * Remove as associações pedidas (descartar um cliente, limpeza de reuniões antigas). `keep` poupa as que ainda
+ * têm serviço a fazer (ex.: encerrar a sessão no Agente): a decisão e a remoção acontecem na MESMA operação da
+ * fila, então nenhuma gravação concorrente muda a associação entre uma e outra. Devolve os ids poupados.
+ */
+export function removeAssociations(
+  meetingIds: readonly string[],
+  keep?: (association: MeetingAssociation) => boolean,
+): Promise<string[]> {
   return enqueue(async () => {
     const map = await ensureLoaded();
     const updated: Record<string, MeetingAssociation> = { ...map };
+    const kept: string[] = [];
     let changed = false;
     for (const id of meetingIds) {
-      if (id in updated) {
-        delete updated[id];
-        changed = true;
+      const association = updated[id];
+      if (association === undefined) continue;
+      if (keep?.(association) === true) {
+        kept.push(id);
+        continue;
       }
+      delete updated[id];
+      changed = true;
     }
     if (changed) await commit(updated);
+    return kept;
   });
 }
 
-export function removeAssociation(meetingId: string): Promise<void> {
-  return removeAssociations([meetingId]);
+export function removeAssociation(
+  meetingId: string,
+  keep?: (association: MeetingAssociation) => boolean,
+): Promise<string[]> {
+  return removeAssociations([meetingId], keep);
 }
 
 /** A semente já foi adotada pelo streamer: some do storage, para um reinício não reaproveitá-la. */

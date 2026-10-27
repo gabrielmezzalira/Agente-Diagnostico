@@ -8,9 +8,15 @@
  * responde "ao vivo" — sem o estado da reunião ninguém é encerrado. Importar este módulo não executa nada
  * nem toca `chrome.alarms` (só a permissão do plano 08-25 libera isso em runtime).
  */
-import { applyAssociationEvent, getAssociation, loadAssociations } from '@/shared/config/agenteAssociationStore';
+import {
+  applyAssociationEvent,
+  getAssociation,
+  loadAssociations,
+  removeAssociation,
+} from '@/shared/config/agenteAssociationStore';
 import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
 import { countOutboxItemsForSession } from '@/shared/config/agenteOutboxStore';
+import { getRecord } from './history';
 import { kickAgenteSender, whenAgenteStreamerIdle } from './agenteStreamer';
 import {
   createAgenteSessionFinisher,
@@ -31,6 +37,11 @@ const chromeAlarms: AgenteFinisherAlarms = {
   },
 };
 
+/** Reunião apagada do histórico com a sessão ainda por encerrar (WR-02): fechada a sessão, a associação não serve mais. */
+async function dropAssociationOfDeletedRecord(meetingId: string): Promise<void> {
+  if ((await getRecord(meetingId)) === null) await removeAssociation(meetingId);
+}
+
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** `createAgenteConfigReader()` é preguiçoso: só toca o storage na primeira chamada. */
@@ -47,6 +58,7 @@ let activeDeps: AgenteSessionFinisherDeps = {
   getAssociation,
   loadAssociations,
   applyEvent: applyAssociationEvent,
+  onSessionFinished: dropAssociationOfDeletedRecord,
 };
 let activeFinisher = createAgenteSessionFinisher(activeDeps);
 

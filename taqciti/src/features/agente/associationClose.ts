@@ -49,6 +49,15 @@ export function canRestartFinishRound(association: MeetingAssociation): boolean 
   );
 }
 
+/**
+ * A Taqciti ainda deve o encerramento desta sessão: está elegível agora, ou desistiu e ganha uma rodada nova no
+ * boot (DA-5). Quem apaga a reunião (histórico ou evicção) não pode jogar fora a associação enquanto isto vale —
+ * ela é o que o agendador lê (`sessionId`, `origin`, `finishBy`) para encerrar a sessão no Agente.
+ */
+export function isCloseOwed(association: MeetingAssociation): boolean {
+  return isEligibleForClose(association) || canRestartFinishRound(association);
+}
+
 /** Zera as tentativas e a desistência; o `finishBy` (já vencido) fica para a nova rodada encerrar sem esperar. */
 function restartFinishRound(current: MeetingAssociation): MeetingAssociation {
   if (!canRestartFinishRound(current)) return current;

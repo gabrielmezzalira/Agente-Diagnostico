@@ -42,6 +42,7 @@ async function boot() {
   const nudgeDelivery = vi.fn(() => Promise.resolve());
   const countQueued = vi.fn(() => Promise.resolve(counts.length > 1 ? (counts.shift() as number) : (counts[0] as number)));
   const applyEvent = vi.fn(store.applyAssociationEvent);
+  const onSessionFinished = vi.fn<(id: string) => Promise<void>>(() => Promise.resolve());
   const finisher = createAgenteSessionFinisher({
     finisher: { finishSession },
     alarms,
@@ -54,6 +55,7 @@ async function boot() {
     getAssociation: store.getAssociation,
     loadAssociations: store.loadAssociations,
     applyEvent,
+    onSessionFinished,
   });
   async function seed(meetingId: string, state: SeedState = 'linked', origin: AssociationOrigin = 'picker') {
     const apply = (event: AssociationEvent) => store.applyAssociationEvent(meetingId, event);
@@ -66,7 +68,7 @@ async function boot() {
     for (const event of FLOWS[state].filter((e) => state === 'linked' || e.type !== 'meeting-ended')) await apply(event);
   }
   return {
-    finisher, finishSession, AgenteFinishError, sleep, alarms, whenStreamerIdle, nudgeDelivery, countQueued, applyEvent, warn,
+    finisher, finishSession, AgenteFinishError, sleep, alarms, whenStreamerIdle, nudgeDelivery, countQueued, applyEvent, onSessionFinished, warn,
     seed, get: store.getAssociation, apply: store.applyAssociationEvent,
     clock: () => clock, advance: (ms: number) => void (clock += ms),
     setLive: (value: boolean) => void (live = value), setCounts: (...values: number[]) => void (counts = values),
@@ -116,6 +118,37 @@ describe('encerrar na hora (B4-b)', () => {
     expect(rig.sleep).toHaveBeenCalledTimes(2);
     expect(rig.whenStreamerIdle.mock.invocationCallOrder[0]).toBeLessThan(rig.sleep.mock.invocationCallOrder[0] as number);
     expect(rig.sleep.mock.invocationCallOrder[1]).toBeLessThan(rig.finishSession.mock.invocationCallOrder[0] as number);
+  });
+
+  it('(WR-02) sessão encerrada -> onSessionFinished chamado uma vez, só depois do session-finished', async () => {
+    await rig.seed('m1');
+    await rig.finisher.evaluate('m1');
+    expect(rig.onSessionFinished.mock.calls).toEqual([['m1']]);
+  });
+
+  it('(WR-02) finish que falha -> onSessionFinished NÃO é chamado (a associação ainda é necessária)', async () => {
+    await rig.seed('m1');
+    rig.finishSession.mockRejectedValue(new Error('rede'));
+    await rig.finisher.evaluate('m1');
+    expect(rig.onSessionFinished).not.toHaveBeenCalled();
+  });
+
+  it('(WR-02) a sala voltou ao vivo durante o finish -> onSessionFinished NÃO é chamado (a associação volta a pending)', async () => {
+    await rig.seed('m1');
+    rig.finishSession.mockImplementation(() => {
+      rig.setLive(true);
+      return Promise.resolve('finished');
+    });
+    await rig.finisher.evaluate('m1');
+    expect(rig.onSessionFinished).not.toHaveBeenCalled();
+    expect(await rig.get('m1')).toMatchObject({ state: 'pending' });
+  });
+
+  it('(WR-02) onSessionFinished que falha não desfaz o encerramento', async () => {
+    await rig.seed('m1');
+    rig.onSessionFinished.mockRejectedValue(new Error('storage'));
+    await rig.finisher.evaluate('m1');
+    expect(await rig.get('m1')).toMatchObject({ sessionFinished: true });
   });
 
   it('(l) gone -> session-finished aplicado e alarme limpo', async () => {

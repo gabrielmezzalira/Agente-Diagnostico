@@ -8,6 +8,7 @@
 import type { HistoryStatus, MeetingRecord } from '@/shared/types/domain';
 import { MAX_HISTORY_RECORDS, STORAGE_KEYS } from '@/shared/config/constants';
 import { loadAssociations, removeAssociations } from '@/shared/config/agenteAssociationStore';
+import { isCloseOwed } from '@/features/agente/associationClose';
 import { UNSENT_STATES, selectRecordsToKeep } from '@/features/history/eviction';
 import { logger } from '@/shared/services/log';
 import { readLocal, writeLocal } from '@/shared/services/storage';
@@ -56,7 +57,9 @@ export async function upsertRecord(record: MeetingRecord): Promise<void> {
   );
   await writeLocal(STORAGE_KEYS.history, kept);
   if (evicted.length > 0) {
-    await removeAssociations(evicted).catch((error: unknown) =>
+    // WR-02: a associação que ainda deve o encerramento da sessão no Agente fica (o agendador a lê no boot e nos
+    // alarmes e a apaga quando a sessão fecha); só as que não devem mais nada saem junto com a reunião.
+    await removeAssociations(evicted, isCloseOwed).catch((error: unknown) =>
       logger.error('limpar a associação das reuniões evictadas falhou', error),
     );
   }

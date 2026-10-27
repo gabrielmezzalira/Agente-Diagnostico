@@ -33,6 +33,22 @@ async function boot(withAlarms = true) {
 type Rig = Awaited<ReturnType<typeof boot>>;
 let rig: Rig;
 
+/** Põe a reunião no histórico local (a composição só recolhe a associação de reunião que NÃO está lá). */
+async function saveRecord(id: string): Promise<void> {
+  const { upsertRecord } = await import('./history');
+  await upsertRecord({
+    id,
+    title: 'Reunião',
+    startedAt: 1000,
+    endedAt: 1500,
+    durationSeconds: 1,
+    participants: [],
+    segments: [],
+    status: 'ready',
+    metadata: { capturedCaptions: true, droppedSegments: 0, reconnectCount: 0, wasDiscardedAndRestarted: false },
+  });
+}
+
 describe('importar o módulo', () => {
   it('não toca em chrome.alarms (nem existindo, nem faltando)', async () => {
     const withAlarms = await boot();
@@ -58,6 +74,7 @@ describe('falha segura e delegação', () => {
   });
 
   it('configurado com isMeetingLive falso e fila vazia -> chama o finish uma vez', async () => {
+    await saveRecord('m1'); // a reunião ainda está no histórico: a associação continua depois do finish
     rig.configureAgenteSessionFinisher({
       isMeetingLive: () => false,
       finisher: { finishSession: rig.finishSession },
@@ -67,6 +84,18 @@ describe('falha segura e delegação', () => {
 
     expect(rig.finishSession.mock.calls).toEqual([[S1]]);
     expect(await rig.store.getAssociation('m1')).toMatchObject({ sessionFinished: true });
+  });
+
+  it('WR-02: reunião apagada do histórico -> encerra a sessão e só então recolhe a associação', async () => {
+    rig.configureAgenteSessionFinisher({
+      isMeetingLive: () => false,
+      finisher: { finishSession: rig.finishSession },
+    });
+
+    await rig.agenteSessionFinisher.evaluate('m1');
+
+    expect(rig.finishSession.mock.calls).toEqual([[S1]]);
+    expect(await rig.store.getAssociation('m1')).toBeNull();
   });
 
   it('o objeto delega os quatro métodos à instância ativa (vi.spyOn funciona)', async () => {

@@ -43,6 +43,11 @@ export interface AgenteSessionFinisherDeps {
   getAssociation: (meetingId: string) => Promise<MeetingAssociation | null>;
   loadAssociations: () => Promise<AssociationMap>;
   applyEvent: (meetingId: string, event: AssociationEvent) => Promise<ApplyResult>;
+  /**
+   * A sessão acabou de ser encerrada no Agente. Quem apagou a reunião do histórico deixou a associação de pé só
+   * para este encerramento (WR-02): aqui a composição a recolhe. Falha aqui nunca desfaz o encerramento.
+   */
+  onSessionFinished?: (meetingId: string) => Promise<void>;
 }
 
 export function createAgenteSessionFinisher(deps: AgenteSessionFinisherDeps) {
@@ -66,7 +71,13 @@ export function createAgenteSessionFinisher(deps: AgenteSessionFinisherDeps) {
     await deps.applyEvent(meetingId, { type: 'session-finished' });
     await clearAlarm(meetingId);
     // Defesa da reentrada (plano 08-24): a mesma sala voltou ao vivo enquanto o finish estava em voo.
-    if (deps.isMeetingLive(meetingId)) await deps.applyEvent(meetingId, { type: 'meeting-resumed' });
+    if (deps.isMeetingLive(meetingId)) {
+      await deps.applyEvent(meetingId, { type: 'meeting-resumed' });
+      return;
+    }
+    await deps.onSessionFinished?.(meetingId).catch((error: unknown) => {
+      logger.error('recolher a associação da reunião apagada falhou', error);
+    });
   }
 
   async function recordFailure(meetingId: string, error: unknown): Promise<void> {

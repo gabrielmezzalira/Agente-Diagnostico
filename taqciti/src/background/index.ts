@@ -8,7 +8,6 @@
  * transcrição.
  */
 import { PROVIDER_GOOGLE_MEET } from '@/shared/config/constants';
-import { removeAssociation } from '@/shared/config/agenteAssociationStore';
 import { onMessage } from '@/shared/services/messaging';
 import { logger } from '@/shared/services/log';
 import {
@@ -28,6 +27,7 @@ import { onMeetingTabNavigated } from './meetingTabNavigated';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
+import { releaseMeetingAssociation } from './agenteAssociationRelease';
 import { agenteSessionFinisher, configureAgenteSessionFinisher } from './agenteSessionFinisher';
 import { shouldStartFreshMeeting } from './agenteFreshStart';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
@@ -231,7 +231,7 @@ onMessage((message, sender) => {
           await dispatch({ type: 'RESET' });
         }
         await deleteRecord(message.id);
-        await removeAssociation(message.id);
+        await releaseMeetingAssociation(message.id);
         return { ok: true };
       }
       case 'ui/history/rename': {

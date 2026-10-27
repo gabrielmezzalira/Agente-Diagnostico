@@ -191,6 +191,20 @@ describe('remoção pontual', () => {
     expect(Object.keys(mock.local.values[KEY] as object)).toEqual(['m2']);
   });
 
+  it('com `keep`: poupa as associações que o predicado pede, remove as outras e devolve os ids poupados', async () => {
+    const { mock, store } = await loadStore({ [KEY]: initial });
+    const kept = await store.removeAssociations(['m1', 'm2', 'm3'], (a) => a.meetingId === 'm2');
+    expect(kept).toEqual(['m2']);
+    expect(Object.keys(mock.local.values[KEY] as object)).toEqual(['m2']);
+  });
+
+  it('com `keep` poupando tudo não grava', async () => {
+    const { mock, store } = await loadStore({ [KEY]: initial });
+    const kept = await store.removeAssociation('m1', () => true);
+    expect(kept).toEqual(['m1']);
+    expect(mock.local.set).not.toHaveBeenCalled();
+  });
+
   it('remover só ids inexistentes não grava', async () => {
     const { mock, store } = await loadStore({ [KEY]: initial });
     await store.removeAssociations(['nao-existe']);
