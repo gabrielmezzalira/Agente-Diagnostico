@@ -4,17 +4,17 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 08
 current_phase_name: Taqciti Session Association
-status: executing
-stopped_at: Completed 08-21-PLAN.md (portao automatico verde; aguardando D-20 humano)
-last_updated: "2026-10-26T23:51:34.837Z"
+status: verifying
+stopped_at: Completed 08-28-PLAN.md
+last_updated: "2026-10-27T00:01:14.444Z"
 last_activity: 2026-10-26
 last_activity_desc: Phase 08 execution started
-state_head: c25f972e72050a082f0d0b4e26b280e0d2543936
+state_head: 32d6cf88ccad3777b163f9955b99dac430a30962
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 52
-  completed_plans: 51
+  completed_plans: 52
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Phase: 08 (Taqciti Session Association) — READY TO EXECUTE
-Plan: 27 of 27 planos executados; UAT 132/132 (2026-10-26). Verificação de 2026-10-26 = gaps_found: CR-02 (reunião no endereço /meet/<código> é encerrada no meio da call por qualquer mudança de URL — `meetingTabNavigated.ts`). Próximo: /gsd-plan-phase 08 --gaps. TAQ-02 segue Pending.
-Status: Ready to execute
+Phase: 08 (Taqciti Session Association) — EXECUTING
+Plan: 28 of 28
+Status: Phase complete — ready for verification
 Last activity: 2026-10-26 — Phase 08 execution started
 
 Progress: [███████░░░] 70%
@@ -115,6 +115,7 @@ Progress: [███████░░░] 70%
 | Phase 08 P25 | 12 min | 2 tasks | 8 files |
 | Phase 08 P20 | 22 min | 3 tasks | 18 files |
 | Phase 08 P21 | ~25min | 2 tasks | 1 files |
+| Phase 08 P28 | 5 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,7 @@ Recent decisions affecting current work:
 - [Phase 08]: [08-26] DA-3 fechar-aba-encerra: aba da reunião ao vivo fechada dispara MEETING_FINISHED (mesmo caminho do meet/ended), sem RESET, para a regra de reentrada do 08-24 valer; DA-4 (navegação para fora do Meet) segue em aberto
 - [Phase 08]: 08-25: encerramento automático ligado (alarms + gatilhos); DA-4 e DA-5 seguem em aberto
 - [Phase 08]: 08-20: Continuar envio (B3-a chunk_id) retoma da ultima parte confirmada para a mesma sessao; DA-2 continuar-com-aviso mostra o aviso de sessao ja encerrada; retomar cancela o prazo de 5 min (finishBy/finishTries)
+- [Phase 08]: 08-28: meetingCodeFromPath e a regra unica de 'qual e a sala desta URL' (content script em modo exato, service worker com subcaminho); DA-4/DA-5 nao tocadas
 
 ### Pending Todos
 
@@ -219,8 +221,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-12T20:24:31.810Z
-Stopped at: Completed 08-21-PLAN.md (portao automatico verde; aguardando D-20 humano)
+Last session: 2026-10-27T00:01:12.328Z
+Stopped at: Completed 08-28-PLAN.md
 Resume file: None
 
 ---
