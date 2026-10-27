@@ -6,6 +6,7 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AssociationState, MeetingAssociation } from '@/features/agente/association';
+import type { PanelSize } from '@/shared/types/domain';
 import { createAgenteHarness } from '@/test/agentePanelHarness';
 import { AgenteEndSlot } from './AgenteEndSlot';
 
@@ -27,6 +28,7 @@ function slot(
   variant: 'card' | 'button' = 'card',
   surface: 'panel' | 'wide' = 'panel',
   onDiscarded?: () => void,
+  panel?: { panelSize: PanelSize; onPanelSizeChange: (size: PanelSize) => void },
 ) {
   return (
     <AgenteEndSlot
@@ -34,6 +36,8 @@ function slot(
       title={TITLE}
       variant={variant}
       surface={surface}
+      panelSize={panel?.panelSize}
+      onPanelSizeChange={panel?.onPanelSizeChange}
       onDiscarded={onDiscarded}
     />
   );
@@ -315,5 +319,35 @@ describe('AgenteEndSlot — seletor no painel do Meet (dono do corpo e densidade
     );
     expect(cta!.className).toContain('min-h-[44px]');
   });
-});
 
+  it('painel compacto: abrir o seletor sobe o painel para regular, uma vez (WR-09)', async () => {
+    // Em 320 px a parte fixa do seletor ocupava a altura toda e a lista ficava com 0 px.
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    const onPanelSizeChange = vi.fn();
+    await h.render(slot('card', 'panel', undefined, { panelSize: 'compact', onPanelSizeChange }));
+    await h.click(h.buttonByText('Selecionar cliente'));
+
+    expect(h.host.textContent).toContain('Escolher cliente');
+    expect(onPanelSizeChange).toHaveBeenCalledTimes(1);
+    expect(onPanelSizeChange).toHaveBeenCalledWith('regular');
+  });
+
+  it('painel regular, ou sem as props de tamanho: o painel não é redimensionado', async () => {
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    const onPanelSizeChange = vi.fn();
+    await h.render(slot('card', 'panel', undefined, { panelSize: 'regular', onPanelSizeChange }));
+    await h.click(h.buttonByText('Selecionar cliente'));
+    expect(onPanelSizeChange).not.toHaveBeenCalled();
+  });
+
+  it('saída larga nunca mexe no tamanho do painel, mesmo com as props e o painel compacto', async () => {
+    h.start(assoc('ended-unsent'));
+    respondOk();
+    const onPanelSizeChange = vi.fn();
+    await h.render(slot('button', 'wide', undefined, { panelSize: 'compact', onPanelSizeChange }));
+    await h.click(h.buttonByText('Enviar ao Agente'));
+    expect(onPanelSizeChange).not.toHaveBeenCalled();
+  });
+});

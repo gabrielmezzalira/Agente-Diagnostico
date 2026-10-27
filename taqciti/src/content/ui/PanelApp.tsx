@@ -477,6 +477,8 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
             onCopy={copySegments}
             onDownload={download}
             onToast={showToast}
+            panelSize={prefs.size}
+            onPanelSizeChange={(size) => callbacks.onPrefsChange({ size })}
             liveSlot={
               meetingId && (
                 <AgenteLiveSlot
@@ -509,6 +511,8 @@ function PanelBody({
   onCopy,
   onDownload,
   onToast,
+  panelSize,
+  onPanelSizeChange,
   liveSlot,
 }: {
   route: Route;
@@ -522,6 +526,8 @@ function PanelBody({
   onCopy: (segments: MeetingRecord['segments']) => void;
   onDownload: (record: MeetingRecord) => void;
   onToast: (message: string) => void;
+  panelSize: PanelSize;
+  onPanelSizeChange: (size: PanelSize) => void;
   liveSlot: ReactNode;
 }) {
   const records = useHistory();
@@ -543,6 +549,8 @@ function PanelBody({
         onHistory={() => onRoute({ kind: 'history' })}
         historyLabel="Voltar ao histórico"
         agenteVariant="button"
+        panelSize={panelSize}
+        onPanelSizeChange={onPanelSizeChange}
         onOpenWide={() => callbacks.onOpenSidePanel({ recordId: record.id })}
       />
     );
@@ -604,6 +612,8 @@ function PanelBody({
         }}
         historyLabel="Ver no histórico"
         agenteVariant="card"
+        panelSize={panelSize}
+        onPanelSizeChange={onPanelSizeChange}
         onOpenWide={() => callbacks.onOpenSidePanel({ recordId: record.id })}
       />
     );
@@ -651,6 +661,8 @@ function MeetingScreen({
   onHistory,
   historyLabel,
   agenteVariant,
+  panelSize,
+  onPanelSizeChange,
   onOpenWide,
 }: {
   record: MeetingRecord;
@@ -662,6 +674,9 @@ function MeetingScreen({
   historyLabel: string;
   /** Fim da reunião: cartão (tela "Transcrição salva") ou botão (reunião aberta pelo histórico). */
   agenteVariant: 'card' | 'button';
+  /** O seletor de cliente do Agente sobe o painel compacto para regular (a lista não cabe em 320 px). */
+  panelSize: PanelSize;
+  onPanelSizeChange: (size: PanelSize) => void;
   /** Abre ESTA reunião na saída larga. */
   onOpenWide: () => void;
 }) {
@@ -678,7 +693,14 @@ function MeetingScreen({
         )}
       </div>
 
-      <AgenteEndSlot meetingId={record.id} title={record.title} variant={agenteVariant} surface="panel" />
+      <AgenteEndSlot
+        meetingId={record.id}
+        title={record.title}
+        variant={agenteVariant}
+        surface="panel"
+        panelSize={panelSize}
+        onPanelSizeChange={onPanelSizeChange}
+      />
 
       <div className="flex shrink-0 gap-2">
         <Button variant="secondary" size="compact" className="flex-1" onClick={onCopy}>

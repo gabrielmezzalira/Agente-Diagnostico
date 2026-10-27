@@ -12,7 +12,9 @@
  *     oferece "Continuar envio" (retoma da última parte confirmada, B3, plano 08-20) — nunca reenviar do zero;
  *   - descartar só acontece no botão de confirmar do modal; Esc, fundo e "Manter reunião" não mandam nada;
  *   - um comando por vez: o `busyRef` trava o segundo clique no mesmo instante;
- *   - na saída larga o seletor ocupa a tela inteira dentro do `AppShell`; no painel, ele entra no lugar.
+ *   - na saída larga o seletor ocupa a tela inteira dentro do `AppShell`; no painel, ele entra no lugar;
+ *   - abrir o seletor num painel compacto (320 px) sobe o painel para regular (564 px) — a lista não cabe em 320 px
+ *     (mesma regra do `AgenteLiveSlot`); a saída larga não tem tamanho de painel e não passa essas props.
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,6 +22,7 @@ import { toEndPromptView } from '@/features/agente/bindingView';
 import { useClientDirectory } from '@/shared/hooks/useClientDirectory';
 import { useMeetingAssociation } from '@/shared/hooks/useMeetingAssociation';
 import type { AgenteBindTarget, AgenteCommandError } from '@/shared/types/agenteMessages';
+import type { PanelSize } from '@/shared/types/domain';
 import { AppShell } from '@/shared/ui/AppShell';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmModal } from '@/shared/ui/ConfirmModal';
@@ -32,6 +35,10 @@ interface AgenteEndSlotProps {
   title: string;
   variant: 'card' | 'button';
   surface: 'panel' | 'wide';
+  /** Tamanho atual do painel do Meet (só faz sentido com `surface="panel"`). */
+  panelSize?: PanelSize;
+  /** Muda o tamanho do painel do Meet (só faz sentido com `surface="panel"`). */
+  onPanelSizeChange?: (size: PanelSize) => void;
   /** A reunião deixou de existir (descartada): quem hospeda a tela volta para a lista. */
   onDiscarded?: () => void;
 }
@@ -49,7 +56,15 @@ function viewForVariant(view: EndPromptView, variant: 'card' | 'button'): EndPro
     : view;
 }
 
-export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded }: AgenteEndSlotProps) {
+export function AgenteEndSlot({
+  meetingId,
+  title,
+  variant,
+  surface,
+  panelSize,
+  onPanelSizeChange,
+  onDiscarded,
+}: AgenteEndSlotProps) {
   const { association, bind, discard, resumeSend } = useMeetingAssociation(meetingId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -69,6 +84,7 @@ export function AgenteEndSlot({ meetingId, title, variant, surface, onDiscarded 
   const openPicker = (): void => {
     setPickerError(null);
     setPickerOpen(true);
+    if (surface === 'panel' && panelSize === 'compact') onPanelSizeChange?.('regular');
   };
 
   const handleBind = async (target: AgenteBindTarget): Promise<void> => {
