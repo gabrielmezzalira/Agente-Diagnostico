@@ -20,8 +20,14 @@
 # =============================================================================
 
 import asyncio
+import typing
 
-from app.routers.webhook import ExtensionChunk, extension_webhook
+from fastapi.routing import APIRoute
+
+from app.models.projects import ProjectCreate, TranscriptSource
+from app.models.sessions import SessionResponse
+from app.routers import webhook as webhook_mod
+from app.routers.webhook import ExtensionChunk, extension_webhook, verify_extension_key
 from app.services import pipeline as pipeline_mod
 
 _PAYLOAD_WITH_CHUNK_ID = {
@@ -98,3 +104,60 @@ async def test_extension_webhook_persists_chunk_id(monkeypatch):
         })
     ]
     assert pushed == [("s", "t", None)]
+
+
+# =============================================================================
+# Fase 9 / plano 09-01 — SC3: o contrato que a Taqciti usa continua de pé depois
+# de aposentar a extensão antiga; D-00a, D-14.
+#
+# A extensão antiga (pasta extension/) sai do repositório nos planos 09-05/09-06.
+# O nome dela é parecido com o da porta que a Taqciti usa (/webhook/extension,
+# ExtensionChunk, source=extension), então estes testes ficam vermelhos se alguém
+# "limpar" a porta junto. Só leitura: nenhum teste toca rede, banco ou .env.
+# =============================================================================
+
+
+def test_sc3_post_webhook_extension_registered_with_202_and_gate():
+    routes = {
+        (method, route.path): route
+        for route in webhook_mod.router.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods
+    }
+
+    route = routes[("POST", "/webhook/extension")]
+
+    assert route.status_code == 202
+    assert verify_extension_key in [dep.call for dep in route.dependant.dependencies]
+
+
+def test_sc3_openapi_exposes_webhook_extension_and_chunk_contract():
+    from app.main import app  # import tardio: não pesa no resto do arquivo
+
+    spec = app.openapi()
+    chunk_schema = spec["components"]["schemas"]["ExtensionChunk"]
+
+    assert "post" in spec["paths"]["/webhook/extension"]
+    assert set(chunk_schema["properties"]) == {"session_id", "text", "speaker", "chunk_id"}
+    assert {"session_id", "text"} <= set(chunk_schema["required"])
+
+
+def test_sc3_source_enum_still_accepts_extension():
+    assert "extension" in typing.get_args(TranscriptSource)
+    assert ProjectCreate(name="ZZ-TESTE", client="ZZ-TESTE").source == "extension"
+
+
+def test_sc3_historical_extension_session_still_resolves():
+    session = SessionResponse.model_validate({
+        "id": "00000000-0000-0000-0000-000000000001",
+        "project_id": "00000000-0000-0000-0000-000000000002",
+        "source": "extension",
+        "status": "finished",
+        "tokens_used": 0,
+        "cost_usd": 0,
+        "started_at": "2026-01-01T10:00:00+00:00",
+        "finished_at": "2026-01-01T11:00:00+00:00",
+    })
+
+    assert session.source == "extension"
+    assert session.status == "finished"
