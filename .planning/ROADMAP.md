@@ -327,7 +327,32 @@ Plans:
   2. The `extension/` directory and its packaged zip are removed from the repository
   3. The `/webhook/extension` endpoint, the `ExtensionChunk` model, and the `extension` source enum value remain intact in the backend, so historical sessions referencing them still resolve
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — Branch da fase + docs de planejamento versionados + TRACER: semente de regressão SC3 (4 testes `test_sc3_*` do contrato `/webhook/extension`, `ExtensionChunk`, `source=extension`) (TAQ-04)
+
+**Wave 2** *(bloqueada na conclusão da Wave 1)*
+
+- [ ] 09-02-PLAN.md — Deploy, release e roteiro: `09-UAT.md` com a ordem da prova SC1 (D-03), SQLs read-only e limpeza por id
+
+**Wave 3** *(bloqueada na conclusão da Wave 2)*
+
+- [ ] 09-03-PLAN.md — Prova SC1: reunião real só com a Taqciti + gate D-02
+
+**Wave 4** *(bloqueada na conclusão da Wave 3)*
+
+- [ ] 09-04-PLAN.md — Página da Taqciti (URL da release informada pelo time, D-05)
+- [ ] 09-07-PLAN.md — Limpeza dos dados de teste (sessões por id e projeto ZZ-TESTE)
+
+**Wave 5** *(bloqueada na conclusão da Wave 4)*
+
+- [ ] 09-05-PLAN.md — `git rm` do zip empacotado e de `extension/` (SC2)
+
+**Wave 6** *(bloqueada na conclusão da Wave 5)*
+
+- [ ] 09-06-PLAN.md — Comentários do subtree da Taqciti e docs que citavam arquivos apagados (refator só de comentário, D-10)
 
 ### Phase 10: AGP Question Panel in Taqciti
 
