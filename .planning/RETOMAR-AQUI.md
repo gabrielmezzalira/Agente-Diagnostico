@@ -1,5 +1,7 @@
 # RETOMAR AQUI — guia para continuar em outro PC/conta
 
+> **⚠️ DESATUALIZADO (2026-10-26).** O estado atual e o plano das Fases 9 e 10 estão em `.planning/HANDOFF-FASE-09-10.md`. Este arquivo é o histórico de 2026-10-12.
+
 **Atualizado:** 2026-10-12 · **Branch:** `feat/fase-08-taqciti-session-association` · **Projeto:** Agente Diagnóstico (CITi)
 
 > Este arquivo existe porque a memória do Claude (fora do repo) não viaja entre PCs. Tudo o que importa está aqui e em `.planning/`.

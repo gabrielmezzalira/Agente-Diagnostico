@@ -1,5 +1,7 @@
 # Pendências da Fase 8 — o que fazer e o que testar
 
+> **⚠️ DESATUALIZADO (2026-10-26).** O estado atual e o plano das Fases 9 e 10 estão em `.planning/HANDOFF-FASE-09-10.md`. Este arquivo é o histórico de 2026-10-12.
+
 **Atualizado:** 2026-10-12 · **Branch:** `feat/fase-08-taqciti-session-association`
 Complementa o `RETOMAR-AQUI.md`. Marque `[x]` conforme for fechando.
 
