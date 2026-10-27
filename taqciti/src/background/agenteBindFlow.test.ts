@@ -910,6 +910,83 @@ describe('continuar o envio com fala que cresceu depois do vínculo (WR-04)', ()
   });
 });
 
+describe('reinício do service worker no meio do vínculo ao vivo (WR-05)', () => {
+  /** m1 ao vivo com 5 falas, vinculada a uma sessão, com `done` partes já confirmadas e o service worker recém-acordado. */
+  async function setupInterrupted(done: number, options: SetupOptions = {}) {
+    const segments = segmentsOf(5);
+    const context = await setup({ meeting: meetingState('m1', segments), ...options });
+    await context.created();
+    await context.store.applyAssociationEvent('m1', {
+      type: 'link-started',
+      origin: 'manual-id',
+      clientName: 'Sessão manual',
+      sessionId: OTHER_SESSION_ID,
+    });
+    if (done > 0) await context.store.applyAssociationEvent('m1', { type: 'link-progress', done, total: 5 });
+    return { ...context, segments };
+  }
+
+  it('relança o envio a partir de sendProgress.done, para a mesma sessão, e termina linked com a semente', async () => {
+    const { flow, store, bodies, onLinked, segments } = await setupInterrupted(2);
+
+    expect(await flow.resumeLiveLink('m1')).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    expect(bodies().map((body) => body.chunk_id)).toEqual(['bulk:m1:2', 'bulk:m1:3', 'bulk:m1:4']);
+    expect(bodies().every((body) => body.session_id === OTHER_SESSION_ID)).toBe(true);
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'linked',
+      sessionId: OTHER_SESSION_ID,
+      seedSent: seedOf(segments),
+    });
+    expect(onLinked).toHaveBeenCalledTimes(1);
+  });
+
+  it('sem progresso gravado recomeça do zero', async () => {
+    const { flow, bodies } = await setupInterrupted(0);
+    await flow.resumeLiveLink('m1');
+    await flow.whenIdle();
+    expect(bodies()).toHaveLength(5);
+  });
+
+  it('a nova falha do envio relançado para em send-failed (sem laço)', async () => {
+    const { flow, store } = await setupInterrupted(2, { respond: () => ({ ok: false, status: 500 }) as Response });
+    await flow.resumeLiveLink('m1');
+    await flow.whenIdle();
+    expect(await store.getAssociation('m1')).toMatchObject({ state: 'send-failed', error: 'send' });
+  });
+
+  it('recusa quando a reunião não está mais ao vivo ou não existe associação; nada é enviado', async () => {
+    const { flow, world, send } = await setupInterrupted(2);
+    world.meeting = IDLE_STATE;
+    expect(await flow.resumeLiveLink('m1')).toEqual({ ok: false, error: 'invalid-state' });
+    expect(await flow.resumeLiveLink('nada')).toEqual({ ok: false, error: 'not-found' });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('recusa quando o estado não é linking (pending)', async () => {
+    const { flow, created, send } = await setup();
+    await created();
+    expect(await flow.resumeLiveLink('m1')).toEqual({ ok: false, error: 'invalid-state' });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('streaming desligado: não relança e a associação para em send-failed', async () => {
+    const { flow, store, send } = await setupInterrupted(2, { config: { ...READY_CONFIG, streamingEnabled: false } });
+    expect(await flow.resumeLiveLink('m1')).toEqual({ ok: false, error: 'unavailable' });
+    expect(send).not.toHaveBeenCalled();
+    expect(await store.getAssociation('m1')).toMatchObject({ state: 'send-failed', error: 'send' });
+  });
+
+  it('dois relançamentos simultâneos: um ok, o outro invalid-state, cada parte sai uma vez', async () => {
+    const { flow, bodies } = await setupInterrupted(2);
+    const results = await Promise.all([flow.resumeLiveLink('m1'), flow.resumeLiveLink('m1')]);
+    await flow.whenIdle();
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(bodies().map((body) => body.chunk_id)).toEqual(['bulk:m1:2', 'bulk:m1:3', 'bulk:m1:4']);
+  });
+});
+
 describe('comando ui/agente/meeting/resume-send (plano 08-20, Task 2)', () => {
   it('uiMessageSchema aceita o comando e recusa meetingId vazio', async () => {
     const { uiMessageSchema } = await import('@/shared/types/messages');

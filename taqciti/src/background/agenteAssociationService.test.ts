@@ -290,3 +290,38 @@ describe('discard (D-11, T7) — só ended-unsent, só local', () => {
     expect(deleteRecord).not.toHaveBeenCalled();
   });
 });
+
+describe('resumeLiveLinksAfterRestart (WR-05)', () => {
+  it('relança só o vínculo ao vivo interrompido (linking com sessão) e ignora os demais', async () => {
+    vi.resetModules();
+    installChromeStorageMock({});
+    const { createAgenteAssociationService } = await import('./agenteAssociationService');
+    const store = await import('@/shared/config/agenteAssociationStore');
+    const send = vi.fn(() => Promise.resolve({ ok: true, status: 202 } as Response));
+    const meeting = {
+      phase: 'recording',
+      session: { meetingId: 'm1', title: 'T', segments: [{ captionId: 'c0', speaker: 'Ana', text: 'oi gente', startOffsetMs: 0, endOffsetMs: 1 }] },
+    } as unknown as MeetingState;
+    const service = createAgenteAssociationService({
+      directory: createFakeClientDirectory([]),
+      sessions: createFakeSessionGateway(),
+      getMeetingState: () => meeting,
+      getRecord: () => Promise.resolve(null),
+      deleteRecord: () => Promise.resolve(),
+      resetEndedMeeting: () => Promise.resolve(),
+      loadConfig: () => Promise.resolve({ ...DEFAULT_AGENTE_CONFIG, streamingEnabled: true, agenteBackendUrl: 'https://agente.test', agenteApiKey: 'k' }),
+      send,
+      sleep: () => Promise.resolve(),
+    });
+    await store.applyAssociationEvent('m1', { type: 'created' });
+    await store.applyAssociationEvent('m1', { type: 'link-started', origin: 'manual-id', clientName: 'X', sessionId: UUID });
+    await store.applyAssociationEvent('m2', { type: 'created' }); // pending: não é tocado
+
+    await service.resumeLiveLinksAfterRestart();
+    await service.whenIdle();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((await store.getAssociation('m1'))?.state).toBe('linked');
+    expect((await store.getAssociation('m2'))?.state).toBe('pending');
+  });
+});

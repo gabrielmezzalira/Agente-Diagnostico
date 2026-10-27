@@ -48,12 +48,21 @@ import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 // B4-b: o agendador do encerramento precisa saber se a reunião está ao vivo; sem isto ninguém é encerrado.
 configureAgenteSessionFinisher({ isMeetingLive: (meetingId) => isMeetingLive(getState(), meetingId) });
 
+/** WR-05: o envio em partes interrompido pelo reinício do service worker volta a andar; falha só vai para o log. */
+function relaunchLiveLinks(): Promise<void> {
+  return agenteAssociation
+    .resumeLiveLinksAfterRestart()
+    .catch((error: unknown) => logger.error('relançar o vínculo ao vivo interrompido falhou', error));
+}
+
 const ready: Promise<void> = migrateLocalStorage()
   .then(() => hydrate())
   // Sem await: o streamer do Agente nunca atrasa os handlers de mensagem (WR-02).
   .then(() => void resumeAgenteStreamer())
   .then(() => recoverInterruptedMeetings())
   .then(() => recoverAssociationsAfterRestart(getState()))
+  // Sem await: o envio relançado do vínculo ao vivo (WR-05) nunca atrasa os handlers de mensagem.
+  .then(() => void relaunchLiveLinks())
   // Sem await: a varredura do encerramento nunca atrasa os handlers de mensagem.
   .then(() => void agenteSessionFinisher.rescheduleAfterRestart())
   .then(() => ensurePanelPrefs())

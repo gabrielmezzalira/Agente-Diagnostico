@@ -78,4 +78,5 @@ export const agenteAssociation = {
     activeService.bind(meetingId, target),
   discard: (meetingId: string) => activeService.discard(meetingId),
   resumeSend: (meetingId: string) => activeService.resumeSend(meetingId),
+  resumeLiveLinksAfterRestart: () => activeService.resumeLiveLinksAfterRestart(),
 };

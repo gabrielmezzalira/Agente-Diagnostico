@@ -302,6 +302,18 @@ describe('recuperação no boot do service worker (D-04, Pitfall 10)', () => {
     expect(map.c).toMatchObject({ state: 'ended-unsent', error: 'create-session' });
   });
 
+  it('linking com sessionId da reunião AO VIVO (WR-05) continua linking: o envio é relançado, não cai em send-failed', async () => {
+    const map = await recover(
+      {
+        live: association('live', { state: 'linking', sessionId: SESSION_ID, origin: 'picker', sendProgress: { done: 4, total: 9 } }),
+        old: association('old', { state: 'linking', sessionId: SESSION_ID }),
+      },
+      liveState,
+    );
+    expect(map.live).toMatchObject({ state: 'linking', sessionId: SESSION_ID, sendProgress: { done: 4, total: 9 } });
+    expect(map.old).toMatchObject({ state: 'send-failed', error: 'send' }); // fora do ar: "Continuar envio"
+  });
+
   it('pending/choosing/deferred de reunião que não é a ao vivo viram ended-unsent; a da ao vivo fica', async () => {
     const map = await recover(
       {

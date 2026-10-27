@@ -10,8 +10,10 @@ import { sortClients } from '@/features/agente/clientSearch';
 import {
   applyAssociationEvent,
   getAssociation,
+  loadAssociations,
   removeAssociation,
 } from '@/shared/config/agenteAssociationStore';
+import { logger } from '@/shared/services/log';
 import type { MeetingPhase, MeetingState } from '@/shared/types/domain';
 import type {
   AgenteBindTarget,
@@ -79,8 +81,26 @@ export function createAgenteAssociationService(deps: AgenteAssociationServiceDep
     return { ok: true };
   }
 
+  /**
+   * Boot do service worker (WR-05): relança o envio em partes de todo vínculo ao vivo que o reinício interrompeu
+   * (`linking` com sessão, reunião ainda ao vivo). Só dispara — o envio roda em segundo plano — e uma falha numa
+   * reunião vai para o log sem impedir as outras.
+   */
+  async function resumeLiveLinksAfterRestart(): Promise<void> {
+    const associations = await loadAssociations();
+    for (const { meetingId, state, sessionId } of Object.values(associations)) {
+      if (state !== 'linking' || sessionId === undefined) continue;
+      try {
+        await bindFlow.resumeLiveLink(meetingId);
+      } catch (error) {
+        logger.error('retomar o vínculo ao vivo interrompido falhou', error);
+      }
+    }
+  }
+
   return {
     listClients,
+    resumeLiveLinksAfterRestart,
     open: (meetingId: string) => transition(meetingId, { type: 'opened' }, 'choosing'),
     defer: (meetingId: string) => transition(meetingId, { type: 'deferred' }, 'deferred'),
     bind: (meetingId: string, target: AgenteBindTarget) =>

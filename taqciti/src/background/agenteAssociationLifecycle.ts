@@ -98,7 +98,8 @@ export async function syncAssociationLifecycle(prev: MeetingState, next: Meeting
 
 /**
  * O que tirar de uma associação que o service worker encontrou ao acordar. `live` = é a reunião que está
- * ao vivo agora. Cada resultado é um estado com tela e com saída; `linked`, `sent` e `send-failed` de
+ * ao vivo agora. Cada resultado é um estado com tela e com saída (`linking` com sessão e ao vivo é a exceção:
+ * o envio em partes é relançado em seguida); `linked`, `sent` e `send-failed` de
  * reunião que não está ao vivo já têm onde ser tratados e ficam como estão (inclusive os encerrados).
  */
 function recoveryEvents(association: MeetingAssociation, live: boolean): AssociationEvent[] {
@@ -120,9 +121,10 @@ function stateRecoveryEvents(association: MeetingAssociation, live: boolean): As
   const hasSession = association.sessionId !== undefined;
   switch (association.state) {
     case 'linking':
-      return hasSession
-        ? [{ type: 'link-failed', error: 'send' }]
-        : [{ type: 'link-failed', error: 'create-session' }, ...ended];
+      // Com sessão e a reunião ao vivo (WR-05): fica `linking`; o envio em partes é relançado logo depois
+      // (`resumeLiveLinksAfterRestart`). Com a reunião fora do ar, o "Continuar envio" é o caminho.
+      if (hasSession) return live ? [] : [{ type: 'link-failed', error: 'send' }];
+      return [{ type: 'link-failed', error: 'create-session' }, ...ended];
     case 'sending':
       return hasSession
         ? [{ type: 'send-failed', error: 'send' }]

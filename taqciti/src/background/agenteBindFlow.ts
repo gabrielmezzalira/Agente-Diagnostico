@@ -189,12 +189,43 @@ export function createBindFlow(deps: BindFlowDeps) {
     }
   }
 
+  /**
+   * O service worker reiniciou no meio do vínculo ao vivo (WR-05): a associação segue em `linking` COM sessão e a
+   * reunião continua ao vivo. Em vez de parar em `send-failed` sem saída (o "Continuar envio" recusa reunião ao
+   * vivo), relança o envio em partes a partir de `sendProgress.done`, com tudo o que já foi falado. Sem
+   * `sendProgress` recomeça do zero — os ids determinísticos fazem o backend descartar o que já entrou.
+   * Retomada fora da hora (outro estado, reunião fora do ar) é recusada sem mudar nada.
+   */
+  async function resumeLiveLink(meetingId: string): Promise<AgenteCommandResult> {
+    if (inFlight.has(meetingId)) return bindFail('invalid-state');
+    inFlight.add(meetingId);
+    try {
+      const association = await getAssociation(meetingId);
+      if (association === null) return bindFail('not-found');
+      const { sessionId } = association;
+      if (association.state !== 'linking' || sessionId === undefined) return bindFail('invalid-state');
+      if (!isLive(deps.getMeetingState(), meetingId)) return bindFail('invalid-state');
+
+      const config = await deps.loadConfig();
+      if (!config.streamingEnabled || !isValidAgenteBackendUrl(config.agenteBackendUrl)) {
+        // Sem destino válido não há o que relançar: para em `send-failed` (como antes desta retomada).
+        await applyAssociationEvent(meetingId, { type: 'link-failed', error: 'send' });
+        return bindFail('unavailable');
+      }
+      const parts = planMeetingUpload(meetingId, await spokenSegments(meetingId));
+      startUpload(meetingId, sessionId, parts, association.sendProgress?.done ?? 0);
+      return { ok: true };
+    } finally {
+      inFlight.delete(meetingId);
+    }
+  }
+
   /** Só para testes: espera os envios em partes que estão rodando em segundo plano. */
   async function whenIdle(): Promise<void> {
     await Promise.all([...uploads]);
   }
 
-  return { bind, resumeSend, whenIdle };
+  return { bind, resumeSend, resumeLiveLink, whenIdle };
 }
 
 export type BindFlow = ReturnType<typeof createBindFlow>;
