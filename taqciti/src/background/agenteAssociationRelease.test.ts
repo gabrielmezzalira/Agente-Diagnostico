@@ -14,7 +14,7 @@ const KEY = STORAGE_KEYS.agenteAssociations;
 async function boot(associations: Record<string, MeetingAssociation>) {
   vi.resetModules();
   const mock = installChromeStorageMock({ local: { [KEY]: associations } });
-  const evaluate = vi.fn((_meetingId: string) => Promise.resolve());
+  const evaluate = vi.fn<(meetingId: string) => Promise<void>>(() => Promise.resolve());
   vi.doMock('./agenteSessionFinisher', () => ({ agenteSessionFinisher: { evaluate } }));
   const { releaseMeetingAssociation } = await import('./agenteAssociationRelease');
   const map = () => mock.local.values[KEY] as Record<string, MeetingAssociation>;
