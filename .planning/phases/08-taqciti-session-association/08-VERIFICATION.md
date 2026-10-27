@@ -1,8 +1,8 @@
 ---
 phase: 08-taqciti-session-association
-verified: 2026-10-26T23:30:00Z
-status: gaps_found
-score: 6/7 must-haves verified
+verified: 2026-10-27T00:15:00Z
+status: human_needed
+score: 7/7 must-haves verified
 covered_files:
   - ".planning/phases/08-taqciti-session-association/08-01-PLAN.md"
   - ".planning/phases/08-taqciti-session-association/08-01-SUMMARY.md"
@@ -58,6 +58,8 @@ covered_files:
   - ".planning/phases/08-taqciti-session-association/08-26-SUMMARY.md"
   - ".planning/phases/08-taqciti-session-association/08-27-PLAN.md"
   - ".planning/phases/08-taqciti-session-association/08-27-SUMMARY.md"
+  - ".planning/phases/08-taqciti-session-association/08-28-PLAN.md"
+  - ".planning/phases/08-taqciti-session-association/08-28-SUMMARY.md"
   - "backend/app/models/projects.py"
   - "backend/app/repositories/transcript_chunks_repository.py"
   - "backend/app/routers/extension_clients.py"
@@ -69,143 +71,191 @@ covered_files:
   - "taqciti/src/background/agenteStreamDestination.ts"
   - "taqciti/src/background/agenteStreamer.ts"
   - "taqciti/src/background/agenteStreamerInstance.ts"
+  - "taqciti/src/background/meetingTabNavigated.test.ts"
   - "taqciti/src/background/meetingTabNavigated.ts"
+  - "taqciti/src/background/meetingTabNavigatedFlow.test.ts"
+  - "taqciti/src/content/providers/googleMeet/GoogleMeetProvider.ts"
+  - "taqciti/src/content/providers/googleMeet/selectors.ts"
   - "taqciti/src/features/agente/association.ts"
   - "taqciti/src/features/agente/finishPolicy.ts"
   - "taqciti/src/features/agente/sendRetryPolicy.ts"
+  - "taqciti/src/features/meeting/meetingCode.test.ts"
+  - "taqciti/src/features/meeting/meetingCode.ts"
   - "taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx"
-covered_digest: "v4:sha256:cb595cf765644a570630a1f8a56aab91d48efc337194a3a5d083fac924fc4321"
+covered_digest: "v4:sha256:f5b8792139c74e7c9efe2e5cc586421502e861065334943ef491dde32eae2998"
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "SC5 — um encontro ao vivo nunca é encerrado (e a captura de uma reunião ao vivo não para sozinha)"
-    status: failed
-    reason: "Desde o commit 861db11 o Meet reescreve todo link para meet.google.com/meet/<código>, e o content script já reconhece esse formato. Mas o service worker decide 'a aba ainda está na sala?' com outra regra (isStillInMeetingRoom), que só olha o PRIMEIRO trecho do caminho. No formato novo esse trecho é 'meet', então a função devolve false para a própria sala. Qualquer mudança de URL na aba durante a call (?authuser, #hash, reescrita do endereço) dispara MEETING_FINISHED com a reunião ao vivo: a reunião passa a 'ended', o agendador de encerramento enxerga a reunião como não ao vivo e pode fechar a sessão do Agente no meio da call, e como o content script continua com inMeeting=true ele não anuncia a reunião de novo, então a captura e o envio param em silêncio até a pessoa sair e entrar. Reproduzido com a função real (cópia byte a byte): /abc-defg-hij => true; /meet/abc-defg-hij => false; /meet/abc-defg-hij?authuser=1 => false; /meet/abc-defg-hij#x => false. É o CR-02 (crítico, 'open') do 08-REVIEW.md. Os testes de meetingTabNavigated só cobrem o formato antigo."
-    artifacts:
-      - path: "taqciti/src/background/meetingTabNavigated.ts"
-        issue: "linhas 36-37: compara o primeiro segmento do caminho com o código da sala; no formato /meet/<código> o primeiro segmento é 'meet'"
-      - path: "taqciti/src/content/providers/googleMeet/selectors.ts"
-        issue: "MEETING_CODE_PATTERN (formato novo) e isStillInMeetingRoom (formato antigo) são duas regras para o mesmo conceito e divergiram"
-    missing:
-      - "Uma função pura única (ex.: meetingCodeFromPath) usada pelo content script e pelo service worker, aceitando o prefixo opcional meet/"
-      - "Casos novos em meetingTabNavigated.test.ts: /meet/<código>, /meet/<código>?authuser=1 e a troca /<código> -> /meet/<código>, todos esperando 'nada acontece'"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 6/7
+  gaps_closed:
+    - "SC5 — um encontro ao vivo nunca é encerrado (e a captura de uma reunião ao vivo não para sozinha): CR-02, corrigido pelo plano 08-28 (commits ed6b961, 2b40de1)"
+  gaps_remaining: []
+  regressions: []
+human_verification:
+  - test: "Mudar a URL sem sair da call, em meet.google.com/meet/<código> (roteiro 08-28, seção 7, passos 1 a 6). Recarregar a extensão (cd taqciti && npm run build, depois o botão de recarregar em chrome://extensions), abrir https://meet.google.com/new, ligar as legendas, vincular um cliente de teste na bolha '!'. Depois, no Console (F12): history.replaceState(null, '', location.pathname + '?authuser=1'); em outra rodada, acrescentar #teste na barra de endereço e dar Enter; opcionalmente trocar o formato com history.replaceState(null, '', location.pathname.replace('/meet/', '/')) e depois history.replaceState(null, '', '/meet' + location.pathname)."
+    expected: "Depois de CADA mudança: o painel da Taqciti continua na tela da reunião ao vivo (não vai para 'Transcrição salva'); a barra segue 'Enviando ao vivo para ...'; uma frase nova aparece na Taqciti e na tela da sessão no web app; passado 1 minuto, a sessão no web app continua ativa (não encerrada). Antes da correção o painel ia na hora para 'Transcrição salva' e a sessão era encerrada em segundos."
+    why_human: "Depende do Meet real, da extensão carregada no Chrome, do backend e do Supabase. Os testes cobrem a regra (função real, máquina de estados real), mas só a call real prova que o Meet entrega a URL nesse formato e que o service worker recebe o chrome.tabs.onUpdated como esperado."
+  - test: "DA-4 continua igual (roteiro 08-28, seção 7, passo 7): na mesma aba da call, digitar https://example.com e dar Enter."
+    expected: "A reunião termina (aparece no histórico) e a sessão no web app é encerrada em poucos segundos."
+    why_human: "Confirma, no Chrome real, que a correção não tirou o encerramento de quem realmente sai da sala. Os testes unitários e de fluxo já cobrem, mas o encerramento da sessão do Agente (alarme + backend) só se vê ao vivo."
+  - test: "Limpeza dos dados de teste (roteiro 08-28, seção 7, passo 8): anotar o id da sessão criada na lista de limpeza do 08-UAT.md."
+    expected: "A sessão de teste fica registrada para remoção do Supabase de produção."
+    why_human: "Os dados do teste manual ficam no Supabase de produção; a limpeza é decisão e ação do time."
 ---
 
 # Fase 8: Associação de sessão na Taqciti — Relatório de Verificação
 
 **Objetivo da fase:** Uma reunião da Taqciti se vincula a uma sessão de discovery do backend por meio de uma escolha explícita de cliente por reunião (substitui o auto-detect por localStorage, decidido no D-01 do `08-CONTEXT.md`); trechos nunca são atribuídos sem um vínculo explícito.
-**Verificado em:** 2026-10-26
-**Status:** gaps_found
-**Re-verificação:** Não — verificação inicial (não havia VERIFICATION.md anterior)
+**Verificado em:** 2026-10-27
+**Status:** human_needed
+**Re-verificação:** Sim, depois do plano de fechamento de lacuna 08-28 (CR-02)
 
 ## Alcance do objetivo
 
 ### Verdades observáveis
 
-As 5 verdades do contrato do ROADMAP (critérios de sucesso 1 a 5) foram verificadas sempre, mais duas verdades de contrato vindas dos checkpoints de decisão do time (B1/B2/B3).
+As 5 verdades do contrato do ROADMAP (critérios de sucesso 1 a 5) foram reverificadas, mais as duas verdades de contrato vindas dos checkpoints de decisão do time (B1/B2/B3). Itens que já passavam fizeram checagem de regressão (o código não mudou, ver abaixo); o item que falhava (SC5) fez a verificação completa nos três níveis.
+
+Prova de que nada mais mudou: `git diff --stat b8bf375 HEAD -- . ':!.planning'` (b8bf375 é o commit da verificação anterior) lista só 7 arquivos, todos da Taqciti ligados ao plano 08-28. Nenhum arquivo de backend, de migração, do vínculo, da fila ou da tela de configuração foi tocado.
 
 | # | Verdade | Status | Evidência |
 |---|---------|--------|-----------|
-| 1 | Ao detectar a reunião, a Taqciti pede para escolher cliente (lista pesquisável ou criar novo) ou adiar; escolher cria uma sessão nova no backend e a fala da reunião segue para ela | ✓ VERIFIED | `agenteAssociationLifecycle.ts:89` cria a associação `pending` ao detectar. `PanelApp.tsx:366,427` monta `AgenteNudgeAnchor` (bolha "!"); `PanelApp.tsx:482` monta `AgenteLiveSlot`; `RecordDetail.tsx:80` e `PanelApp.tsx:681` montam `AgenteEndSlot`. `agenteBindTarget.ts` resolve `client`/`new-client`/`manual`. `extension_clients.py:37-60` expõe `GET/POST /clients` e `POST /sessions` (cria sessão `active`, `source='extension'`, 404 se o projeto não existe). `agenteStreamer.ts:75` usa `createAssociationDestination` em produção. UAT 6, 10 e D-20 confirmaram no Meet real (sessão criada, falas 202, finish 200). |
-| 2 | Reunião adiada fica só na Taqciti e não envia nada até haver cliente (fim da reunião ou painel); "Descartar" pede confirmação e remove só do histórico local | ✓ VERIFIED | `agenteStreamDestination.ts:76-91`: só `linked` com `sessionId` válido vira `send`; `pending`/`deferred`/sem associação viram `idle`; `linking` vira `hold`. `agenteAssociationService.ts` `discard`: só vale em `ended-unsent` e fora do ar (regra no service worker, não na UI), chama `deleteRecord` + `removeAssociation`, sem chamada ao backend. `AgenteEndSlot.tsx:160-164` usa `ConfirmModal` ("Descartar esta reunião?"). Testes: `agenteStreamerAssociation.test.ts` ("reunião sem associação: o ID salvo na config não envia nada") e `agenteAssociationService.test.ts` passam (execução própria, 147/147 nos 7 arquivos-chave). |
-| 3 | O campo de ID manual da Fase 7 fica escondido, só aparece quando a lista de clientes não carrega; trecho só é atribuído a sessão com vínculo explícito, nunca por palpite ou padrão silencioso | ✓ VERIFIED | `AgenteConfigScreen.tsx:108-129`: o campo `agente-session-id` só renderiza com `directory.status === 'error'`. B5: salvar o ID só chama `bindLiveMeeting` (vínculo explícito da reunião ao vivo sem cliente). `grep` por `agenteSessionId` em `background/` mostra que o ID da config só entra no `configDestination` (Fase 7), que não está ligado em produção (`agenteStreamer.ts:136` só o usa se `destination` ausente, e `agenteStreamer.ts:75` injeta a política de associação). `backend`: `webhook.py:43-53` devolve 404 para sessão inexistente (CR-01 corrigido em `664c033`). |
-| 4 | Com o Agente fora do ar durante a reunião, as falas não enviadas ficam guardadas e são reenviadas na volta, e a pessoa é avisada na tela | ✓ VERIFIED | `outbox.ts:35` `AGENTE_OUTBOX_RESEND_ENABLED = true`; `sendRetryPolicy.ts` classifica 5xx/429/rede como `retryable` e `classifyExhausted` mantém o item no topo (`hold`) com `AGENTE_OUTBOX_SERVER_ERROR_MAX_AGE_MS = null` (B3-b "retirada-nunca"). `bindingView.ts:27` mostra o estado `offline` e `bindingView.ts:118` a recuperação ("Agente de volta"). Idempotência: `transcript_chunks_repository.py` trata `23505` como duplicata (202 sem reprocessar) e a migração `20261011000000` foi conferida em produção no UAT 9 (coluna e índice únicos). `sendRetryPolicy.test.ts` e `test_webhook_idempotency.py` passam. UAT 11 (queda, reinício do service worker e reenvio) passou. |
-| 5 | Sessões criadas pela Taqciti são encerradas automaticamente (fim da reunião, inclusive fechar a aba, com a fila vazia; 5 min com envio parado); reunião ao vivo nunca é encerrada; voltar à mesma sala depois do encerramento = reunião nova | ✗ FAILED (parcial) | O agendador está correto e testado: `finishPolicy.ts:15` `AGENTE_STALLED_SEND_CLOSE_MS = 5*60_000`; `agenteSessionFinisherInstance.ts:57,101` confere `isMeetingLive` antes de chamar o backend; `manifest.config.ts:155` tem a permissão `alarms`; `index.ts:58,125` religa no boot e nos alarmes; `extension_session_service.py:117-154` `finish_session` idempotente, só `source='extension'`. **Porém**, `meetingTabNavigated.ts:36-37` (DA-4) quebra a garantia "reunião ao vivo nunca é encerrada" no formato de endereço que o Meet usa hoje (`/meet/<código>`): ver Lacunas. Reproduzido executando a função real. |
-| 6 | Contratos de API aprovados pelo time existem e funcionam: rotas da extensão (B1), chave Gemini opcional na criação de projeto (B2), `chunk_id` idempotente no webhook (B3) | ✓ VERIFIED | `extension_clients.py` montado em `main.py:81`; gate `verify_extension_key` em todas as rotas; `create_client` devolve 409 por nome duplicado sem acento/caixa e cria com `mode='discovery'`, sem chave Gemini. `models/projects.py:38,65`: `gemini_api_key: Optional[str] = None`; `routers/projects.py:61` só grava no Vault se vier chave. `webhook.py:20` `chunk_id` com `max_length=200`. Execução própria: `pytest test_webhook_idempotency / test_extension_clients / test_webhook_auth / test_extension_chunk_extra_fields / test_projects` = 66 passed, 4 skipped. |
-| 7 | O requisito TAQ-02 está coberto por todos os planos que o declaram | ✓ VERIFIED | Os 27 planos declaram `requirements: [TAQ-02]`; nenhum ID é órfão (ver Cobertura de requisitos). |
+| 1 | Ao detectar a reunião, a Taqciti pede para escolher cliente (lista pesquisável ou criar novo) ou adiar; escolher cria uma sessão nova no backend e a fala da reunião segue para ela | ✓ VERIFIED | Regressão: arquivos de associação, slots de UI, `extension_clients.py` e `agenteStreamer.ts` sem alteração desde a verificação anterior. `agenteStreamDestination.ts:76-91` só devolve `send` para associação `linked` com sessão válida. UAT 6, 10 e D-20 já confirmaram no Meet real. A detecção da reunião no content script continua igual: o `GoogleMeetProvider.test.ts` (15 testes, intocado) passa. |
+| 2 | Reunião adiada fica só na Taqciti e não envia nada até haver cliente; "Descartar" pede confirmação e remove só do histórico local | ✓ VERIFIED | Regressão: `agenteStreamDestination.ts:76-88` (`pending`/`deferred`/sem associação viram `idle`, `linking` vira `hold`), sem alteração. Suíte completa da Taqciti passa (ver spot-checks). |
+| 3 | Campo de ID manual escondido (só aparece com a lista de clientes fora do ar); trecho só é atribuído a sessão com vínculo explícito | ✓ VERIFIED | `AgenteConfigScreen.tsx:108-129` renderiza o campo só com `directory.status === 'error'` (lido de novo agora). `agenteSessionId` em `background/` só aparece em `agenteBindUpload.ts`, `agenteStreamDestination.ts` e `agenteStreamerInstance.ts`, todos pela associação. Backend: 66 passed, 4 skipped no pytest escopado, incluindo o 404 de sessão inexistente. |
+| 4 | Com o Agente fora do ar durante a reunião, as falas não enviadas ficam guardadas e são reenviadas na volta, e a pessoa é avisada na tela | ✓ VERIFIED | Regressão: `sendRetryPolicy.ts`, outbox, idempotência por `chunk_id` e migração sem alteração; `sendRetryPolicy.test.ts` e `test_webhook_idempotency.py` passam. UAT 11 e Bloco B/E (reenvio real depois de duas quedas, 0 `chunk_id` duplicado) seguem valendo. |
+| 5 | Sessões criadas pela Taqciti são encerradas automaticamente (fim da reunião, inclusive fechar a aba, com a fila vazia; 5 min com envio parado); reunião ao vivo nunca é encerrada; voltar à mesma sala depois do encerramento = reunião nova | ✓ VERIFIED | O agendador (`finishPolicy.ts`, `agenteSessionFinisherInstance.ts`) segue como já verificado. O defeito que falhava (CR-02) está corrigido, com prova própria: (a) `isStillInMeetingRoom` (`meetingTabNavigated.ts:30-40`) agora chama `meetingCodeFromPath(parsed.pathname, { allowSubpath: true })` e compara o código sem diferenciar maiúsculas; (b) executei a lógica real (cópia só com os tipos removidos, `node --experimental-strip-types`): `/abc-defg-hij`, `/meet/abc-defg-hij`, `/meet/abc-defg-hij?authuser=1`, `/meet/abc-defg-hij#x` e `/ABC-defg-hij` dão `true` (mesma sala); outra sala, `/landing`, `/meet/` sem código, `meet.google.com.evil.com` e `example.com` dão `false` (saída de verdade continua encerrando, DA-4 preservada); (c) o teste de fluxo com a máquina de estados real (`meetingTabNavigatedFlow.test.ts`, 4 testes) prova que trocar de formato e mexer em `?query`/`#hash` deixa a reunião em `recording`, que sair de verdade encerra uma vez só e que duas notificações simultâneas na mesma sala não encerram nada. Para a metade humana do SC5 (comportamento no Meet real depois da correção), ver Verificação humana. |
+| 6 | Contratos de API aprovados pelo time existem e funcionam: rotas da extensão (B1), chave Gemini opcional na criação de projeto (B2), `chunk_id` idempotente no webhook (B3) | ✓ VERIFIED | Backend sem alteração desde a verificação anterior. Execução própria: `pytest test_webhook_idempotency / test_extension_clients / test_webhook_auth / test_extension_chunk_extra_fields / test_projects` = 66 passed, 4 skipped. |
+| 7 | O requisito TAQ-02 está coberto por todos os planos que o declaram | ✓ VERIFIED | Os 28 planos (08-01 a 08-28) declaram `requirements: [TAQ-02]`; nenhum ID órfão (ver Cobertura de requisitos). |
 
-**Pontuação:** 6/7 verdades verificadas (0 presentes mas sem prova de comportamento).
+**Pontuação:** 7/7 verdades verificadas (0 presentes mas sem prova de comportamento). A verdade 5 é dependente de comportamento (invariante "reunião ao vivo nunca é encerrada") e por isso só foi marcada como verificada porque há teste comportamental passando (função real, máquina de estados real), não por presença de símbolos.
+
+### Regra única da sala: confirmada no código (não só no SUMMARY)
+
+| Pergunta | Evidência |
+|----------|-----------|
+| A regra existe e é única? | `taqciti/src/features/meeting/meetingCode.ts:23-34`: uma gramática `CODE` (3-4-3 de letras e dígitos, prefixo `meet/` opcional, sem diferenciar caixa), dois modos (`EXACT_PATH`, `SUBPATH_PATH`), sem flags `g`/`y` (sem estado entre chamadas). |
+| O content script usa? | `GoogleMeetProvider.ts:34` importa e `:146` chama `meetingCodeFromPath(window.location.pathname)` (modo exato). |
+| O service worker usa? | `meetingTabNavigated.ts:17` importa e `:38` chama `meetingCodeFromPath(parsed.pathname, { allowSubpath: true })`. |
+| Sobrou a regra antiga? | `grep MEETING_CODE_PATTERN taqciti/src`: nenhum resultado. `selectors.ts` perdeu a expressão (commit `2b40de1`, 0 inserções, 8 remoções). Só resta uma terceira cópia da gramática, em `features/meeting/naming.ts:11`, usada para nomear a reunião, não para decidir a sala (IN-14, informativo). |
+| Os dois modos podem divergir para uma URL que o content script aceita? | Não por construção: `EXACT_PATH = ^/(?:meet/)?CODE$` está contido em `SUBPATH_PATH = ^/(?:meet/)?CODE(?:/|$)`, com a mesma captura. O service worker nunca encerra, por mudança de URL, uma reunião que o content script ainda considera ao vivo. (IN-15 registra que falta um teste que trave essa propriedade; ela vale pela forma das expressões.) |
+| Existem os casos de teste que o gap pedia? | `meetingTabNavigated.test.ts`: bloco "endereço /meet/<código> no meio da call (CR-02)" com `/meet/<código>`, `?authuser=1`, `#x`, maiúsculas e a troca `/<código>` -> `/meet/<código>`, mais DA-4 no formato novo. Sem `skip`/`todo`. |
 
 ### Itens adiados
 
-Nenhum. O CR-02 não é coberto por nenhuma fase posterior (a Fase 9 é cutover e a Fase 10 é a aba AGP).
+Nenhum.
+
+### Avisos informativos de revisão (08-REVIEW.md, 0 críticos)
+
+Todos os WR-01 a WR-09 e IN-01 a IN-15 seguem `open` em `08-REVIEW-DISPOSITION.md`; CR-01 e CR-02 estão `fixed`. Nenhum contradiz um critério do ROADMAP no caminho normal. Os que merecem atenção do time antes do deploy:
+
+| ID | Resumo | Relação com os critérios |
+|----|--------|--------------------------|
+| WR-01 | Rotas novas da extensão ficam abertas se `EXTENSION_SHARED_KEY` não estiver definida (`webhook.py:26-28`) | Risco T-08-10 aceito na B1; conferir a variável no Railway antes do deploy |
+| WR-02 | Apagar a reunião pelo histórico remove a associação sem pedir o encerramento | Toca o SC5 só se a fila não estiver vazia ou o envio tiver falhado; no caminho normal a sessão já foi fechada no fim da reunião. Warning, não bloqueio |
+| WR-04, WR-05 | "Continuar envio" pode pular palavras do último segmento; reinício do service worker com vínculo ao vivo deixa o envio parado | Casos de borda do envio |
+| WR-03, WR-06 a WR-09 | 401/403 descartam a fila; duplicado não atômico; edição não limpa campos; `taq:history` sem fila de escrita; seletor compacto | Qualidade e robustez |
+| IN-13, IN-14, IN-15 | Caixa do código espalhada; terceira cópia da gramática; falta teste da propriedade "exato contido em subcaminho" | Manutenção; novos nesta rodada |
 
 ### Artefatos obrigatórios
 
 | Artefato | Esperado | Status | Detalhes |
 |----------|----------|--------|----------|
-| `backend/app/routers/extension_clients.py` | Rotas de listar/criar cliente, criar/encerrar sessão | ✓ VERIFIED | Só roteia; chama o service; montado em `main.py:81` |
-| `backend/app/services/extension_session_service.py` | Regras de negócio das rotas da extensão | ✓ VERIFIED | Substantivo (409/404/idempotência); fala só com o repositório e portas injetadas |
-| `backend/app/repositories/transcript_chunks_repository.py` | Insert com dedup e tradução de FK/UUID inválido | ✓ VERIFIED | `23505` -> `False`; `23503`/`22P02` -> `SessionNotFoundError` |
-| `supabase/migrations/20261011000000_add_chunk_id_to_transcript_chunks.sql` | Coluna `chunk_id` + índice único | ✓ VERIFIED | Aditiva e idempotente; aplicada em produção e conferida no UAT 9 |
-| `taqciti/src/features/agente/association.ts` | Reducer puro da associação | ✓ VERIFIED | 9 estados, transição inválida devolve a mesma referência; 68 testes passam |
-| `taqciti/src/background/agenteStreamDestination.ts` | Política "para onde vai a fala" | ✓ VERIFIED | Ligada em `agenteStreamer.ts:75` |
-| `taqciti/src/background/agenteSessionFinisherInstance.ts` | Agendador do encerramento | ✓ VERIFIED | Ligado em `index.ts:58,125` |
-| `taqciti/src/sidepanel/screens/AgenteConfigScreen.tsx` | ID manual só no plano B | ✓ VERIFIED | Condicionado a `directory.status === 'error'` |
-| `taqciti/src/background/meetingTabNavigated.ts` | Regra "a aba ainda está na sala" | ✗ DEFECT | Não reconhece `/meet/<código>` (CR-02) |
+| `taqciti/src/features/meeting/meetingCode.ts` | Regra única e pura da sala | ✓ VERIFIED | 34 linhas, exporta `meetingCodeFromPath`, usada nos dois lados |
+| `taqciti/src/background/meetingTabNavigated.ts` | Regra "a aba ainda está na sala" sobre a regra única | ✓ VERIFIED | Reconhece `/meet/<código>`; corpo de `onMeetingTabNavigated` inalterado |
+| `taqciti/src/content/providers/googleMeet/GoogleMeetProvider.ts` | Detecção da reunião sobre a regra única | ✓ VERIFIED | Linha 146 |
+| `taqciti/src/content/providers/googleMeet/selectors.ts` | Sem regra própria de endereço | ✓ VERIFIED | `MEETING_CODE_PATTERN` removido |
+| `taqciti/src/features/meeting/meetingCode.test.ts`, `meetingTabNavigated.test.ts`, `meetingTabNavigatedFlow.test.ts` | Testes dos dois modos, do handler e do fluxo real | ✓ VERIFIED | 32 + 37 + 4 testes passam |
+| `backend/app/routers/extension_clients.py`, `services/extension_session_service.py`, `repositories/transcript_chunks_repository.py`, migração `20261011000000` | Contratos B1/B3 | ✓ VERIFIED | Sem alteração; pytest escopado passa |
+| `taqciti/src/background/agenteStreamDestination.ts`, `agenteSessionFinisherInstance.ts`, `features/agente/association.ts`, `AgenteConfigScreen.tsx` | Vínculo explícito, encerramento, ID manual escondido | ✓ VERIFIED | Sem alteração; ver verdades 1 a 5 |
 
 ### Verificação de ligações (key links)
 
 | De | Para | Via | Status | Detalhes |
 |----|------|-----|--------|----------|
-| `agenteStreamer.ts` | `createAssociationDestination` | `destination:` na raiz de composição | ✓ WIRED | Linha 75; `configDestination` só como fallback de teste |
-| `background/index.ts` | `agenteAssociation` | `ui/agente/*` | ✓ WIRED | Linhas 245-256 (list, open, defer, bind, discard, resume-send) |
-| `background/index.ts` | `agenteSessionFinisher` | `alarms.onAlarm` + boot | ✓ WIRED | Linhas 58 e 125-126, listener síncrono |
-| `PanelApp.tsx` / `RecordDetail.tsx` | Slots Agente (bolha, vivo, fim) | JSX | ✓ WIRED | Linhas 366, 427, 482, 681 e `RecordDetail.tsx:80` |
-| `webhook.py` | `TranscriptChunksRepository` | `insert_chunk` | ✓ WIRED | Linhas 44-53; 404 antes do `create_task` |
-| `index.ts:118-122` | `onMeetingTabNavigated` | `chrome.tabs.onUpdated` | ⚠️ PARTIAL | Ligado, mas a regra interna diverge do content script (CR-02) |
+| `GoogleMeetProvider.ts` | `meetingCodeFromPath` | import + chamada (modo exato) | ✓ WIRED | Linhas 34 e 146 |
+| `meetingTabNavigated.ts` | `meetingCodeFromPath` | import + chamada (modo com subcaminho) | ✓ WIRED | Linhas 17 e 38 |
+| `background/index.ts:118-122` | `onMeetingTabNavigated` | `chrome.tabs.onUpdated` | ✓ WIRED | Antes ⚠️ PARTIAL; a regra interna agora concorda com o content script |
+| `agenteStreamer.ts` | `createAssociationDestination` | `destination:` na raiz de composição | ✓ WIRED | Sem alteração |
+| `background/index.ts` | `agenteSessionFinisher` | `alarms.onAlarm` + boot | ✓ WIRED | Sem alteração |
+| `webhook.py` | `TranscriptChunksRepository` | `insert_chunk` | ✓ WIRED | Sem alteração |
 
 ### Rastreio de fluxo de dados (nível 4)
 
 | Artefato | Variável | Fonte | Dados reais | Status |
 |----------|----------|-------|-------------|--------|
-| `AgenteConfigScreen` | `directory.status` | `useClientDirectory` -> `ui/agente/clients/list` -> `GET /webhook/extension/clients` -> `projects` | Sim | ✓ FLOWING |
-| `ClientPicker` | lista de clientes | mesma cadeia, ordenada por `sortClients` | Sim (UAT 6: lista com clientes reais) | ✓ FLOWING |
-| Streamer ao vivo | `target.config.agenteSessionId` | `association.sessionId` gravada por `session-created` após `POST /sessions` | Sim | ✓ FLOWING |
+| `onMeetingTabNavigated` | `session.meetingCode` vs código da URL | Estado da máquina (código vindo do content script via `meetingCodeFromPath`) contra `parsed.pathname` da aba | Sim, os dois lados vêm da mesma função | ✓ FLOWING |
+| Streamer ao vivo | `target.config.agenteSessionId` | `association.sessionId` gravada após `POST /sessions` | Sim | ✓ FLOWING |
+| `AgenteConfigScreen` / `ClientPicker` | lista de clientes | `GET /webhook/extension/clients` -> `projects` | Sim | ✓ FLOWING |
 
 ### Verificações de comportamento (spot-checks)
 
 | Comportamento | Comando | Resultado | Status |
 |---------------|---------|-----------|--------|
-| Sem associação `linked`, nada sai | `npx vitest run` nos 7 arquivos-chave da Taqciti | 147 passed | ✓ PASS |
-| Backend: idempotência, 404, gate, rotas da extensão, projetos | `pytest` nos 5 arquivos | 66 passed, 4 skipped | ✓ PASS |
+| `/meet/<código>` e variações contam como "ainda na sala"; sair encerra | Lógica real de `isStillInMeetingRoom` + `meetingCodeFromPath` (`node --experimental-strip-types`, só tipos removidos) | 5 variações da mesma sala `true`; 5 saídas/hosts falsos `false` | ✓ PASS |
+| Testes do CR-02 e da detecção | `npx vitest run` nos 4 arquivos (meetingCode, meetingTabNavigated, Flow, GoogleMeetProvider) | 88 passed | ✓ PASS |
+| Suíte completa da Taqciti (rodada uma vez) | `npx vitest run` | 89 arquivos, 1393 testes passed | ✓ PASS |
 | Typecheck da Taqciti | `npx tsc --noEmit` | exit 0 | ✓ PASS |
-| `/meet/<código>` conta como "ainda na sala" | `isStillInMeetingRoom` (cópia byte a byte, `node --experimental-strip-types`) | `/meet/abc-defg-hij => false` (esperado `true`) | ✗ FAIL |
+| Backend: idempotência, 404, gate, rotas da extensão, projetos | `pytest` nos 5 arquivos | 66 passed, 4 skipped | ✓ PASS |
+
+Os gates de `extension` (24 ok) e `frontend` lens (10 ok) informados pelo orquestrador não foram reexecutados por mim: não há mudança nesses diretórios desde a verificação anterior (`git diff` só tem os 7 arquivos da Taqciti).
 
 ### Execução de probes
 
-Etapa 7c: a fase não declara probes (`probe-*.sh`). Não se aplica.
+A fase não declara probes (`probe-*.sh`). Não se aplica.
 
 ### Cobertura de requisitos
 
 | Requisito | Plano de origem | Descrição | Status | Evidência |
 |-----------|-----------------|-----------|--------|-----------|
-| TAQ-02 | 08-01 a 08-27 (os 27 declaram) | Reunião vinculada à sessão correta por escolha explícita de cliente; campo de ID manual fica como plano B escondido | ⚠️ SATISFEITO COM RESSALVA | Verdades 1, 2, 3, 4 e 6 comprovadas no código. A garantia de encerramento só de reunião fora do ar (SC5) tem o defeito CR-02. Sem requisitos órfãos: `REQUIREMENTS.md` mapeia só TAQ-02 à Fase 8. |
+| TAQ-02 | 08-01 a 08-28 (os 28 declaram; 08-28 é `gap_closure: true`) | Reunião vinculada à sessão correta por escolha explícita de cliente; campo de ID manual fica como plano B escondido | ✓ SATISFEITO (no código); confirmação final no Meet real pendente (human_verification) | Verdades 1 a 7. Sem requisitos órfãos: `REQUIREMENTS.md` mapeia só TAQ-02 à Fase 8. |
 
-Observação de documentação: `REQUIREMENTS.md` ainda mostra TAQ-02 como `[ ]` e "Pending". Isso deve ser virado para concluído só quando a fase fechar (depois do CR-02).
+Observação de documentação: `REQUIREMENTS.md` ainda mostra TAQ-02 como `[ ]`/"Pending" (linhas 40 e 94). Isso só deve virar concluído depois que a verificação humana abaixo passar; este verificador não altera esse arquivo.
 
 ### Anti-padrões encontrados
 
 | Arquivo | Linha | Padrão | Severidade | Impacto |
 |---------|-------|--------|------------|---------|
-| `taqciti/src/background/meetingTabNavigated.ts` | 36-37 | Duas regras para o mesmo conceito ("qual é a sala") divergiram | 🛑 Bloqueador | CR-02: encerra reunião ao vivo no formato `/meet/<código>` |
-| `taqciti/src/features/agente/sendRetryPolicy.ts` | 13, 29-31 | Comentário desatualizado (diz que o reenvio fica desligado e que todo erro de banco é 500) | ℹ️ Info | IN-11; o flag está `true` e FK/UUID inválido já viram 404 |
+| `taqciti/src/features/agente/sendRetryPolicy.ts` | 13, 29-31 | Comentário desatualizado (diz que o reenvio fica desligado e que todo erro de banco é 500) | ℹ️ Info | IN-11; sem efeito em comportamento |
 
-Marcadores `TBD`/`FIXME`/`XXX`: nenhum encontrado nos 149 arquivos de código não-teste alterados na fase (varredura própria).
+Marcadores `TBD`/`FIXME`/`XXX`: nenhum nos 4 arquivos de código-fonte alterados pelo plano 08-28 (varredura própria) e nenhum nos arquivos da fase na verificação anterior. Testes desabilitados (`skip`/`todo`): nenhum nos 3 arquivos de teste novos ou alterados.
 
-### Avisos que não bloqueiam (do 08-REVIEW.md, todos `open`, reconferidos no código quando tocam um critério)
+Portão de evidência de re-verificação (#3304): nenhum bloqueador novo sem evidência; o único bloqueador anterior (CR-02) era carregado da lista `gaps:` e está fechado. Seção Advisory: nenhum item.
 
-| ID | Resumo | Relação com os critérios |
-|----|--------|--------------------------|
-| WR-01 | Rotas novas da extensão ficam abertas se `EXTENSION_SHARED_KEY` não estiver definida (`webhook.py:26-28`) | Risco T-08-10 aceito pelo time na B1 ("até o login do AGM"); exige conferir a variável antes do deploy |
-| WR-02 | Apagar a reunião pelo histórico (`ui/history/delete`, `index.ts:228-235`) remove a associação sem pedir o encerramento | Toca o SC5 só no caso de a fila não estar vazia ou o envio ter falhado; no caminho normal a sessão já foi fechada no fim da reunião |
-| WR-04, WR-05 | "Continuar envio" pode pular palavras do último segmento; reinício do service worker com vínculo ao vivo já com sessão deixa o envio parado sem saída | Casos de borda do envio; WR-05 não foi exercitado no UAT 19 (que segurou a criação da sessão, não o upload) |
-| WR-03, WR-06, WR-07, WR-08, WR-09 | 401/403 descartam a fila; duplicado não atômico; edição não limpa campos; `taq:history` sem fila de escrita; seletor compacto em "Transcrição salva" | Qualidade/robustez; nenhum contradiz um critério do ROADMAP |
+### Verificação humana necessária
+
+#### 1. Mudar a URL sem sair da call, em `/meet/<código>`
+
+**Teste:** Rodar `cd taqciti && npm run build` e clicar em recarregar o cartão da Taqciti em `chrome://extensions`. Subir o backend (`python -m uvicorn app.main:app --port 8000` na pasta `backend`) e o web app (`npm --prefix frontend run dev`). Abrir `https://meet.google.com/new`, silenciar o microfone, confirmar que a barra mostra `meet.google.com/meet/<código>` e ligar as legendas (CC). Na bolha "!" da Taqciti escolher um cliente de teste e clicar em "Vincular". Falar uma frase e ver que ela aparece na Taqciti e no web app. Depois mudar a URL sem sair da call: ou clicar na barra de endereço, acrescentar `#teste` e dar Enter, ou no Console (F12) digitar `history.replaceState(null, '', location.pathname + '?authuser=1')` (se o Chrome pedir, digitar antes `allow pasting`). Opcional, trocar o formato: `history.replaceState(null, '', location.pathname.replace('/meet/', '/'))` e depois `history.replaceState(null, '', '/meet' + location.pathname)`.
+**Esperado:** Depois de cada mudança, o painel da Taqciti segue na tela da reunião ao vivo (não vai para "Transcrição salva"), a barra segue "Enviando ao vivo para ...", uma frase nova aparece na Taqciti e no web app, e depois de 1 minuto a sessão no web app continua ativa.
+**Por que humano:** Depende do Meet real, da extensão no Chrome, do backend e do Supabase. Os testes cobrem a regra com a função real e a máquina real; só a call real prova o gatilho.
+
+#### 2. DA-4 continua igual
+
+**Teste:** Na mesma aba da call, digitar `https://example.com` e dar Enter.
+**Esperado:** A reunião termina (aparece no histórico) e a sessão no web app é encerrada em poucos segundos.
+**Por que humano:** Confirma no Chrome real que a correção não impede o encerramento de quem realmente sai da sala (alarme do service worker + backend).
+
+#### 3. Limpeza dos dados de teste
+
+**Teste:** Anotar o id da sessão criada nos passos acima na lista de limpeza do `08-UAT.md`.
+**Esperado:** A sessão de teste fica registrada para remoção do Supabase de produção.
+**Por que humano:** Dados de teste vão para produção; a limpeza é decisão e ação do time.
 
 ### Itens que dependem de decisão ou ação do time (fora do código)
 
-1. **Deploy:** `GEMINI_API_KEY` ainda não existe no Railway (registrado como obrigatório em `08-DECISOES-PENDENTES.md`, B2). `EXTENSION_SHARED_KEY` também precisa estar ativa antes de expor as rotas (WR-01/T-08-10).
-2. **DA-4 e DA-5** seguem como decisões do time registradas como abertas. O DA-4 é justamente o comportamento de `meetingTabNavigated.ts` que contém o CR-02: a decisão "navegar encerra" está no código como recomendada, "a confirmar com o time".
+1. **Deploy:** `GEMINI_API_KEY` ainda não existe no Railway (obrigatório antes de qualquer deploy, merge na `main`/`master` ou junção com o AGM). `EXTENSION_SHARED_KEY` também precisa estar ativa antes de expor as rotas (WR-01/T-08-10).
+2. **DA-4 e DA-5** seguem como decisões do time registradas como abertas. O comportamento "navegar para fora encerra" está no código como recomendado, "a confirmar com o time"; a correção do CR-02 não o altera.
+3. **WR-01 a WR-09** (todos `open`): triagem do time antes do deploy, principalmente WR-01 (rotas abertas sem a chave) e WR-02 (apagar do histórico deixa a sessão aberta quando a fila não está vazia).
 
-### Resumo das lacunas
+### Resumo
 
-A fase entrega o que prometia no fluxo principal. O vínculo é explícito e por reunião: nenhuma fala sai sem uma associação `linked` com sessão válida; o ID manual só aparece quando a lista falha; o descarte pede confirmação e não toca o backend; a fila durável reenvia com `chunk_id` idempotente e avisa na tela; o backend devolve 404 para sessão inexistente; os contratos B1/B2/B3 existem e os testes que rodei passam (147 no Taqciti, 66 no backend, typecheck limpo).
+O único bloqueador da verificação anterior (CR-02) está fechado, e eu confirmei no código, não só nos SUMMARYs. A função `meetingCodeFromPath` existe, é pura, e é a única regra de "qual é a sala desta URL": o content script a usa em modo exato e o service worker em modo com subcaminho, sem sobrar o `MEETING_CODE_PATTERN` antigo. Executei a lógica real: a mesma sala nos dois formatos, com `?authuser`, `#hash` ou caixa diferente, continua "ainda na sala", e sair de verdade (outra sala, `/landing`, outro site, host parecido) continua encerrando. Os 5 critérios do ROADMAP e as duas verdades de contrato estão comprovados no código; a suíte completa da Taqciti (1393), o typecheck e o backend escopado (66 passed, 4 skipped) passam. Nada fora dos 7 arquivos do plano 08-28 mudou desde a verificação anterior.
 
-O que impede dar a fase como cumprida é o **CR-02**, um único defeito, reproduzido por mim com a função real: o endereço novo do Meet (`/meet/<código>`), que o próprio UAT mostrou ser o formato atual de todos os links, faz o service worker achar que a aba saiu da sala em qualquer mudança de URL, encerrando a reunião ao vivo e parando a captura sem aviso. Isso contradiz diretamente "uma reunião ao vivo nunca é encerrada" (SC5) e a promessa de enviar a fala da reunião (SC1). O UAT de 132 testes passou provavelmente porque a reescrita do endereço acontece na tela de pré-entrada, antes de a reunião ser detectada, e nenhum teste mudou a URL depois. A correção é pequena e já está descrita no review: uma função pura única `meetingCodeFromPath` usada pelo content script e pelo service worker, mais três casos de teste.
-
-Depois do CR-02, rodar de novo a verificação para fechar a fase; os demais itens são warnings e decisões de deploy, não bloqueiam o objetivo.
+O status é `human_needed` e não `passed` só porque o roteiro do Meet real (seção 7 do plano 08-28) ainda não foi executado depois da correção. Isso não é falha: o UAT de 132 testes é anterior à correção e a reunião real é a única prova de que o Meet dispara o gatilho no formato novo e de que a sessão do Agente fica ativa. Depois do roteiro, TAQ-02 pode virar concluído em `REQUIREMENTS.md`. Os warnings WR e as decisões de deploy acima não bloqueiam o objetivo da fase.
 
 ---
 
-_Verificado: 2026-10-26T23:30:00Z_
+_Verificado: 2026-10-27T00:15:00Z_
 _Verificador: Claude (gsd-verifier)_
