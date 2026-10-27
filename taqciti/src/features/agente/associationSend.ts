@@ -64,7 +64,10 @@ export function reduceSendFlow(current: MeetingAssociation, event: AssociationEv
       return { ...carryIdentity(current), state: 'sent', seedSent: event.seedSent };
     case 'send-failed':
       if (current.state !== 'sending') return current;
-      if (current.sessionId !== undefined) return { ...current, state: 'send-failed', error: event.error };
+      if (current.sessionId !== undefined) {
+        const { sentWords } = event;
+        return { ...current, state: 'send-failed', error: event.error, ...(sentWords !== undefined && { sentWords }) };
+      }
       return {
         meetingId: current.meetingId,
         state: 'ended-unsent',

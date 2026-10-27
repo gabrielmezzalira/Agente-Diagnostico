@@ -36,6 +36,11 @@ export interface UploadPart {
   speaker: string | null;
   /** Palavras do texto — o que a semente informa ao streamer. */
   words: number;
+  /**
+   * Só nas partes de reposição (`planCatchUp`): quantas palavras do segmento já tinham sido entregues antes.
+   * `text` traz apenas o que falta e o `chunkId` leva o sufixo `:{wordsFrom}`.
+   */
+  wordsFrom?: number;
 }
 
 export function bulkChunkId(meetingId: string, index: number): string {
@@ -67,11 +72,38 @@ export function planMeetingUpload(
   return parts;
 }
 
+/**
+ * Reposição (WR-04): o que falta de cada segmento que cresceu DEPOIS de parte dele ter sido entregue.
+ * `sentWords` é o que o envio parado confirmou por chave; segmento sem entrada (ou já completo) não gera parte.
+ * O `chunk_id` ganha o sufixo `:{palavras já entregues}` — sem ele o backend, que só deduplica pela string do id,
+ * descartaria a reposição como se fosse a parte original.
+ */
+export function planCatchUp(
+  parts: readonly UploadPart[],
+  sentWords: Readonly<Record<string, number>>,
+): UploadPart[] {
+  const catchUp: UploadPart[] = [];
+  for (const part of parts) {
+    const from = sentWords[part.key];
+    const words = splitWords(part.text);
+    if (from === undefined || from >= words.length) continue;
+    const rest = words.slice(from);
+    catchUp.push({
+      ...part,
+      chunkId: `${part.chunkId}:${from}`,
+      text: rest.join(' '),
+      words: rest.length,
+      wordsFrom: from,
+    });
+  }
+  return catchUp;
+}
+
 /** Palavras cobertas pelo envio, por chave de segmento — a semente do cursor do streamer (D-12). */
 export function seedFromParts(parts: readonly UploadPart[]): Record<string, number> {
   const seed: Record<string, number> = {};
   for (const part of parts) {
-    seed[part.key] = part.words;
+    seed[part.key] = (part.wordsFrom ?? 0) + part.words;
   }
   return seed;
 }

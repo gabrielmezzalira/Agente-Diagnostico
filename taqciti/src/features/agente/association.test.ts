@@ -318,3 +318,30 @@ describe('retomar o envio parado (send-resumed, plano 08-20)', () => {
     });
   });
 });
+
+describe('palavras já entregues quando o envio parou (sentWords, WR-04)', () => {
+  const SENT = { '0:c0': 3, '1:c1': 3 };
+
+  it('send-failed e link-failed(send) guardam o sentWords; sem ele, nada é guardado', () => {
+    const sending = assoc('sending', { sessionId: SID, origin: 'picker', clientName: 'ACME' });
+    expect(reduce(sending, { type: 'send-failed', error: 'send', sentWords: SENT })).toMatchObject({
+      state: 'send-failed',
+      sentWords: SENT,
+    });
+    expect(reduce(sending, { type: 'send-failed', error: 'send' })).not.toHaveProperty('sentWords');
+
+    const linking = assoc('linking', { sessionId: SID, origin: 'picker', clientName: 'ACME' });
+    expect(reduce(linking, { type: 'link-failed', error: 'send', sentWords: SENT })).toMatchObject({
+      state: 'send-failed',
+      sentWords: SENT,
+    });
+  });
+
+  it('sobrevive ao send-resumed e some quando o envio conclui', () => {
+    const sending = assoc('sending', { sessionId: SID, origin: 'picker', clientName: 'ACME' });
+    const failed = reduce(sending, { type: 'send-failed', error: 'send', sentWords: SENT });
+    const resumed = reduce(failed, { type: 'send-resumed' });
+    expect(resumed).toMatchObject({ state: 'sending', sentWords: SENT });
+    expect(reduce(resumed, { type: 'send-completed', seedSent: SEED })).not.toHaveProperty('sentWords');
+  });
+});

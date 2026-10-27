@@ -832,6 +832,84 @@ describe('continuar o envio parado (plano 08-20, B3)', () => {
   });
 });
 
+describe('continuar o envio com fala que cresceu depois do vínculo (WR-04)', () => {
+  const OK = { ok: true, status: 202 } as Response;
+  const DOWN = { ok: false, status: 500 } as Response;
+
+  /**
+   * Vínculo ao vivo de m1 com 3 falas (3 palavras cada); o envio entrega as partes 0 e 1 e para na 2
+   * (chamadas 3 a 6). Depois a reunião acaba e a fala 1 aparece no histórico MAIS LONGA (5 palavras).
+   */
+  async function setupGrown(respond?: (call: number, net: { down: boolean }) => Response) {
+    const net = { down: true };
+    const grown = [...segmentsOf(3)];
+    grown[1] = segment(1, 'fala numero 1 e mais');
+    const context = await setup({
+      records: { m1: recordOf('m1', grown) },
+      respond: (call) => (respond ? respond(call, net) : net.down && call >= 3 ? DOWN : OK),
+    });
+    await context.created();
+    await context.flow.bind('m1', { kind: 'manual', sessionId: OTHER_SESSION_ID });
+    await context.flow.whenIdle();
+    context.world.meeting = IDLE_STATE; // a reunião acabou
+    return { ...context, net, grown };
+  }
+
+  it('a falha guarda as palavras entregues por segmento (as do momento do clique)', async () => {
+    const { store, grown } = await setupGrown();
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'send-failed',
+      sendProgress: { done: 2, total: 3 },
+      sentWords: { [segmentKey(segment(0), 0)]: 3, [segmentKey(grown[1]!, 1)]: 3 },
+    });
+  });
+
+  it('retoma mandando a reposição da fala que cresceu (chunk_id próprio) e depois a parte que faltava', async () => {
+    const { flow, store, send, bodies, net, grown } = await setupGrown();
+    const before = send.mock.calls.length;
+
+    net.down = false;
+    expect(await flow.resumeSend('m1')).toEqual({ ok: true });
+    await flow.whenIdle();
+
+    const resumed = bodies().slice(before);
+    expect(resumed.map((body) => body.chunk_id)).toEqual(['bulk:m1:1:3', 'bulk:m1:2']);
+    expect(resumed.map((body) => body.text)).toEqual(['e mais', 'fala numero 2']);
+    const done = await store.getAssociation('m1');
+    expect(done).toMatchObject({ state: 'sent', seedSent: seedOf(grown) }); // a fala 1 conta 5 palavras
+    expect(done).not.toHaveProperty('sentWords');
+  });
+
+  it('falha depois da reposição: o progresso segue contando o plano completo e a fala 1 já consta como inteira', async () => {
+    // chamadas 1-2 partes 0 e 1; 3-6 a parte 2 falha; 7 é a reposição (OK); 8-11 a parte 2 falha de novo
+    const { flow, store, grown } = await setupGrown((call) => (call === 7 ? OK : call >= 3 ? DOWN : OK));
+    await flow.resumeSend('m1');
+    await flow.whenIdle();
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'send-failed',
+      sendProgress: { done: 2, total: 3 },
+      sentWords: { [segmentKey(segment(0), 0)]: 3, [segmentKey(grown[1]!, 1)]: 5 },
+    });
+  });
+
+  it('a reposição que falha guarda o que já entrou e a próxima retomada continua dali', async () => {
+    const { flow, store, send, bodies, net, grown } = await setupGrown();
+    await flow.resumeSend('m1'); // a reposição esgota as tentativas (a rede continua fora)
+    await flow.whenIdle();
+    expect(await store.getAssociation('m1')).toMatchObject({
+      state: 'send-failed',
+      sentWords: { [segmentKey(grown[1]!, 1)]: 3 }, // nada da reposição entrou
+    });
+
+    const before = send.mock.calls.length;
+    net.down = false;
+    await flow.resumeSend('m1');
+    await flow.whenIdle();
+    expect(bodies().slice(before).map((body) => body.chunk_id)).toEqual(['bulk:m1:1:3', 'bulk:m1:2']);
+    expect((await store.getAssociation('m1'))?.state).toBe('sent');
+  });
+});
+
 describe('comando ui/agente/meeting/resume-send (plano 08-20, Task 2)', () => {
   it('uiMessageSchema aceita o comando e recusa meetingId vazio', async () => {
     const { uiMessageSchema } = await import('@/shared/types/messages');

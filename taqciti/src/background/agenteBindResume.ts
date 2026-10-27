@@ -5,14 +5,17 @@
  *
  * Seguro porque a parte `n` tem sempre o mesmo `chunk_id` (`bulk:{reunião}:{índice}`) e o backend recusa
  * duplicata (B3): recomeçar da última parte confirmada não repete nada, e a parte que estava em voo na
- * falha também não duplica. Sessão já encerrada pela B4-b (DA-2): continua valendo — o backend grava no
+ * falha também não duplica. A fala que CRESCEU depois do vínculo (WR-04) não cai nesse dedup: as partes antes
+ * de `startAt` ganham uma reposição só com as palavras que faltam, com `chunk_id` próprio (`planCatchUp`).
+ * Sessão já encerrada pela B4-b (DA-2): continua valendo — o backend grava no
  * banco sem olhar o status, então as falas restantes entram na transcrição.
  */
-import { planMeetingUpload, type UploadPart } from '@/features/agente/meetingUploader';
+import { planCatchUp, planMeetingUpload, type UploadPart } from '@/features/agente/meetingUploader';
 import { applyAssociationEvent, getAssociation } from '@/shared/config/agenteAssociationStore';
 import { isValidAgenteBackendUrl, type AgenteConfig } from '@/shared/config/agenteConfig';
 import type { AgenteCommandResult } from '@/shared/types/agenteMessages';
 import type { MeetingRecord } from '@/shared/types/domain';
+import type { ResumeExtras } from './agenteBindUpload';
 import { bindFail } from './agenteBindTarget';
 
 export interface ResumeDeps {
@@ -25,6 +28,8 @@ export interface ResumePlan {
   sessionId: string;
   parts: UploadPart[];
   startAt: number;
+  /** Reposição das palavras que faltam dos segmentos já cobertos por `startAt` (WR-04). */
+  extras: ResumeExtras;
 }
 
 /**
@@ -54,9 +59,13 @@ export async function prepareResume(
   const resumed = await applyAssociationEvent(meetingId, { type: 'send-resumed' });
   if (!resumed.applied) return { failure: bindFail('invalid-state') };
 
+  const parts = planMeetingUpload(meetingId, record.segments);
+  const startAt = association.sendProgress?.done ?? 0;
+  const sentBefore = association.sentWords ?? {};
   return {
     sessionId,
-    parts: planMeetingUpload(meetingId, record.segments),
-    startAt: association.sendProgress?.done ?? 0,
+    parts,
+    startAt,
+    extras: { catchUp: planCatchUp(parts.slice(0, startAt), sentBefore), sentBefore },
   };
 }

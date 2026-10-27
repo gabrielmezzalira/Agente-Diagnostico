@@ -68,6 +68,8 @@ function normalizeEntry(key: string, raw: unknown): MeetingAssociation | null {
   }
   const seedSent = normalizeSeed(raw.seedSent);
   if (seedSent !== undefined) entry.seedSent = seedSent;
+  const sentWords = normalizeSeed(raw.sentWords);
+  if (sentWords !== undefined) entry.sentWords = sentWords;
   normalizeClose(entry, raw);
   return entry;
 }

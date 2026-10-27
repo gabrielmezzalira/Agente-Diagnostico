@@ -92,6 +92,16 @@ describe('normalizeAssociations: lista branca (T-08-02)', () => {
     expect(map.m3).not.toHaveProperty('seedSent');
   });
 
+  it('sentWords (WR-04) sobrevive à normalização; contagens inválidas são descartadas', async () => {
+    const { store } = await loadStore();
+    const map = store.normalizeAssociations({
+      m1: { meetingId: 'm1', state: 'send-failed', sessionId: SID, sentWords: { '0:c1': 3, '1:c2': -1 } },
+      m2: { meetingId: 'm2', state: 'send-failed', sessionId: SID, sentWords: 'nada' },
+    });
+    expect(map.m1?.sentWords).toEqual({ '0:c1': 3 });
+    expect(map.m2).not.toHaveProperty('sentWords');
+  });
+
   it('os campos do encerramento (B4-b) sobrevivem; valores inválidos são ignorados', async () => {
     const { store } = await loadStore();
     const map = store.normalizeAssociations({

@@ -8,6 +8,7 @@ import {
   AGENTE_UPLOAD_BLOCK_SIZE,
   AGENTE_UPLOAD_PAUSE_MS,
   bulkChunkId,
+  planCatchUp,
   planMeetingUpload,
   seedFromParts,
 } from './meetingUploader';
@@ -98,5 +99,35 @@ describe('bulkChunkId', () => {
     expect(bulkChunkId('m1', 7)).toBe('bulk:m1:7');
     expect(bulkChunkId('m1', 7)).toBe(bulkChunkId('m1', 7));
     expect(bulkChunkId('m1', 8)).not.toBe(bulkChunkId('m1', 7));
+  });
+});
+
+describe('planCatchUp (WR-04)', () => {
+  const grown = segment({ captionId: 'c0', text: 'olá tudo bem com você hoje', speaker: 'Ana' }); // 6 palavras
+  const parts = planMeetingUpload('m1', [grown, s2]);
+
+  it('manda só as palavras que faltam, com chunk_id próprio e a mesma chave/índice', () => {
+    const [part] = planCatchUp(parts, { [segmentKey(grown, 0)]: 3 });
+
+    expect(part).toEqual({
+      index: 0,
+      key: segmentKey(grown, 0),
+      chunkId: 'bulk:m1:0:3',
+      text: 'com você hoje',
+      speaker: 'Ana',
+      words: 3,
+      wordsFrom: 3,
+    });
+    expect(part?.chunkId).not.toBe(parts[0]?.chunkId); // senão o backend descartaria como duplicata
+  });
+
+  it('segmento completo, sem entrada ou além do tamanho não gera reposição', () => {
+    expect(planCatchUp(parts, { [segmentKey(grown, 0)]: 6, [segmentKey(s2, 1)]: 99 })).toEqual([]);
+    expect(planCatchUp(parts, {})).toEqual([]);
+  });
+
+  it('a semente da reposição conta as palavras já entregues + as novas (= o texto inteiro)', () => {
+    const catchUp = planCatchUp(parts, { [segmentKey(grown, 0)]: 3 });
+    expect(seedFromParts(catchUp)).toEqual({ [segmentKey(grown, 0)]: 6 });
   });
 });

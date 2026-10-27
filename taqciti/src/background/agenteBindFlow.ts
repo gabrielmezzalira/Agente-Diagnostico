@@ -32,7 +32,7 @@ import type {
   MeetingState,
 } from '@/shared/types/domain';
 import { prepareResume } from './agenteBindResume';
-import { runBindUpload, type BindUploadDeps } from './agenteBindUpload';
+import { runBindUpload, type BindUploadDeps, type ResumeExtras } from './agenteBindUpload';
 import { bindFail, resolveBindTarget, type ResolvedTarget } from './agenteBindTarget';
 
 export interface BindFlowDeps extends BindUploadDeps {
@@ -81,8 +81,9 @@ export function createBindFlow(deps: BindFlowDeps) {
     sessionId: string,
     parts: UploadPart[],
     startAt: number,
+    extras?: ResumeExtras,
   ): void {
-    const job: Promise<void> = runBindUpload(deps, meetingId, sessionId, parts, startAt)
+    const job: Promise<void> = runBindUpload(deps, meetingId, sessionId, parts, startAt, extras)
       .catch((error: unknown) => logger.error('envio em partes do vínculo falhou', error))
       .finally(() => uploads.delete(job));
     uploads.add(job);
@@ -181,7 +182,7 @@ export function createBindFlow(deps: BindFlowDeps) {
     try {
       const plan = await prepareResume(deps, meetingId, isLive(deps.getMeetingState(), meetingId));
       if ('failure' in plan) return plan.failure;
-      startUpload(meetingId, plan.sessionId, plan.parts, plan.startAt);
+      startUpload(meetingId, plan.sessionId, plan.parts, plan.startAt, plan.extras);
       return { ok: true };
     } finally {
       inFlight.delete(meetingId);

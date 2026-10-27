@@ -56,6 +56,12 @@ export interface MeetingAssociation {
   sendProgress?: { done: number; total: number };
   /** Semente do vínculo: o que já saiu quando virou `linked`. Consumida (apagada) depois de adotada. */
   seedSent?: SeedSent;
+  /**
+   * Palavras de cada segmento que JÁ foram entregues quando o envio em partes parou (WR-04). Só existe em
+   * `send-failed`/`sending` retomado: "Continuar envio" manda só o que falta de cada segmento (a fala que cresceu
+   * depois do clique) em vez de pular ou duplicar. Some quando o envio conclui.
+   */
+  sentWords?: SeedSent;
   error?: AssociationError;
   /** A sessão do Agente já foi encerrada (B4-b). */
   sessionFinished?: true;
@@ -74,7 +80,7 @@ export type AssociationEvent =
   | { type: 'link-started'; origin: AssociationOrigin; clientName: string; sessionId?: string }
   | { type: 'session-created'; sessionId: string }
   | { type: 'link-progress'; done: number; total: number }
-  | { type: 'link-failed'; error: AssociationError }
+  | { type: 'link-failed'; error: AssociationError; sentWords?: SeedSent }
   | { type: 'link-completed'; seedSent: SeedSent }
   | { type: 'seed-consumed' }
   /** A reunião terminou (disparado pela máquina da reunião; quem dispara é o plano 08-22). */
@@ -86,7 +92,7 @@ export type AssociationEvent =
   | { type: 'send-progress'; done: number; total: number }
   /** `seedSent` = o que o envio em partes cobriu, para a retomada da sala continuar sem repetir palavras. */
   | { type: 'send-completed'; seedSent: SeedSent }
-  | { type: 'send-failed'; error: AssociationError }
+  | { type: 'send-failed'; error: AssociationError; sentWords?: SeedSent }
   /** "Continuar envio" (08-20): `send-failed` com sessão volta a `sending` do ponto confirmado e cancela o prazo de encerramento. */
   | { type: 'send-resumed' }
   /** Encerramento da sessão (B4-b): encerrada, prazo armado e tentativa falha (plano 08-16; quem dispara é o 08-27). */
@@ -100,13 +106,19 @@ export type AssociationEvent =
  * Falha do vínculo ao vivo. Sem `sessionId` a sessão nem foi criada: volta para `deferred` (com erro
  * visível). Com `sessionId` a sessão existe e o resumo é que não saiu: fica parado em `send-failed`.
  */
-function reduceLinkFailed(current: MeetingAssociation, error: AssociationError): MeetingAssociation {
+function reduceLinkFailed(
+  current: MeetingAssociation,
+  error: AssociationError,
+  sentWords?: SeedSent,
+): MeetingAssociation {
   if (current.state !== 'linking') return current;
   if (error === 'create-session' && current.sessionId === undefined) {
     const { meetingId, clientName } = current;
     return { meetingId, state: 'deferred', ...(clientName !== undefined && { clientName }), error };
   }
-  if (error === 'send' && current.sessionId !== undefined) return { ...current, state: 'send-failed', error };
+  if (error === 'send' && current.sessionId !== undefined) {
+    return { ...current, state: 'send-failed', error, ...(sentWords !== undefined && { sentWords }) };
+  }
   return current;
 }
 
@@ -147,7 +159,7 @@ export function reduceAssociation(
         ? { ...current, sendProgress: { done: event.done, total: event.total } }
         : current;
     case 'link-failed':
-      return reduceLinkFailed(current, event.error);
+      return reduceLinkFailed(current, event.error, event.sentWords);
     case 'link-completed':
       if (current.state !== 'linking' || current.sessionId === undefined) return current;
       return { ...carryIdentity(current), state: 'linked', seedSent: event.seedSent };
