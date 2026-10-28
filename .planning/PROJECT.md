@@ -16,7 +16,7 @@ Discovery teams map the bottleneck and its solution **completely during the call
 - Discovery mode + single coverage-area registry (Produto + Dados lenses), sales mode retained behind a flag
 - Two coordinated agents (Produto primary, Dados auxiliary) sharing one lens-tagged question queue
 - Discovery report with a "Métricas para Precificação" section feeding `import-from-diagnosis`
-- Taqciti live streaming as the transcription source; retire the duplicated custom extension
+- Taqciti live streaming as the transcription source; retire the duplicated custom extension — custom extension retired in Phase 9 (Taqciti is the only capture source)
 
 ## Requirements
 
@@ -32,7 +32,7 @@ Discovery teams map the bottleneck and its solution **completely during the call
 - ✓ GeminiClient wrapping google-generativeai SDK (deprecated; migration to google.genai required for v2) — v1
 - ✓ F1–F10 v2 web app: project config CRUD, session setup, dynamic PromptBuilder, question bank, monitoring screen (WebSocket 3-column), question queue (pin/dismiss/TTL), budget control, session persistence/history, Data Maturity Score — v2.0
 - ✓ Agente Precificador: pricing CRUD + calc engine, LLM feature suggestions, LangGraph pricing chatbot, diagnostic→pricing handoff (import-from-diagnosis), CITi Flow integration — v2.0
-- ✓ Chrome extension: Google Meet caption capture → `/webhook/extension` streaming ingestion — v2.0
+- ✓ Chrome extension: Google Meet caption capture → `/webhook/extension` streaming ingestion — v2.0 (retired in Phase 9 — replaced by Taqciti)
 - ✓ DISC: Discovery mode (project mode flag, discovery coverage areas, discovery framing, single area registry) — Phase 1-2
 - ✓ LENS: Two coordinated agents — Produto (primary) + Dados (auxiliary) — one shared question queue, lens tagging — Phase 3
 - ✓ REP: Discovery report with "Métricas para Precificação" section feeding the Precificador — Phase 4
@@ -44,7 +44,7 @@ Discovery teams map the bottleneck and its solution **completely during the call
 
 <!-- Milestone v3.0 — Pivot Discovery. See REQUIREMENTS.md for full list. -->
 
-- [ ] TAQ-02/04/05: Session binding for the Taqciti stream; retire custom extension; AGP question panel
+- [ ] TAQ-02/04/05: Session binding for the Taqciti stream; retire custom extension; AGP question panel — custom extension retired in Phase 9 (TAQ-04 pending verification)
 
 ### Out of Scope
 
@@ -88,7 +88,7 @@ Existing codebase in `./diagnostico/`:
 | Supabase Vault for API key storage | pgsodium column encryption; key never exposed in frontend (SPEC) | — Pending |
 | Pivot sales → discovery, keep sales behind `mode` flag | Company now requires every solution to pass through discovery; deleting sales framing is irreversible, so gate it (Open/Closed) until discovery is validated (v3.0) | — Pending |
 | Two agents only at the question stage (coverage + red-flags stay 1×) | Produto/Dados biases diverge only in questions; keeps LLM cost near 1× while honoring "dois agentes" (v3.0) | — Pending |
-| Adopt Taqciti capture engine + add live streaming; retire custom extension | Taqciti is the more complete/tested Meet capturer (speakers + timestamps + roster); both scraped Meet, so removing the custom extension kills duplication (v3.0) | ✓ Live streaming shipped — Phase 7 (extension retirement still pending, Phase 9) |
+| Adopt Taqciti capture engine + add live streaming; retire custom extension | Taqciti is the more complete/tested Meet capturer (speakers + timestamps + roster); both scraped Meet, so removing the custom extension kills duplication (v3.0) | ✓ Live streaming shipped — Phase 7; custom extension retired in Phase 9 |
 | Streamer groups words into phrases before sending (silence 1500ms / cap 5000ms), not a straight per-flush send | UAT found per-flush sending (reusing Taqciti's 250ms local debounce) fragmented speech into one line per word/chunk over the network; the fix needed its own send-side window, decoupled from local persistence cadence (Phase 7, D-06 refinement) | ✓ Shipped — Phase 7 (07-04), confirmed by live Meet retest |
 | Single coverage-area registry (kill 8 hardcoded areas) | 8 areas were duplicated across 6 files; a registry is the SOLID seam that lets discovery areas coexist with sales areas (v3.0) | — Pending |
 

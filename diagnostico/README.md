@@ -6,8 +6,11 @@
 > aplicativo de **linha de comando**, anterior à reescrita web. Ela **não é importada nem
 > chamada por nenhum outro componente** do repositório:
 >
-> - A extensão Chrome (`extension/`) fala **apenas** com o backend v2 (`backend/`, FastAPI no
->   Railway) via `POST /webhook/extension` e WebSocket `/ws/{sessionId}`. **Nunca** com esta pasta.
+> - A extensão de captura é a Taqciti (`taqciti/`, subtree importado na Fase 7) e fala **apenas** com o
+>   backend v2 (`backend/`, FastAPI no Railway) via `POST /webhook/extension` e as rotas
+>   `/webhook/extension/clients`, `/webhook/extension/sessions` e
+>   `/webhook/extension/sessions/{id}/finish`. **Nunca** com esta pasta. A extensão antiga foi removida
+>   na Fase 9 (continua no histórico do git).
 > - O frontend React (`frontend/`) e o Supabase são exclusivos da v2.
 > - Esta v1 tem seu **próprio** caminho de transcrição (`transcription/webhook_server.py`, aiohttp
 >   em loopback, recebendo do Taqtic/Recall/stdin/arquivo) e seu próprio painel
@@ -16,7 +19,7 @@
 >   confirma que é um app à parte, não um módulo do `backend/`.
 >
 > **Quando usar:** apenas para rodar o diagnóstico offline no terminal, sem subir
-> web/FastAPI/Supabase. Para o produto atual (extensão + web), use `backend/` + `frontend/`.
+> web/FastAPI/Supabase. Para o produto atual (extensão Taqciti + web), use `backend/` + `frontend/` + `taqciti/`.
 >
 > Ver `PLANO_AJUSTES.md` → **Task 5** e `CLAUDE.md` → seção "Modo CLI legado (v1)".
 

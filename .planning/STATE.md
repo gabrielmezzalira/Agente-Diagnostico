@@ -204,7 +204,7 @@ None yet.
 
 - Phases 1-3 touch backend files shared with sales mode (`prompt_builder.py`, `llm.py`, `session_state.py`) — every change needs a sales-mode regression check, not just a discovery-mode happy path
 - Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
-- Phases 7-8 live in the separate Taqciti repo — coordinate access/branch strategy before starting Phase 7
+- Phases 7-8 live in `taqciti/` (subtree imported in Phase 7)
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
 - ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.

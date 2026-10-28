@@ -364,11 +364,11 @@ Plans:
   1. With Taqciti bound to an active discovery session, an "AGP" tab shows that session's live question queue (each card carrying its produto/dados lens), updating as the backend emits new questions
   2. The questions and lenses shown in AGP come from the backend for the bound session (reusing the existing `/ws/{session_id}` `question_new` / `question_expired` stream) — Taqciti does not recompute or invent questions
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
-  4. The panel lives in the Taqciti repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
+  4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
 **Plans**: TBD
 **UI hint**: yes
-**Note**: Lives in the separate Taqciti repo (like Phases 7-8); coordinate repo access before starting. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
+**Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
 
 ## Progress
 

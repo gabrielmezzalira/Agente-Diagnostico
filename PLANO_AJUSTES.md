@@ -245,6 +245,7 @@ com o custo de `max_output_tokens` real.
 > **Decisão tomada (2026-09-15):** documentar como modo CLI legado, sem remover.
 > Review de código confirmou que `diagnostico/` não é importada por `backend/`, `frontend/` nem
 > `extension/`, e que a extensão Chrome fala apenas com o backend v2 (`/webhook/extension` + `/ws`).
+> *(Fase 9: a extensão antiga foi removida do repositório; a captura agora é a Taqciti, em `taqciti/`, que usa a mesma rota `POST /webhook/extension`.)*
 > Ações executadas: banner "MODO CLI LEGADO (v1)" no topo de `diagnostico/README.md`; nova seção 10
 > "Modo CLI legado (v1)" no `CLAUDE.md` com como rodar e regras de não-confusão v1×v2; nota na Seção 9
 > do `CLAUDE.md` esclarecendo que a migração planejada não aconteceu (v2 foi reescrita do zero).
@@ -476,6 +477,7 @@ commit** (assim dá pra reverter o bugfix sem perder a reorganização).
 - **Ingestão:** extensão (`content_meet.js` → `background.js` → `POST /webhook/extension`) ou Recall
   (`POST /webhook/recall`). Ambos gravam `transcript_chunks` e chamam `pipeline_manager.push_chunk`
   sem bloquear.
+  *(Fase 9: a extensão antiga foi removida do repositório; a captura agora é a Taqciti, em `taqciti/`, que usa a mesma rota `POST /webhook/extension`.)*
 - **SOLID:** só o Precificador respeita router→service→repository. O Diagnóstico não tem repositório;
   `pipeline.py` e `sessions.py` falam com o banco direto — dívida que as Tasks 4a e 6 tangenciam.
 

@@ -835,9 +835,12 @@ terminal (~3000 linhas, 31 arquivos), anterior à reescrita web. Foi confirmado 
 (2026-09-15, Task 5 do `PLANO_AJUSTES.md`) que ela **não está ligada ao sistema web (v2) nem à
 extensão Chrome**:
 
-- **A extensão (`extension/`) fala apenas com o backend v2** (`backend/`, FastAPI no Railway) via
-  `POST /webhook/extension` e WebSocket `/ws/{sessionId}`. Nunca com `diagnostico/`.
-- **Nenhum arquivo de `backend/`, `frontend/` ou `extension/` importa `diagnostico/`** — as únicas
+- **A extensão de captura é a Taqciti** (`taqciti/`, subtree importado na Fase 7) e fala apenas com o
+  backend v2 (`backend/`, FastAPI no Railway) via `POST /webhook/extension` e as rotas
+  `/webhook/extension/clients`, `/webhook/extension/sessions` e
+  `/webhook/extension/sessions/{id}/finish` (Fase 8). Nunca com `diagnostico/`. A extensão antiga foi
+  removida na Fase 9 (continua no histórico do git).
+- **Nenhum arquivo de `backend/`, `frontend/` ou `taqciti/` importa `diagnostico/`** — as únicas
   menções são comentários ("segue o mesmo padrão do diagnostico/config.py").
 - A v1 tem seu **próprio** caminho de transcrição (`diagnostico/transcription/webhook_server.py`,
   aiohttp em loopback, recebe Taqtic/Recall/stdin/arquivo) e seu **próprio** painel
@@ -855,7 +858,7 @@ python main.py --mode realtime --source stdin    # painel de cobertura ao vivo
 ```
 
 **Regras ao trabalhar no repo:**
-- **Não confundir** a v1 (`diagnostico/`) com a v2 (`backend/` + `frontend/` + `extension/`). Prompts,
+- **Não confundir** a v1 (`diagnostico/`) com a v2 (`backend/` + `frontend/` + `taqciti/`). Prompts,
   classificador e planner existem em **duas versões divergentes**; ao editar o produto atual, mexa
   **sempre** na v2.
 - A v1 tem seu próprio `config.py`/`.env`/webhook — tratar como superfície separada em auditorias de
