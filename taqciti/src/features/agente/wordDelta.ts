@@ -1,6 +1,7 @@
 /**
  * Delta palavra-a-palavra por segmento (D-07) — funções puras, sem
- * `chrome`/`fetch`. Espelha o padrão de `extension/content_meet.js::emitNew()`,
+ * `chrome`/`fetch`. Segue a mesma ideia de envio por diferença de palavras da
+ * extensão antiga do Agente (removida na Fase 9),
  * mas adaptado para MÚLTIPLOS segmentos concorrentes (a Taqciti mantém vários
  * `LiveSegment` simultâneos; a extensão antiga tinha só uma fala de cada vez).
  *

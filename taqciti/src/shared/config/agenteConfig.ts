@@ -38,8 +38,7 @@ function isLoopbackHostname(hostname: string): boolean {
 const EXPLICIT_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i;
 
 /**
- * Normaliza a URL do backend do Agente — mesmo padrão de
- * `extension/background.js::normalizeUrl` (trim, remove barras finais,
+ * Normaliza a URL do backend do Agente (trim, remove barras finais,
  * prefixa protocolo quando falta). String vazia continua vazia (quem chama
  * decide o fallback — ver `normalizeAgenteConfig`).
  *
