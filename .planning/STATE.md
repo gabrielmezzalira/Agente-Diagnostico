@@ -192,6 +192,7 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-28: meetingCodeFromPath e a regra unica de 'qual e a sala desta URL' (content script em modo exato, service worker com subcaminho); DA-4/DA-5 nao tocadas
 - [Phase 09]: Semente SC3 estendeu test_extension_chunk_extra_fields.py (163 linhas) em vez de test_extension_clients.py (520 linhas)
 - [Phase 09]: Branch oficial da Fase 9 mantida como feat/fase-09-cutover-retire-custom-extension (decisao do usuario); push da main (196 commits a frente de origin) fica pendente do time
+- [Phase 09]: Re-decisao do usuario (2026-10-27) sobre D-04/D-13: prova SC1 LOCAL (backend 127.0.0.1:8000 + web app localhost:5173 + build local de taqciti/dist) antes do deploy; deploy Railway/Vercel, GEMINI_API_KEY no Railway, sync do repo original e release de producao ficam em '## Depois do deploy' do 09-UAT.md, fora da fase
 
 ### Pending Todos
 

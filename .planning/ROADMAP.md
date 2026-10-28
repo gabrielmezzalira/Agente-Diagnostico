@@ -335,7 +335,7 @@ Plans:
 
 **Wave 2** *(bloqueada na conclusão da Wave 1)*
 
-- [ ] 09-02-PLAN.md — Deploy, release e roteiro: `09-UAT.md` com a ordem da prova SC1 (D-03), SQLs read-only e limpeza por id
+- [ ] 09-02-PLAN.md — Ambiente local, build local da Taqciti e roteiro: `09-UAT.md` com a ordem da prova SC1 (D-03), SQLs read-only e limpeza por id (re-decisão de 2026-10-27: prova local; deploy e release de produção em `## Depois do deploy`)
 
 **Wave 3** *(bloqueada na conclusão da Wave 2)*
 

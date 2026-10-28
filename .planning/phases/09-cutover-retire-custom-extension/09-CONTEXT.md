@@ -40,6 +40,12 @@ Fora do escopo: painel AGP na Taqciti (Fase 10), triagem dos WR da Fase 8, renom
   4. sair da sala encerra a sessão (DA-4) → sessão `finished`.
 - **D-04:** A prova roda em **produção** (Railway + Vercel) com cliente/projeto `ZZ-TESTE…`, apagado
   no fim (sessões primeiro, depois o projeto). Nunca apagar o cliente real `visus`.
+  — **Re-decisão do usuário (2026-10-27): prova LOCAL.** A reunião real no Meet continua igual, mas o
+  backend e o web app rodam no computador de quem conduz a prova, e a Taqciti é a build local
+  (`taqciti/dist`) apontando para `http://localhost:8000`. O banco é o Supabase que o backend local usa
+  (informado pelo usuário no checkpoint do 09-02); o cliente `ZZ-TESTE…` e a limpeza por id continuam
+  valendo. Motivo: terminar a fase sem esperar o deploy. O que só produção prova (deploy, release com a
+  URL de produção) vira a seção `## Depois do deploy` do `09-UAT.md`, fora da fase.
 
 ### Instalação da Taqciti / página do web app
 - **D-05:** Distribuição = **instaladores da release** (`taqciti/installer/{windows,macos,linux}`,
@@ -75,14 +81,18 @@ Fora do escopo: painel AGP na Taqciti (Fase 10), triagem dos WR da Fase 8, renom
 - **D-13:** **Deploy primeiro, depois a prova:** o backend com o código das Fases 7–8 + `GEMINI_API_KEY`
   sobe no Railway antes da reunião SC1 (a `EXTENSION_SHARED_KEY` fica vazia, D-08). O deploy em si é
   ação do usuário/time (fora do repo) — o plano deve ter um checkpoint humano para isso.
+  — **Re-decisão do usuário (2026-10-27): prova primeiro, deploy depois.** O checkpoint do 09-02 passa a
+  ser "ambiente local pronto" (backend + web app locais, build local da Taqciti). Deploy no Railway/Vercel,
+  `GEMINI_API_KEY` no Railway e a release da Taqciti com a URL de produção (D-07) saem da fase e ficam
+  registrados em `## Depois do deploy` do `09-UAT.md`, com um teste rápido em produção.
 - **D-11:** A `ExtensionPage` nova traz um aviso: "se você tem a extensão antiga instalada, remova
   antes de instalar a Taqciti". Comunicação ao time no canal fica fora do código.
 - **D-14:** Instalações antigas que continuarem em uso **seguem funcionando**: o backend não bloqueia
   chunks da extensão antiga (consequência direta do SC3). Remover = tirar do repo, não quebrar quem tem.
 
 ### Ordem sugerida de commits (do HANDOFF §3.2, ajustada pelas decisões)
-1. Checkpoint humano: deploy do backend (D-13).
-2. Prova SC1 em produção → `09-UAT.md` (D-01..D-04) — só verificação.
+1. Checkpoint humano: ambiente local pronto (D-13, re-decisão de 2026-10-27; o deploy fica para depois da fase).
+2. Prova SC1 local → `09-UAT.md` (D-01..D-04) — só verificação.
 3. Reescrever `ExtensionPage` + `EXTENSION_URL` (D-05..D-07, D-11).
 4. `git rm extension/` + zip (D-09).
 5. Limpeza de referências mortas em código/comentários (D-10).

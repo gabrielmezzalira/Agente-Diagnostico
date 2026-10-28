@@ -13,19 +13,23 @@ gate_d02: pendente
 ## Current Test
 
 número: 1
-nome: Pré: backend de produção com Fases 7-8 (D-13)
+nome: Pré: backend e web app LOCAIS com Fases 7-8 (D-13, re-decisão de 2026-10-27)
 expected: ver o teste 1 abaixo
-awaiting: preenchimento do teste 1 (checkpoint de deploy do plano 09-02, Task 2)
+awaiting: preenchimento do teste 1 (checkpoint do ambiente local do plano 09-02, Task 2)
+
+> **Re-decisão do usuário (2026-10-27): prova LOCAL primeiro, deploy depois.** Os testes 1 e 2 conferem o ambiente
+> local (backend e web app desta branch no computador da prova, e a build local da Taqciti). O que só a produção prova
+> (deploy, release com a URL de produção) está em `## Depois do deploy (fora da Fase 9)`, no fim deste arquivo.
 
 ## Tests
 
-### 1. Pré: backend de produção com Fases 7-8 (D-13)
-expected: O backend no Railway E o web app na Vercel estão servindo o código das Fases 7-8 (D-04, D-13). A variável GEMINI_API_KEY existe no Railway; EXTENSION_SHARED_KEY está sem valor (D-08); a situação de DOCUDATA_URL está decidida e registrada antes da prova. Só os NOMES das variáveis aparecem aqui, nunca valores.
+### 1. Pré: backend e web app LOCAIS com Fases 7-8 (D-13, re-decisão de 2026-10-27)
+expected: O backend desta branch roda em `127.0.0.1:8000` (a rota `/webhook/extension/sessions` aparece no `openapi.json`) e o web app local (`localhost:5173`) fala com esse backend, não com produção. No `backend/.env` local, conferido pelo usuário: GEMINI_API_KEY existe; EXTENSION_SHARED_KEY está ausente ou sem valor (D-08); o projeto Supabase usado está identificado (produção ou outro); a situação de DOCUDATA_URL está decidida antes da prova. Só os NOMES das variáveis aparecem aqui, nunca valores.
 result: pending
 evidence:
 
-### 2. Pré: release da Taqciti com URL de produção e streaming ligado (D-07)
-expected: (0) Antes de cortar a release, o repositório de origem já tinha o código das Fases 7-8 de `taqciti/` (decisão B do usuário, 2026-10-27). (a) Na pasta real da instalação nova, o host de produção do Agente confirmado pelo time aparece nos arquivos `assets/*.js` da release instalada, no lugar do argumento vazio da normalização; o literal de fallback do localhost continua lá por desenho e é ignorado. (b) Numa instalação nova em perfil limpo do Chrome, a tela do Agente mostra a URL de produção e o envio ligado, sem ninguém ter salvo nada antes.
+### 2. Pré: Taqciti local (taqciti/dist) apontando para o backend local, com o envio ligado
+expected: A build de `taqciti/dist` foi feita a partir do commit atual desta branch com `VITE_AGENTE_BACKEND_URL=http://127.0.0.1:8000` e `VITE_AGENTE_STREAMING_ENABLED=true`; o endereço `127.0.0.1:8000` aparece nos arquivos `assets/*.js`; no Chrome da prova, a Taqciti está carregada da pasta `taqciti/dist` deste repo e a tela do Agente mostra `http://127.0.0.1:8000` com o envio ligado.
 result: pending
 evidence:
 
@@ -103,9 +107,9 @@ Ordem que atende o D-03: a prova só vale se o relatório sair com a sessão ain
 
 (a) Remova ou desative a extensão antiga em `chrome://extensions`, no navegador onde a prova vai rodar.
 
-(b) Instale a Taqciti A PARTIR DA RELEASE (não do `taqciti/dist` local) e, na tela "Agente Diagnóstico" da Taqciti, confira que a URL é a de produção e que o envio está ligado. Se o perfil já tinha configuração salva, ela prevalece sobre o padrão da build: corrija antes de seguir.
+(b) Confira que a Taqciti carregada é a build local de `taqciti/dist` (teste 2) e, na tela "Agente Diagnóstico" da Taqciti, que a URL é `http://127.0.0.1:8000` e que o envio está ligado. Se o perfil já tinha configuração salva, ela prevalece sobre o padrão da build: corrija antes de seguir.
 
-(c) Abra o web app de produção (Vercel).
+(c) Abra o web app LOCAL (`http://localhost:5173`), com o backend local rodando (teste 1). Os SQLs abaixo rodam no SQL Editor do projeto Supabase anotado no teste 1.
 
 (d) Entre num Meet real, clique na bolha "!" da cápsula, escolha "Selecionar cliente" e crie o cliente `ZZ-TESTE-F09 <data>`.
 
@@ -164,4 +168,16 @@ delete from projects where id in ('<id-do-projeto>') and client like 'ZZ-TESTE%'
 - WR-01 / T-08-10 segue aberto por D-08: com `EXTENSION_SHARED_KEY` vazia, `/webhook/extension*` aceita qualquer chamador. A prova e as páginas não devem sugerir que existe chave.
 - `.planning/codebase/*.md` está defasado: regenerar depois ou deixar assim (decisão 10 do planejamento).
 - Bloco "ID da sessão + copiar" de `SessionActivePage.tsx` mantido (decisão 9 do planejamento); removê-lo seria mudança de comportamento à parte.
-- Backend e release dependem de código que, até a data deste roteiro, existe só na `main` LOCAL (196 commits à frente de `origin/main`, nada enviado): o time decide quando publicar na `master`/`origin` para o Railway e a Vercel enxergarem as Fases 7-8.
+- Backend e release dependem de código que, até a data deste roteiro, existe só na `main` LOCAL (196 commits à frente de `origin/main`, nada enviado): o time decide quando publicar na `master`/`origin` para o Railway e a Vercel enxergarem as Fases 7-8. Faz parte de `## Depois do deploy` abaixo.
+
+## Depois do deploy (fora da Fase 9)
+
+Re-decisão do usuário (2026-10-27): a prova SC1 roda localmente e a fase fecha sem deploy. Os itens abaixo NÃO bloqueiam a Fase 9, mas precisam acontecer, nesta ordem, antes de o time usar a Taqciti em produção. Nada aqui é feito pelo executor da fase.
+
+1. Publicar o código: levar a `main` (Fases 7-9) para a `master`/`origin` (decisão do time; ver HANDOFF §2, `chore/sync-main-to-master`).
+2. Railway: criar `GEMINI_API_KEY` (lembrete fixo do time), deixar `EXTENSION_SHARED_KEY` sem valor (D-08), decidir `DOCUDATA_URL`. Conferir `GET /health` e `openapi.json` listando `/webhook/extension/sessions`.
+3. Vercel: deploy de Production "Ready" no commit da `master` que contém as Fases 7-9 (inclui a página `/extension` nova do 09-04).
+4. Repositório original da Taqciti: ANTES de cortar a release, conferir que ele tem o código das Fases 7-8 de `taqciti/` (4 blobs git iguais aos de `main:taqciti/`: `src/shared/config/agenteConfig.ts`, `src/background/agenteStreamer.ts`, `src/background/agenteStreamDestination.ts`, `src/features/agente/association.ts`). Se não tiver, o mecanismo de sincronização é DECISÃO EM ABERTO do time (decisão B).
+5. Release da Taqciti: no `release.yml` do repositório ORIGINAL (nunca o do subtree deste repo), acrescentar `VITE_AGENTE_BACKEND_URL: ${{ vars.AGENTE_BACKEND_URL }}` e `VITE_AGENTE_STREAMING_ENABLED: 'true'`, criar a Variable com a URL https do backend do passo 2 e cortar a tag. Conferência (re-decisão de 2026-10-26): o host de produção aparece nos `assets/*.js` da pasta instalada nova; o trecho `("")||"http://localhost:8000"` NÃO aparece (o literal de fallback sozinho é esperado); num perfil LIMPO do Chrome, a tela do Agente mostra a URL de produção e o envio ligado. A conferência completa está no histórico do `09-02-PLAN.md` (Task 3 da versão anterior ao commit desta re-decisão).
+6. Ordem de distribuição: a release do passo 5 sai ANTES de avisar o time, porque a página `/extension` nova já aponta para a página de releases.
+7. Teste rápido em produção: uma reunião curta com um cliente `ZZ-TESTE-PROD <data>`, confirmando no banco de produção uma sessão `source='extension'` com falas e `chunk_id` em todas; depois, apagar a sessão e o projeto por id (mesma regra da seção Limpeza).
