@@ -45,6 +45,28 @@ Os 46 conflitos, agrupados:
 
 ---
 
+## DECISÕES DO USUÁRIO (2026-10-28) — prevalecem sobre o texto abaixo
+
+1. **Ordem de integração escolhida:** (1) pegar o conteúdo da `master` numa branch separada, (2) analisar, (3) mergear com as alterações que estamos fazendo (Fase 9 + `main`), (4) só então levar o resultado para a `main`, (5) por fim passar para a `master`. Isto **substitui** a Etapa 1 proposta abaixo (Fase 9 → `main` antes de tudo): a `main` só recebe o resultado já integrado.
+2. **Branch de integração criada** (só a referência, sem push): `chore/integra-master-e-main`, apontando para `origin/master` (`2e67c7c`). O vínculo automático com a `origin/master` foi **removido** de propósito, para um `git push` sem argumento nunca mandar nada para a `master`.
+3. **Análise do conteúdo da `master`:** em andamento, só leitura; resultado em `.planning/INTEGRACAO-MASTER-ANALISE.md`.
+4. **Dados de teste:** o projeto `visus` e as suas 10 sessões foram apagados do banco (autorizado pelo usuário). O `ZZ-TESTE-D20…` e a sessão da prova SC1 continuam, aguardando decisão.
+5. **Página `/extension`:** sem link de download por enquanto; a forma de distribuir a Taqciti fica para depois do deploy.
+
+### RESULTADO DA ANÁLISE DA `master` (2026-10-28) — muda o risco da Task A
+
+Detalhes em `.planning/INTEGRACAO-MASTER-ANALISE.md`. Conferido de forma independente (comandos `git` de leitura, refeitos pelo orquestrador, não só pelo analista):
+
+- **A `master` não tem nada que o nosso lado não tenha.** Arquivos mudados só na `master`: **0**. Nos 45 arquivos de código em que ela difere do nosso lado, a versão dela já existe no histórico do nosso lado (**0 conteúdos únicos**). A `taqciti/` dela é byte a byte a ponta da Fase 7 (árvore `cc5dec8…`) e não tem os arquivos da Fase 8 (`agenteStreamDestination.ts`, `association.ts`).
+- O redesign de UI e o vínculo DocuData (`feat/redesign-ui-citi`, `feat/integracao-docudata`) já estão no nosso lado; da branch do redesign sobra só 1 commit de documentação (`6ddb089`).
+- **Consequência:** os 46 conflitos **não são resolvidos um a um**. A integração vira "registrar a história da `master` como ancestral e terminar com a árvore **exatamente igual à nossa**". Os passos A4 (triagem por arquivo) e a resolução manual de A5 **deixam de ser necessários**; no lugar entra a conferência `git diff <nosso lado> <branch de integração>` = vazio.
+- **Armadilha comprovada:** o merge com `-X ours` deixa `verify_extension_key` duplicada em `webhook.py`. Por isso o método é criar o commit de merge com a árvore do nosso lado (`git commit-tree`), e não resolver conflito.
+- A conferência vale enquanto a `master` continuar em `2e67c7c`; se alguém empurrar algo nela, refazer.
+- **Fase 10:** a branch remota `origin/feat/fase-10-agp-question-panel` (13 commits de 12/10, só em `taqciti/` e `.planning/`) **já tem a aba AGP** (WebSocket `/ws/{session_id}`, 15 arquivos novos quase todos com teste). Foi cortada de uma Fase 8 mais antiga que a nossa; 1 conflito de texto (`associationClose.ts`); o UAT de 7 testes dela **nunca foi executado**. Pelo `CLAUDE.md` ela entra em branch/PR próprio **depois** da Fase 9.
+- **Não verificado:** nenhuma suíte foi executada; se a migration `chunk_id` (`20261011000000`) já está aplicada em produção; se o backend emite `question_expired`.
+
+Passos A0 a A7 abaixo seguem valendo, **com esta correção de ordem**: A2 (PR da Fase 9 para a `main`) só acontece **depois** de A5 (merge na branch de integração) e A6 (suítes verdes). O merge de A5 é `feat/fase-09…` → `chore/integra-master-e-main` (e não `main` → `master`); depois a branch de integração vai para a `main` por PR, e a `main` para a `master`.
+
 ## TASK A — Integrar a Fase 9 na `main` e a `main` na `master` sem conflito irresolvível
 
 ### 1. O que muda (em linguagem comum)
