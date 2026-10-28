@@ -327,7 +327,7 @@ Plans:
   2. The `extension/` directory and its packaged zip are removed from the repository
   3. The `/webhook/extension` endpoint, the `ExtensionChunk` model, and the `extension` source enum value remain intact in the backend, so historical sessions referencing them still resolve
 
-**Plans**: 1/7 plans executed
+**Plans**: 2/7 plans executed
 
 **Wave 1**
 
@@ -335,7 +335,7 @@ Plans:
 
 **Wave 2** *(bloqueada na conclusão da Wave 1)*
 
-- [ ] 09-02-PLAN.md — Ambiente local, build local da Taqciti e roteiro: `09-UAT.md` com a ordem da prova SC1 (D-03), SQLs read-only e limpeza por id (re-decisão de 2026-10-27: prova local; deploy e release de produção em `## Depois do deploy`)
+- [x] 09-02-PLAN.md — Ambiente local, build local da Taqciti e roteiro: `09-UAT.md` com a ordem da prova SC1 (D-03), SQLs read-only e limpeza por id (re-decisão de 2026-10-27: prova local; deploy e release de produção em `## Depois do deploy`)
 
 **Wave 3** *(bloqueada na conclusão da Wave 2)*
 
@@ -385,7 +385,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
-| 9. Cutover + Retire Custom Extension | 1/7 | In Progress | - |
+| 9. Cutover + Retire Custom Extension | 2/7 | In Progress | - |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 
 ## Backlog
