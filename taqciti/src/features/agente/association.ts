@@ -99,7 +99,7 @@ export type AssociationEvent =
   | { type: 'session-finished' }
   | { type: 'finish-armed'; by: number }
   | { type: 'finish-failed'; definitive?: boolean }
-  /** Boot (DA-5): quem desistiu de encerrar ganha uma rodada nova de tentativas; nunca é disparado fora do boot. */
+  /** Abertura do navegador (DA-5): quem desistiu de encerrar ganha uma rodada nova; só o `runtime.onStartup` dispara. */
   | { type: 'finish-round-restarted' };
 
 /**

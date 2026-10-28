@@ -30,6 +30,7 @@ import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociat
 import { releaseMeetingAssociation } from './agenteAssociationRelease';
 import { agenteSessionFinisher, configureAgenteSessionFinisher } from './agenteSessionFinisher';
 import { shouldStartFreshMeeting } from './agenteFreshStart';
+import { registerAgpQuestionsFeed } from './agpQuestionsFeedInstance';
 import { ensurePanelPrefs, patchPanelPrefs } from '@/features/panel/prefsStore';
 
 /**
@@ -64,10 +65,18 @@ const ready: Promise<void> = migrateLocalStorage()
   // Sem await: o envio relançado do vínculo ao vivo (WR-05) nunca atrasa os handlers de mensagem.
   .then(() => void relaunchLiveLinks())
   // Sem await: a varredura do encerramento nunca atrasa os handlers de mensagem.
-  .then(() => void agenteSessionFinisher.rescheduleAfterRestart())
+  .then(
+    () =>
+      void agenteSessionFinisher
+        .rescheduleAfterRestart()
+        .catch((error: unknown) => logger.error('varredura do encerramento no boot falhou', error)),
+  )
   .then(() => ensurePanelPrefs())
   .then(() => undefined)
   .catch((error) => logger.error('falha na inicialização', error));
+
+// Painel AGP (Fase 10): segue a sessão da reunião ao vivo e espelha as perguntas do Agente.
+registerAgpQuestionsFeed(ready);
 
 /**
  * Primeira execução depois de instalar (ou atualizar).
@@ -128,6 +137,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url === undefined) return;
   const url = changeInfo.url;
   void ready.then(() => onMeetingTabNavigated(tabId, url, { getState, dispatch, now: Date.now }));
+});
+
+// Abertura do navegador (DA-5): quem desistiu de encerrar a sessão ganha UMA rodada nova por abertura. Fora do
+// boot do worker de propósito — o worker acorda a todo momento e isso viraria chamadas sem limite.
+chrome.runtime.onStartup.addListener(() => {
+  void ready
+    .then(() => agenteSessionFinisher.restartGaveUpRounds())
+    .catch((error: unknown) => logger.error('nova rodada de encerramento falhou', error));
 });
 
 // Síncrono no topo (MV3): o alarme acorda o service worker; o handler espera a hidratação por dentro.

@@ -9,6 +9,7 @@
 import {
   AGENTE_KEY_HEADER,
   isValidAgenteBackendUrl,
+  isValidAgenteSessionId,
   type AgenteConfig,
 } from './agenteConfig';
 
@@ -44,4 +45,19 @@ export function buildAgenteJsonRequest(
     requestInit.body = JSON.stringify(init.body);
   }
   return { url: `${config.agenteBackendUrl}${path}`, init: requestInit };
+}
+
+/** Rota do WebSocket de uma sessão no backend (`backend/app/routers/ws.py`): `/ws/{session_id}`. */
+export const AGENTE_WS_PATH = '/ws';
+
+/**
+ * URL do WebSocket da sessão (Fase 10, painel AGP): `https` -> `wss`, `http` (só loopback, WR-06) -> `ws`.
+ * `null` para backend inválido ou id fora do formato UUID — nada abre conexão nesse caso. Sem chave na URL:
+ * o WebSocket do backend não usa o `x-agente-key`.
+ */
+export function buildAgpSocketUrl(backendUrl: string, sessionId: string): string | null {
+  if (!isValidAgenteBackendUrl(backendUrl) || !isValidAgenteSessionId(sessionId)) return null;
+  const parsed = new URL(backendUrl);
+  const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${parsed.host}${parsed.pathname.replace(/\/+$/, '')}${AGENTE_WS_PATH}/${sessionId}`;
 }
