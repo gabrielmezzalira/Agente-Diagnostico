@@ -3,7 +3,7 @@ status: testing
 phase: 09-cutover-retire-custom-extension
 source: [09-02-PLAN.md, 09-03-PLAN.md, 09-07-PLAN.md]
 started: 2026-10-27T17:00:00.000Z
-updated: 2026-10-27T18:00:00.000Z
+updated: 2026-10-27T19:00:00.000Z
 gate_d02: pendente
 ---
 
@@ -12,10 +12,10 @@ gate_d02: pendente
 
 ## Current Test
 
-número: 2
-nome: Pré: Taqciti local (taqciti/dist) apontando para o backend local, com o envio ligado
-expected: ver o teste 2 abaixo
-awaiting: recarregar a Taqciti em chrome://extensions a partir de taqciti/dist e conferir a tela do Agente (checkpoint do plano 09-02, Task 3)
+número: 3
+nome: SC1-1 transcrição só pela Taqciti, sessão source=extension, mode discovery, toda fala com chunk_id
+expected: ver o teste 3 abaixo
+awaiting: a reunião real da prova SC1 (plano 09-03, Task 1); os pré-requisitos (testes 1 e 2) estão com result: pass
 
 > **Re-decisão do usuário (2026-10-27): prova LOCAL primeiro, deploy depois.** Os testes 1 e 2 conferem o ambiente
 > local (backend e web app desta branch no computador da prova, e a build local da Taqciti). O que só a produção prova
@@ -43,8 +43,15 @@ nota: o banco é o de produção (confirmado por select somente leitura: cliente
 
 ### 2. Pré: Taqciti local (taqciti/dist) apontando para o backend local, com o envio ligado
 expected: A build de `taqciti/dist` foi feita a partir do commit atual desta branch com `VITE_AGENTE_BACKEND_URL=http://127.0.0.1:8000` e `VITE_AGENTE_STREAMING_ENABLED=true`; o endereço `127.0.0.1:8000` aparece nos arquivos `assets/*.js`; no Chrome da prova, a Taqciti está carregada da pasta `taqciti/dist` deste repo e a tela do Agente mostra `http://127.0.0.1:8000` com o envio ligado.
-result: pending
+result: pass
 evidence:
+data: 2026-10-27
+build_local: commit=82f7223 (comando: `VITE_AGENTE_BACKEND_URL=http://127.0.0.1:8000 VITE_AGENTE_STREAMING_ENABLED=true npm --prefix taqciti run build`, status 0, built in 4.28s)
+bundle_url_local: presente (1 arquivo(s)) (taqciti/dist/assets/clientSearch-D_DltuFk.js)
+carregada_de: C:\Users\anton\OneDrive\Desktop\Agente-Diagnostico\taqciti\dist
+tela_agente: url=http://127.0.0.1:8000 streaming=ligado
+origem: a conferência da tela é confirmação do usuário ("feito"), que seguiu o passo a passo (extensão antiga desativada/removida, Taqciti carregada de taqciti/dist com recarregar, tela "Agente Diagnóstico" em chrome-extension://jalebpaefejnbacgncgkailhemkdpnhm/src/sidepanel/index.html?view=agente). Evidência independente: logo depois, o log do backend local recebeu `GET /webhook/extension/clients HTTP/1.1 200 OK`, chamada que só a Taqciti faz, provando que a Taqciti carregada fala com 127.0.0.1:8000.
+release_yml: sem diff em relação à main (taqciti/.github/workflows/release.yml intocado)
 
 ### 3. SC1-1 transcrição só pela Taqciti, sessão source=extension, mode discovery, toda fala com chunk_id
 expected: A sessão da prova tem `source='extension'`, o projeto está em `mode='discovery'` e o cliente começa com `ZZ-TESTE`; há falas e `com_chunk_id = falas` (a extensão antiga nunca mandava `chunk_id`, então isso prova que só a Taqciti transmitiu). Se alguma fala tiver `chunk_id` nulo, investigar antes de aprovar.
