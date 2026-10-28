@@ -46,7 +46,7 @@
     {
       "number": "9",
       "name": "Cutover + Retire Custom Extension",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "10",
@@ -56,8 +56,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 9 of 10 · executing"
+    "label": "Advance to the next step (verify)",
+    "reason": "Phase 8 of 10 · 80% · ready to verify"
   },
-  "updated_at": "2026-10-28T17:45:30.952Z"
+  "updated_at": "2026-10-28T17:53:47.763Z"
 }

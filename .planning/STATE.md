@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v3.0
 milestone_name: Pivot Discovery
-current_phase: 09
-current_phase_name: Cutover + Retire Custom Extension
-status: executing
-stopped_at: Completed 09-06-PLAN.md (7 de 7 planos)
-last_updated: "2026-10-28T17:45:35.006Z"
-last_activity: 2026-10-27
-last_activity_desc: Phase 09 execution started
-state_head: aedc7ddef82dfe4a900ccab8d3620d481d897e61
+current_phase: 10
+current_phase_name: AGP Question Panel in Taqciti
+status: planning
+stopped_at: Phase 09 complete (verification passed; SC1 emendado). Fase 10 ainda não começou.
+last_updated: "2026-10-28T17:53:47.642Z"
+last_activity: 2026-10-28
+last_activity_desc: Phase 09 complete
+state_head: ffe90896788434b6d5d1b33632baf3f12a9f9744
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 59
   completed_plans: 59
+  percent: 80
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -27,22 +28,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 09 — Cutover + Retire Custom Extension
+**Current focus:** Phase 10 — AGP Question Panel in Taqciti (não começou; existe uma branch remota do Gabriel, `origin/feat/fase-10-agp-question-panel`, a integrar)
 
 ## Current Position
 
-Phase: 09 (Cutover + Retire Custom Extension) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute
-Last activity: 2026-10-27 — Phase 09 execution started
+Phase: 09 (Cutover + Retire Custom Extension) — COMPLETE (verificação `passed` com SC1 emendado, 2026-10-28)
+Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
+Status: Fase 9 concluída; Fase 10 não iniciada
+Last activity: 2026-10-28 — Phase 09 complete
 
-Progress: [███████░░░] 70%
+> **Pendência de registro (não é erro de código):** o ROADMAP ainda não marca a Fase 8 como concluída
+> e o TAQ-02 segue `Pending` no REQUIREMENTS.md, embora a Fase 8 esteja verificada (`08-VERIFICATION.md`
+> = passed, UAT 135/135). O `phase.complete` da Fase 9 chegou a gravar "Phase 8" como atual por causa
+> disso; foi corrigido aqui. Marcar a Fase 8 concluída é decisão do time (HANDOFF-FASE-09-10, §2).
+
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 24
+- Total plans completed: 31
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -57,6 +63,7 @@ Progress: [███████░░░] 70%
 | 05 | 5 | - | - |
 | 06 | 2 | - | - |
 | 7 | 4 | - | - |
+| 09 | 7 | - | - |
 
 **Recent Trend:**
 
@@ -228,7 +235,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-28T17:45:31.756Z
-Stopped at: Completed 09-06-PLAN.md (7 de 7 planos)
+Stopped at: Phase 09 complete, ready to verify Phase 8
 Resume file: None
 
 ---

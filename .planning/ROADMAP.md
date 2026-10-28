@@ -327,7 +327,7 @@ Plans:
   2. The `extension/` directory and its packaged zip are removed from the repository
   3. The `/webhook/extension` endpoint, the `ExtensionChunk` model, and the `extension` source enum value remain intact in the backend, so historical sessions referencing them still resolve
 
-**Plans**: 7/7 plans executed
+**Plans**: 7/7 plans complete
 
 **Wave 1**
 
