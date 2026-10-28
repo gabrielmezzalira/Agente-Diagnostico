@@ -4,6 +4,7 @@
  * backend (`app/routers/ws.py` + `ws_manager`), com o pipeline trocado por um falso. Só roda com
  * `AGP_SMOKE_SERVER=scripts/agp-fake-backend.py` (precisa de Python com as dependências do backend instaladas).
  * Rodar: `AGP_SMOKE_SERVER=scripts/agp-fake-backend.py npx vitest run src/background/agpBackendSmoke.test.ts`.
+ * No Windows não existe `python3` de verdade (só o atalho da Store): use `AGP_PYTHON=python` junto.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +14,7 @@ import { openBrowserSocket } from './agpBrowserSocket';
 import { createAgpQuestionsFeed, type AgpFeedTarget } from './agpQuestionsFeed';
 
 const SERVER = process.env.AGP_SMOKE_SERVER;
+const PYTHON = process.env.AGP_PYTHON ?? 'python3';
 const PORT = 18765;
 const HTTP = `http://127.0.0.1:${PORT}`;
 const S1 = '33333333-3333-4333-8333-333333333333';
@@ -21,7 +23,7 @@ const targetOf = (id: string): AgpFeedTarget => ({ sessionId: id, url: `ws://127
 
 let proc: ChildProcess | null = null;
 async function startServer(): Promise<void> {
-  proc = spawn('python3', [SERVER as string, String(PORT)], { stdio: 'ignore' });
+  proc = spawn(PYTHON, [SERVER as string, String(PORT)], { stdio: 'ignore' });
   await vi.waitFor(async () => { expect((await fetch(`${HTTP}/stats/x`)).ok).toBe(true); }, { timeout: 20_000, interval: 250 });
 }
 async function stopServer(): Promise<void> {
