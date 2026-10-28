@@ -3,7 +3,7 @@ status: testing
 phase: 09-cutover-retire-custom-extension
 source: [09-02-PLAN.md, 09-03-PLAN.md, 09-07-PLAN.md]
 started: 2026-10-27T17:00:00.000Z
-updated: 2026-10-27T17:00:00.000Z
+updated: 2026-10-27T18:00:00.000Z
 gate_d02: pendente
 ---
 
@@ -12,10 +12,10 @@ gate_d02: pendente
 
 ## Current Test
 
-número: 1
-nome: Pré: backend e web app LOCAIS com Fases 7-8 (D-13, re-decisão de 2026-10-27)
-expected: ver o teste 1 abaixo
-awaiting: preenchimento do teste 1 (checkpoint do ambiente local do plano 09-02, Task 2)
+número: 2
+nome: Pré: Taqciti local (taqciti/dist) apontando para o backend local, com o envio ligado
+expected: ver o teste 2 abaixo
+awaiting: recarregar a Taqciti em chrome://extensions a partir de taqciti/dist e conferir a tela do Agente (checkpoint do plano 09-02, Task 3)
 
 > **Re-decisão do usuário (2026-10-27): prova LOCAL primeiro, deploy depois.** Os testes 1 e 2 conferem o ambiente
 > local (backend e web app desta branch no computador da prova, e a build local da Taqciti). O que só a produção prova
@@ -25,8 +25,21 @@ awaiting: preenchimento do teste 1 (checkpoint do ambiente local do plano 09-02,
 
 ### 1. Pré: backend e web app LOCAIS com Fases 7-8 (D-13, re-decisão de 2026-10-27)
 expected: O backend desta branch roda em `127.0.0.1:8000` (a rota `/webhook/extension/sessions` aparece no `openapi.json`) e o web app local (`localhost:5173`) fala com esse backend, não com produção. No `backend/.env` local, conferido pelo usuário: GEMINI_API_KEY existe; EXTENSION_SHARED_KEY está ausente ou sem valor (D-08); o projeto Supabase usado está identificado (produção ou outro); a situação de DOCUDATA_URL está decidida antes da prova. Só os NOMES das variáveis aparecem aqui, nunca valores.
-result: pending
+result: pass
 evidence:
+data: 2026-10-27
+ambiente: local
+branch: feat/fase-09-cutover-retire-custom-extension
+codigo_commit: 0a4b792
+health: ok
+openapi_webhook_sessions: 2
+web_api: http://localhost:8000 (log do backend local recebeu `GET /projects/ 200` depois do F5 no web app; o web app local fala com o backend local, não com produção)
+banco: producao (Agente-Diagnostico, ref fzvwtkipzxdnubprvfct)
+variaveis (só nomes, conferido pelo usuário no backend/.env local):
+- GEMINI_API_KEY: presente
+- EXTENSION_SHARED_KEY: ausente (D-08)
+- DOCUDATA_URL: ausente; sem exportação ao DocuData nesta prova, a ligação com o DocuData fica para a Fase 10 ou depois (decisão do usuário)
+nota: o banco é o de produção (confirmado por select somente leitura: cliente real visus e as 2 sessões da Fase 8 estão lá); os SQLs da prova e da limpeza rodam nesse projeto.
 
 ### 2. Pré: Taqciti local (taqciti/dist) apontando para o backend local, com o envio ligado
 expected: A build de `taqciti/dist` foi feita a partir do commit atual desta branch com `VITE_AGENTE_BACKEND_URL=http://127.0.0.1:8000` e `VITE_AGENTE_STREAMING_ENABLED=true`; o endereço `127.0.0.1:8000` aparece nos arquivos `assets/*.js`; no Chrome da prova, a Taqciti está carregada da pasta `taqciti/dist` deste repo e a tela do Agente mostra `http://127.0.0.1:8000` com o envio ligado.
