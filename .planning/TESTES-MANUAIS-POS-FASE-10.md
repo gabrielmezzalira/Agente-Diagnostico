@@ -93,4 +93,5 @@ Lista no `09-UAT.md`, seção "Depois do deploy", item 7. Resumo: reunião curta
 ## M9 — Limpeza final dos dados de teste
 
 **Como fazer:** para cada cliente `ZZ-TESTE-*` criado, liste (só leitura), confira que o cliente real `visus` não está na lista, e apague por id, sessões primeiro e projeto depois.
-**Atenção:** as duas sessões antigas `ce75b9af-…` e `6cd362ad-…` pertencem ao cliente **real** `visus`. Apagá-las é decisão sua; não apague o projeto `visus`.
+**Já limpo (2026-10-28, autorizado pelo usuário):** o projeto `visus` e as suas 10 sessões foram apagados.
+**Ainda a apagar, adiado de propósito até o fim da Fase 10:** o projeto `ZZ-TESTE-D20…` (id `6411a126-0be7-4c17-93a4-0ab6ae798eb4`) e a sessão da prova SC1 (id `5e67b872-b5c1-4751-91bf-7d7157b15b9c`). Sessões primeiro, depois o projeto com a trava `client like 'ZZ-TESTE%'`.

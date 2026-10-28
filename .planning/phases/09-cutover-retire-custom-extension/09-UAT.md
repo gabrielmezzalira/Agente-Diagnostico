@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 09-cutover-retire-custom-extension
 source: [09-02-PLAN.md, 09-03-PLAN.md, 09-07-PLAN.md]
 started: 2026-10-27T17:00:00.000Z
@@ -12,10 +12,10 @@ gate_d02: aprovado
 
 ## Current Test
 
-número: 7
-nome: Limpeza dos dados de teste (D-04)
-expected: ver o teste 7 abaixo
-awaiting: aprovação literal "aprovado" do time para o gate D-02 (plano 09-03, Task 3). Reunião feita em 2026-10-28: testes 3 e 6 = pass; teste 4 = dispensado (Gemini sem crédito, 402); teste 5 = dispensado (PRD deixou de existir como entrega do produto).
+número: nenhum (UAT concluído em 2026-10-28)
+nome: resultado final
+expected: testes 3 e 6 = pass; 4 e 5 = dispensado; 7 = skipped (limpeza parcial, resto adiado até o fim da Fase 10)
+awaiting: nada. Gate D-02 aprovado em 2026-10-28. Pendências levadas adiante: repetir a conferência de cobertura/perguntas (teste 4) com chave do Gemini com crédito, e apagar o ZZ-TESTE-D20 depois da Fase 10.
 
 > **Re-decisão do usuário (2026-10-27): prova LOCAL primeiro, deploy depois.** Os testes 1 e 2 conferem o ambiente
 > local (backend e web app desta branch no computador da prova, e a build local da Taqciti). O que só a produção prova
@@ -139,8 +139,15 @@ from sessions where id = ':sid';
 
 ### 7. Limpeza dos dados de teste (D-04)
 expected: Só DEPOIS de `gate_d02: aprovado`: as sessões e o projeto `ZZ-TESTE-F09 <data>` da prova, mais as duas sessões sobrando da Fase 8, são apagados por id conferido (ver a seção "Limpeza" abaixo). O cliente real `visus` continua intacto. Se a sessão da prova foi exportada ao DocuData real, a limpeza também é feita lá (ação externa do time).
-result: pending
+result: skipped
 evidence:
+data: 2026-10-28
+decisao: o usuário autorizou apagar o projeto `visus` e as sessões dele ("foram feitas por mim", projeto criado para teste); o `ZZ-TESTE-D20…` e a sessão da prova SC1 FICAM até o fim da Fase 10 (decisão do usuário, 2026-10-28). `skipped` = parte da limpeza adiada por decisão do time, não esquecida.
+antes_de_apagar (somente leitura): o `visus` (id a86ee034-b209-4388-87bd-007d29f8022a, mode discovery, criado em 2026-09-26) tinha 10 sessões, e não 2: as 2 da Fase 8 (ce75b9af-…, 6cd362ad-…) e 8 mais antigas (26/09 a 11/10). Dependentes: 51 falas, 125 prompts de sessão; 0 perguntas, 0 alertas, 0 snapshots, 0 relatórios, 0 precificações. FKs conferidas: sessions e dependentes em CASCADE; pricings.session_id em SET NULL.
+apagado: as 10 sessões por id (retorno de 10 ids) e depois o projeto `visus` com a dupla trava `id = ... and client = 'visus' and not exists (sessões)` (retorno de 1 linha). Executado pelo orquestrador via conector do Supabase, com autorização explícita do usuário.
+conferido_depois: `select` da tabela projects: o `visus` não existe mais; os outros 9 projetos continuam (a, asdad, Breno, Eduardo, Gustavo, Madson, Melo Bandeira, Thiago e o ZZ-TESTE-D20).
+adiado: projeto `ZZ-TESTE-D20…` (id 6411a126-0be7-4c17-93a4-0ab6ae798eb4) e sessão da prova SC1 (id 5e67b872-b5c1-4751-91bf-7d7157b15b9c). Apagar depois da Fase 10, por id, com a mesma regra (sessões primeiro, depois o projeto com trava `client like 'ZZ-TESTE%'`). Item M9 do `.planning/TESTES-MANUAIS-POS-FASE-10.md`.
+nota: o critério original "0 linhas para client like 'ZZ-TESTE%' e o visus presente" não vale mais: o `visus` deixou de ser tratado como cliente real e o ZZ-TESTE-D20 foi mantido de propósito.
 
 ## Roteiro da reunião SC1
 
