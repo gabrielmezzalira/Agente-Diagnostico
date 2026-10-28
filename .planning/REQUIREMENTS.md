@@ -39,7 +39,7 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 - [x] **TAQ-01**: Taqciti streams live captions (merged segments) to the backend during the call.
 - [ ] **TAQ-02**: A Taqciti meeting binds to the correct backend discovery session through an explicit per-meeting client selection (choose or create a client, or defer to the end of the meeting); the manual session-id field stays as a hidden fallback.
 - [x] **TAQ-03**: The transcription webhook is protected by an opt-in shared-secret header (does not break current production when unset).
-- [ ] **TAQ-04**: The old custom extension is retired after Taqciti is validated (cutover).
+- [x] **TAQ-04**: The old custom extension is retired after Taqciti is validated (cutover).
 - [ ] **TAQ-05**: During a live call, backend-generated discovery questions (each with its produto/dados lens) appear in near-real-time inside a dedicated "AGP" tab in the Taqciti extension, scoped to the bound session.
 
 ## Future Requirements
@@ -92,7 +92,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | TAQ-03 | Phase 6 | Complete |
 | TAQ-01 | Phase 7 | Complete |
 | TAQ-02 | Phase 8 | Pending |
-| TAQ-04 | Phase 9 | Pending |
+| TAQ-04 | Phase 9 | Complete |
 | TAQ-05 | Phase 10 | Pending |
 
 **Coverage:**

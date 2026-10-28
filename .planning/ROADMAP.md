@@ -36,7 +36,7 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
 - [x] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call (completed 2026-09-27)
 - [ ] **Phase 8: Taqciti Session Association** - A Taqciti meeting binds to a backend session through an explicit per-meeting client selection
-- [ ] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
+- [x] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
 - [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
 
 ## Phase Details
@@ -323,11 +323,11 @@ Plans:
 **Requirements**: TAQ-04
 **Success Criteria** (what must be TRUE):
 
-  1. A full discovery session — transcript, coverage updates, questions, and final report — completes end-to-end using only Taqciti as the transcription source
+  1. A full discovery session — transcript, coverage updates, and questions — completes end-to-end using only Taqciti as the transcription source *(emenda de 2026-10-28, decisão do usuário: "final report" saiu do critério porque o time não gera mais PRD a partir de reuniões; um sistema de fluxos por sessão virá depois. Na prova, transcrição e encerramento passaram; cobertura e perguntas foram dispensadas por falta de crédito do Gemini e ficam como conferência manual pendente, item M1 de `TESTES-MANUAIS-POS-FASE-10.md`)*
   2. The `extension/` directory and its packaged zip are removed from the repository
   3. The `/webhook/extension` endpoint, the `ExtensionChunk` model, and the `extension` source enum value remain intact in the backend, so historical sessions referencing them still resolve
 
-**Plans**: 2/7 plans executed
+**Plans**: 7/7 plans executed
 
 **Wave 1**
 
@@ -339,20 +339,20 @@ Plans:
 
 **Wave 3** *(bloqueada na conclusão da Wave 2)*
 
-- [ ] 09-03-PLAN.md — Prova SC1: reunião real só com a Taqciti + gate D-02
+- [x] 09-03-PLAN.md — Prova SC1: reunião real só com a Taqciti + gate D-02 (testes 3 e 6 passaram; 4 e 5 dispensados pelo time)
 
 **Wave 4** *(bloqueada na conclusão da Wave 3)*
 
-- [ ] 09-04-PLAN.md — Página da Taqciti (URL da release informada pelo time, D-05)
-- [ ] 09-07-PLAN.md — Limpeza dos dados de teste (sessões por id e projeto ZZ-TESTE)
+- [x] 09-04-PLAN.md — Página da Taqciti (sem link de download por enquanto, decisão do usuário de 2026-10-28; distribuição definida depois do deploy)
+- [x] 09-07-PLAN.md — Limpeza dos dados de teste (projeto `visus` e 10 sessões apagados; `ZZ-TESTE-D20` mantido até o fim da Fase 10)
 
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
-- [ ] 09-05-PLAN.md — `git rm` do zip empacotado e de `extension/` (SC2)
+- [x] 09-05-PLAN.md — `git rm` do zip empacotado e de `extension/` (SC2)
 
 **Wave 6** *(bloqueada na conclusão da Wave 5)*
 
-- [ ] 09-06-PLAN.md — Comentários do subtree da Taqciti e docs que citavam arquivos apagados (refator só de comentário, D-10)
+- [x] 09-06-PLAN.md — Comentários do subtree da Taqciti e docs que citavam arquivos apagados (refator só de comentário, D-10)
 
 ### Phase 10: AGP Question Panel in Taqciti
 
@@ -385,7 +385,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
-| 9. Cutover + Retire Custom Extension | 2/7 | In Progress | - |
+| 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
 | 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
 
 ## Backlog

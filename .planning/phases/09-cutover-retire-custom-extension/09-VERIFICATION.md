@@ -1,8 +1,8 @@
 ---
 phase: 09-cutover-retire-custom-extension
 verified: 2026-10-28T18:00:00Z
-status: human_needed
-score: 4/5 must-haves verified
+status: passed
+score: 5/5 must-haves verified (SC1 emendado; ver "Resolução humana")
 covered_files:
   - .planning/phases/09-cutover-retire-custom-extension/09-01-PLAN.md
   - .planning/phases/09-cutover-retire-custom-extension/09-01-SUMMARY.md
@@ -28,7 +28,7 @@ overrides_applied: 1
 overrides:
   - must_have: "SC1 (parte do relatório final): a sessão de discovery completa gera o relatório final usando só a Taqciti"
     reason: "Mudança de produto: o time não gera mais PRD a partir de reuniões (virá um sistema de fluxos por sessão, depois). Teste 5 do 09-UAT.md foi dispensado por isso, não por falha."
-    accepted_by: "usuário (decisão registrada em 09-UAT.md, teste 5, 2026-10-28); confirmar ao fechar a fase"
+    accepted_by: "usuário, confirmado ao fechar a fase (resposta 'Emendar o SC1 e fechar agora' em 2026-10-28; decisão também registrada em 09-UAT.md, teste 5)"
     accepted_at: "2026-10-28T15:00:00Z"
 behavior_unverified_items:
   - truth: "SC1 (parte da cobertura e das perguntas): uma sessão alimentada só pela Taqciti produz coverage_snapshots e perguntas das lentes produto e dados"
@@ -48,8 +48,17 @@ human_verification:
 
 **Objetivo da fase:** Taqciti é a única fonte de transcrição em produção; a extensão customizada é removida enquanto o contrato do backend que ela usava permanece intacto para dados históricos.
 **Verificado em:** 2026-10-28 (branch `feat/fase-09-cutover-retire-custom-extension`, tip `f9107fa`)
-**Status:** human_needed
+**Status:** passed (era `human_needed` na verificação automática; ver "Resolução humana" logo abaixo)
 **Re-verificação:** Não — verificação inicial
+
+## Resolução humana (2026-10-28)
+
+A verificação automática devolveu `human_needed` por causa do SC1. O usuário decidiu, ao ser perguntado, **emendar o SC1 e fechar a fase agora** (opção "Emendar o SC1 e fechar agora"). Consequências registradas:
+
+- O SC1 do `ROADMAP.md` perdeu "final report" (o produto não gera mais PRD a partir de reuniões). O override do relatório fica confirmado pelo usuário.
+- **Continua sem prova, e não deve ser lido como aprovado:** cobertura (`coverage_snapshots`) e perguntas das lentes produto e dados a partir de uma sessão da Taqciti. O Gemini devolveu 402 na prova. É a ressalva `behavior_unverified` acima, tratada como **conferência manual pendente** (item M1 de `.planning/TESTES-MANUAIS-POS-FASE-10.md`, a fazer com chave do Gemini com crédito). O status `passed` desta fase não a cobre.
+- Bookkeeping fechado junto: planos 09-03 a 09-07 marcados no ROADMAP, fase 9 `7/7 Complete`, TAQ-04 `Complete` no REQUIREMENTS.md.
+- A revisão de código (`09-REVIEW.md`) ficou com 0 bloqueantes e 2 avisos (WR-01, WR-02), tratados como follow-up fora da fase.
 
 Postura adversarial: partimos de "tarefas feitas, objetivo não atingido". SC2 e SC3 caíram por evidência direta no código e no git. SC1 só caiu em parte; o resto fica como item humano, não como aprovado.
 
