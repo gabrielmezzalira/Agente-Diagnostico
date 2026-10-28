@@ -3,8 +3,8 @@ status: testing
 phase: 09-cutover-retire-custom-extension
 source: [09-02-PLAN.md, 09-03-PLAN.md, 09-07-PLAN.md]
 started: 2026-10-27T17:00:00.000Z
-updated: 2026-10-27T19:00:00.000Z
-gate_d02: pendente
+updated: 2026-10-28T15:00:00.000Z
+gate_d02: aguardando-aprovacao
 ---
 
 # valores possíveis de gate_d02: pendente -> aguardando-aprovacao -> aprovado, ou reprovado.
@@ -12,10 +12,10 @@ gate_d02: pendente
 
 ## Current Test
 
-número: 3
-nome: SC1-1 transcrição só pela Taqciti, sessão source=extension, mode discovery, toda fala com chunk_id
-expected: ver o teste 3 abaixo
-awaiting: a reunião real da prova SC1 (plano 09-03, Task 1); os pré-requisitos (testes 1 e 2) estão com result: pass
+número: 7
+nome: Limpeza dos dados de teste (D-04)
+expected: ver o teste 7 abaixo
+awaiting: aprovação literal "aprovado" do time para o gate D-02 (plano 09-03, Task 3). Reunião feita em 2026-10-28: testes 3 e 6 = pass; teste 4 = dispensado (Gemini sem crédito, 402); teste 5 = dispensado (PRD deixou de existir como entrega do produto).
 
 > **Re-decisão do usuário (2026-10-27): prova LOCAL primeiro, deploy depois.** Os testes 1 e 2 conferem o ambiente
 > local (backend e web app desta branch no computador da prova, e a build local da Taqciti). O que só a produção prova
@@ -55,8 +55,14 @@ release_yml: sem diff em relação à main (taqciti/.github/workflows/release.ym
 
 ### 3. SC1-1 transcrição só pela Taqciti, sessão source=extension, mode discovery, toda fala com chunk_id
 expected: A sessão da prova tem `source='extension'`, o projeto está em `mode='discovery'` e o cliente começa com `ZZ-TESTE`; há falas e `com_chunk_id = falas` (a extensão antiga nunca mandava `chunk_id`, então isso prova que só a Taqciti transmitiu). Se alguma fala tiver `chunk_id` nulo, investigar antes de aprovar.
-result: pending
+result: pass
 evidence:
+data: 2026-10-28
+sessao: 5e67b872-b5c1-4751-91bf-7d7157b15b9c
+sessions/projects: status=finished, source='extension', mode='discovery', project_source='extension'
+cliente: começa com `ZZ-TESTE` (era o `ZZ-TESTE-D20 …nome comprido…`, sobra da UAT da Fase 8, e não o `ZZ-TESTE-F09` do roteiro; o critério do teste é só o prefixo `ZZ-TESTE`)
+transcript_chunks: falas=13, com_chunk_id=13, falantes=1, primeira=14:13:26Z, ultima=14:19:35Z
+leitura: com_chunk_id = falas; a extensão antiga nunca mandava chunk_id, então só a Taqciti transmitiu. Backend local registrou 13x `POST /webhook/extension 202`.
 
 SQL (somente leitura; trocar `:sid` pelo id da sessão que aparece na URL `/sessions/<id>` do web app):
 
@@ -73,8 +79,14 @@ from transcript_chunks where session_id = ':sid';
 
 ### 4. SC1-2 coverage_snapshots >= 1 e perguntas das lentes produto E dados
 expected: Existe pelo menos 1 snapshot de cobertura e há perguntas com `lens='produto'` E com `lens='dados'` (qualquer status: fila, fixada, usada, descartada ou expirada conta).
-result: pending
+result: dispensado
 evidence:
+data: 2026-10-28
+sessao: 5e67b872-b5c1-4751-91bf-7d7157b15b9c
+banco: snapshots=0, red_flags=0, perguntas=0 (nenhuma lente)
+causa: o Gemini respondeu `402 RESOURCE_EXHAUSTED: prepayment credits are depleted` em todas as chamadas (28 ocorrências no log do backend local; 14 em services/llm.py generate_questions). É falta de crédito da chave, sem relação com a Taqciti: a transcrição chegou (teste 3).
+decisao: DISPENSADO pelo time (usuário, 2026-10-28), não aprovado por evidência. Cobertura e perguntas por lente já foram exercitadas nas Fases 3-5 e na UAT da Fase 8 (135/135); o pipeline de IA é o mesmo qualquer que seja a fonte da transcrição.
+pendente-fora-da-fase: repetir a conferência de cobertura e perguntas quando a chave tiver crédito.
 
 SQL (somente leitura):
 
@@ -88,8 +100,12 @@ select lens, status, count(*) from questions where session_id = ':sid' group by 
 
 ### 5. SC1-3 relatório de discovery (botão Gerar PRD da página do projeto, com a sessão ainda ativa) salvo em reports com 6.3, 7.3 e seção 11
 expected: Há pelo menos 1 linha em `reports` para a sessão, gerada pelo botão "Gerar PRD" da página do projeto com a sessão ainda ativa, e as quatro flags abaixo são `true`. Atenção: o relatório de discovery não tem uma seção chamada "Precificação". Os sinais nativos são a subseção 6.3 (backlog + estimativas), a 7.3 (volumetria) e a seção 11 (priorização e faseamento) do PRD (decisão 5 do planejamento: isso é a "seção de precificação" do D-03). A checagem textual diz que a seção existe, não que tem conteúdo; ler o relatório na tela também.
-result: pending
+result: dispensado
 evidence:
+data: 2026-10-28
+decisao: DISPENSADO por mudança de produto (usuário, 2026-10-28): o time não vai mais gerar PRD a partir de reuniões; será criado um sistema de fluxos a partir das reuniões de cada cliente (um fluxo novo por sessão), deixado para depois. Por isso este teste e a "seção de precificação" (6.3, 7.3, 11) deixam de ser critério de aceite do cutover.
+banco: reports=0 para a sessão 5e67b872-b5c1-4751-91bf-7d7157b15b9c (esperado: nenhum relatório foi gerado)
+nota: a retirada do botão "Gerar PRD" e das rotas de relatório/prontidão é trabalho SEPARADO, fora da Fase 9 e do 09-03 (muda comportamento do produto).
 
 SQL (somente leitura; é o mesmo `select` que o roteiro manda rodar ANTES de sair da sala):
 
@@ -105,8 +121,13 @@ from reports where session_id = ':sid' order by generated_at desc;
 
 ### 6. SC1-4 sair da sala encerra a sessão (DA-4) -> finished
 expected: Depois de sair da sala, a sessão fica `finished` com `finished_at` poucos segundos após a última fala. Complemento fora do SQL: o log do backend com `POST /webhook/extension/sessions/<id>/finish 200` e o selo de sessão encerrada no web app.
-result: pending
+result: pass
 evidence:
+data: 2026-10-28
+sessao: 5e67b872-b5c1-4751-91bf-7d7157b15b9c
+banco: status='finished', started_at=14:13:26Z, finished_at=14:26:16Z
+log: `POST /webhook/extension/sessions/5e67b872-b5c1-4751-91bf-7d7157b15b9c/finish 200 OK` no backend local
+ressalva: finished_at ficou 00:06:41 depois da última fala (14:19:35Z), não "poucos segundos". Provavelmente foi a pessoa parada antes de sair da sala, mas o banco não separa isso de um atraso do encerramento. A sessão foi encerrada pelo caminho da Taqciti (chamada /finish), que é o que o teste exige.
 
 SQL (somente leitura):
 
