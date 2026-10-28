@@ -15,9 +15,6 @@ export const DMS_LABELS: Record<number, string> = {
   5: 'Otimizado',
 }
 
-export const EXTENSION_URL =
-  'https://github.com/gabrielmezzalira/Agente-Diagnostico/releases/download/v1.0.0/agente-diagnostico-extension-v1.0.0.zip'
-
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',

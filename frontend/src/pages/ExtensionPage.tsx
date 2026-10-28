@@ -1,55 +1,72 @@
-import { CheckCircle, Download } from 'lucide-react'
-import { EXTENSION_URL } from '../lib/labels'
+import { AlertTriangle, Download } from 'lucide-react'
 import AppShell from '../components/layout/AppShell'
-import { Card, PageHeader, SectionLabel } from '../components/ui'
+import StepList from '../components/extension/StepList'
+import { Card, PageHeader, SectionLabel, buttonClasses } from '../components/ui'
+import {
+  TAQCITI_DOWNLOAD_PENDING_NOTICE,
+  TAQCITI_INSTALL_STEPS,
+  TAQCITI_LINK_STEPS,
+  TAQCITI_OLD_EXTENSION_WARNING,
+  TAQCITI_RELEASES_URL,
+  TAQCITI_SYSTEM_LABELS,
+  type TaqcitiInstallSystem,
+} from '../lib/taqcitiInstall'
 
-const INSTALL_STEPS: React.ReactNode[] = [
-  'Baixe o arquivo .zip clicando no botão abaixo.',
-  'Extraia a pasta do arquivo baixado.',
-  <>No Chrome, acesse <code className="font-mono text-[12.5px] px-1.5 py-0.5 rounded bg-white/[0.06] text-ds-green">chrome://extensions</code> na barra de endereço.</>,
-  'Ative o "Modo do desenvolvedor" no canto superior direito.',
-  'Clique em "Carregar sem compactação" e selecione a pasta extraída.',
-  'O ícone do Agente Diagnóstico aparecerá na barra de extensões.',
-]
+const SYSTEMS: readonly TaqcitiInstallSystem[] = ['windows', 'macos', 'linux']
+
+function AmberNotice({ children }: { children: string }) {
+  return (
+    <div
+      role="note"
+      className="flex items-start gap-3 rounded-[12px] border border-ds-amber/30 bg-ds-amber/10 px-4 py-3 text-[13.5px] leading-[1.6] text-ds-amber"
+    >
+      <AlertTriangle size={15} aria-hidden className="shrink-0 mt-[3px]" />
+      <span>{children}</span>
+    </div>
+  )
+}
 
 export default function ExtensionPage() {
   return (
     <AppShell>
       <PageHeader
         eyebrow="Captura"
-        title="Extensão Chrome"
-        subtitle="Necessária para capturar a transcrição do Google Meet em tempo real."
+        title="Taqciti"
+        subtitle="Extensão do Chrome que captura a transcrição do Google Meet e envia para o Agente Diagnóstico."
       />
 
-      <Card className="px-[26px] py-6 flex flex-col gap-6 max-w-[860px]">
-        <SectionLabel>Instalação</SectionLabel>
-        <ol className="m-0 p-0 list-none flex flex-col gap-4">
-          {INSTALL_STEPS.map((step, i) => (
-            <li key={i} className="flex items-start gap-4">
-              <span
-                aria-hidden
-                className="w-7 h-7 shrink-0 rounded-full bg-ds-green-soft border border-ds-green-line text-ds-green font-mono text-[12px] font-semibold flex items-center justify-center"
+      <div className="flex flex-col gap-5 max-w-[860px]">
+        <AmberNotice>{TAQCITI_OLD_EXTENSION_WARNING}</AmberNotice>
+
+        <Card className="px-[26px] py-6 flex flex-col gap-6">
+          <SectionLabel>Instalação</SectionLabel>
+          {TAQCITI_RELEASES_URL === null ? (
+            <AmberNotice>{TAQCITI_DOWNLOAD_PENDING_NOTICE}</AmberNotice>
+          ) : (
+            <div>
+              <a
+                href={TAQCITI_RELEASES_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClasses('primary')}
               >
-                {i + 1}
-              </span>
-              <span className="text-[14.5px] leading-[1.6] text-ds-text-2 pt-[3px]">{step}</span>
-            </li>
+                <Download size={14} aria-hidden /> Baixar a Taqciti
+              </a>
+            </div>
+          )}
+          {SYSTEMS.map((system) => (
+            <section key={system} className="flex flex-col gap-3">
+              <h3 className="m-0 text-[15px] font-semibold text-ds-text">{TAQCITI_SYSTEM_LABELS[system]}</h3>
+              <StepList steps={TAQCITI_INSTALL_STEPS[system]} />
+            </section>
           ))}
-        </ol>
-        <div className="flex items-center gap-4 flex-wrap">
-          <a
-            href={EXTENSION_URL}
-            download
-            className="inline-flex items-center justify-center gap-2 h-[38px] px-4 rounded-[10px] text-[13.5px] font-semibold bg-ds-green text-[#04120a] border border-ds-green shadow-[0_0_24px_rgba(62,224,111,0.25)] hover:bg-ds-green-hover transition-colors"
-          >
-            <Download size={14} aria-hidden /> Baixar extensão v1.0.0
-          </a>
-          <span className="flex items-center gap-2 text-[13px] text-ds-muted">
-            <CheckCircle size={14} aria-hidden className="text-ds-green shrink-0" />
-            Depois de instalar, basta abrir o Meet: a extensão começa a capturar sozinha.
-          </span>
-        </div>
-      </Card>
+        </Card>
+
+        <Card className="px-[26px] py-6 flex flex-col gap-6">
+          <SectionLabel>Vincular a reunião a um cliente</SectionLabel>
+          <StepList steps={TAQCITI_LINK_STEPS} />
+        </Card>
+      </div>
     </AppShell>
   )
 }
