@@ -110,7 +110,7 @@ async def test_extension_webhook_persists_chunk_id(monkeypatch):
 # Fase 9 / plano 09-01 — SC3: o contrato que a Taqciti usa continua de pé depois
 # de aposentar a extensão antiga; D-00a, D-14.
 #
-# A extensão antiga (pasta extension/) sai do repositório nos planos 09-05/09-06.
+# A extensão antiga (pasta extension/) foi removida do repositório na Fase 9 (09-05).
 # O nome dela é parecido com o da porta que a Taqciti usa (/webhook/extension,
 # ExtensionChunk, source=extension), então estes testes ficam vermelhos se alguém
 # "limpar" a porta junto. Só leitura: nenhum teste toca rede, banco ou .env.
