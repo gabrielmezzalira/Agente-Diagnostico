@@ -4,7 +4,7 @@ phase: 09-cutover-retire-custom-extension
 source: [09-02-PLAN.md, 09-03-PLAN.md, 09-07-PLAN.md]
 started: 2026-10-27T17:00:00.000Z
 updated: 2026-10-28T15:00:00.000Z
-gate_d02: aguardando-aprovacao
+gate_d02: aprovado
 ---
 
 # valores possíveis de gate_d02: pendente -> aguardando-aprovacao -> aprovado, ou reprovado.
