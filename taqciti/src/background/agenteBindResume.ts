@@ -9,6 +9,7 @@
  * de `startAt` ganham uma reposição só com as palavras que faltam, com `chunk_id` próprio (`planCatchUp`).
  * Sessão já encerrada pela B4-b (DA-2): continua valendo — o backend grava no
  * banco sem olhar o status, então as falas restantes entram na transcrição.
+ * Já com o encerramento da sessão EM VOO (D-02, WR-05): recusa em silêncio, antes de gravar `send-resumed`.
  */
 import { planCatchUp, planMeetingUpload, type UploadPart } from '@/features/agente/meetingUploader';
 import { applyAssociationEvent, getAssociation } from '@/shared/config/agenteAssociationStore';
@@ -21,6 +22,11 @@ import { bindFail } from './agenteBindTarget';
 export interface ResumeDeps {
   getRecord: (meetingId: string) => Promise<MeetingRecord | null>;
   loadConfig: () => Promise<AgenteConfig>;
+  /**
+   * Há um encerramento da sessão em voo para esta reunião? Memória pura (D-02, WR-05). Opcional: sem a porta
+   * (padrão neutro) nada é recusado por isso e o "Continuar envio" segue como sempre.
+   */
+  isClosing?: (meetingId: string) => boolean;
 }
 
 /** O que enviar e de onde: `startAt` é a posição (na lista de partes) da primeira parte ainda não confirmada. */
@@ -47,6 +53,10 @@ export async function prepareResume(
   if (association.state !== 'send-failed' || sessionId === undefined || live) {
     return { failure: bindFail('invalid-state') };
   }
+  // Recusa silenciosa por decisão D-18 (sem texto novo na UI). Tem que vir ANTES do `send-resumed`, que apaga
+  // `finishBy`/`finishTries`/`finishGaveUp`: com um finish em voo essas marcas não podem ser limpas. NÃO recusa
+  // só porque a sessão já foi encerrada — essa retomada continua permitida (DA-2).
+  if (deps.isClosing?.(meetingId) === true) return { failure: bindFail('invalid-state') };
 
   const record = await deps.getRecord(meetingId);
   if (record === null) return { failure: bindFail('not-found') };

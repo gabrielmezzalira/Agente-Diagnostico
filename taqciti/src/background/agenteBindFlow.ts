@@ -41,6 +41,8 @@ export interface BindFlowDeps extends BindUploadDeps {
   getMeetingState: () => MeetingState;
   /** Reunião guardada no histórico (a do envio no fim, ou a que já saiu da tela durante o vínculo). */
   getRecord: (meetingId: string) => Promise<MeetingRecord | null>;
+  /** Há um encerramento da sessão em voo para esta reunião? O "Continuar envio" recusa nesse caso (D-02, WR-05). */
+  isClosing?: (meetingId: string) => boolean;
 }
 
 /** `live`: a reunião está acontecendo; `ended`: já acabou e a transcrição está guardada (D-09). */

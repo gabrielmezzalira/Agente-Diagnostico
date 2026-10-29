@@ -58,6 +58,8 @@ let activeDeps: AgenteAssociationServiceDeps = {
   onLinked: () => reevaluateAgenteStreamer(),
   // Fim do envio em partes (concluído ou parado): o agendador decide se encerra a sessão (B4-b).
   onSettled: (meetingId) => agenteSessionFinisher.evaluate(meetingId),
+  // D-02 (WR-05): não retomar o envio com o encerramento da sessão em voo.
+  isClosing: (meetingId) => agenteSessionFinisher.isClosing(meetingId),
 };
 let activeService = createAgenteAssociationService(activeDeps);
 
