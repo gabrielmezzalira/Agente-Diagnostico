@@ -5,6 +5,9 @@
  * (D-17 / comportamento de sempre); e que a memória das abas na call (só RAM) se refaz pela legenda depois do
  * reinício do service worker, sem deixar uma legenda atrasada ressuscitar a aba que saiu.
  *
+ * O mesmo vale para a navegação (DA-4): a aba dona vai para outro site ou para `chrome://newtab/` com outra aba
+ * na call.
+ *
  * O módulo `meetingRoomTabs` guarda a memória em variáveis do módulo: cada teste importa uma cópia nova
  * (`vi.resetModules()`), que é também como o reinício do worker é simulado.
  */
@@ -43,9 +46,11 @@ async function startWorker(initialTabs: FakeTab[] = []) {
   installChromeStorageMock({ extra: { tabs: { query } } });
   const roomTabs = await import('./meetingRoomTabs');
   const closed = await import('./meetingTabClosed');
+  const navigated = await import('./meetingTabNavigated');
   return {
     roomTabs,
     closed,
+    navigated,
     query,
     setTabs: (next: FakeTab[]) => {
       tabs = next;
@@ -323,5 +328,127 @@ describe('reaprendizado pela legenda depois do reinício do worker (memória vaz
 
     worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
     await expect(worker.roomTabs.findOtherRoomTab(ROOM, OWNER)).resolves.toBe(OTHER);
+  });
+});
+
+/** A aba navega como o `tabs.onUpdated` do index.ts: avisa a memória (síncrono) e roda a regra com a porta real. */
+async function navigateTab(worker: Worker, meeting: ReturnType<typeof liveMeeting>, tabId: number, url: string) {
+  worker.roomTabs.noteTabUrlChanged(tabId, url);
+  await worker.navigated.onMeetingTabNavigated(tabId, url, {
+    getState: meeting.getState,
+    dispatch: meeting.dispatch,
+    now: () => NOW,
+    otherRoomTabId: worker.roomTabs.findOtherRoomTab,
+  });
+}
+
+describe('fluxo: a aba dona navega para fora da sala (DA-4) com a máquina real', () => {
+  it('(b) dona vai para outro site com a outra aba na call: continua ao vivo na outra, sem MEETING_FINISHED', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+
+    await navigateTab(worker, meeting, OWNER, 'https://example.com/');
+
+    expect(meeting.current().phase).toBe('recording');
+    expect(meeting.current().session?.tabId).toBe(OTHER);
+    expect(meeting.events).toEqual([{ type: 'MEETING_TAB_CHANGED', tabId: OTHER }]);
+    expect(meeting.finishedCount()).toBe(0);
+  });
+
+  it('dona vai para chrome://newtab/ sem outra aba: encerra (DA-4 de uma aba só continua igual)', async () => {
+    const worker = await startWorker([]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+
+    await navigateTab(worker, meeting, OWNER, 'chrome://newtab/');
+
+    expect(meeting.current().phase).toBe('ended');
+    expect(meeting.current().session?.endedAt).toBe(NOW);
+    expect(meeting.finishedCount()).toBe(1);
+  });
+
+  it('recarregar ou mudar ?query/#hash da mesma sala: nada é despachado e a consulta de abas nem roda', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+
+    for (const path of [`/${ROOM}`, `/meet/${ROOM}`, `/${ROOM}?authuser=1`, `/meet/${ROOM}#fim`]) {
+      await navigateTab(worker, meeting, OWNER, `https://meet.google.com${path}`);
+    }
+
+    expect(meeting.events).toEqual([]);
+    expect(meeting.current().phase).toBe('recording');
+    expect(worker.query).not.toHaveBeenCalled();
+  });
+
+  it('(f) a outra aba está em OUTRA sala: encerra', async () => {
+    const worker = await startWorker([{ id: OTHER, url: 'https://meet.google.com/zzz-yyyy-xxx' }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, 'zzz-yyyy-xxx');
+
+    await navigateTab(worker, meeting, OWNER, 'https://example.com/');
+
+    expect(meeting.current().phase).toBe('ended');
+    expect(meeting.finishedCount()).toBe(1);
+  });
+
+  it('a consulta rejeita na navegação: encerra (D-17)', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+    worker.query.mockRejectedValueOnce(new Error('tabs indisponível'));
+
+    await navigateTab(worker, meeting, OWNER, 'https://example.com/');
+
+    expect(meeting.current().phase).toBe('ended');
+    expect(meeting.finishedCount()).toBe(1);
+  });
+
+  it('dona navega (reaponta para a outra) e depois a outra fecha: encerra com um único MEETING_FINISHED', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+
+    await navigateTab(worker, meeting, OWNER, 'https://example.com/');
+    worker.setTabs([]);
+    await closeTab(worker, meeting, OTHER);
+
+    expect(meeting.current().phase).toBe('ended');
+    expect(meeting.finishedCount()).toBe(1);
+  });
+});
+
+describe('noteTabUrlChanged (memória das abas na call)', () => {
+  it('a aba que foi para outro site sai da memória: deixa de ser candidata', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+    await expect(worker.roomTabs.findOtherRoomTab(ROOM, OWNER)).resolves.toBe(OTHER);
+
+    worker.roomTabs.noteTabUrlChanged(OTHER, 'https://example.com/');
+
+    await expect(worker.roomTabs.findOtherRoomTab(ROOM, OWNER)).resolves.toBeNull();
+  });
+
+  it('recarregar ou mudar ?query/#hash da mesma sala mantém a aba na memória', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    const meeting = liveMeeting();
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+
+    worker.roomTabs.noteTabUrlChanged(OTHER, `https://meet.google.com/meet/${ROOM.toUpperCase()}?authuser=1#x`);
+    await closeTab(worker, meeting, OWNER);
+
+    expect(meeting.current().session?.tabId).toBe(OTHER);
+    expect(meeting.finishedCount()).toBe(0);
+  });
+
+  it('aba que a memória não conhece não é registrada por navegar (nunca guarda URL nem aba nova)', async () => {
+    const worker = await startWorker([{ id: OTHER, url: ROOM_URL }]);
+    worker.roomTabs.noteTabUrlChanged(OTHER, ROOM_URL);
+    await expect(worker.roomTabs.findOtherRoomTab(ROOM, OWNER)).resolves.toBeNull();
   });
 });

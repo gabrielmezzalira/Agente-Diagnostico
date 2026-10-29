@@ -55,6 +55,17 @@ export function noteTabCaptionActivity(tabId: number | undefined, meetingCode: s
 }
 
 /**
+ * A aba mudou de URL (`tabs.onUpdated`): se ela estava na memória e a URL nova já não é a sala registrada, sai da
+ * memória. Recarregar ou mudar `?query`/`#hash` da mesma sala mantém a aba. Aba desconhecida não é registrada
+ * por navegar. Só compara em memória — a URL nunca é guardada.
+ */
+export function noteTabUrlChanged(tabId: number, url: string): void {
+  const registeredCode = tabsInCall.get(tabId);
+  if (registeredCode === undefined) return;
+  if (!isStillInMeetingRoom(url, registeredCode)) tabsInCall.delete(tabId);
+}
+
+/**
  * Outra aba da MESMA call, para onde a reunião pode passar (D-03). Devolve o id da primeira aba, na ordem em
  * que `chrome.tabs.query` devolve, que cumpre as três condições: (i) está na memória de "entrou na call" com o
  * mesmo código de sala (sem diferenciar maiúsculas), (ii) não é a aba excluída e (iii) a URL dela ainda é a

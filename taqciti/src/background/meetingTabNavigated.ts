@@ -8,7 +8,10 @@
  *
  * Quem chama é o `chrome.tabs.onUpdated` do `index.ts`, DEPOIS do `ready`. Só importa a mudança de URL:
  * - Reunião AO VIVO na aba e a URL já não é a sala dela: dispara o MESMO `MEETING_FINISHED` do `meet/ended`
- *   (sem RESET — a reentrada na mesma sala, plano 08-24, só vale com a fase `ended`).
+ *   (sem RESET — a reentrada na mesma sala, plano 08-24, só vale com a fase `ended`) — A MENOS QUE outra aba já
+ *   tenha entrado na mesma call (D-03, Fase 10): aí a reunião só passa para ela (`MEETING_TAB_CHANGED`) e
+ *   continua ao vivo. A consulta de outras abas só roda depois de provado que a aba dona saiu da sala; sem outra
+ *   aba (ou com a consulta falhando, D-17) encerra como sempre. A regra é a mesma do DA-3 (`meetingTabClosed.ts`).
  * - Mesma sala (recarregar, mudar `?query` ou `#hash`), nos dois formatos do endereço (`/<código>` e
  *   `/meet/<código>`, CR-02): nada.
  * - Qualquer outra aba, aba nula, fase `ended` ou ociosa: nada.
@@ -16,12 +19,18 @@
 import type { MeetingEvent } from '@/features/meeting/machine';
 import { meetingCodeFromPath } from '@/features/meeting/meetingCode';
 import type { MeetingState } from '@/shared/types/domain';
+import { handOffMeetingOrFinish } from './meetingTabClosed';
 
 export interface MeetingTabNavigatedDeps {
   getState: () => MeetingState;
   dispatch: (event: MeetingEvent) => Promise<unknown>;
   /** Relógio injetado; o padrão é `Date.now`. */
   now?: () => number;
+  /**
+   * D-03: outra aba da MESMA call (id), diferente da que saiu da sala, ou `null` se não há. Opcional: ausente
+   * (ou rejeitada, D-17) equivale a "sem outra aba" — a reunião encerra, como antes.
+   */
+  otherRoomTabId?: (meetingCode: string, excludeTabId: number) => Promise<number | null>;
 }
 
 const MEET_HOST = 'meet.google.com';
@@ -49,5 +58,5 @@ export async function onMeetingTabNavigated(
   if (session === null || session.tabId !== tabId) return;
   if (current.phase !== 'captionsRequired' && current.phase !== 'recording' && current.phase !== 'paused') return;
   if (isStillInMeetingRoom(url, session.meetingCode)) return;
-  await deps.dispatch({ type: 'MEETING_FINISHED', at: (deps.now ?? Date.now)() });
+  await handOffMeetingOrFinish(deps, session.meetingCode, tabId);
 }
