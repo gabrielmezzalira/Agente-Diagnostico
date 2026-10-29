@@ -10,8 +10,12 @@ import type { Unsubscribe } from '@/shared/types/domain';
 import { subscribeNormalized } from './agenteDeliveryStore';
 import { STORAGE_KEYS } from './constants';
 
-/** `idle` = sem sessão-alvo (nada vinculado ou reunião fora do ar); `reconnecting` = a conexão caiu e vai de novo. */
-export type AgpConnection = 'idle' | 'connecting' | 'live' | 'reconnecting';
+/**
+ * `idle` = sem sessão-alvo (nada vinculado ou reunião fora do ar); `reconnecting` = a conexão caiu e vai de novo;
+ * `paused` = a reunião não está gravando ou o envio ao Agente está desligado: conexão fechada de propósito,
+ * perguntas mantidas (D-11).
+ */
+export type AgpConnection = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'paused';
 
 export interface AgpFeed {
   /** Sessão seguida agora; `null` = nenhuma (o painel mostra o aviso de vínculo). */
@@ -22,7 +26,7 @@ export interface AgpFeed {
 
 export const EMPTY_AGP_FEED: AgpFeed = { sessionId: null, connection: 'idle', questions: [] };
 
-const CONNECTIONS: readonly AgpConnection[] = ['idle', 'connecting', 'live', 'reconnecting'];
+const CONNECTIONS: readonly AgpConnection[] = ['idle', 'connecting', 'live', 'reconnecting', 'paused'];
 
 /** Valor salvo -> estado válido; sem sessão nunca há pergunta (nunca mostra de sessão "esquecida"). */
 export function normalizeAgpFeed(raw: unknown): AgpFeed {

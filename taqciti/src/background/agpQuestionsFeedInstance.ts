@@ -7,27 +7,34 @@
  * (estado hidratado) por dentro, e sempre por trás de um `await`, para o leitor de config e o store de
  * associações já terem processado a mesma mudança antes de o alvo ser recalculado.
  */
-import { selectAgpTarget } from '@/features/agente/agpTarget';
+import { decideAgpFollow } from '@/features/agente/agpTarget';
 import { loadAssociations } from '@/shared/config/agenteAssociationStore';
 import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
 import { buildAgpSocketUrl } from '@/shared/config/agenteRoutes';
 import { writeAgpFeed } from '@/shared/config/agpQuestionsStore';
 import { STORAGE_KEYS } from '@/shared/config/constants';
 import { logger } from '@/shared/services/log';
-import { isLivePhase } from './agenteAssociationLifecycle';
 import { openBrowserSocket } from './agpBrowserSocket';
 import { createAgpQuestionsFeed, type AgpFeedTarget } from './agpQuestionsFeed';
+import type { AgpFeedHold } from './agpQuestionsFeedHold';
 import { getState } from './sessionController';
 
 const readConfig = createAgenteConfigReader();
 
-async function selectTarget(): Promise<AgpFeedTarget | null> {
+/**
+ * D-11 (WR-04): a fase da reunião e o `streamingEnabled` decidem se o socket abre (`follow`), se fica fechado com as
+ * perguntas na tela (`hold`) ou se nada é seguido (`none`, ou URL do backend inválida: o feed limpa).
+ */
+async function selectTarget(): Promise<AgpFeedTarget | AgpFeedHold | null> {
   const state = getState();
-  const liveMeetingId = isLivePhase(state) ? (state.session?.meetingId ?? null) : null;
-  const target = selectAgpTarget(await loadAssociations(), liveMeetingId);
-  if (target === null) return null;
-  const url = buildAgpSocketUrl((await readConfig()).agenteBackendUrl, target.sessionId);
-  return url === null ? null : { sessionId: target.sessionId, url };
+  const associations = await loadAssociations();
+  const config = await readConfig();
+  const meeting = { phase: state.phase, meetingId: state.session?.meetingId ?? null };
+  const decision = decideAgpFollow(associations, meeting, config.streamingEnabled);
+  if (decision.kind === 'none') return null;
+  const url = buildAgpSocketUrl(config.agenteBackendUrl, decision.sessionId);
+  if (url === null) return null;
+  return decision.kind === 'hold' ? { kind: 'hold', sessionId: decision.sessionId } : { sessionId: decision.sessionId, url };
 }
 
 export const agpQuestionsFeed = createAgpQuestionsFeed({

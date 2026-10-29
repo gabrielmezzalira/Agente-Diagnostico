@@ -4,13 +4,15 @@
  * Abre quando há alvo, troca quando o alvo muda, fecha quando não há (a call acabou: a mesma janela em que a
  * sessão já gasta IA) e reconecta com espera crescente se a conexão cair. Código 4004 ("sessão não encontrada
  * ou não ativa") para de vez, sem timer: reconectar não resolve e só iria bater no backend à toa (T-08-49);
- * só um alvo novo (ou o boot) volta a tentar.
+ * só um alvo novo (ou o boot) volta a tentar. D-11: em pausa, sem legendas ou com o envio desligado a seleção é
+ * "segurar": o socket fecha (sem timer) e as perguntas ficam como `paused`; ao gravar de novo, reconecta com a lista.
  *
  * Só portas injetadas (sem `chrome` nem `WebSocket`): a composição de produção mora em
  * `agpQuestionsFeedInstance.ts`. Não manda nada ao backend — só lê.
  */
 import { applyAgpMessage, parseAgpMessage, type AgpQuestion } from '@/features/agente/agpQuestions';
 import { EMPTY_AGP_FEED, type AgpConnection, type AgpFeed } from '@/shared/config/agpQuestionsStore';
+import { decideAgpHold, decideAgpResume, type AgpFeedHold, type AgpHeldSession } from './agpQuestionsFeedHold';
 
 /** Código que o backend usa quando a sessão não existe ou não está ativa (`routers/ws.py`). */
 export const AGP_SESSION_NOT_ACTIVE_CODE = 4004;
@@ -38,7 +40,7 @@ export interface AgpFeedTarget {
 }
 
 export interface AgpFeedDeps {
-  selectTarget: () => Promise<AgpFeedTarget | null>;
+  selectTarget: () => Promise<AgpFeedTarget | AgpFeedHold | null>;
   openSocket: (url: string) => AgpSocket;
   write: (feed: AgpFeed) => Promise<void>;
   setTimer: (callback: () => void, ms: number) => unknown;
@@ -60,6 +62,8 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
   let reconciling: Promise<void> = Promise.resolve();
   /** O primeiro `run` limpa o storage mesmo sem alvo: sobra de um service worker anterior não pode ficar na tela. */
   let needsInitialClear = true;
+  /** D-11: a sessão cuja conexão foi fechada de propósito (perguntas mantidas), ou `null`. */
+  let held: AgpHeldSession | null = null;
 
   /** Escritas em fila: uma gravação velha nunca passa por cima de uma nova. */
   function publish(sessionId: string | null, connection: AgpConnection, questions: readonly AgpQuestion[]): void {
@@ -134,23 +138,38 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
     };
   }
 
+  /** D-11: fecha a conexão de propósito e mantém as perguntas; quem decide é o módulo puro. */
+  function hold(sessionId: string): void {
+    const step = decideAgpHold(sessionId, following, held);
+    if (step.kind === 'none') return;
+    if (following !== null) detach(following);
+    following = null;
+    needsInitialClear = false;
+    held = step.held;
+    publish(sessionId, 'paused', step.held.questions);
+  }
+
   async function run(): Promise<void> {
     const target = await deps.selectTarget();
+    if (target !== null && 'kind' in target) return hold(target.sessionId);
     const sameTarget =
       following !== null && target !== null && following.target.sessionId === target.sessionId && following.target.url === target.url;
     if (sameTarget) return;
 
+    const resume = target === null ? null : decideAgpResume(target.sessionId, held);
     if (following !== null) detach(following);
-    const shouldClear = following !== null || needsInitialClear;
+    const shouldClear = following !== null || held !== null || needsInitialClear;
     needsInitialClear = false;
+    held = null;
     following = null;
     if (target === null) {
       if (shouldClear) publish(null, 'idle', []);
       return;
     }
-    const current: Following = { target, socket: null, timer: null, attempt: 0, questions: [] };
+    const questions = resume?.questions ?? [];
+    const current: Following = { target, socket: null, timer: null, attempt: 0, questions };
     following = current;
-    publish(target.sessionId, 'connecting', []);
+    publish(target.sessionId, 'connecting', questions);
     connect(current);
   }
 
