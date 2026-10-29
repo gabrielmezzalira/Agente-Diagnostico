@@ -51,13 +51,13 @@
     {
       "number": "10",
       "name": "AGP Question Panel in Taqciti",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 8 of 10 · 80% · ready to verify"
+    "label": "Advance to the next step (plan phase 10)",
+    "reason": "Phase 10 of 10 — needs a plan"
   },
-  "updated_at": "2026-10-28T17:53:47.763Z"
+  "updated_at": "2026-10-29T19:07:50.816Z"
 }
