@@ -24,6 +24,7 @@ import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { onMeetingTabRemoved } from './meetingTabClosed';
 import { onMeetingTabNavigated } from './meetingTabNavigated';
+import { findOtherRoomTab, markTabJoinedCall, markTabLeftCall, noteTabCaptionActivity } from './meetingRoomTabs';
 import { agenteAssociation } from './agenteAssociation';
 import { resumeAgenteStreamer } from './agenteStreamer';
 import { isMeetingLive, recoverAssociationsAfterRestart } from './agenteAssociationLifecycle';
@@ -128,8 +129,15 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   // pra ela. Fora do `ready` de propósito: podar a lista não depende do estado.
   void forgetPanelTab(tabId);
 
-  // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts.
-  void ready.then(() => onMeetingTabRemoved(tabId, { getState, dispatch, now: Date.now }));
+  // A aba saiu da call: tira da memória das abas na call e bloqueia legenda atrasada dela (D-03). Síncrono e
+  // fora do `ready` de propósito — precisa valer ANTES de a consulta da regra abaixo terminar.
+  markTabLeftCall(tabId);
+
+  // A aba da reunião fechou: a regra (e o porquê) mora em meetingTabClosed.ts. Com outra aba na mesma call, a
+  // reunião passa para ela em vez de encerrar (D-03).
+  void ready.then(() =>
+    onMeetingTabRemoved(tabId, { getState, dispatch, now: Date.now, otherRoomTabId: findOtherRoomTab }),
+  );
 });
 
 // A aba da reunião foi para outro lugar sem fechar (DA-4): a regra mora em meetingTabNavigated.ts.
@@ -166,6 +174,8 @@ onMessage((message, sender) => {
     switch (message.type) {
       // ---- Content script ----
       case 'meet/detected': {
+        // D-03: a aba entrou na call; a memória das abas na call só existe para a regra de "outra aba na sala".
+        if (sender.tab?.id !== undefined) markTabJoinedCall(sender.tab.id, message.meetingCode);
         const givenTitle = message.title.trim();
         const startFresh = await shouldStartFreshMeeting(getState(), message.meetingCode);
         await dispatch({
@@ -187,6 +197,9 @@ onMessage((message, sender) => {
       case 'meet/captions':
         return dispatch({ type: 'CAPTIONS_STATE', enabled: message.enabled });
       case 'meet/chunk':
+        // D-03: legenda só existe dentro da call — reaprende a aba como "na call" depois do reinício do worker.
+        // Só aqui (nunca em meet/participants nem meet/captions, que podem vir da pré-entrada). Síncrono, sem I/O.
+        noteTabCaptionActivity(sender.tab?.id, getState().session?.meetingCode);
         return dispatch({ type: 'CAPTION_CHUNK', chunk: message.chunk });
       case 'meet/participants':
         return dispatch({

@@ -54,6 +54,8 @@ export type MeetingEvent =
       /** A sessão do Agente da reunião anterior já foi encerrada: a volta à mesma sala é reunião nova, não retomada. */
       startFresh?: boolean;
     }
+  /** A reunião continua em outra aba da mesma sala (D-03): reaponta a aba dona, sem encerrar nada. */
+  | { type: 'MEETING_TAB_CHANGED'; tabId: number }
   | { type: 'CAPTIONS_STATE'; enabled: boolean }
   | { type: 'CAPTION_CHUNK'; chunk: CaptionChunk }
   | { type: 'PARTICIPANTS_UPDATED'; participants: Participant[] }
@@ -243,6 +245,12 @@ export function transition(state: MeetingState, event: MeetingEvent): MeetingSta
       // DIFERENTE com sessão ativa — começa uma sessão nova imediatamente.
       // (A anterior já está persistida no histórico pelo salvamento contínuo.)
       return freshSession(event);
+    }
+
+    case 'MEETING_TAB_CHANGED': {
+      // Só faz sentido com reunião ao vivo: fora dela (idle/ended) não há aba dona a reapontar.
+      if (!isActive(state)) return state;
+      return withSession(state, { tabId: event.tabId });
     }
 
     case 'CAPTIONS_STATE': {
