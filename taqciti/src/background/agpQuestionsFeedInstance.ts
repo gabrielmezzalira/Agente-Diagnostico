@@ -11,7 +11,7 @@ import { decideAgpFollow } from '@/features/agente/agpTarget';
 import { loadAssociations } from '@/shared/config/agenteAssociationStore';
 import { createAgenteConfigReader } from '@/shared/config/agenteConfigStore';
 import { buildAgpSocketUrl } from '@/shared/config/agenteRoutes';
-import { writeAgpFeed } from '@/shared/config/agpQuestionsStore';
+import { loadAgpFeed, writeAgpFeed } from '@/shared/config/agpQuestionsStore';
 import { STORAGE_KEYS } from '@/shared/config/constants';
 import { logger } from '@/shared/services/log';
 import { openBrowserSocket } from './agpBrowserSocket';
@@ -41,6 +41,7 @@ export const agpQuestionsFeed = createAgpQuestionsFeed({
   selectTarget,
   openSocket: openBrowserSocket,
   write: writeAgpFeed,
+  readStored: loadAgpFeed,
   setTimer: (callback, ms) => setTimeout(callback, ms),
   clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
   onError: (message, error) => logger.error(message, error),

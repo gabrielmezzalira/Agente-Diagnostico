@@ -46,6 +46,8 @@ export interface AgpFeedDeps {
   setTimer: (callback: () => void, ms: number) => unknown;
   clearTimer: (handle: unknown) => void;
   onError?: (message: string, error: unknown) => void;
+  /** O feed salvo, lido UMA vez no boot do worker: a pausa sobrevive ao sono dele (D-11). Sem ela, não hidrata. */
+  readStored?: () => Promise<AgpFeed>;
 }
 
 interface Following {
@@ -54,6 +56,8 @@ interface Following {
   timer: unknown;
   attempt: number;
   questions: readonly AgpQuestion[];
+  /** O backend respondeu 4004: o hold e a retomada não reabrem esta sessão (D-12). */
+  endedByBackend?: boolean;
 }
 
 export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
@@ -131,6 +135,7 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
       current.socket = null;
       if (event.code === AGP_SESSION_NOT_ACTIVE_CODE) {
         current.questions = [];
+        current.endedByBackend = true;
         publish(current.target.sessionId, 'idle', []);
         return;
       }
@@ -139,24 +144,26 @@ export function createAgpQuestionsFeed(deps: AgpFeedDeps) {
   }
 
   /** D-11: fecha a conexão de propósito e mantém as perguntas; quem decide é o módulo puro. */
-  function hold(sessionId: string): void {
-    const step = decideAgpHold(sessionId, following, held);
+  function hold(sessionId: string, boot: AgpFeed | null): void {
+    const step = decideAgpHold(sessionId, following, held, boot);
     if (step.kind === 'none') return;
     if (following !== null) detach(following);
     following = null;
     needsInitialClear = false;
     held = step.held;
-    publish(sessionId, 'paused', step.held.questions);
+    if (step.kind === 'pause') publish(sessionId, 'paused', step.held.questions);
   }
 
   async function run(): Promise<void> {
     const target = await deps.selectTarget();
-    if (target !== null && 'kind' in target) return hold(target.sessionId);
+    const boot = needsInitialClear && target !== null && deps.readStored ? await deps.readStored() : null;
+    if (target !== null && 'kind' in target) return hold(target.sessionId, boot);
     const sameTarget =
       following !== null && target !== null && following.target.sessionId === target.sessionId && following.target.url === target.url;
     if (sameTarget) return;
 
-    const resume = target === null ? null : decideAgpResume(target.sessionId, held);
+    const resume = target === null ? null : decideAgpResume(target.sessionId, held, boot);
+    if (resume?.kind === 'blocked') return;
     if (following !== null) detach(following);
     const shouldClear = following !== null || held !== null || needsInitialClear;
     needsInitialClear = false;
