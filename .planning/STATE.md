@@ -4,17 +4,18 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-status: planning
-stopped_at: Phase 10 UI-SPEC approved
-last_updated: "2026-10-29T19:07:50.706Z"
-last_activity: 2026-10-28
-last_activity_desc: Phase 09 complete
-state_head: 68d5a011012106c8e0371a74b69a7d54f591c65c
+current_plan: 2
+status: executing
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-10-29T20:44:11.168Z"
+last_activity: 2026-10-29
+last_activity_desc: Phase 10 execution started
+state_head: e0de28a31cc741ef505dc6927bb9d863408c5d09
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 72
-  completed_plans: 60
+  completed_plans: 61
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -27,14 +28,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** Discovery teams map the bottleneck and its solution completely during the call, so nothing unmapped surprises delivery — and the discovery output feeds pricing directly
-**Current focus:** Phase 10 — AGP Question Panel in Taqciti (não começou; existe uma branch remota do Gabriel, `origin/feat/fase-10-agp-question-panel`, a integrar)
+**Current focus:** Phase 10 — AGP Question Panel in Taqciti
 
 ## Current Position
 
-Phase: 10 (AGP Question Panel in Taqciti) — READY TO EXECUTE
+Current Plan: 2
+Total Plans in Phase: 12
+Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING
 Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
-Status: Fase 9 concluída; Fase 10 não iniciada
-Last activity: 2026-10-28 — Phase 09 complete
+Status: Ready to execute
+Last activity: 2026-10-29 — Phase 10 execution started
 
 > **Pendência de registro (não é erro de código):** o ROADMAP ainda não marca a Fase 8 como concluída
 > e o TAQ-02 segue `Pending` no REQUIREMENTS.md, embora a Fase 8 esteja verificada (`08-VERIFICATION.md`
@@ -124,6 +127,7 @@ Progress: [████████░░] 80%
 | Phase 08 P28 | 5 min | 3 tasks | 8 files |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
 | Phase 09 P02 | 1 dia | 3 tasks | 1 files |
+| Phase 10 P01 | 16 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -201,6 +205,8 @@ Recent decisions affecting current work:
 - [Phase 09]: Branch oficial da Fase 9 mantida como feat/fase-09-cutover-retire-custom-extension (decisao do usuario); push da main (196 commits a frente de origin) fica pendente do time
 - [Phase 09]: Re-decisao do usuario (2026-10-27) sobre D-04/D-13: prova SC1 LOCAL (backend 127.0.0.1:8000 + web app localhost:5173 + build local de taqciti/dist) antes do deploy; deploy Railway/Vercel, GEMINI_API_KEY no Railway, sync do repo original e release de producao ficam em '## Depois do deploy' do 09-UAT.md, fora da fase
 - [Phase 09]: Banco da prova = produção (Agente-Diagnostico); DocuData ausente, fica para a Fase 10 ou depois
+- [Phase 10]: [10-01] D-02/WR-05: a checagem de isClosing em prepareResume vem ANTES de send-resumed (que apaga finishBy/finishTries/finishGaveUp); recusa silenciosa invalid-state (D-18), sem texto novo de UI
+- [Phase 10]: [10-01] Porta isClosing opcional (padrão neutro) em ResumeDeps/BindFlowDeps, ligada por lambda a agenteSessionFinisher.isClosing em agenteAssociation.ts; sem recusa por sessionFinished (DA-2 mantida); janela residual T-10-02 aceita
 
 ### Pending Todos
 
@@ -233,9 +239,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T00:01:20.941Z
-Stopped at: Phase 10 UI-SPEC approved
-Resume file: .planning/phases/10-agp-question-panel-in-taqciti/10-UI-SPEC.md
+Last session: 2026-10-29T20:43:13.474Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: None
 
 ---
 
