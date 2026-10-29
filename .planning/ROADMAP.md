@@ -366,7 +366,34 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: TBD
+**Plans**: 11 plans (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — D-02 (WR-05): "Continuar envio" confere `isClosing` antes de limpar as marcas de encerramento (recusa silenciosa, D-18)
+- [ ] 10-02-PLAN.md — D-03: mesma call em duas abas — fechar/navegar a aba dona reaponta a reunião (`MEETING_TAB_CHANGED`) em vez de encerrar; D-17
+- [ ] 10-03-PLAN.md — D-11 (WR-04): feed AGP só conecta em `recording` + vínculo + envio ligado; pausa fecha o socket e mantém as perguntas (`paused`)
+- [ ] 10-04-PLAN.md — D-04 (WR-06): permissão `tabs` no manifesto, commit isolado (reversibilidade `costly`, medida no UAT 10)
+- [ ] 10-05-PLAN.md — Página de ajuda da Taqciti explica a aba AGP (D-09); docs antigos marcados como superados (D-06); texto do D-09/A-4 corrigido
+
+**Wave 2** *(bloqueada na conclusão da Wave 1)*
+
+- [ ] 10-06-PLAN.md — D-16: `meet/ended` de aba que não é a dona não encerra a reunião
+- [ ] 10-07-PLAN.md — UI M-1/M-2/M-3: estado "Pausado", faixa de status fixa, `scroll-region`
+
+**Wave 3** *(bloqueada na conclusão da Wave 2)*
+
+- [ ] 10-08-PLAN.md — D-05: teste de caracterização e divisão do `background/index.ts` (refator puro)
+- [ ] 10-09-PLAN.md — UI M-4/M-5/M-6: abas acessíveis, aviso da saída larga, espaçamento 4/8/16 (commit mecânico)
+
+**Wave 4** *(bloqueada na conclusão da Wave 3)*
+
+- [ ] 10-10-PLAN.md — UAT de 12 testes com o passo a passo (D-15), portão automático e build local da Taqciti
+
+**Wave 5** *(bloqueada na conclusão da Wave 4)*
+
+- [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13) e frase do D-07 no `CLAUDE.md` (não autônomo)
+
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
 
@@ -386,7 +413,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 0/? | Not started | - |
+| 10. AGP Question Panel in Taqciti | 0/11 | Planned | - |
 
 ## Backlog
 

@@ -53,14 +53,18 @@ Backend: 279 passam, 4 pulados, 1 falha **preexistente e fora do escopo** (`test
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| D-02 | 10-01 | 1 | TAQ-05 (SC4) | — | "Continuar envio" não apaga `finishBy`/`finishTries` enquanto `isClosing` | unit | `cd taqciti && npx vitest run src/background/agenteBindFlow.test.ts` | ✅ estender | ⬜ pending |
-| D-03 | 10-02 | 1 | TAQ-05 (SC4) | — | fechar/navegar a 2ª aba da mesma sala não encerra a reunião | unit + fluxo | `cd taqciti && npx vitest run src/background/meetingTabClosed.test.ts src/background/meetingTabNavigated.test.ts src/background/meetingTabClosedFlow.test.ts src/background/meetingTabNavigatedFlow.test.ts src/features/meeting/machine.test.ts src/background/meetingRoomTabs.test.ts` | ❌ W0 (`meetingRoomTabs.test.ts`) | ⬜ pending |
-| D-11 | 10-03 | 1 | TAQ-05 (SC1, SC3) | custo de IA | feed só conecta em `recording` + vínculo explícito + `streamingEnabled`; `hold` mantém a lista | unit (tabela) | `cd taqciti && npx vitest run src/features/agente/agpTarget.test.ts src/background/agpQuestionsFeed.test.ts src/shared/config/agpQuestionsStore.test.ts` | ✅ estender | ⬜ pending |
-| M-1..M-6 | 10-04 | 2 | TAQ-05 (SC1) | — | N/A | unit (React) | `cd taqciti && npx vitest run src/sidepanel/components/AgpQuestionsPanel.test.tsx src/sidepanel/components/AgpLiveTabs.test.tsx` | ✅ estender | ⬜ pending |
-| D-04 | 10-05 | 2 | TAQ-05 (SC4) | privacidade (`tabs`) | `permissions` inclui `tabs`; `<all_urls>` mantido; nenhuma URL de aba logada/gravada | unit (manifesto) | `cd taqciti && npx vitest run src/manifest.test.ts` | ❌ W0 | ⬜ pending |
-| D-05 | 10-06 | 3 | TAQ-05 (SC4) | — | N/A (refator puro) | caracterização | `cd taqciti && npx vitest run src/background/index.test.ts` (escrito antes do corte, passa sem edição depois) | ❌ W0 | ⬜ pending |
-| D-12 | todos | — | TAQ-05 (SC2) | DoS (reconexão) | backoff, 4004 e "sem relógio local" não regridem | unit + fumaça | testes existentes do feed + fumaça | ✅ | ⬜ pending |
-| D-06/D-07 | 10-07 | 3 | — | — | N/A | conferência por texto | `grep -n "SUPERADO" .planning/RETOMAR-AQUI.md .planning/PENDENCIAS-FASE-08.md .planning/PENDENCIAS-FASE-10.md` | doc | ⬜ pending |
+| D-02 | 10-01 | 1 | TAQ-05 (SC4) | T-10-01 | "Continuar envio" não apaga `finishBy`/`finishTries` enquanto `isClosing` | unit + composição | `cd taqciti && npx vitest run src/background/agenteBindResume.test.ts src/background/agenteBindFlow.test.ts` | ❌ W0 (`agenteBindResume.test.ts`, criado na Task 1) | ⬜ pending |
+| D-03 | 10-02 | 1 | TAQ-05 (SC4) | T-10-03, T-10-04 | fechar/navegar a aba dona com outra aba na call reaponta; a última saída encerra 1 vez; consulta falhou = encerra (D-17) | unit + fluxo (máquina real) | `cd taqciti && npx vitest run src/background/meetingTwoTabs.test.ts src/background/meetingTabClosed.test.ts src/background/meetingTabNavigated.test.ts src/background/meetingTabClosedFlow.test.ts src/background/meetingTabNavigatedFlow.test.ts src/features/meeting/machine.test.ts` | ❌ W0 (`meetingTwoTabs.test.ts`, criado na Task 1) | ⬜ pending |
+| D-11 | 10-03 | 1 | TAQ-05 (SC1, SC3) | T-10-05..T-10-08 | feed só conecta em `recording` + vínculo explícito + `streamingEnabled`; `hold` mantém a lista e sobrevive ao sono do worker | unit (tabela) + fluxo com store real | `cd taqciti && npx vitest run src/background/agpQuestionsFeedHold.test.ts src/features/agente/agpTarget.test.ts src/shared/config/agpQuestionsStore.test.ts src/background/agpQuestionsFeed.test.ts` | ❌ W0 (`agpQuestionsFeedHold.test.ts`, criado na Task 1) | ⬜ pending |
+| D-04 | 10-04 | 1 | TAQ-05 (SC4) | T-10-09, T-10-10 | `permissions` inclui `tabs`; `<all_urls>` mantido; commit isolado | unit (manifesto) + build | `cd taqciti && npx vitest run src/manifest.test.ts` | ❌ W0 (criado na Task 1) | ⬜ pending |
+| D-06/D-09 | 10-05 | 1 | TAQ-05 | T-10-11 | página de ajuda explica a aba AGP e a divergência; docs antigos marcados; D-09/A-4 corrigidos | unit (frontend) + texto | `npm --prefix frontend test -- src/lib/taqcitiInstall.test.ts` | ✅ estender | ⬜ pending |
+| D-16 | 10-06 | 2 | TAQ-05 (SC4) | T-10-12, T-10-13 | `meet/ended` de aba não dona não encerra; aba que saiu da call não segura a reunião | unit + fluxo | `cd taqciti && npx vitest run src/background/meetingEndedTwoTabs.test.ts src/background/meetingTwoTabs.test.ts` | ❌ (criado na Task 1) | ⬜ pending |
+| M-1..M-3 | 10-07 | 2 | TAQ-05 (SC1) | T-10-14 | estado "Pausado", faixa fixa, `scroll-region` | unit (React) | `cd taqciti && npx vitest run src/sidepanel/components/AgpQuestionsPanel.test.tsx src/sidepanel/components/AgpLiveTabs.test.tsx` | ✅ estender | ⬜ pending |
+| D-05 | 10-08 | 3 | TAQ-05 (SC4) | T-10-15 | N/A (refator puro) | caracterização | `cd taqciti && npx vitest run src/background/index.test.ts` (escrito antes do corte, passa sem edição depois) | ❌ W0 (criado na Task 1) | ⬜ pending |
+| M-4..M-6 | 10-09 | 3 | TAQ-05 (SC1) | T-10-16 | abas acessíveis, 2ª frase na saída larga, grade 4/8/16 | unit (React) | `cd taqciti && npx vitest run src/sidepanel/components/AgpLiveTabs.test.tsx src/sidepanel/components/AgpQuestionsPanel.test.tsx` | ✅ estender | ⬜ pending |
+| D-12 | todos | — | TAQ-05 (SC2) | T-10-07 | backoff, 4004 e "sem relógio local" não regridem | unit + fumaça | testes existentes do feed + fumaça (`git diff --quiet eb3bf01` nos arquivos do D-12) | ✅ | ⬜ pending |
+| D-15 | 10-10 | 4 | TAQ-05 | T-10-17, T-10-18 | UAT de 12 testes com "como fazer"; portão automático; build com as variáveis | texto + suíte | `grep -c "^### [0-9]*\. " .planning/phases/10-agp-question-panel-in-taqciti/10-UAT.md` (= 12) | doc | ⬜ pending |
+| D-07/D-13 | 10-11 | 5 | TAQ-05 (SC1-SC4) | T-10-19, T-10-20 | prova no Chrome real com IA; frase do D-07 aprovada | manual | `10-UAT.md` preenchido | doc | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -68,10 +72,15 @@ Backend: 279 passam, 4 pulados, 1 falha **preexistente e fora do escopo** (`test
 
 ## Wave 0 Requirements
 
-- [ ] `taqciti/src/background/index.test.ts` — caracterização do `index.ts` **antes** do D-05
-- [ ] `taqciti/src/manifest.test.ts` — `tabs` e `<all_urls>` (D-04)
-- [ ] `taqciti/src/background/meetingRoomTabs.test.ts` — porta de outras abas da mesma sala (D-03), com `chrome.tabs.query` simulado
-- [ ] `10-UAT.md` reescrito de 7 para 12 testes, cada um dizendo COMO fazer
+- [ ] `taqciti/src/background/index.test.ts` — caracterização do `index.ts` **antes** do D-05 (10-08, Task 1)
+- [ ] `taqciti/src/manifest.test.ts` — `tabs` e `<all_urls>` (D-04; 10-04, Task 1)
+- [ ] `taqciti/src/background/meetingTwoTabs.test.ts` — adaptador `meetingRoomTabs.ts` (com `chrome.tabs.query` simulado), evento `MEETING_TAB_CHANGED` e fluxos DA-3/DA-4 com duas abas (D-03; 10-02, Task 1)
+- [ ] `taqciti/src/background/agenteBindResume.test.ts` — D-02 pela composição real (10-01, Task 1)
+- [ ] `taqciti/src/background/agpQuestionsFeedHold.test.ts` — hold/retomada/sono do worker (D-11; 10-03, Task 1)
+- [ ] `10-UAT.md` reescrito de 7 para 12 testes, cada um dizendo COMO fazer (10-10, Task 1)
+
+Cada arquivo de teste novo é criado pela PRIMEIRA task do plano que o usa (o tracer), no mesmo commit da mudança que
+ele prova — o `<automated>` de cada task nunca aponta para um arquivo que ainda não existe naquela task.
 
 *Nenhum framework a instalar.*
 
