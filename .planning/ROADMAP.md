@@ -366,7 +366,7 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: 11 plans (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+**Plans**: 12 plans (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
 
 **Wave 1**
 
@@ -392,7 +392,8 @@ Plans:
 
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
-- [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13) e frase do D-07 no `CLAUDE.md` (não autônomo)
+- [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo)
+- [ ] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo)
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
