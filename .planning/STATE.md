@@ -4,18 +4,18 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-10-29T21:00:31.025Z"
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-10-29T21:30:08.132Z"
 last_activity: 2026-10-29
 last_activity_desc: Phase 10 execution started
-state_head: 79fe0dc1bea6ac3da4209303738f78325d642c0d
+state_head: a7ff5054fa72fb50d4f0393a2622287f51f8ee78
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 72
-  completed_plans: 62
+  completed_plans: 63
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 12
 Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING
 Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
@@ -129,6 +129,7 @@ Progress: [████████░░] 80%
 | Phase 09 P02 | 1 dia | 3 tasks | 1 files |
 | Phase 10 P01 | 16 min | 2 tasks | 4 files |
 | Phase 10 P02 | 14 min | 2 tasks | 6 files |
+| Phase 10 P03 | 27 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,8 @@ Recent decisions affecting current work:
 - [Phase 10]: [10-01] Porta isClosing opcional (padrão neutro) em ResumeDeps/BindFlowDeps, ligada por lambda a agenteSessionFinisher.isClosing em agenteAssociation.ts; sem recusa por sessionFinished (DA-2 mantida); janela residual T-10-02 aceita
 - [Phase 10]: [10-02] D-03: handOffMeetingOrFinish e a regra unica das DA-3 e DA-4 — outra aba da mesma call recebe a reuniao (MEETING_TAB_CHANGED), senao encerra; porta otherRoomTabId opcional (ausente, vazia ou rejeitada = encerra, D-17); modelo persistido segue com UMA aba dona
 - [Phase 10]: [10-02] Memoria das abas na call so em RAM (meetingRoomTabs.ts), reaprendida so por meet/chunk e bloqueada pela marca 'saiu da call'; markTabLeftCall sincrono no onRemoved fecha a corrida da consulta em voo; A3/A4 (tab.url legivel, 2a aba manda meet/detected) so se confirmam no UAT 9 em Chrome real
+- [Phase 10]: [10-03] D-11/WR-04: o /ws so abre com a reuniao gravando + vinculo explicito + envio ligado (decideAgpFollow pura); pausa, sem legendas ou envio desligado = hold: fecha o socket, mantem as perguntas e publica 'paused' — Conectar no /ws cria o pipeline de IA do backend (Gemini); a pausa nao pode perder a lista nem ligar a IA a toa
+- [Phase 10]: [10-03] As decisoes novas do feed (hold, retomada, hidratacao e marcador do 4004) moram em agpQuestionsFeedHold.ts (puro); o feed so executa o passo. Hidratacao do feed salvo so com o mesmo sessionId; salvo 'idle' vale como 4004; o boot ignora a marca no alvo (tenta de novo, como antes, D-12) — Limite de 200 linhas do CLAUDE.md sem mover codigo do Gabriel; T-10-06 (nao mostrar pergunta de outra sessao) e T-10-07 (sem laco de reconexao)
 
 ### Pending Todos
 
@@ -242,8 +245,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-29T21:00:27.136Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-10-29T21:30:04.796Z
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None
 
 ---
