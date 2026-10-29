@@ -45,8 +45,12 @@ const recordOf = (meetingId: string, count = 10): MeetingRecord =>
 /**
  * Sequência de eventos do store: reunião encerrada, envio manual parado na parte 4 de 10 (`send-failed`).
  * Recebe o `applyAssociationEvent` da MESMA instância de módulo do cenário (depois do `resetModules`).
+ * `sessionFinished`: a sessão já foi encerrada pela B4-b (DA-2) antes de o envio parar.
  */
-async function stopSendAt(apply: typeof applyAssociationEvent) {
+async function stopSendAt(
+  apply: typeof applyAssociationEvent,
+  options: { sessionFinished?: boolean } = {},
+) {
   await apply('m2', { type: 'created' });
   await apply('m2', { type: 'meeting-ended' });
   await apply('m2', {
@@ -55,6 +59,7 @@ async function stopSendAt(apply: typeof applyAssociationEvent) {
     clientName: 'Sessão 22222222',
     sessionId: SESSION_ID,
   });
+  if (options.sessionFinished === true) await apply('m2', { type: 'session-finished' });
   await apply('m2', { type: 'send-progress', done: 4, total: 10 });
   await apply('m2', { type: 'send-failed', error: 'send' });
 }
@@ -129,5 +134,76 @@ describe('agenteAssociation.resumeSend — D-02 (WR-05), composição real', () 
 
     await vi.waitFor(async () => expect((await store.getAssociation('m2'))?.state).toBe('sent'));
     expect(send).toHaveBeenCalledTimes(6); // partes 4..9
+  });
+});
+
+describe('prepareResume — D-02 (isClosing)', () => {
+  /**
+   * `prepareResume` direto, com `getRecord`/`loadConfig` espiões. `armFinish` deixa o prazo de encerramento
+   * gravado (`finishBy` + 1 falha) para provar o que a guarda preserva e o que o `send-resumed` apaga.
+   */
+  async function prepareScenario(
+    options: { associated?: boolean; armFinish?: boolean; sessionFinished?: boolean } = {},
+  ) {
+    installChromeStorageMock();
+    const { prepareResume } = await import('./agenteBindResume');
+    const store = await import('@/shared/config/agenteAssociationStore');
+    if (options.associated !== false) {
+      await stopSendAt(store.applyAssociationEvent, { sessionFinished: options.sessionFinished });
+      if (options.armFinish === true) {
+        await store.applyAssociationEvent('m2', { type: 'finish-armed', by: FINISH_BY });
+        await store.applyAssociationEvent('m2', { type: 'finish-failed' });
+      }
+    }
+    const getRecord = vi.fn(() => Promise.resolve(recordOf('m2')));
+    const loadConfig = vi.fn(() => Promise.resolve(READY_CONFIG));
+    return { prepareResume, store, getRecord, loadConfig };
+  }
+
+  it('isClosing true: recusa invalid-state antes de ler registro e config, com o prazo de encerramento intacto', async () => {
+    const { prepareResume, store, getRecord, loadConfig } = await prepareScenario({ armFinish: true });
+
+    const result = await prepareResume({ getRecord, loadConfig, isClosing: () => true }, 'm2', false);
+
+    expect(result).toEqual({ failure: { ok: false, error: 'invalid-state' } });
+    expect(getRecord).not.toHaveBeenCalled();
+    expect(loadConfig).not.toHaveBeenCalled();
+    expect(await store.getAssociation('m2')).toMatchObject({
+      state: 'send-failed',
+      finishBy: FINISH_BY,
+      finishTries: 1,
+    });
+  });
+
+  it('porta ausente (padrão neutro): devolve o plano e a associação vai para sending sem finishBy nem finishTries', async () => {
+    const { prepareResume, store, getRecord, loadConfig } = await prepareScenario({ armFinish: true });
+
+    const result = await prepareResume({ getRecord, loadConfig }, 'm2', false);
+
+    expect(result).toMatchObject({ sessionId: SESSION_ID, startAt: 4 });
+    expect(result).toHaveProperty('parts.length', 10);
+    const after = await store.getAssociation('m2');
+    expect(after?.state).toBe('sending');
+    expect(after).not.toHaveProperty('finishBy');
+    expect(after).not.toHaveProperty('finishTries');
+  });
+
+  it('DA-2: isClosing false com a sessão já encerrada (sessionFinished): a retomada continua permitida', async () => {
+    const { prepareResume, store, getRecord, loadConfig } = await prepareScenario({ sessionFinished: true });
+    expect(await store.getAssociation('m2')).toMatchObject({ state: 'send-failed', sessionFinished: true });
+
+    const result = await prepareResume({ getRecord, loadConfig, isClosing: () => false }, 'm2', false);
+
+    expect(result).toMatchObject({ sessionId: SESSION_ID, startAt: 4 });
+    expect(await store.getAssociation('m2')).toMatchObject({ state: 'sending', sessionFinished: true });
+  });
+
+  it('associação inexistente: not-found mesmo com isClosing true (a guarda nova não muda a ordem das recusas)', async () => {
+    const { prepareResume, getRecord, loadConfig } = await prepareScenario({ associated: false });
+
+    const result = await prepareResume({ getRecord, loadConfig, isClosing: () => true }, 'm2', false);
+
+    expect(result).toEqual({ failure: { ok: false, error: 'not-found' } });
+    expect(getRecord).not.toHaveBeenCalled();
   });
 });
