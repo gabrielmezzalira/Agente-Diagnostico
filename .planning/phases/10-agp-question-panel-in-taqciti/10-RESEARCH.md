@@ -439,7 +439,15 @@ No console de uma página da extensão (saída larga), duas chamadas, uma por ma
 | A6 | O `import` de `manifest.config.ts` (e do `@crxjs/vite-plugin`) funciona sob `vitest` para um teste de manifesto | D-04 | Plano B: `// @vitest-environment node` ou ler o arquivo como texto |
 | A7 | Recusa silenciosa do "Continuar envio" por `isClosing` (janela de até ~10 s) é aceitável sem copy nova | D-02 | Usuário acha que o botão quebrou; baixo custo de corrigir depois |
 
-## Perguntas em Aberto
+## Perguntas em Aberto (RESOLVED)
+
+> Todas resolvidas em 2026-10-28, no `/gsd-plan-phase 10` (ver `10-CONTEXT.md`):
+> - P1 → **RESOLVED:** D-04 mantido como `costly`; a medição com `getPermissionWarningsByManifest` entra como evidência do UAT 10 (plano 10-04 / 10-11).
+> - P2 → **RESOLVED:** "Correção de texto" no `10-CONTEXT.md` (fixada ou descartada no site fica na Taqciti até reconectar); textos corrigidos no plano 10-05.
+> - P3 → **RESOLVED:** D-16 (`meet/ended` de aba que não é a dona não encerra; plano 10-06).
+> - P4 → **RESOLVED:** D-17 (falha do `chrome.tabs.query` encerra; plano 10-02).
+> - P5 → **RESOLVED:** D-18 (recusa silenciosa, sem texto novo; plano 10-01).
+> - P6 → **RESOLVED:** D-19 (backend falso não muda; os testes que precisam de pergunta esperam o crédito do Gemini).
 
 1. **O rótulo `costly` do D-04 continua valendo?**
    - Sabemos: a doc diz que o aviso do `tabs` some com `<all_urls>` (já presente).
