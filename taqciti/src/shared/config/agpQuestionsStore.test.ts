@@ -65,3 +65,32 @@ describe('leitura, escrita e assinatura', () => {
     stop();
   });
 });
+
+// D-11, Armadilha 1: 'paused' não pode virar 'idle' em silêncio. Acrescentado ao fim do arquivo (só acréscimo).
+describe('connection — ida e volta (D-11, Armadilha 1)', () => {
+  beforeEach(() => {
+    installChromeStorageMock();
+  });
+
+  it.each(['idle', 'connecting', 'live', 'reconnecting', 'paused'] as const)(
+    '%s sobrevive ao writeAgpFeed -> loadAgpFeed',
+    async (connection) => {
+      await writeAgpFeed({ sessionId: SID, connection, questions: [{ ...question, lens: 'dados', status: 'queued' }] });
+      expect(await loadAgpFeed()).toEqual({ sessionId: SID, connection, questions: [question] });
+    },
+  );
+
+  it('paused mantém as perguntas na mesma ordem', async () => {
+    const second = { ...question, id: 'q2', lens: 'produto' as const, status: 'pinned' as const };
+    await writeAgpFeed({ sessionId: SID, connection: 'paused', questions: [{ ...question, lens: 'dados', status: 'queued' }, second] });
+    expect((await loadAgpFeed()).questions.map((q) => q.id)).toEqual(['q1', 'q2']);
+  });
+
+  it('valor desconhecido continua virando idle (comportamento antigo preservado)', () => {
+    expect(normalizeAgpFeed({ sessionId: SID, connection: 'qualquer-coisa', questions: [] })).toEqual({
+      sessionId: SID,
+      connection: 'idle',
+      questions: [],
+    });
+  });
+});
