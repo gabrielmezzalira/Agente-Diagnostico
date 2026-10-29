@@ -90,6 +90,21 @@ retirada da geração de PRD (trabalho à parte).
   teste local deve ser refeito com `VITE_AGENTE_BACKEND_URL=http://127.0.0.1:8000 VITE_AGENTE_STREAMING_ENABLED=true`
   (o `dist` atual foi sobrescrito com o endereço padrão) e dar ↻ em `chrome://extensions`.
 
+### Decisões tomadas no `/gsd-plan-phase 10` (2026-10-28, após a pesquisa)
+- **D-16:** **O D-03 inclui `meet/ended` vindo de aba que não é a dona.** Hoje `background/index.ts` ignora
+  `sender.tab` e a 2ª aba encerra a reunião inteira ao sair da call. Passa a valer a mesma regra do D-03: a 2ª aba
+  nunca encerra a reunião da 1ª. Comportamento novo, testado, em commit próprio dentro do trabalho do D-03.
+- **D-17:** **Se a consulta de "outra aba na mesma sala" (`chrome.tabs.query`) falhar, encerrar** — falha segura,
+  igual ao comportamento de hoje; a IA nunca fica gastando sem ninguém na call.
+- **D-18:** **A recusa do "Continuar envio" durante o encerramento (D-02) é silenciosa.** Sem texto novo de UI;
+  documentado no UAT (teste da WR-05).
+- **D-19:** **Sem backend falso estendido para o UAT.** Os testes manuais que precisam de pergunta já recebida
+  esperam o Gemini com crédito, junto com os testes 2 e 3 (D-13). `agp-fake-backend.py` não muda.
+- **Correção de texto (pesquisa, Armadilha 7):** o backend **não** emite `question_expired` para pergunta fixada
+  ou descartada no site (`pipeline.py:164` só expira `queued`; `pin_question` em `ws.py` muda o status em memória).
+  Então, no D-09, pergunta fixada **ou** descartada no site continua na Taqciti **até reconectar**. Os textos do
+  D-09, do UI-SPEC (A-4) e do UAT devem dizer isso. É só texto; nenhuma decisão de código muda.
+
 ### Claude's Discretion
 - Nomes de arquivos/funções dos ajustes, textos exatos das mensagens do painel (dentro do que o UI-SPEC definir).
 - Como o WR-05 e a regra de duas abas são testados (unitário vs integração), desde que cada um tenha um teste que
