@@ -393,7 +393,7 @@ Plans:
 
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
-- [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo)
+- [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo) — **BLOQUEADO: UAT em Chrome real adiado pelo usuário para a verificação final (SUMMARY `status: blocked`; 12 testes `pending`)**
 - [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (adiada pelo usuário para o fim da fase; desfazer com `git revert b64d8b6`)**
 
 **UI hint**: yes

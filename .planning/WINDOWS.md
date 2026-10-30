@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 0
 fixed_count: 0
-total_count: 5
-last_updated: 2026-10-30T14:49:14.656Z
+total_count: 6
+last_updated: 2026-10-30T14:53:07.980Z
 ---
 
 # Broken Windows Ledger
@@ -20,6 +20,7 @@ last_updated: 2026-10-30T14:49:14.656Z
 | 3 | 07 | lint-warning | taqciti/src/document/baixarDocumento.ts | 26 | eslint-disable-next-line no-control-regex sem uso (nao suprime nada) - pre-existente, fora do escopo do plano 07-03 | open |  | 2026-09-26T11:46:55.358Z |  |
 | 4 | 07 | unrun-verify | .planning/phases/07-taqciti-config-background-streamer/07-04-PLAN.md |  | Reteste manual do Teste 1 da UAT (SC1) numa chamada real do Meet - human-check da Task 3 do plano 07-04, deferido para /gsd-verify-work 07 | open |  | 2026-09-27T01:11:38.852Z |  |
 | 5 | 10 | unrun-verify | CLAUDE.md | 843 | Aprovacao humana do texto do D-07 (item novo da secao 10, commit b64d8b6) PENDENTE - o usuario adiou a verificacao para o fim da fase (plano 10-12, Task 2). Antes do merge da Fase 10 na main: ler git show b64d8b6 -- CLAUDE.md e responder d07-ok (manter) ou d07-reverter (git revert b64d8b6) | open |  | 2026-10-30T14:49:14.656Z |  |
+| 6 | 10 | unrun-verify | .planning/phases/10-agp-question-panel-in-taqciti/10-UAT.md |  | UAT da Fase 10 em Chrome real NAO rodou (plano 10-11 bloqueado): os 12 testes seguem [pending]. Exige Gemini com credito e uma call no Meet. Usuario adiou para a verificacao final. Rodar o roteiro ou /gsd-verify-work 10 antes do merge/ship da Fase 10 (testes 2 e 3 com IA real fecham o TAQ-05) | open |  | 2026-10-30T14:53:07.980Z |  |
 
 ````json
 [
@@ -85,6 +86,19 @@ last_updated: 2026-10-30T14:49:14.656Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-30T14:49:14.656Z",
+    "resolved_at": null,
+    "milestone": "v3.0"
+  },
+  {
+    "id": 6,
+    "kind": "unrun-verify",
+    "phase": "10",
+    "file": ".planning/phases/10-agp-question-panel-in-taqciti/10-UAT.md",
+    "line": null,
+    "description": "UAT da Fase 10 em Chrome real NAO rodou (plano 10-11 bloqueado): os 12 testes seguem [pending]. Exige Gemini com credito e uma call no Meet. Usuario adiou para a verificacao final. Rodar o roteiro ou /gsd-verify-work 10 antes do merge/ship da Fase 10 (testes 2 e 3 com IA real fecham o TAQ-05)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-30T14:53:07.980Z",
     "resolved_at": null,
     "milestone": "v3.0"
   }

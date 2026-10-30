@@ -6,11 +6,11 @@ current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
 current_plan: 11
 status: executing
-stopped_at: Completed 10-12-PLAN.md (D-07 mantido provisoriamente; aprovação humana pendente)
-last_updated: "2026-10-30T14:50:20.267Z"
+stopped_at: "10-11 bloqueado: UAT em Chrome real adiado pelo usuario (verificacao final dele); 10-12 mantido provisoriamente"
+last_updated: "2026-10-30T14:53:15.239Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 10 execution started
-state_head: b64d8b626d642812a6f512c969b249517889d922
+state_head: 9de3400909012c238af83ad579dec454731762be
 progress:
   total_phases: 10
   completed_phases: 8
@@ -232,6 +232,7 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-10: 10-UAT.md reescrito com 12 testes e o passo a passo de cada um; textos de tela lidos do código (o botão do site é "Gerar"; a tela larga ao vivo abre por chrome-extension://<ID>/src/sidepanel/index.html, porque "Abrir numa aba" do painel do Meet abre o histórico); campo expected: de uma linha ao lado do esperado: para o leitor de UAT do GSD continuar funcionando; teste 8 marcado como procedimento assistido — Sem o expected: o comando uat render-checkpoint (usado pelo /gsd-verify-work 10) para com "Pending UAT test N is missing an expected field"; provado 12/12 sobre cópias descartáveis. Os textos vêm do código para a pessoa que não é técnica ver na tela exatamente o que o roteiro promete. O truque de DevTools do teste 8 não pôde ser ensaiado sem Chrome, então fica dito no roteiro e no SUMMARY.
 - [Phase 10]: 10-10: portão automático da fase verde (suíte da Taqciti 1737 passados e 0 falhas, tsc, eslint, fumaça AGP 3/3, frontend 25/25; backend/ e supabase/ sem diff desde eb3bf01) e taqciti/dist refeito com 127.0.0.1:8000 e envio ligado; resta o ↻ em chrome://extensions e o plano 10-11 (prova no Chrome real, Gemini com crédito para os testes 2, 3, 4B, 7B, 11 e 12)
 - [Phase 10]: 10-12: D-07 (frase do CLAUDE.md sobre a Taqciti ler /ws/{session_id} só para a aba AGP, commit b64d8b6) mantido provisoriamente; aprovação humana do texto PENDENTE — o usuário adiou a verificação para o fim da fase — Resposta do usuário ao checkpoint: concluir o que for automatizável e verificar tudo no fim. Não é d07-ok nem d07-reverter. Para desfazer: git revert b64d8b6. Resolver antes do merge da Fase 10 na main; TAQ-05 não marcado (depende do UAT do 10-11).
+- [Phase 10]: 10-11: plano BLOQUEADO (status: blocked), não concluído: a prova em Chrome real com o Gemini com crédito foi adiada pelo usuário para a verificação final dele — Nenhum teste rodou nem resultado foi gravado; o 10-UAT.md segue com 12 testes pending. TAQ-05 e a Fase 10 só fecham com os testes 2 e 3 passando com IA real (D-13)
 
 ### Pending Todos
 
@@ -264,9 +265,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T14:50:17.598Z
-Stopped at: Completed 10-12-PLAN.md (D-07 mantido provisoriamente; aprovação humana pendente)
-Resume file: None
+Last session: 2026-10-30T14:53:12.400Z
+Stopped at: 10-11 bloqueado: UAT em Chrome real adiado pelo usuario (verificacao final dele); 10-12 mantido provisoriamente
+Resume file: .planning/phases/10-agp-question-panel-in-taqciti/10-UAT.md
 
 ---
 
