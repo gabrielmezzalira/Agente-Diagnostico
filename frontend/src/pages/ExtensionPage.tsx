@@ -3,6 +3,7 @@ import AppShell from '../components/layout/AppShell'
 import StepList from '../components/extension/StepList'
 import { Card, PageHeader, SectionLabel, buttonClasses } from '../components/ui'
 import {
+  TAQCITI_AGP_TAB_NOTES,
   TAQCITI_DOWNLOAD_PENDING_NOTICE,
   TAQCITI_INSTALL_STEPS,
   TAQCITI_LINK_STEPS,
@@ -65,6 +66,11 @@ export default function ExtensionPage() {
         <Card className="px-[26px] py-6 flex flex-col gap-6">
           <SectionLabel>Vincular a reunião a um cliente</SectionLabel>
           <StepList steps={TAQCITI_LINK_STEPS} />
+        </Card>
+
+        <Card className="px-[26px] py-6 flex flex-col gap-6">
+          <SectionLabel>Aba AGP (perguntas do Agente na call)</SectionLabel>
+          <StepList steps={TAQCITI_AGP_TAB_NOTES} />
         </Card>
       </div>
     </AppShell>

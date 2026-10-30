@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  TAQCITI_AGP_TAB_NOTES,
   TAQCITI_DOWNLOAD_PENDING_NOTICE,
   TAQCITI_INSTALL_STEPS,
   TAQCITI_LINK_STEPS,
@@ -27,6 +28,7 @@ function allPageTexts(): string[] {
     ...Object.values(TAQCITI_SYSTEM_LABELS),
     ...SYSTEMS.flatMap((system) => TAQCITI_INSTALL_STEPS[system]),
     ...TAQCITI_LINK_STEPS,
+    ...TAQCITI_AGP_TAB_NOTES,
   ]
 }
 
@@ -86,5 +88,14 @@ describe('taqcitiInstall', () => {
   it('os passos do vínculo têm pelo menos 3 itens e citam "Selecionar cliente"', () => {
     expect(TAQCITI_LINK_STEPS.length).toBeGreaterThanOrEqual(3)
     expect(TAQCITI_LINK_STEPS.some((step) => step.includes('Selecionar cliente'))).toBe(true)
+  })
+
+  it('as notas da aba AGP explicam a lente, que a aba só mostra e a divergência de fixar/descartar (D-09)', () => {
+    expect(TAQCITI_AGP_TAB_NOTES.length).toBeGreaterThanOrEqual(4)
+    for (const note of TAQCITI_AGP_TAB_NOTES) expect(note.trim().length).toBeGreaterThan(0)
+    expect(TAQCITI_AGP_TAB_NOTES.some((n) => n.includes('Produto') && n.includes('Dados'))).toBe(true)
+    expect(TAQCITI_AGP_TAB_NOTES.some((n) => n.includes('até a Taqciti se reconectar'))).toBe(true)
+    expect(TAQCITI_AGP_TAB_NOTES.some((n) => n.includes('só mostra'))).toBe(true)
+    for (const note of TAQCITI_AGP_TAB_NOTES) expect(note).not.toContain('some no TTL')
   })
 })

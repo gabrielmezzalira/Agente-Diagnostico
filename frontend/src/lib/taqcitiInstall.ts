@@ -48,5 +48,14 @@ export const TAQCITI_LINK_STEPS: readonly string[] = [
   'Ao sair da sala da reunião, a sessão é encerrada sozinha.',
 ]
 
+// Aba AGP da Taqciti (Fase 10, D-09): o que ela mostra e a divergência aceita com o web app
+export const TAQCITI_AGP_TAB_NOTES: readonly string[] = [
+  'Durante a call, a aba "AGP" do painel da Taqciti mostra as perguntas que o Agente gerou para a sessão vinculada, cada uma com a lente Produto ou Dados.',
+  'Sem cliente vinculado, a aba mostra só um aviso: ela nunca mostra perguntas de uma sessão que não foi escolhida.',
+  'A aba só mostra as perguntas. Gerar, fixar e descartar continuam sendo feitos aqui no web app.',
+  'Fixar ou descartar uma pergunta aqui no web app não tira o cartão da aba AGP: ele continua lá até a Taqciti se reconectar ao Agente. Só a pergunta que ninguém fixou some sozinha quando o tempo dela acaba.',
+  'Com a captura pausada ou com o envio ao Agente desligado, a aba mostra "Pausado" e mantém as últimas perguntas recebidas.',
+]
+
 export const TAQCITI_OLD_EXTENSION_WARNING =
   'Se você tem a extensão antiga do Agente Diagnóstico instalada, remova-a em chrome://extensions antes de instalar a Taqciti.'
