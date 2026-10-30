@@ -119,3 +119,34 @@ describe('AgpQuestionsPanel — estado "Pausado" e faixa fixa (10-07)', () => {
     expect(host.querySelector('[aria-live]')).toBeNull();
   });
 });
+
+describe('AgpQuestionsPanel — rolagem, texto longo e emblemas (10-07, M-3)', () => {
+  it('a região rolável usa scroll-region e entra na ordem de tabulação', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    const scroller = host.querySelector('ul')?.parentElement;
+    expect(scroller?.classList.contains('scroll-region')).toBe(true);
+    expect(scroller?.getAttribute('tabindex')).toBe('0');
+    expect(scroller?.classList.contains('outline-none')).toBe(true);
+  });
+
+  it('pergunta sem lente e não fixada: o cartão só tem o parágrafo do texto', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a', { lens: null, status: 'queued' })] });
+    const li = host.querySelector('li');
+    expect(li?.children).toHaveLength(1);
+    expect(li?.querySelector('div')).toBeNull();
+    expect(li?.textContent).toBe('Pergunta a?');
+  });
+
+  it('pergunta com lente: a linha de emblemas existe', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    expect(host.querySelector('li div')).not.toBeNull();
+  });
+
+  it('o texto quebra (break-words) e o cartão anima a entrada respeitando movimento reduzido', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    const li = host.querySelector('li');
+    expect(li?.querySelector('p')?.classList.contains('break-words')).toBe(true);
+    expect(li?.classList.contains('animate-fade-in')).toBe(true);
+    expect(li?.classList.contains('motion-reduce:animate-none')).toBe(true);
+  });
+});

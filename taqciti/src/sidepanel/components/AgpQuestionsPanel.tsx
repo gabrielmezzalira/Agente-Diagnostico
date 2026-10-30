@@ -63,20 +63,27 @@ export function AgpQuestionsPanel({ feed }: { feed: AgpFeed }) {
           {banner.text}
         </p>
       )}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div tabIndex={0} className="scroll-region flex min-h-0 flex-1 flex-col outline-none">
         {visible.length === 0 ? (
           <Notice>{emptyMessageFor(feed.connection)}</Notice>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-label="Perguntas do Agente">
             {visible.map((question) => (
-              <li key={question.id} className="glass-subtle rounded-panel p-3">
-                <div className="mb-1.5 flex items-center gap-2">
-                  {question.lens !== null && (
-                    <Badge tone={question.lens === 'produto' ? 'primary' : 'neutral'}>{LENS_LABEL[question.lens]}</Badge>
-                  )}
-                  {question.status === 'pinned' && <Badge tone="warning">Fixada</Badge>}
-                </div>
-                <p className="m-0 text-body leading-relaxed">{question.text}</p>
+              <li
+                key={question.id}
+                className="glass-subtle animate-fade-in rounded-panel p-3 motion-reduce:animate-none"
+              >
+                {(question.lens !== null || question.status === 'pinned') && (
+                  <div className="mb-1.5 flex items-center gap-2">
+                    {question.lens !== null && (
+                      <Badge tone={question.lens === 'produto' ? 'primary' : 'neutral'}>
+                        {LENS_LABEL[question.lens]}
+                      </Badge>
+                    )}
+                    {question.status === 'pinned' && <Badge tone="warning">Fixada</Badge>}
+                  </div>
+                )}
+                <p className="m-0 break-words text-body leading-relaxed">{question.text}</p>
               </li>
             ))}
           </ul>
