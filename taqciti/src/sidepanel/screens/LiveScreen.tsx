@@ -65,7 +65,7 @@ export function LiveScreen({ session, phase }: LiveScreenProps) {
       footer={<ControlsBar paused={phase === 'paused'} />}
     >
       <div className="flex min-h-0 flex-1 flex-col px-3 pb-1 pt-2">
-        <AgpLiveTabs>
+        <AgpLiveTabs surface="wide">
           <TranscriptView
             segments={session.segments}
             selfName={hostName(session.participants)}

@@ -150,3 +150,30 @@ describe('AgpQuestionsPanel — rolagem, texto longo e emblemas (10-07, M-3)', (
     expect(li?.classList.contains('motion-reduce:animate-none')).toBe(true);
   });
 });
+
+describe('AgpQuestionsPanel — aviso sem vínculo por superfície (10-09, M-5)', () => {
+  const FIRST = 'Vincule esta reunião a um cliente para ver aqui as perguntas do Agente.';
+  const SECOND = 'O vínculo é feito no painel do TaqCITi dentro do Meet.';
+  const unlinked: AgpFeed = { sessionId: null, connection: 'idle', questions: [] };
+
+  it('saída larga sem vínculo: as duas frases, a primeira idêntica à de sempre', async () => {
+    await act(async () => root.render(<AgpQuestionsPanel feed={unlinked} surface="wide" />));
+    expect(text()).toContain(FIRST);
+    expect(text()).toContain(SECOND);
+    expect(text()).toBe(`${FIRST} ${SECOND}`);
+  });
+
+  it.each([
+    ['sem surface (padrão)', undefined],
+    ['surface="panel"', 'panel'],
+  ] as const)('%s: só a primeira frase, nunca a do vínculo no Meet', async (_label, surface) => {
+    await act(async () => root.render(<AgpQuestionsPanel feed={unlinked} surface={surface} />));
+    expect(text()).toBe(FIRST);
+    expect(text()).not.toContain(SECOND);
+  });
+
+  it('com vínculo, a superfície larga não muda nada nos outros avisos', async () => {
+    await act(async () => root.render(<AgpQuestionsPanel feed={{ sessionId: SID, connection: 'idle', questions: [] }} surface="wide" />));
+    expect(text()).toBe('A sessão do Agente não está ativa. Não há perguntas para mostrar.');
+  });
+});

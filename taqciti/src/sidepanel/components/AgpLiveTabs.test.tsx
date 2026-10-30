@@ -79,3 +79,30 @@ describe('AgpLiveTabs', () => {
     expect(host.textContent).toContain('TRANSCRICAO');
   });
 });
+
+describe('AgpLiveTabs — aviso sem vínculo por superfície (10-09, M-5)', () => {
+  const FIRST = 'Vincule esta reunião a um cliente para ver aqui as perguntas do Agente.';
+  const SECOND = 'O vínculo é feito no painel do TaqCITi dentro do Meet.';
+
+  it('surface="wide" sem vínculo: a aba AGP também diz onde vincular', async () => {
+    const wideHost = document.createElement('div');
+    document.body.append(wideHost);
+    const wideRoot = createRoot(wideHost);
+    try {
+      await act(async () => wideRoot.render(<AgpLiveTabs surface="wide"><p>TRANSCRICAO</p></AgpLiveTabs>));
+      const agp = Array.from(wideHost.querySelectorAll('[role="tab"]')).find((el) => el.textContent?.startsWith('AGP')) as HTMLElement;
+      await click(agp);
+      expect(wideHost.textContent).toContain(FIRST);
+      expect(wideHost.textContent).toContain(SECOND);
+    } finally {
+      await act(async () => wideRoot.unmount());
+      wideHost.remove();
+    }
+  });
+
+  it('sem surface (painel do Meet): só a primeira frase', async () => {
+    await click(tab('AGP'));
+    expect(host.textContent).toContain(FIRST);
+    expect(host.textContent).not.toContain(SECOND);
+  });
+});

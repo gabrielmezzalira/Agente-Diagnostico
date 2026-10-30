@@ -5,13 +5,13 @@
  */
 import { useState, type ReactNode } from 'react';
 import { useAgpQuestions } from '@/shared/hooks/useAgpQuestions';
-import { AgpQuestionsPanel } from './AgpQuestionsPanel';
+import { AgpQuestionsPanel, type AgpSurface } from './AgpQuestionsPanel';
 
 type Tab = 'transcript' | 'agp';
 
 const TAB_BASE = 'rounded-control px-3 py-1 text-caption font-semibold transition-colors';
 
-export function AgpLiveTabs({ children }: { children: ReactNode }) {
+export function AgpLiveTabs({ children, surface = 'panel' }: { children: ReactNode; surface?: AgpSurface }) {
   const [tab, setTab] = useState<Tab>('transcript');
   const feed = useAgpQuestions();
   const count = feed.questions.length;
@@ -35,7 +35,7 @@ export function AgpLiveTabs({ children }: { children: ReactNode }) {
         {button('transcript', 'Transcrição')}
         {button('agp', 'AGP', count)}
       </div>
-      {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} />}
+      {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} surface={surface} />}
     </div>
   );
 }

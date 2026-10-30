@@ -10,6 +10,12 @@ import { Icon } from '@/shared/ui/Icon';
 
 const LENS_LABEL: Record<AgpLens, string> = { produto: 'Produto', dados: 'Dados' };
 
+/** Onde a tela aparece: o painel injetado no Meet (padrão) ou a saída larga (sem o espaço de vínculo). */
+export type AgpSurface = 'panel' | 'wide';
+
+const UNLINKED_NOTICE = 'Vincule esta reunião a um cliente para ver aqui as perguntas do Agente.';
+const UNLINKED_WIDE_HINT = ' O vínculo é feito no painel do TaqCITi dentro do Meet.';
+
 const PAUSED_HINT =
   'A atualização volta sozinha quando a captura estiver gravando e o envio ao Agente estiver ligado.';
 
@@ -33,6 +39,11 @@ function statusBannerFor(connection: AgpConnection): StatusBanner | null {
   }
 }
 
+/** Aviso de "sem vínculo": a saída larga não tem o espaço de vínculo, então diz onde vincular. Função pura. */
+function unlinkedMessageFor(surface: AgpSurface): string {
+  return surface === 'wide' ? UNLINKED_NOTICE + UNLINKED_WIDE_HINT : UNLINKED_NOTICE;
+}
+
 function emptyMessageFor(connection: AgpConnection): string {
   return connection === 'paused'
     ? 'Nenhuma pergunta foi recebida antes da pausa.'
@@ -45,9 +56,9 @@ function Notice({ children }: { children: string }) {
   );
 }
 
-export function AgpQuestionsPanel({ feed }: { feed: AgpFeed }) {
+export function AgpQuestionsPanel({ feed, surface = 'panel' }: { feed: AgpFeed; surface?: AgpSurface }) {
   if (feed.sessionId === null) {
-    return <Notice>Vincule esta reunião a um cliente para ver aqui as perguntas do Agente.</Notice>;
+    return <Notice>{unlinkedMessageFor(surface)}</Notice>;
   }
   if (feed.connection === 'idle') {
     return <Notice>A sessão do Agente não está ativa. Não há perguntas para mostrar.</Notice>;
