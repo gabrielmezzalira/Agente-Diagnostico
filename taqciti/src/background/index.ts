@@ -23,6 +23,7 @@ import { backfillOpenTabs, canInject, ensurePanelInTab } from './injectPanel';
 import { openWideView } from './sidePanel';
 import { forgetPanelTab, rememberPanelTab } from './panelTabs';
 import { onMeetingTabRemoved } from './meetingTabClosed';
+import { onMeetingEndedInTab } from './meetingEndedInTab';
 import { onMeetingTabNavigated } from './meetingTabNavigated';
 import {
   findOtherRoomTab,
@@ -204,8 +205,17 @@ onMessage((message, sender) => {
         });
         return getState();
       }
-      case 'meet/ended':
-        return dispatch({ type: 'MEETING_FINISHED', at: now });
+      case 'meet/ended': {
+        // D-16: o aviso de uma aba que NÃO é a dona não encerra a reunião; o da dona segue a regra do D-03.
+        await onMeetingEndedInTab(sender.tab?.id ?? null, {
+          getState,
+          dispatch,
+          now: () => now,
+          otherRoomTabId: findOtherRoomTab,
+          markLeftCall: markTabLeftCall,
+        });
+        return getState();
+      }
       case 'meet/captions':
         return dispatch({ type: 'CAPTIONS_STATE', enabled: message.enabled });
       case 'meet/chunk':
