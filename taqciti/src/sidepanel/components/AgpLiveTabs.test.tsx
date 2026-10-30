@@ -106,3 +106,107 @@ describe('AgpLiveTabs — aviso sem vínculo por superfície (10-09, M-5)', () =
     expect(host.textContent).not.toContain(SECOND);
   });
 });
+
+describe('AgpLiveTabs — abas acessíveis (10-09, M-4)', () => {
+  const tabpanel = () => host.querySelector('[role="tabpanel"]') as HTMLElement;
+  const focusTab = (el: HTMLElement) => act(async () => el.focus());
+  /** Dispara a tecla no elemento e devolve o evento, para conferir se o padrão do navegador foi evitado. */
+  const press = async (el: HTMLElement, key: string) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    await act(async () => { el.dispatchEvent(event); });
+    return event;
+  };
+
+  it('0 perguntas: a aba AGP não tem aria-label e o contador não aparece', () => {
+    expect(tab('AGP').hasAttribute('aria-label')).toBe(false);
+    expect(tab('AGP').textContent).toBe('AGP');
+  });
+
+  it('1 pergunta: aria-label no singular e o texto visível continua "AGP1"', async () => {
+    await writeFeed({ sessionId: SID, connection: 'live', questions: [question('a', 'produto')] });
+    expect(tab('AGP').getAttribute('aria-label')).toBe('AGP, 1 pergunta');
+    expect(tab('AGP').textContent).toBe('AGP1');
+  });
+
+  it('2 ou mais perguntas: aria-label no plural e o texto visível continua "AGP2"', async () => {
+    await writeFeed({ sessionId: SID, connection: 'live', questions: [question('a', 'produto'), question('b', 'dados')] });
+    expect(tab('AGP').getAttribute('aria-label')).toBe('AGP, 2 perguntas');
+    expect(tab('AGP').textContent).toBe('AGP2');
+  });
+
+  it('a aba Transcrição nunca tem aria-label', async () => {
+    await writeFeed({ sessionId: SID, connection: 'live', questions: [question('a', 'produto')] });
+    expect(tab('Transcrição').hasAttribute('aria-label')).toBe(false);
+  });
+
+  it('cada aba tem id e aria-controls; o tabpanel é rotulado pela aba selecionada', async () => {
+    expect(tabpanel()).not.toBeNull();
+    for (const name of ['Transcrição', 'AGP']) {
+      expect(tab(name).id).not.toBe('');
+      expect(tab(name).getAttribute('aria-controls')).toBe(tabpanel().id);
+    }
+    expect(tabpanel().getAttribute('aria-labelledby')).toBe(tab('Transcrição').id);
+    await click(tab('AGP'));
+    expect(tabpanel().getAttribute('aria-labelledby')).toBe(tab('AGP').id);
+    expect(tab('Transcrição').id).not.toBe(tab('AGP').id);
+  });
+
+  it('o tabpanel guarda o corpo da aba e mantém o layout flex que deixa a transcrição rolar', async () => {
+    expect(tabpanel().textContent).toContain('TRANSCRICAO');
+    for (const cls of ['flex', 'min-h-0', 'flex-1', 'flex-col']) expect(tabpanel().classList.contains(cls)).toBe(true);
+    await click(tab('AGP'));
+    expect(tabpanel().textContent).toContain('Vincule esta reunião');
+  });
+
+  it('tabIndex móvel: 0 na aba selecionada e -1 na outra', async () => {
+    expect(tab('Transcrição').tabIndex).toBe(0);
+    expect(tab('AGP').tabIndex).toBe(-1);
+    await click(tab('AGP'));
+    expect(tab('Transcrição').tabIndex).toBe(-1);
+    expect(tab('AGP').tabIndex).toBe(0);
+  });
+
+  it('ArrowRight no foco em Transcrição seleciona AGP e leva o foco; ArrowLeft volta', async () => {
+    await focusTab(tab('Transcrição'));
+    const right = await press(tab('Transcrição'), 'ArrowRight');
+    expect(right.defaultPrevented).toBe(true);
+    expect(tab('AGP').getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tab('AGP'));
+    const left = await press(tab('AGP'), 'ArrowLeft');
+    expect(left.defaultPrevented).toBe(true);
+    expect(tab('Transcrição').getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tab('Transcrição'));
+    expect(host.textContent).toContain('TRANSCRICAO');
+  });
+
+  it('só as setas esquerda e direita mexem nas abas; outras teclas passam intactas', async () => {
+    await focusTab(tab('Transcrição'));
+    for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' ', 'Tab']) {
+      const event = await press(tab('Transcrição'), key);
+      expect(event.defaultPrevented).toBe(false);
+      expect(tab('Transcrição').getAttribute('aria-selected')).toBe('true');
+    }
+  });
+
+  it('as abas têm altura h-8 e não usam py-1', () => {
+    for (const name of ['Transcrição', 'AGP']) {
+      expect(tab(name).classList.contains('h-8')).toBe(true);
+      expect(tab(name).classList.contains('py-1')).toBe(false);
+    }
+  });
+
+  it('duas instâncias ao mesmo tempo não repetem ids', async () => {
+    const otherHost = document.createElement('div');
+    document.body.append(otherHost);
+    const otherRoot = createRoot(otherHost);
+    try {
+      await act(async () => otherRoot.render(<AgpLiveTabs><p>OUTRA</p></AgpLiveTabs>));
+      const ids = [...host.querySelectorAll('[id]'), ...otherHost.querySelectorAll('[id]')].map((el) => el.id);
+      expect(ids.length).toBeGreaterThanOrEqual(6);
+      expect(new Set(ids).size).toBe(ids.length);
+    } finally {
+      await act(async () => otherRoot.unmount());
+      otherHost.remove();
+    }
+  });
+});
