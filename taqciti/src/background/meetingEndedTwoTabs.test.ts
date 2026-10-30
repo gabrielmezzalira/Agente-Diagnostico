@@ -8,14 +8,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { transition, type MeetingEvent } from '@/features/meeting/machine';
 import { IDLE_STATE, type MeetingState } from '@/shared/types/domain';
+import { installChromeStorageMock } from '@/test/chromeStorageMock';
 import { onMeetingEndedInTab, type MeetingEndedInTabDeps } from './meetingEndedInTab';
 
 const ROOM = 'abc-defg-hij';
 const OWNER = 7;
 const OTHER = 9;
 const NOW = 424242;
+const ROOM_URL = `https://meet.google.com/${ROOM}`;
 
-const detected: MeetingEvent = {
+const detected: Extract<MeetingEvent, { type: 'MEETING_DETECTED' }> = {
   type: 'MEETING_DETECTED',
   meetingId: 'm1',
   meetingCode: ROOM,
@@ -152,6 +154,101 @@ describe('onMeetingEndedInTab (D-16, D-17)', () => {
 
     expect(meeting.getState().phase).toBe('paused');
     expect(meeting.getState().session?.tabId).toBe(OTHER);
+    expect(meeting.finishedCount()).toBe(0);
+  });
+});
+
+/**
+ * Sequências de duas saídas com o adaptador REAL (`meetingRoomTabs`), as regras reais (`onMeetingEndedInTab` e
+ * `onMeetingTabRemoved`) e a máquina real. O `chrome.tabs.query` devolve sempre as duas abas na URL da sala:
+ * quem decide se uma delas ainda "conta" é a memória das abas na call, não a URL (T-10-12).
+ */
+describe('duas saídas da call com o adaptador real (T-10-12)', () => {
+  /** Worker "recém-acordado" (módulos novos = memória vazia) com as duas abas sempre na URL da sala. */
+  async function startWorker() {
+    vi.resetModules();
+    const query = vi.fn(() => Promise.resolve([{ id: OWNER, url: ROOM_URL }, { id: OTHER, url: ROOM_URL }]));
+    installChromeStorageMock({ extra: { tabs: { query } } });
+    const roomTabs = await import('./meetingRoomTabs');
+    const closed = await import('./meetingTabClosed');
+    return { roomTabs, closed };
+  }
+
+  type Worker = Awaited<ReturnType<typeof startWorker>>;
+
+  /** Reunião ao vivo com a aba dona escolhida (a última que entrou na call). */
+  function meetingOwnedBy(tabId: number) {
+    return meetingFrom(transition(IDLE_STATE, { ...detected, tabId }));
+  }
+
+  /** O `meet/ended` como o `index.ts` o liga: regra real, porta real e marca real de "saiu da call". */
+  const sendEnded = (worker: Worker, meeting: ReturnType<typeof meetingFrom>, tabId: number) =>
+    onMeetingEndedInTab(
+      tabId,
+      depsFor(meeting, {
+        otherRoomTabId: worker.roomTabs.findOtherRoomTab,
+        markLeftCall: worker.roomTabs.markTabLeftCall,
+      }),
+    );
+
+  /** O `tabs.onRemoved` como o `index.ts` o liga: marca a saída (síncrono) e depois roda a regra real. */
+  async function closeTab(worker: Worker, meeting: ReturnType<typeof meetingFrom>, tabId: number) {
+    worker.roomTabs.markTabLeftCall(tabId);
+    await worker.closed.onMeetingTabRemoved(tabId, {
+      getState: meeting.getState,
+      dispatch: meeting.dispatch,
+      now: () => NOW,
+      otherRoomTabId: worker.roomTabs.findOtherRoomTab,
+    });
+  }
+
+  it('a aba 7 sai (ignorado) e depois a dona 9 fecha: a 7 não segura a reunião, encerra exatamente 1 vez', async () => {
+    const worker = await startWorker();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+    const meeting = meetingOwnedBy(OTHER);
+
+    await sendEnded(worker, meeting, OWNER);
+    expect(meeting.events).toEqual([]);
+    expect(meeting.getState().phase).toBe('recording');
+    expect(meeting.getState().session?.tabId).toBe(OTHER);
+
+    await closeTab(worker, meeting, OTHER);
+    expect(meeting.finishedCount()).toBe(1);
+    expect(meeting.events).toEqual([{ type: 'MEETING_FINISHED', at: NOW }]);
+    expect(meeting.getState().phase).toBe('ended');
+  });
+
+  it('a dona 9 sai (reaponta para a 7) e depois a 7 sai: encerra exatamente 1 vez', async () => {
+    const worker = await startWorker();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+    const meeting = meetingOwnedBy(OTHER);
+
+    await sendEnded(worker, meeting, OTHER);
+    expect(meeting.events).toEqual([{ type: 'MEETING_TAB_CHANGED', tabId: OWNER }]);
+    expect(meeting.getState().phase).toBe('recording');
+    expect(meeting.getState().session?.tabId).toBe(OWNER);
+    expect(meeting.finishedCount()).toBe(0);
+
+    await sendEnded(worker, meeting, OWNER);
+    expect(meeting.finishedCount()).toBe(1);
+    expect(meeting.getState().phase).toBe('ended');
+  });
+
+  it('a 7 sai e volta para a call (novo meet/detected): volta a contar e a dona 9 fechando reaponta para a 7', async () => {
+    const worker = await startWorker();
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+    worker.roomTabs.markTabJoinedCall(OTHER, ROOM);
+    const meeting = meetingOwnedBy(OTHER);
+
+    await sendEnded(worker, meeting, OWNER);
+    worker.roomTabs.markTabJoinedCall(OWNER, ROOM);
+
+    await closeTab(worker, meeting, OTHER);
+    expect(meeting.events).toEqual([{ type: 'MEETING_TAB_CHANGED', tabId: OWNER }]);
+    expect(meeting.getState().phase).toBe('recording');
+    expect(meeting.getState().session?.tabId).toBe(OWNER);
     expect(meeting.finishedCount()).toBe(0);
   });
 });
