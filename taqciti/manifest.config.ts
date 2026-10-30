@@ -152,7 +152,17 @@ export default defineManifest({
   // criada pela Taqciti depois do fim da reunião, mesmo com o service worker
   // dormindo. Não gera aviso de instalação nem de atualização. Intervalo mínimo
   // do alarme: 1 min no Chrome 116-119 e 30 s do 120 em diante.
-  permissions: ['storage', 'sidePanel', 'scripting', 'identity', 'alarms'],
+  //
+  // A sexta permissão, `tabs`, serve à DA-4 (WR-06, decisão D-04 da Fase 10):
+  // sem ela o `chrome.tabs.onUpdated` não entrega a URL nova quando a aba da
+  // reunião vai para `chrome://` (Nova Guia, inclusive pelo Voltar), `about:`,
+  // `data:` ou `file://` — e a reunião ficava "ao vivo", gastando IA. Pela
+  // documentação do Chrome o aviso dela ("ler o histórico de navegação") não
+  // aparece porque `<all_urls>` já é pedido, mas isso é MEDIDO no UAT (teste
+  // 10, com `chrome.management.getPermissionWarningsByManifest`), não assumido.
+  // A extensão nunca loga nem grava URL de aba: só compara em memória. Está em
+  // commit próprio para poder ser revertida sozinha.
+  permissions: ['storage', 'sidePanel', 'scripting', 'identity', 'alarms', 'tabs'],
 
   /*
    * O preço honesto da persistência.
