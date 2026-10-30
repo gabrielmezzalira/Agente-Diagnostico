@@ -82,10 +82,10 @@ export function AgpQuestionsPanel({ feed, surface = 'panel' }: { feed: AgpFeed; 
             {visible.map((question) => (
               <li
                 key={question.id}
-                className="glass-subtle animate-fade-in rounded-panel p-3 motion-reduce:animate-none"
+                className="glass-subtle animate-fade-in rounded-panel p-4 motion-reduce:animate-none"
               >
                 {(question.lens !== null || question.status === 'pinned') && (
-                  <div className="mb-1.5 flex items-center gap-2">
+                  <div className="mb-2 flex items-center gap-2">
                     {question.lens !== null && (
                       <Badge tone={question.lens === 'produto' ? 'primary' : 'neutral'}>
                         {LENS_LABEL[question.lens]}

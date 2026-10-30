@@ -14,7 +14,7 @@ type Tab = 'transcript' | 'agp';
 
 const TAB_ORDER: readonly Tab[] = ['transcript', 'agp'];
 
-const TAB_BASE = 'h-8 rounded-control px-3 text-caption font-semibold transition-colors';
+const TAB_BASE = 'h-8 rounded-control px-4 text-caption font-semibold transition-colors';
 
 /** Rótulo falado da aba AGP com o contador; sem contador (0) não há rótulo e vale o texto visível. */
 function agpTabLabel(count: number): string | undefined {
@@ -70,7 +70,7 @@ export function AgpLiveTabs({ children, surface = 'panel' }: { children: ReactNo
       className={`${TAB_BASE} ${tab === value ? 'bg-white/[0.08] text-glow' : 'text-muted hover:text-glow'}`}
     >
       {label}
-      {badge !== undefined && badge > 0 && <span className="ml-1.5 text-micro text-muted">{badge}</span>}
+      {badge !== undefined && badge > 0 && <span className="ml-2 text-micro text-muted">{badge}</span>}
     </button>
   );
 
