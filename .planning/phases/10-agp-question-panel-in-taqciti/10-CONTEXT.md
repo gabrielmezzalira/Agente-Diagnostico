@@ -57,8 +57,9 @@ retirada da geração de PRD (trabalho à parte).
 - **D-08:** **Na Fase 10 a aba só mostra.** Gerar, fixar, descartar (e marcar como usada) **não** entram.
   O que você pediu (não precisar sair do Meet) vira a **Fase 10.1**, a inserir no roadmap (ver `<deferred>`).
 - **D-09:** **Divergência aceita e documentada** até a 10.1: o backend não avisa por WebSocket quando alguém
-  fixa/descarta no site. Pergunta descartada no site continua na Taqciti até o TTL ou reconexão; fixada no site
-  some no TTL. Sem código novo e sem aviso na tela; o UAT e a página de ajuda explicam.
+  fixa/descarta no site. Pergunta fixada **ou** descartada no site continua na Taqciti até ela reconectar (o `initial_state` traz o estado real); só a
+  pergunta na fila (`queued`) some pelo TTL. *(Texto corrigido em 2026-10-28 — Armadilha 7 da pesquisa: o backend
+  não emite `question_expired` para pergunta fixada ou descartada.)* Sem código novo e sem aviso na tela; o UAT e a página de ajuda explicam.
   — **Reversibility:** reversible — é só texto; a 10.1 resolve de verdade.
 
 ### Segurança e custo do WebSocket
