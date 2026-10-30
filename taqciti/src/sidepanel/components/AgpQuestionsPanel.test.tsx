@@ -68,3 +68,54 @@ describe('AgpQuestionsPanel', () => {
     expect(text()).toContain('Pergunta a?');
   });
 });
+
+describe('AgpQuestionsPanel — estado "Pausado" e faixa fixa (10-07)', () => {
+  const PAUSED_TEXT = 'Pausado · mostrando as últimas perguntas';
+  const PAUSED_HINT =
+    'A atualização volta sozinha quando a captura estiver gravando e o envio ao Agente estiver ligado.';
+
+  it('paused com perguntas: faixa com ícone e dica, e a lista recebida continua visível', async () => {
+    await show({ sessionId: SID, connection: 'paused', questions: [q('a'), q('b', { lens: 'dados' })] });
+    const banner = host.querySelector('[role="status"]');
+    expect(banner?.textContent).toContain(PAUSED_TEXT);
+    expect(banner?.getAttribute('title')).toBe(PAUSED_HINT);
+    expect(banner?.querySelector('svg')).not.toBeNull();
+    const items = Array.from(host.querySelectorAll('li')).map((li) => li.textContent);
+    expect(items).toEqual(['ProdutoPergunta a?', 'DadosPergunta b?']);
+  });
+
+  it('paused sem perguntas: aviso próprio, sem a frase do ao vivo', async () => {
+    await show({ sessionId: SID, connection: 'paused', questions: [] });
+    expect(text()).toContain('Nenhuma pergunta foi recebida antes da pausa.');
+    expect(text()).not.toContain('Nenhuma pergunta por enquanto');
+  });
+
+  it.each(['connecting', 'reconnecting', 'paused'] as const)(
+    '%s: a faixa fica fora da região que rola',
+    async (connection) => {
+      await show({ sessionId: SID, connection, questions: [q('a')] });
+      const banner = host.querySelector('[role="status"]');
+      const list = host.querySelector('ul');
+      expect(banner).not.toBeNull();
+      expect(list).not.toBeNull();
+      const scroller = list?.parentElement;
+      expect(scroller?.contains(banner)).toBe(false);
+      expect(banner?.parentElement).toBe(scroller?.parentElement);
+    },
+  );
+
+  it('ao vivo: nenhuma faixa de status', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    expect(host.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('reconnecting: a faixa não tem ícone (só o pausado tem)', async () => {
+    await show({ sessionId: SID, connection: 'reconnecting', questions: [q('a')] });
+    expect(host.querySelector('[role="status"] svg')).toBeNull();
+  });
+
+  it('a lista não é aria-live', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    expect(host.querySelector('[aria-live]')).toBeNull();
+  });
+});
