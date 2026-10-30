@@ -6,16 +6,16 @@ current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
 current_plan: 11
 status: executing
-stopped_at: Completed 10-10-PLAN.md
-last_updated: "2026-10-30T14:37:05.809Z"
+stopped_at: Completed 10-12-PLAN.md (D-07 mantido provisoriamente; aprovação humana pendente)
+last_updated: "2026-10-30T14:50:20.267Z"
 last_activity: 2026-10-30
 last_activity_desc: Phase 10 execution started
-state_head: 66962e29844927734769e353a8b3b62529a43198
+state_head: b64d8b626d642812a6f512c969b249517889d922
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 72
-  completed_plans: 70
+  completed_plans: 71
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -137,6 +137,7 @@ Progress: [████████░░] 80%
 | Phase 10 P08 | 12 min | 2 tasks | 5 files |
 | Phase 10 P09 | 7 min | 3 tasks | 5 files |
 | Phase 10 P10 | 16 min | 2 tasks | 1 files |
+| Phase 10 P12 | 11 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,7 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-09: M-6 (p-4, mb-2, px-4, ml-2) em commit style() mecânico próprio, só os dois arquivos do AGP; Task 2 em ciclo TDD (RED 97b65c7 com RED_EVIDENCE_OK, GREEN 8abbfe5) — Espaçamento separado de mudança de comportamento facilita reverter só o que quebrou; LiveScreen px-3 pb-1 pt-2 fica de fora (moldura, fora do AGP)
 - [Phase 10]: 10-10: 10-UAT.md reescrito com 12 testes e o passo a passo de cada um; textos de tela lidos do código (o botão do site é "Gerar"; a tela larga ao vivo abre por chrome-extension://<ID>/src/sidepanel/index.html, porque "Abrir numa aba" do painel do Meet abre o histórico); campo expected: de uma linha ao lado do esperado: para o leitor de UAT do GSD continuar funcionando; teste 8 marcado como procedimento assistido — Sem o expected: o comando uat render-checkpoint (usado pelo /gsd-verify-work 10) para com "Pending UAT test N is missing an expected field"; provado 12/12 sobre cópias descartáveis. Os textos vêm do código para a pessoa que não é técnica ver na tela exatamente o que o roteiro promete. O truque de DevTools do teste 8 não pôde ser ensaiado sem Chrome, então fica dito no roteiro e no SUMMARY.
 - [Phase 10]: 10-10: portão automático da fase verde (suíte da Taqciti 1737 passados e 0 falhas, tsc, eslint, fumaça AGP 3/3, frontend 25/25; backend/ e supabase/ sem diff desde eb3bf01) e taqciti/dist refeito com 127.0.0.1:8000 e envio ligado; resta o ↻ em chrome://extensions e o plano 10-11 (prova no Chrome real, Gemini com crédito para os testes 2, 3, 4B, 7B, 11 e 12)
+- [Phase 10]: 10-12: D-07 (frase do CLAUDE.md sobre a Taqciti ler /ws/{session_id} só para a aba AGP, commit b64d8b6) mantido provisoriamente; aprovação humana do texto PENDENTE — o usuário adiou a verificação para o fim da fase — Resposta do usuário ao checkpoint: concluir o que for automatizável e verificar tudo no fim. Não é d07-ok nem d07-reverter. Para desfazer: git revert b64d8b6. Resolver antes do merge da Fase 10 na main; TAQ-05 não marcado (depende do UAT do 10-11).
 
 ### Pending Todos
 
@@ -262,8 +264,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-30T14:37:03.006Z
-Stopped at: Completed 10-10-PLAN.md
+Last session: 2026-10-30T14:50:17.598Z
+Stopped at: Completed 10-12-PLAN.md (D-07 mantido provisoriamente; aprovação humana pendente)
 Resume file: None
 
 ---

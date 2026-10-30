@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 5
 waived_count: 0
 fixed_count: 0
-total_count: 4
-last_updated: 2026-09-27T01:11:38.852Z
+total_count: 5
+last_updated: 2026-10-30T14:49:14.656Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,7 @@ last_updated: 2026-09-27T01:11:38.852Z
 | 2 | 07 | unrun-verify | backend/tests/test_schema.py |  | test_tables_exist falha (PGRST205, pre-existente, 0 diff em backend/ nesta fase) - documentado em 07-03 deferred-items.md | open |  | 2026-09-26T11:46:54.569Z |  |
 | 3 | 07 | lint-warning | taqciti/src/document/baixarDocumento.ts | 26 | eslint-disable-next-line no-control-regex sem uso (nao suprime nada) - pre-existente, fora do escopo do plano 07-03 | open |  | 2026-09-26T11:46:55.358Z |  |
 | 4 | 07 | unrun-verify | .planning/phases/07-taqciti-config-background-streamer/07-04-PLAN.md |  | Reteste manual do Teste 1 da UAT (SC1) numa chamada real do Meet - human-check da Task 3 do plano 07-04, deferido para /gsd-verify-work 07 | open |  | 2026-09-27T01:11:38.852Z |  |
+| 5 | 10 | unrun-verify | CLAUDE.md | 843 | Aprovacao humana do texto do D-07 (item novo da secao 10, commit b64d8b6) PENDENTE - o usuario adiou a verificacao para o fim da fase (plano 10-12, Task 2). Antes do merge da Fase 10 na main: ler git show b64d8b6 -- CLAUDE.md e responder d07-ok (manter) ou d07-reverter (git revert b64d8b6) | open |  | 2026-10-30T14:49:14.656Z |  |
 
 ````json
 [
@@ -71,6 +72,19 @@ last_updated: 2026-09-27T01:11:38.852Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-27T01:11:38.852Z",
+    "resolved_at": null,
+    "milestone": "v3.0"
+  },
+  {
+    "id": 5,
+    "kind": "unrun-verify",
+    "phase": "10",
+    "file": "CLAUDE.md",
+    "line": 843,
+    "description": "Aprovacao humana do texto do D-07 (item novo da secao 10, commit b64d8b6) PENDENTE - o usuario adiou a verificacao para o fim da fase (plano 10-12, Task 2). Antes do merge da Fase 10 na main: ler git show b64d8b6 -- CLAUDE.md e responder d07-ok (manter) ou d07-reverter (git revert b64d8b6)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-30T14:49:14.656Z",
     "resolved_at": null,
     "milestone": "v3.0"
   }

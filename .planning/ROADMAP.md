@@ -366,7 +366,7 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: 11/13 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+**Plans**: 12/13 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
 - [x] 10-PLAN.md
 
 **Wave 1**
@@ -394,7 +394,7 @@ Plans:
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
 - [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo)
-- [ ] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo)
+- [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (adiada pelo usuário para o fim da fase; desfazer com `git revert b64d8b6`)**
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
@@ -415,7 +415,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 11/13 | In Progress | - |
+| 10. AGP Question Panel in Taqciti | 12/13 | In Progress | - |
 
 ## Backlog
 
