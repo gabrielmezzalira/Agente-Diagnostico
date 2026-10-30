@@ -3,7 +3,7 @@ status: testing
 phase: 10-agp-question-panel-in-taqciti
 source: 10-PLAN.md do Gabriel (seção 7, os 7 testes de base), 10-CONTEXT.md (D-13, D-15, D-16, D-18, D-19), 10-RESEARCH.md (UAT de 7 para 12 testes), 10-UI-SPEC.md (contrato de copy)
 started: 2026-10-30T14:28:03Z
-updated: 2026-10-30T14:28:03Z
+updated: 2026-10-30T14:33:29Z
 ---
 
 ## Current Test
@@ -33,6 +33,7 @@ Faça isto uma vez, antes do primeiro teste. Vale para os 12 testes.
 1. **Backend local.** Abra um terminal na pasta do projeto e rode `cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000` (sem `--reload` durante uma reunião). No Windows use `127.0.0.1`, não `localhost`. Confira abrindo `http://127.0.0.1:8000/health` no navegador: tem que responder ok. Deixe esse terminal visível; vários testes pedem para olhar nele.
 2. **Site do Agente.** Em outro terminal, rode `npm --prefix frontend run dev` e abra `http://localhost:5173`.
 3. **TaqCITi com o build certo.** A Taqciti já foi reconstruída pelo executor (plano 10-10) para falar com `127.0.0.1:8000` e com o envio ligado: falta só abrir `chrome://extensions` e clicar no ↻ (Recarregar) do TaqCITi. Se ela ainda não estiver carregada: "Modo do desenvolvedor" ligado → "Carregar sem compactação" → escolha a pasta `taqciti/dist` do projeto. Para conferir: abra `chrome-extension://<ID>/src/sidepanel/index.html?view=agente`; o interruptor "Enviar a transcrição ao vivo para o Agente" tem que estar ligado e o campo "URL do backend do Agente" tem que mostrar `http://127.0.0.1:8000`.
+   - Build da Taqciti refeito em 2026-10-30 com 127.0.0.1:8000 e envio ligado — só falta o ↻ em chrome://extensions.
 4. **Extensão antiga desativada ou removida** (para não duplicar a captura).
 5. **Dados de teste.** O backend local grava no Supabase de **produção**. Use só clientes com o nome `ZZ-TESTE-<assunto> <data>` (por exemplo `ZZ-TESTE-AGP 2026-10-30`). Nunca use cliente real. No fim, os clientes e sessões de teste são apagados por id (passo "Limpeza" em `.planning/TESTES-MANUAIS-POS-FASE-10.md`, item M9, com sessões primeiro e cliente depois).
 6. **Gemini (só para os testes marcados "depende_de_ia: sim" ou "parte B").** Eles precisam de IA de verdade, com a chave do Gemini com crédito. Recarregar ou trocar a chave é ação de quem tem acesso a ela: o assistente nunca faz isso, e ninguém abre nem cola o conteúdo de arquivos de segredo (os arquivos de configuração com chaves) durante este roteiro. Para saber se há crédito: depois de 1 minuto de reunião vinculada, o terminal do backend não pode mostrar `402 RESOURCE_EXHAUSTED`. O backend falso (`taqciti/scripts/agp-fake-backend.py`) só serve aos testes automáticos; nunca vale como prova aqui (D-13, D-19).
