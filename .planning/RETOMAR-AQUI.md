@@ -1,5 +1,7 @@
 # RETOMAR AQUI — guia para continuar em outro PC/conta
 
+> **SUPERADO (2026-10-28).** Substituído pelo planejamento oficial da Fase 10: `.planning/phases/10-agp-question-panel-in-taqciti/10-CONTEXT.md` (decisões D-01 a D-19) e `.planning/ROADMAP.md`. Mantido só como histórico — não use como guia.
+
 > **⚠️ DESATUALIZADO (2026-10-26).** O estado atual e o plano das Fases 9 e 10 estão em `.planning/HANDOFF-FASE-09-10.md`. Este arquivo é o histórico de 2026-10-12.
 
 **Atualizado:** 2026-10-12 · **Branch:** `feat/fase-08-taqciti-session-association` · **Projeto:** Agente Diagnóstico (CITi)

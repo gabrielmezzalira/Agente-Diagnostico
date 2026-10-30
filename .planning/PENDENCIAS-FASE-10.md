@@ -1,5 +1,7 @@
 # Pendências da Fase 10 — o que fazer, testar e o que foi adiado
 
+> **SUPERADO (2026-10-28).** Substituído pelo planejamento oficial da Fase 10: `.planning/phases/10-agp-question-panel-in-taqciti/10-CONTEXT.md` (decisões D-01 a D-19) e `.planning/ROADMAP.md`. Mantido só como histórico — não use como guia.
+
 **Atualizado:** 2026-10-12 · **Branch:** `feat/fase-10-agp-question-panel` (cortada da branch da Fase 8)
 Plano: `.planning/phases/10-agp-question-panel-in-taqciti/10-PLAN.md`. Marque `[x]` ao fechar.
 
