@@ -840,6 +840,9 @@ extensão Chrome**:
   `/webhook/extension/clients`, `/webhook/extension/sessions` e
   `/webhook/extension/sessions/{id}/finish` (Fase 8). Nunca com `diagnostico/`. A extensão antiga foi
   removida na Fase 9 (continua no histórico do git).
+- Desde a Fase 10, a Taqciti também abre o WebSocket `/ws/{session_id}` do backend, só para
+  leitura: a aba AGP mostra as perguntas da sessão vinculada e nunca manda comando por ele
+  (D-07 da Fase 10).
 - **Nenhum arquivo de `backend/`, `frontend/` ou `taqciti/` importa `diagnostico/`** — as únicas
   menções são comentários ("segue o mesmo padrão do diagnostico/config.py").
 - A v1 tem seu **próprio** caminho de transcrição (`diagnostico/transcription/webhook_server.py`,
