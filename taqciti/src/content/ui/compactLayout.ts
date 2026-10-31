@@ -10,10 +10,14 @@ export interface CompactLayout {
    * O campo "Nome da reunião" aparece no cabeçalho. No compacto não (opção a); para renomear, use "Expandir".
    */
   showMeetingTitleField: boolean;
-  statsInControlsRow: boolean; // STUB (RED)
+  /**
+   * A linha "N falas · N pessoas · N palavras" (e o aviso rápido que a substitui) fica dentro da linha dos
+   * botões de controle, entre o copiar e o "Finalizar" (opção b). Nos outros tamanhos, numa linha própria.
+   */
+  statsInControlsRow: boolean;
 }
 
 export function compactLayoutFor(size: PanelSize): CompactLayout {
   const compact = size === 'compact';
-  return { showMeetingTitleField: !compact, statsInControlsRow: false };
+  return { showMeetingTitleField: !compact, statsInControlsRow: compact };
 }

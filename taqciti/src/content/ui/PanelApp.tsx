@@ -646,6 +646,7 @@ function PanelBody({
         onCopy={() => onCopy(session.segments)}
         onToast={onToast}
         liveSlot={liveSlot}
+        statsInControlsRow={compactLayoutFor(panelSize).statsInControlsRow}
       />
     );
   }
@@ -894,6 +895,7 @@ function LiveBody({
   onCopy,
   onToast,
   liveSlot,
+  statsInControlsRow,
 }: {
   session: MeetingSessionState;
   phase: MeetingState['phase'];
@@ -905,7 +907,19 @@ function LiveBody({
   onCopy: () => void;
   onToast: (message: string) => void;
   liveSlot: ReactNode;
+  /** As estatísticas moram na linha dos botões em vez de numa linha própria (G-10-7, opção b). */
+  statsInControlsRow: boolean;
 }) {
+  // Um elemento só, desenhado num lugar só: na linha própria OU dentro do LiveControls.
+  const stats = (
+    <LiveStats
+      session={session}
+      toast={toast}
+      hypothesis={hypothesis}
+      placement={statsInControlsRow ? 'row' : 'line'}
+    />
+  );
+
   return (
     <>
       {liveSlot}
@@ -933,8 +947,9 @@ function LiveBody({
           emptyMessage="Ouvindo a reunião. As falas aparecem aqui automaticamente."
         />
       </AgpLiveTabs>
-      <LiveStats session={session} toast={toast} hypothesis={hypothesis} />
+      {!statsInControlsRow && stats}
       <LiveControls
+        stats={statsInControlsRow ? stats : undefined}
         paused={phase === 'paused'}
         captionsHidden={ctx.nativeCaptionsHidden}
         /* Só a aba do Meet tem legenda nativa para esconder. Numa aba
@@ -1137,14 +1152,23 @@ function HeaderButton({
 
 // ---------- pedaços da reunião ao vivo ----------
 
+/** Posição das estatísticas por variante: linha própria (médio e alto) ou dentro da linha dos botões (compacto). */
+const LIVE_STATS_PLACEMENT = {
+  line: 'mt-2.5 shrink-0 px-1 text-caption',
+  row: 'min-w-0 flex-1 px-1 text-caption leading-tight',
+} as const;
+
 function LiveStats({
   session,
   toast,
   hypothesis,
+  placement = 'line',
 }: {
   session: MeetingSessionState;
   toast: string | null;
   hypothesis: NextMeetingHypothesis;
+  /** `row` = ocupa o espaço livre da linha dos botões e quebra linha se faltar largura (G-10-7, opção b). */
+  placement?: 'line' | 'row' | undefined;
 }) {
   const people = new Set(
     session.segments
@@ -1168,7 +1192,7 @@ function LiveStats({
 
   return (
     <p
-      className={`mt-2.5 shrink-0 px-1 text-caption transition-colors duration-200 ease-flow ${
+      className={`${LIVE_STATS_PLACEMENT[placement]} transition-colors duration-200 ease-flow ${
         toast ? 'font-semibold text-glow' : 'text-muted/70'
       }`}
     >
@@ -1193,6 +1217,7 @@ function formatShortDate(date: string): string {
 }
 
 function LiveControls({
+  stats,
   paused,
   captionsHidden,
   canToggleCaptions,
@@ -1201,6 +1226,8 @@ function LiveControls({
   onCopy,
   onFinish,
 }: {
+  /** No compacto as estatísticas ficam aqui, entre o copiar e o "Finalizar" (G-10-7, opção b). */
+  stats?: ReactNode;
   paused: boolean;
   captionsHidden: boolean;
   canToggleCaptions: boolean;
@@ -1249,6 +1276,7 @@ function LiveControls({
         <Sheen />
         <CopyIcon />
       </button>
+      {stats}
       {/* Transparente como o resto: o único botão preenchido do produto é
           "Gerar Documento". A hierarquia aqui vem do rótulo e da posição. */}
       <Button variant="secondary" className="ml-auto !min-h-[40px] !px-5" onClick={onFinish}>
