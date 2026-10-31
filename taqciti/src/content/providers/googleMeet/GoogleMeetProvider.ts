@@ -283,7 +283,8 @@ export class GoogleMeetProvider implements MeetingProvider {
    * `ensureCaptionObserver` e religaria a observação sozinho — desconectar sem
    * o flag duraria menos de dois segundos.
    *
-   * Retomar recorta a captura: nada do que foi dito durante a pausa entra.
+   * Retomar recorta a captura: nada do que foi dito durante a pausa entra, e a
+   * contagem do vigia de captura recomeça (o tempo pausado não é silêncio).
    */
   setCapturePaused(paused: boolean): void {
     if (paused === this.capturePaused) return;
@@ -297,10 +298,17 @@ export class GoogleMeetProvider implements MeetingProvider {
       return;
     }
 
+    // Ao retomar, a janela de 25 s do vigia recomeça do zero: o tempo pausado
+    // não é silêncio (G-10-7). Mesma regra do `poll`: só com legendas ligadas.
+    this.captureExpectedSince = this.captionsOn ? Date.now() : 0;
+
     // Ao retomar, o observer se recola no poll seguinte (ou já agora, se a
     // região continua na tela) e o recorte apaga o passado.
     this.ensureCaptionObserver(true);
     this.recutCaptions();
+
+    // Publica o estado real: se o parser continua degradado, o aviso volta.
+    this.publishCaptureHealth();
   }
 
   /**
