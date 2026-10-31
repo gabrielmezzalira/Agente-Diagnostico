@@ -80,28 +80,9 @@ describe('AgpQuestionsPanel — estado "Pausado" e faixa fixa (10-07)', () => {
     expect(text()).not.toContain('Nenhuma pergunta por enquanto');
   });
 
-  it.each(['connecting', 'reconnecting', 'paused'] as const)(
-    '%s: a faixa fica fora da região que rola',
-    async (connection) => {
-      await show({ sessionId: SID, connection, questions: [q('a')] });
-      const banner = host.querySelector('[role="status"]');
-      const list = host.querySelector('ul');
-      expect(banner).not.toBeNull();
-      expect(list).not.toBeNull();
-      const scroller = list?.parentElement;
-      expect(scroller?.contains(banner)).toBe(false);
-      expect(banner?.parentElement).toBe(scroller?.parentElement);
-    },
-  );
-
   it('ao vivo: nenhuma faixa de status', async () => {
     await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
     expect(host.querySelector('[role="status"]')).toBeNull();
-  });
-
-  it('reconnecting: a faixa não tem ícone (só o pausado tem)', async () => {
-    await show({ sessionId: SID, connection: 'reconnecting', questions: [q('a')] });
-    expect(host.querySelector('[role="status"] svg')).toBeNull();
   });
 
   it('a lista não é aria-live', async () => {

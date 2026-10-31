@@ -5,10 +5,14 @@
  *
  * Acessibilidade (padrão WAI-ARIA de abas, M-4): cada aba tem `id` e `aria-controls`, o corpo é o `tabpanel`
  * rotulado pela aba selecionada, e as setas esquerda/direita alternam entre as abas com `tabIndex` móvel.
+ *
+ * A faixa de status da AGP (Conectando/Reconectando/Pausado) fica na mesma linha das abas, à direita, só com a
+ * aba AGP aberta (G-10-7): é irmã do tablist, nunca dentro dele, e fora do tabpanel.
  */
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useAgpQuestions } from '@/shared/hooks/useAgpQuestions';
 import { AgpQuestionsPanel, type AgpSurface } from './AgpQuestionsPanel';
+import { AgpStatusBanner } from './AgpStatusBanner';
 
 type Tab = 'transcript' | 'agp';
 
@@ -76,9 +80,12 @@ export function AgpLiveTabs({ children, surface = 'panel' }: { children: ReactNo
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div role="tablist" aria-label="Conteúdo ao vivo" onKeyDown={onKeyDown} className="mb-2 flex shrink-0 gap-1">
-        {button('transcript', 'Transcrição')}
-        {button('agp', 'AGP', count, agpTabLabel(count))}
+      <div className="mb-2 flex shrink-0 items-center gap-2">
+        <div role="tablist" aria-label="Conteúdo ao vivo" onKeyDown={onKeyDown} className="flex shrink-0 gap-1">
+          {button('transcript', 'Transcrição')}
+          {button('agp', 'AGP', count, agpTabLabel(count))}
+        </div>
+        {tab === 'agp' && <AgpStatusBanner feed={feed} />}
       </div>
       <div role="tabpanel" id={panelId} aria-labelledby={tabId(tab)} className="flex min-h-0 flex-1 flex-col">
         {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} surface={surface} />}

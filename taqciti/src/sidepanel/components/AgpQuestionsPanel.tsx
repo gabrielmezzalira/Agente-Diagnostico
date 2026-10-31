@@ -6,7 +6,6 @@
 import type { AgpLens } from '@/features/agente/agpQuestions';
 import type { AgpConnection, AgpFeed } from '@/shared/config/agpQuestionsStore';
 import { Badge } from '@/shared/ui/Badge';
-import { AgpStatusBanner } from './AgpStatusBanner';
 
 const LENS_LABEL: Record<AgpLens, string> = { produto: 'Produto', dados: 'Dados' };
 
@@ -43,8 +42,7 @@ export function AgpQuestionsPanel({ feed, surface = 'panel' }: { feed: AgpFeed; 
 
   const visible = feed.questions;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <AgpStatusBanner feed={feed} />
+    <div className="flex min-h-0 flex-1 flex-col">
       <div tabIndex={0} className="scroll-region flex min-h-0 flex-1 flex-col outline-none">
         {visible.length === 0 ? (
           <Notice>{emptyMessageFor(feed.connection)}</Notice>

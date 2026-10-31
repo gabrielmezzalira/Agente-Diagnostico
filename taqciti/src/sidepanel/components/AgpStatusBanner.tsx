@@ -1,6 +1,7 @@
 /**
  * A faixa de status da aba AGP (Fase 10, G-10-7): "Conectando…", "Reconectando…" ou "Pausado". Só apresenta o
- * estado da conexão que o feed já traz; nada de regra nova.
+ * estado da conexão que o feed já traz; nada de regra nova. Mora na linha das abas (à direita) para não roubar
+ * altura da lista de perguntas no painel compacto.
  */
 import type { AgpConnection, AgpFeed } from '@/shared/config/agpQuestionsStore';
 import { Icon } from '@/shared/ui/Icon';
@@ -33,7 +34,7 @@ export function AgpStatusBanner({ feed }: { feed: AgpFeed }) {
   const banner = statusBannerFor(feed.connection);
   if (banner === null) return null;
   return (
-    <p role="status" title={banner.title} className="flex shrink-0 items-center gap-1 text-caption text-muted">
+    <p role="status" title={banner.title} className="flex min-w-0 flex-1 items-center justify-end gap-1 text-right text-caption text-muted">
       {banner.withPauseIcon && <Icon name="pause" size={11} />}
       {banner.text}
     </p>
