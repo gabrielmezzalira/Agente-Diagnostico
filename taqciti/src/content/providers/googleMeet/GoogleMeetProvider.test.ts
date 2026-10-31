@@ -140,3 +140,95 @@ describe('GoogleMeetProvider — detecção de reunião pelo endereço', () => {
     expect(detectAt('/meet/abc-defg-hij', '')).toBeNull();
   });
 });
+
+describe('GoogleMeetProvider — vigia de captura ciente da pausa', () => {
+  const T0 = new Date('2026-10-31T10:00:00-03:00');
+
+  type HealthEvent = [boolean, string | undefined];
+  type VigiaInternals = {
+    captionsOn: boolean;
+    captureExpectedSince: number;
+    lastChunkAt: number;
+    captionRegion: Element | null;
+    checkCaptureHealth(): void;
+    scanCaptions(): void;
+  };
+
+  function newProvider() {
+    const provider = new GoogleMeetProvider();
+    const health: HealthEvent[] = [];
+    provider.onCaptureHealth((healthy, reason) => health.push([healthy, reason]));
+    return { provider, health, internals: provider as unknown as VigiaInternals };
+  }
+
+  /** Cenário de travamento: legendas ligadas há 30 s, nada lido, legenda na tela. */
+  function armStall(internals: VigiaInternals): void {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    render(`
+      <div role="region" aria-label="Legendas"><div>fala na tela</div></div>
+    `);
+    internals.captionsOn = true;
+    internals.captureExpectedSince = Date.now() - 30_000;
+    internals.lastChunkAt = 0;
+  }
+
+  it('controle: sem pausa, legendas paradas com texto na tela acendem o alarme stall', () => {
+    const { health, internals } = newProvider();
+    armStall(internals);
+
+    internals.checkCaptureHealth();
+
+    expect(health).toContainEqual([false, 'stall']);
+  });
+
+  it('pausado, o mesmo cenário não acende nenhum alarme', () => {
+    const { provider, health, internals } = newProvider();
+    armStall(internals);
+
+    provider.setCapturePaused(true);
+    internals.checkCaptureHealth();
+
+    expect(health.filter(([healthy]) => !healthy)).toEqual([]);
+  });
+
+  it('alarme já aceso some quando a pessoa pausa (vigia publica saudável)', () => {
+    const { provider, health, internals } = newProvider();
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    // DOM com estrutura conhecida (parser saudável) e fala já lida: o reatamento
+    // do vigia não emite nada novo, então o alarme stall fica de pé.
+    render(`
+      <div role="region" aria-label="Legendas">
+        <div class="nMcdL"><span class="KcIKyf">Ana Souza</span><div class="bh44bd">fala na tela</div></div>
+      </div>
+    `);
+    internals.captionsOn = true;
+    internals.captureExpectedSince = Date.now();
+    internals.captionRegion = document.querySelector('[role="region"]');
+    internals.scanCaptions();
+    vi.advanceTimersByTime(30_000);
+    internals.checkCaptureHealth();
+    expect(health.at(-1)).toEqual([false, 'stall']);
+
+    provider.setCapturePaused(true);
+
+    expect(health.at(-1)).toEqual([true, undefined]);
+  });
+
+  it('aviso do parser degradado também some quando a pessoa pausa', () => {
+    const { provider, health, internals } = newProvider();
+    render(`
+      <div role="region" aria-label="Legendas">
+        <div>fala preservada sem inventar um participante</div>
+      </div>
+    `);
+    internals.captionRegion = document.querySelector('[role="region"]');
+    internals.scanCaptions();
+    expect(health.at(-1)).toEqual([false, 'parser']);
+
+    provider.setCapturePaused(true);
+
+    expect(health.at(-1)).toEqual([true, undefined]);
+  });
+});
