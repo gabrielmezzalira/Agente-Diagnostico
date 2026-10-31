@@ -366,7 +366,7 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: 12/17 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+**Plans**: 12/18 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
 - [x] 10-PLAN.md
 
 **Wave 1**
@@ -404,9 +404,13 @@ Plans:
 - [ ] 10-14-PLAN.md — Layout: aviso de legendas dentro da barra de vínculo (`StripNotice`, `AgenteBindingBar`, `AgenteLiveSlot`, `PanelApp`) + `empty:hidden` no aviso de conta vazio
 - [ ] 10-15-PLAN.md — Comportamento (commits próprios): `checkCaptureHealth` ciente da pausa; retomar recomeça a janela de 25 s do vigia
 
-*Wave 2 (bloqueada nos três acima)*
+*Wave 2 (bloqueada no 10-14: mesmo `PanelApp.tsx` e `panelLayout.test.ts`)*
 
-- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo); se ainda não couber um cartão inteiro, registra a DECISÃO EM ABERTO de qual faixa a mais compactar
+- [ ] 10-17-PLAN.md — Layout, só no compacto (opções (a)+(b) escolhidas pelo usuário em 2026-10-31, painel fixo em 320 px): sem o campo do nome da reunião no cabeçalho e com as estatísticas na linha dos botões (`compactLayout.ts`, `PanelApp`)
+
+*Wave 3 (bloqueada nos quatro acima)*
+
+- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo): lista do compacto medida com pelo menos ~105 px e um cartão de 2 linhas inteiro; se não, registra a DECISÃO EM ABERTO de o que mais compactar além de (a)+(b)
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
@@ -427,7 +431,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 12/13 | In Progress | - |
+| 10. AGP Question Panel in Taqciti | 12/18 | In Progress | - |
 
 ## Backlog
 
