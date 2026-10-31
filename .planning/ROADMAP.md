@@ -442,3 +442,59 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-09-26 during /gsd-verify-work 07 session
 **Follow-ups:**
 - [ ] User reported during SC1 UAT: "não existe uma opção de não querer gerar uma transcrição" — product-scope decision, needs team alignment before planning (deferred 2026-09-26)
+
+### Phase 999.4: Follow-up — Phase 10 deferred UAT follow-up: Test 9: recording indicator and trash button in the Taqciti panel (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 9: Na aba do TaqCITi não tem um indicador explícito de gravação, e poderia ter uma lixeira ao lado de 'ver no histórico'. (deferred 2026-10-31)
+
+### Phase 999.5: Follow-up — Phase 10 deferred UAT follow-up: Test 2: "Gerar" button inside the Taqciti AGP tab (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 2: Botão de gerar perguntas dentro da própria aba AGP da TaqCITi (hoje só existe o Gerar do site). O backend já aceita o evento generate_questions por WebSocket, mas exige mudar o D-07 (TaqCITi só lê) e planejar na Fase 10.1. (deferred 2026-10-31)
+
+### Phase 999.6: Follow-up — Phase 10 deferred UAT follow-up: Test 2: a question marked "used" on the site should leave the Taqciti AGP tab (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 2: Marcar uma pergunta como usada no site deveria tirá-la da aba AGP da TaqCITi (como acontece quando ela expira). Hoje o backend não avisa used/pinned/dismissed por WebSocket (ws.py só atualiza o estado), então a pergunta fica até a TaqCITi reconectar (D-09). Exige novo evento do backend e decisão do time na Fase 10.1. (deferred 2026-10-31)
+
+### Phase 999.7: Follow-up — Phase 10 deferred UAT follow-up: Test 2: discard an already pinned question from the Taqciti panel (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 2: Poder descartar, no painel da TaqCITi, uma pergunta já fixada, para as perguntas não se acumularem. Exige botões na aba AGP (muda o D-07) e o backend refletir o descarte; Fase 10.1. (deferred 2026-10-31)
+
+### Phase 999.8: Follow-up — Phase 10 deferred UAT follow-up: Test 2: PRIORITY cost — backend keeps calling Gemini with the Taqciti paused (BACKLOG)
+
+**Goal:** Stop the red-flag and coverage loops from calling Gemini when no new speech arrived since the last analysis (plan: PLANO_CONSUMO_GEMINI_PAUSADO.md; decisions 1-4 already taken on 2026-10-31; runs on branch fix/consumo-gemini-sem-fala-nova after the Phase 10 merge)
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 2: PRIORIDADE (custo): o backend continua chamando o Gemini com a TaqCITi pausada ou sem fala nova. Em pipeline.py, _coverage_task (a cada 30 s) e _red_flag_task (a cada 15 s) só checam `if not self.state.transcript_chunks` (já houve alguma fala), sem checar se chegou fala nova desde a última chamada. Fix aprovado: só chamar o Gemini se houver fala nova desde a última execução. (deferred 2026-10-31)
+
+### Phase 999.9: Follow-up — Phase 10 deferred UAT follow-up: Test 12: a question dismissed on the site should vanish from the Taqciti AGP tab at once (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 12: Pergunta descartada no site deveria sumir da aba AGP da TaqCITi na hora, e não permanecer até a reconexão (hoje é o combinado D-09: o backend não avisa descarte por WebSocket). Mesmo pacote do evento de status da Fase 10.1. (deferred 2026-10-31)
+
+### Phase 999.10: Follow-up — Phase 10 deferred UAT follow-up: Test 3: record the before/after Gemini cost measurement with the Taqciti paused (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 10 verification
+**Source phase:** 10
+**Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
+**Follow-ups:**
+- [ ] Test 3: Medição do consumo com a TaqCITi pausada (Bloco 3a, 2026-10-31): o usuário viu o custo da sessão, na barra do site, subir de US$ 0,001 para US$ 0,007 em poucos segundos durante a pausa. Falta anotar a duração exata e as leituras inicial e final para o "antes e depois" do conserto (999.8). (deferred 2026-10-31)
