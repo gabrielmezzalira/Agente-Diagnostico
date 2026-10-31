@@ -1,5 +1,5 @@
 ---
-status: partial
+status: diagnosed
 phase: 10-agp-question-panel-in-taqciti
 source: 10-PLAN.md do Gabriel (seção 7, os 7 testes de base), 10-CONTEXT.md (D-13, D-15, D-16, D-18, D-19), 10-RESEARCH.md (UAT de 7 para 12 testes), 10-UI-SPEC.md (contrato de copy)
 started: 2026-10-30T14:28:03Z
@@ -346,8 +346,24 @@ blocked: 1
   reason: "User reported: depois de usar/fixar/descartar, no tamanho comprimido as perguntas deixam de ser visíveis (contador mostra 3, nenhum cartão aparece) e a faixa 'Pausado' se sobrepõe a '1 fala · 1 pessoa · 31 palavras'. Print: Screenshot 2026-10-31 144656.png."
   severity: major
   test: 7
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "O painel compacto tem 320 px de altura e quase tudo dentro dele tem altura fixa (barra 'Enviando ao vivo' 48 px, margem vazia do AccountBoundaryNotice 8 px, abas 40 px, estatísticas 27 px, controles 50 px). A lista de perguntas é a única peça elástica e ninguém reservou altura mínima para ela: sobra só ~39 px com tudo normal, ~14 px com a faixa 'Pausado' e 0 px quando entram juntas a faixa 'Pausado' (~25 px) e o aviso amarelo das legendas (~45-63 px). Sem overflow-hidden em AgpLiveTabs/tabpanel/AgpQuestionsPanel, a faixa e as abas são desenhadas para fora da caixa e caem sobre o rodapé '1 fala · 1 pessoa · 31 palavras'. O aviso amarelo é alarme falso: GoogleMeetProvider.checkCaptureHealth não olha se a captura está pausada e, sem falas novas por 25 s (CAPTURE_STALL_TIMEOUT_MS), conclui que travou. Usar/fixar/descartar no site NÃO é a causa (D-09: o painel nem reage a essas ações). Diagnóstico por leitura estática de CSS/JSX, sem medir no Chrome; alturas em px são estimativas."
+  artifacts:
+    - path: "taqciti/src/content/ui/PanelApp.tsx"
+      issue: "orçamento vertical do compacto sem altura mínima para a lista; margem fantasma do AccountBoundaryNotice vazio (linhas ~135-139 e ~873-952)"
+    - path: "taqciti/src/sidepanel/components/AgpLiveTabs.tsx"
+      issue: "flex-1 min-h-0 sem overflow-hidden e sem altura mínima"
+    - path: "taqciti/src/sidepanel/components/AgpQuestionsPanel.tsx"
+      issue: "faixa 'Pausado' soma altura fixa (~25 px) sem reservar espaço para a lista; sem overflow-hidden"
+    - path: "taqciti/src/content/providers/googleMeet/GoogleMeetProvider.ts"
+      issue: "checkCaptureHealth (linhas ~458-481) não considera capturePaused: alarme falso de legendas durante a pausa (causa separada)"
+  missing:
+    - "Reservar espaço para a lista no compacto (ex.: 'Pausado' na linha das abas, juntar aviso amarelo e barra de vínculo, ou subir o painel para 'regular' ao abrir a aba AGP, como o seletor de cliente já faz)"
+    - "overflow-hidden no tabpanel e no AgpQuestionsPanel, para nada ser desenhado por cima do rodapé"
+    - "checkCaptureHealth ciente da pausa (commit separado: é mudança de comportamento)"
+    - "Remover a margem vazia do AccountBoundaryNotice (precedente empty:hidden em LiveScreen.tsx)"
+    - "Teste semente: jsdom não mede layout; usar teste de orçamento das alturas fixas ou passo manual no Chrome real (compacto, pausa, aviso amarelo)"
+    - "DECISÃO DO TIME: contrato do compacto (1-2 cartões, como diz o UAT, ou 'quase nada', como diz o UI-SPEC A-2) e se o aviso amarelo some durante a pausa"
+  debug_session: ".planning/debug/agp-compact-list-hidden-by-status-banners.md"
 
 ## Deferred Follow-Ups
 
