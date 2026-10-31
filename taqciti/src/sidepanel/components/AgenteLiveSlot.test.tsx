@@ -32,6 +32,7 @@ interface SlotOptions {
   panelSize?: PanelSize;
   onPanelSizeChange?: (size: PanelSize) => void;
   onToast?: (message: string) => void;
+  stripNotice?: string | null;
 }
 
 const h = createAgenteHarness();
@@ -44,6 +45,7 @@ function slot(options: SlotOptions = {}) {
       panelSize={options.panelSize ?? 'regular'}
       onPanelSizeChange={options.onPanelSizeChange ?? (() => {})}
       onToast={options.onToast ?? (() => {})}
+      stripNotice={options.stripNotice}
     />
   );
 }
@@ -355,6 +357,74 @@ describe('AgenteLiveSlot — sem associação', () => {
     h.start(null);
     await h.render(slot());
     expect(h.host.textContent).toBe('');
+    expect(h.sent).toHaveLength(0);
+  });
+});
+
+describe('AgenteLiveSlot — aviso de legendas dividindo a faixa (G-10-7)', () => {
+  const NOTICE = 'As legendas do Meet pararam de chegar. Religando sozinho.';
+  const count = (text: string): number => text.split(NOTICE).length - 1;
+  const barBox = (): Element => {
+    const text = Array.from(h.host.querySelectorAll('span')).find((el) =>
+      (el.textContent ?? '').includes('Enviando ao vivo para'),
+    );
+    return text!.parentElement!;
+  };
+
+  it('vinculada: o aviso aparece 1 vez e dentro da mesma caixa da barra', async () => {
+    h.start(assoc('linked', { clientName: 'Empresa X' }), EMPTY_DELIVERY);
+    await h.render(slot({ stripNotice: NOTICE }));
+    expect(count(h.host.textContent ?? '')).toBe(1);
+    expect(barBox().textContent).toContain(NOTICE);
+  });
+
+  it('vinculada sem stripNotice: nenhum aviso', async () => {
+    h.start(assoc('linked', { clientName: 'Empresa X' }), EMPTY_DELIVERY);
+    await h.render(slot());
+    expect(h.host.textContent).not.toContain(NOTICE);
+  });
+
+  it('Agente fora do ar: o [role=status] da barra contém o alerta e o aviso', async () => {
+    h.start(assoc('linked', { clientName: 'Empresa X' }), {
+      ...EMPTY_DELIVERY,
+      status: 'offline',
+      queued: 2,
+    });
+    await h.render(slot({ stripNotice: NOTICE }));
+    const status = h.host.querySelector('[role="status"]')!;
+    expect(status.textContent).toContain('O Agente está fora do ar.');
+    expect(status.textContent).toContain(NOTICE);
+    expect(count(h.host.textContent ?? '')).toBe(1);
+  });
+
+  it('cartão (choosing): o cartão e o aviso aparecem, o aviso 1 vez e fora do cartão', async () => {
+    h.start(assoc('choosing'));
+    await h.render(slot({ stripNotice: NOTICE }));
+    const card = h.host.querySelector('[aria-label="Esta reunião é de qual cliente?"]')!;
+    expect(card).not.toBeNull();
+    expect(count(h.host.textContent ?? '')).toBe(1);
+    expect(card.textContent).not.toContain(NOTICE);
+  });
+
+  it('seletor aberto: "Escolher cliente" e o aviso, 1 vez', async () => {
+    h.start(assoc('deferred'));
+    respondOk();
+    await h.render(slot({ stripNotice: NOTICE }));
+    await h.click(h.buttonByText('Selecionar cliente'));
+    expect(h.host.textContent).toContain('Escolher cliente');
+    expect(count(h.host.textContent ?? '')).toBe(1);
+  });
+
+  it('pending: só o aviso', async () => {
+    h.start(assoc('pending'));
+    await h.render(slot({ stripNotice: NOTICE }));
+    expect(h.host.textContent).toBe(NOTICE);
+  });
+
+  it('sem associação: só o aviso e nenhum comando enviado', async () => {
+    h.start(null);
+    await h.render(slot({ stripNotice: NOTICE }));
+    expect(h.host.textContent).toBe(NOTICE);
     expect(h.sent).toHaveLength(0);
   });
 });
