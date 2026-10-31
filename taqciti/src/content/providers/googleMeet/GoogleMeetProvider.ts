@@ -292,6 +292,8 @@ export class GoogleMeetProvider implements MeetingProvider {
     if (paused) {
       this.captionObserver?.disconnect();
       this.captionObserver = null;
+      // Pausa deliberada não é falha: se o aviso estava na tela, ele some.
+      this.setCaptureStalled(false);
       return;
     }
 
@@ -454,8 +456,15 @@ export class GoogleMeetProvider implements MeetingProvider {
    * significa que a captura morreu em silêncio (o Meet recriou a região, o
    * observer descolou, ou as legendas caíram sem avisar). Reata tudo e conta
    * para a UI — o painel avisa em vez de fingir que está gravando.
+   *
+   * Pausa deliberada não é falha (G-10-7): pausado, nada é lido de propósito,
+   * então o vigia fica quieto e não acusa "legendas pararam".
    */
   private checkCaptureHealth(): void {
+    if (this.capturePaused) {
+      this.setCaptureStalled(false);
+      return;
+    }
     if (!this.captionsOn || this.captureExpectedSince === 0) {
       this.setCaptureStalled(false);
       return;
@@ -491,7 +500,8 @@ export class GoogleMeetProvider implements MeetingProvider {
   }
 
   private publishCaptureHealth(): void {
-    const degraded = this.parserDegraded || this.captureStalled;
+    // Pausado, a captura está desligada de propósito: nunca conta como degradada.
+    const degraded = !this.capturePaused && (this.parserDegraded || this.captureStalled);
     if (this.healthDegraded === degraded) return;
     this.healthDegraded = degraded;
     const reason = degraded
