@@ -34,3 +34,15 @@ describe('PanelApp — o aviso de legendas divide a faixa do vínculo (10-14, G-
     expect(PANEL_APP.split(FRASE).length - 1).toBe(1);
   });
 });
+
+describe('PanelApp — o aviso de conta vazio não reserva espaço (10-14, G-10-7)', () => {
+  it('o wrapper do AccountBoundaryNotice tem empty:hidden (e segue com mb-2 shrink-0)', () => {
+    const linhas = PANEL_APP.split('\n');
+    const i = linhas.findIndex((l) => l.includes('<AccountBoundaryNotice boundary={session.accountBoundary} compact />'));
+    expect(i, 'não achei o AccountBoundaryNotice do LiveBody').toBeGreaterThan(0);
+    const wrapper = linhas[i - 1]!;
+    expect(wrapper).toContain('empty:hidden');
+    expect(wrapper).toContain('mb-2');
+    expect(wrapper).toContain('shrink-0');
+  });
+});
