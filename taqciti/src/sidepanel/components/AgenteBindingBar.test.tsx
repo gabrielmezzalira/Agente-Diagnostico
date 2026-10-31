@@ -143,3 +143,92 @@ describe('AgenteBindingBar', () => {
     expect(bar.className).toContain('items-center');
   });
 });
+
+describe('AgenteBindingBar — aviso dividindo a faixa (10-14, G-10-7)', () => {
+  const NOTICE = 'As legendas do Meet pararam de chegar. Religando sozinho.';
+  let host: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    host.remove();
+  });
+
+  function renderWith(view: BindingBarView, notice?: string): HTMLElement {
+    act(() => {
+      root.render(<AgenteBindingBar view={view} notice={notice} />);
+    });
+    return host.firstElementChild as HTMLElement;
+  }
+
+  const CASES: ReadonlyArray<readonly [BindingBarView, string]> = [
+    [{ kind: 'deferred' }, 'Sem cliente.'],
+    [{ kind: 'linking', done: 1, total: 2 }, 'Enviando o que já foi falado'],
+    [{ kind: 'linked', clientName: 'Empresa X' }, 'Enviando ao vivo para'],
+    [{ kind: 'offline', clientName: 'Empresa X', queued: 3 }, 'O Agente está fora do ar.'],
+    [{ kind: 'rejected', text: 'recusada' }, 'recusada'],
+    [{ kind: 'stopped', done: 1, total: 2 }, 'O envio parou'],
+  ];
+
+  it.each(CASES)('%j com aviso: uma caixa só, com as duas frases, em coluna e sem gap-3', (view, own) => {
+    const bar = renderWith(view, NOTICE);
+
+    expect(host.children).toHaveLength(1);
+    expect(bar.textContent).toContain(own);
+    expect(bar.textContent).toContain(NOTICE);
+    expect(bar.className).toContain('flex-col');
+    expect(bar.className).toContain('min-h-[40px]');
+    expect(bar.className).toContain('gap-1');
+    expect(bar.className).not.toContain('gap-3');
+    expect(bar.className).not.toContain('items-center');
+
+    const paragraph = Array.from(bar.querySelectorAll('p')).find((p) => p.textContent === NOTICE);
+    expect(paragraph).toBeDefined();
+    expect(paragraph!.className).toContain('text-[#f7dd8f]');
+  });
+
+  it.each(CASES)('%j sem aviso: continua uma linha (sem flex-col)', (view) => {
+    const bar = renderWith(view);
+
+    expect(bar.className).not.toContain('flex-col');
+    expect(bar.className).toContain('items-center');
+    expect(host.textContent).not.toContain(NOTICE);
+    expect(host.querySelector('p')).toBeNull();
+  });
+
+  it.each([
+    { kind: 'offline', clientName: 'Empresa X', queued: 3 },
+    { kind: 'rejected', text: 'recusada' },
+    { kind: 'stopped', done: 1, total: 2 },
+  ] satisfies BindingBarView[])('$kind com aviso: a caixa externa mantém role=status e aria-live=polite', (view) => {
+    const bar = renderWith(view, NOTICE);
+
+    expect(bar.getAttribute('role')).toBe('status');
+    expect(bar.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('deferred com aviso: o botão "Selecionar cliente" fica na mesma linha do texto "Sem cliente."', () => {
+    renderWith({ kind: 'deferred' }, NOTICE);
+
+    const button = host.querySelector<HTMLButtonElement>('button')!;
+    const label = Array.from(host.querySelectorAll('span')).find((s) =>
+      (s.textContent ?? '').startsWith('Sem cliente.'),
+    )!;
+    expect(button.parentElement).toBe(label.parentElement);
+    expect(button.parentElement!.textContent).not.toContain(NOTICE);
+  });
+
+  it('linked com aviso: o nome do cliente continua texto literal, nunca HTML', () => {
+    renderWith({ kind: 'linked', clientName: '<img src=x onerror=alert(1)>' }, NOTICE);
+
+    expect(host.querySelector('img')).toBeNull();
+    expect(host.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+});

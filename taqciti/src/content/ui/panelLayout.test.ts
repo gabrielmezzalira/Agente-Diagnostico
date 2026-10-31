@@ -21,3 +21,16 @@ describe('PanelApp — a janela não alarga com texto longo', () => {
     expect(linha).toContain('grid-cols-[minmax(0,1fr)]');
   });
 });
+
+describe('PanelApp — o aviso de legendas divide a faixa do vínculo (10-14, G-10-7)', () => {
+  const FRASE = 'As legendas do Meet pararam de chegar. Religando sozinho.';
+
+  it('o aviso passa pelo stripNotice do AgenteLiveSlot (uma ligação só)', () => {
+    expect(PANEL_APP.split('stripNotice={').length - 1).toBe(1);
+    expect(PANEL_APP).toContain('stripNotice={ctx.captureHealthy ? null : CAPTURE_STALL_NOTICE}');
+  });
+
+  it('existe uma cópia só do texto do aviso no PanelApp', () => {
+    expect(PANEL_APP.split(FRASE).length - 1).toBe(1);
+  });
+});
