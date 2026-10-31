@@ -57,6 +57,7 @@ import { GenerateDocumentMenu } from '@/document/GenerateDocumentMenu';
 import { GeneratedDocumentResult } from '@/document/GeneratedDocumentResult';
 import type { DocumentoPronto } from '@/document/generateDocument';
 import { Button } from '@/shared/ui/Button';
+import { compactLayoutFor } from './compactLayout';
 import { Icon } from '@/shared/ui/Icon';
 import { Sheen, SHEEN_HOST, SHEEN_HOST_POSITIONED, trackSheen } from '@/shared/ui/Sheen';
 import { TranscriptView } from '@/shared/ui/TranscriptView';
@@ -179,6 +180,9 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
     () => ({ width: PANEL_WIDTH, height: PANEL_HEIGHTS[prefs.size] }),
     [prefs.size],
   );
+
+  // O que o tamanho compacto esconde ou junta (G-10-7, opções a e b).
+  const layout = compactLayoutFor(prefs.size);
 
   const floating = useFloating({
     x: prefs.x,
@@ -408,7 +412,11 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
         }`}
       >
         <PanelHeader
-          title={idle || route.kind !== 'auto' ? null : (session?.title ?? '')}
+          title={
+            idle || route.kind !== 'auto' || !layout.showMeetingTitleField
+              ? null
+              : (session?.title ?? '')
+          }
           status={
             route.kind === 'record'
               ? 'Reunião'
@@ -985,7 +993,10 @@ function PanelHeader({
   children,
 }: {
   nudge?: ReactNode;
-  /** `null` = não há reunião para renomear nesta rota. */
+  /**
+   * `null` = não há reunião para renomear nesta rota, ou o painel está compacto
+   * e o campo some para sobrar altura à lista (G-10-7, opção a).
+   */
   title: string | null;
   status: string;
   searching: boolean;
