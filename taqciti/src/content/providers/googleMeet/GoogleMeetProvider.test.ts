@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CAPTURE_STALL_TIMEOUT_MS } from '@/shared/config/constants';
 import { GoogleMeetProvider } from './GoogleMeetProvider';
 
 function render(html: string): void {
@@ -148,6 +149,7 @@ describe('GoogleMeetProvider — vigia de captura ciente da pausa', () => {
   type VigiaInternals = {
     captionsOn: boolean;
     captureExpectedSince: number;
+    captureStalled: boolean;
     lastChunkAt: number;
     captionRegion: Element | null;
     checkCaptureHealth(): void;
@@ -230,5 +232,86 @@ describe('GoogleMeetProvider — vigia de captura ciente da pausa', () => {
     provider.setCapturePaused(true);
 
     expect(health.at(-1)).toEqual([true, undefined]);
+  });
+
+  describe('retomada', () => {
+    const STRUCTURED = `
+      <div role="region" aria-label="Legendas">
+        <div class="nMcdL"><span class="KcIKyf">Ana Souza</span><div class="bh44bd">fala na tela</div></div>
+      </div>
+    `;
+
+    /** Legenda lida ANTES da pausa; pausa de 60 s; retoma. */
+    function pauseAndResume() {
+      const ctx = newProvider();
+      const chunks: string[] = [];
+      ctx.provider.onCaptionChunk((chunk) => chunks.push(chunk.text));
+      vi.useFakeTimers();
+      vi.setSystemTime(T0);
+      render(STRUCTURED);
+      ctx.internals.captionsOn = true;
+      ctx.internals.captureExpectedSince = Date.now();
+      ctx.internals.captionRegion = document.querySelector('[role="region"]');
+      ctx.internals.scanCaptions();
+      // Sanidade: 1 fala emitida, parser saudável, nenhum evento de saúde.
+      expect(chunks).toHaveLength(1);
+      expect(ctx.health).toEqual([]);
+
+      ctx.provider.setCapturePaused(true);
+      vi.advanceTimersByTime(60_000);
+      ctx.provider.setCapturePaused(false);
+      return { ...ctx, chunks };
+    }
+
+    it('A: retomar não acusa travamento na hora (a legenda antiga não é fala nova)', () => {
+      const { internals, health, chunks } = pauseAndResume();
+
+      internals.checkCaptureHealth();
+
+      expect(internals.captureStalled).toBe(false);
+      expect(health).not.toContainEqual([false, 'stall']);
+      expect(chunks).toHaveLength(1);
+    });
+
+    it('B: os 25 s contam a partir da retomada e o alarme real volta', () => {
+      const { internals, health } = pauseAndResume();
+
+      vi.advanceTimersByTime(CAPTURE_STALL_TIMEOUT_MS - 1);
+      internals.checkCaptureHealth();
+      expect(internals.captureStalled).toBe(false);
+
+      vi.advanceTimersByTime(2);
+      internals.checkCaptureHealth();
+      expect(internals.captureStalled).toBe(true);
+      expect(health.at(-1)).toEqual([false, 'stall']);
+    });
+
+    it('C: retomar com as legendas desligadas não passa a esperar captura', () => {
+      const { provider, internals } = newProvider();
+      internals.captionsOn = false;
+      internals.captureExpectedSince = 0;
+
+      provider.setCapturePaused(true);
+      provider.setCapturePaused(false);
+
+      expect(internals.captureExpectedSince).toBe(0);
+    });
+
+    it('D: parser ainda degradado ao retomar traz o aviso do parser de volta', () => {
+      const { provider, health, internals } = newProvider();
+      render(`
+        <div role="region" aria-label="Legendas">
+          <div>fala preservada sem inventar um participante</div>
+        </div>
+      `);
+      internals.captionRegion = document.querySelector('[role="region"]');
+      internals.scanCaptions();
+      provider.setCapturePaused(true);
+      expect(health.at(-1)).toEqual([true, undefined]);
+
+      provider.setCapturePaused(false);
+
+      expect(health.at(-1)).toEqual([false, 'parser']);
+    });
   });
 });
