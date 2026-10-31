@@ -366,7 +366,7 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: 15/18 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+**Plans**: 16/18 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
 - [x] 10-PLAN.md
 
 **Wave 1**
@@ -406,7 +406,7 @@ Plans:
 
 *Wave 2 (bloqueada no 10-14: mesmo `PanelApp.tsx` e `panelLayout.test.ts`)*
 
-- [ ] 10-17-PLAN.md — Layout, só no compacto (opções (a)+(b) escolhidas pelo usuário em 2026-10-31, painel fixo em 320 px): sem o campo do nome da reunião no cabeçalho e com as estatísticas na linha dos botões (`compactLayout.ts`, `PanelApp`)
+- [x] 10-17-PLAN.md — Layout, só no compacto (opções (a)+(b) escolhidas pelo usuário em 2026-10-31, painel fixo em 320 px): sem o campo do nome da reunião no cabeçalho e com as estatísticas na linha dos botões (`compactLayout.ts`, `PanelApp`)
 
 *Wave 3 (bloqueada nos quatro acima)*
 
@@ -431,7 +431,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 15/18 | In Progress | - |
+| 10. AGP Question Panel in Taqciti | 16/18 | In Progress | - |
 
 ## Backlog
 

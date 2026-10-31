@@ -4,18 +4,18 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 16
+current_plan: 17
 status: executing
-stopped_at: Completed 10-15-PLAN.md
-last_updated: "2026-10-31T20:56:07.855Z"
+stopped_at: Completed 10-17-PLAN.md
+last_updated: "2026-10-31T21:04:27.767Z"
 last_activity: 2026-10-31
 last_activity_desc: Phase 10 execution started
-state_head: d6b1e0d7415845fa81a8b55ca6dfb4b5809c3a47
+state_head: 82e2552575d0dbef902bf3b41de05d31b74f100b
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 77
-  completed_plans: 74
+  completed_plans: 75
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 16
+Current Plan: 17
 Total Plans in Phase: 18
 Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING
 Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
@@ -141,6 +141,7 @@ Progress: [████████░░] 80%
 | Phase 10 P13 | 14 min | 2 tasks | 5 files |
 | Phase 10 P14 | 18 min | 3 tasks | 7 files |
 | Phase 10 P15 | 12 min | 2 tasks | 2 files |
+| Phase 10 P17 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,7 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-13: faixa de status da aba AGP fica na linha das abas (so com a AGP aberta) e o corte do transbordo usa overflow-clip com folga de 4px na raiz (preserva o anel de foco)
 - [Phase 10]: 10-14: aviso de legendas divide a caixa da barra de vínculo em qualquer estado; sem barra aparece sozinho (nunca some). Aviso de conta vazio com empty:hidden.
 - [Phase 10]: 10-15: com a captura pausada o vigia nunca anuncia legendas paradas (stall nem parser); ao retomar a janela de 25 s recomeça do zero (G-10-7, decisão 2)
+- [Phase 10]: 10-17: compacto sem o campo do nome da reunião e com as estatísticas na linha dos botões (G-10-7, opções a e b), via compactLayoutFor; médio e alto inalterados
 
 ### Pending Todos
 
@@ -271,8 +273,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-31T20:56:04.613Z
-Stopped at: Completed 10-15-PLAN.md
+Last session: 2026-10-31T21:04:24.449Z
+Stopped at: Completed 10-17-PLAN.md
 Resume file: None
 
 ---
