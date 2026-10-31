@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { compactLayoutFor } from './compactLayout';
 
 const PANEL_APP = readFileSync(resolve(process.cwd(), 'src/content/ui/PanelApp.tsx'), 'utf-8');
 
@@ -44,5 +45,27 @@ describe('PanelApp — o aviso de conta vazio não reserva espaço (10-14, G-10-
     expect(wrapper).toContain('empty:hidden');
     expect(wrapper).toContain('mb-2');
     expect(wrapper).toContain('shrink-0');
+  });
+});
+
+describe('PanelApp — o compacto esconde o nome da reunião e junta as estatísticas aos botões (10-17, G-10-7)', () => {
+  it('só o tamanho compacto esconde o campo "Nome da reunião"', () => {
+    expect(compactLayoutFor('compact').showMeetingTitleField).toBe(false);
+    expect(compactLayoutFor('regular').showMeetingTitleField).toBe(true);
+    expect(compactLayoutFor('tall').showMeetingTitleField).toBe(true);
+  });
+
+  it('o title do PanelHeader usa a regra do compacto e mantém a regra antiga do histórico', () => {
+    const inicio = PANEL_APP.indexOf('<PanelHeader');
+    expect(inicio, 'não achei o <PanelHeader no PanelApp').toBeGreaterThan(-1);
+    const fim = PANEL_APP.indexOf('status={', inicio);
+    expect(fim, 'não achei o status={ depois do <PanelHeader').toBeGreaterThan(inicio);
+    const trecho = PANEL_APP.slice(inicio, fim);
+    expect(trecho).toContain('showMeetingTitleField');
+    expect(trecho).toContain("route.kind !== 'auto'");
+  });
+
+  it('o campo "Nome da reunião" continua existindo uma vez só (médio e alto renomeiam como antes)', () => {
+    expect(PANEL_APP.split('aria-label="Nome da reunião"').length - 1).toBe(1);
   });
 });
