@@ -42,7 +42,7 @@ export function AgpQuestionsPanel({ feed, surface = 'panel' }: { feed: AgpFeed; 
 
   const visible = feed.questions;
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div tabIndex={0} className="scroll-region flex min-h-0 flex-1 flex-col outline-none">
         {visible.length === 0 ? (
           <Notice>{emptyMessageFor(feed.connection)}</Notice>

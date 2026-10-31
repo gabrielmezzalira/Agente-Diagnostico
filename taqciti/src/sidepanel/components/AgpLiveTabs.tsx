@@ -79,7 +79,7 @@ export function AgpLiveTabs({ children, surface = 'panel' }: { children: ReactNo
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-clip [overflow-clip-margin:4px]">
       <div className="mb-2 flex shrink-0 items-center gap-2">
         <div role="tablist" aria-label="Conteúdo ao vivo" onKeyDown={onKeyDown} className="flex shrink-0 gap-1">
           {button('transcript', 'Transcrição')}
@@ -87,7 +87,7 @@ export function AgpLiveTabs({ children, surface = 'panel' }: { children: ReactNo
         </div>
         {tab === 'agp' && <AgpStatusBanner feed={feed} />}
       </div>
-      <div role="tabpanel" id={panelId} aria-labelledby={tabId(tab)} className="flex min-h-0 flex-1 flex-col">
+      <div role="tabpanel" id={panelId} aria-labelledby={tabId(tab)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === 'transcript' ? children : <AgpQuestionsPanel feed={feed} surface={surface} />}
       </div>
     </div>
