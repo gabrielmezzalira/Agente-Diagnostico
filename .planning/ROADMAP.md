@@ -410,7 +410,7 @@ Plans:
 
 *Wave 3 (bloqueada nos quatro acima)*
 
-- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo): lista do compacto medida com pelo menos ~105 px e um cartão de 2 linhas inteiro; se não, registra a DECISÃO EM ABERTO de o que mais compactar além de (a)+(b)
+- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo): lista do compacto medida com pelo menos ~105 px e um cartão de 2 linhas inteiro; se não, registra a DECISÃO EM ABERTO de o que mais compactar além de (a)+(b); em qualquer resultado, registra a DECISÃO EM ABERTO do limiar (cartões de 3 linhas e estados abaixo de ~105 px, como o backend fora do ar)
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
