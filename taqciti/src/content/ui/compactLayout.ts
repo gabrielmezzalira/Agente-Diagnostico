@@ -10,9 +10,10 @@ export interface CompactLayout {
    * O campo "Nome da reunião" aparece no cabeçalho. No compacto não (opção a); para renomear, use "Expandir".
    */
   showMeetingTitleField: boolean;
+  statsInControlsRow: boolean; // STUB (RED)
 }
 
 export function compactLayoutFor(size: PanelSize): CompactLayout {
   const compact = size === 'compact';
-  return { showMeetingTitleField: !compact };
+  return { showMeetingTitleField: !compact, statsInControlsRow: false };
 }

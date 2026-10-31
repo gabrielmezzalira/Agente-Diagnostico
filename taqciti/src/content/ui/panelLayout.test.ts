@@ -68,4 +68,41 @@ describe('PanelApp — o compacto esconde o nome da reunião e junta as estatís
   it('o campo "Nome da reunião" continua existindo uma vez só (médio e alto renomeiam como antes)', () => {
     expect(PANEL_APP.split('aria-label="Nome da reunião"').length - 1).toBe(1);
   });
+
+  it('só o tamanho compacto põe as estatísticas na linha dos botões', () => {
+    expect(compactLayoutFor('compact').statsInControlsRow).toBe(true);
+    expect(compactLayoutFor('regular').statsInControlsRow).toBe(false);
+    expect(compactLayoutFor('tall').statsInControlsRow).toBe(false);
+  });
+
+  it('no LiveControls, {stats} fica depois do copiar e antes do ícone do Finalizar', () => {
+    const inicio = PANEL_APP.indexOf('function LiveControls(');
+    expect(inicio, 'não achei function LiveControls(').toBeGreaterThan(-1);
+    const fim = PANEL_APP.indexOf('const LANGUAGE_NAMES', inicio);
+    expect(fim, 'não achei const LANGUAGE_NAMES depois do LiveControls').toBeGreaterThan(inicio);
+    const trecho = PANEL_APP.slice(inicio, fim);
+    const copiar = trecho.indexOf('<CopyIcon />');
+    const stats = trecho.indexOf('{stats}');
+    const parar = trecho.indexOf('name="stop"');
+    expect(copiar).toBeGreaterThan(-1);
+    expect(stats).toBeGreaterThan(copiar);
+    expect(parar).toBeGreaterThan(stats);
+  });
+
+  it('o LiveBody decide o lugar das estatísticas com statsInControlsRow e passa stats={ ao LiveControls', () => {
+    const inicio = PANEL_APP.indexOf('function LiveBody(');
+    expect(inicio, 'não achei function LiveBody(').toBeGreaterThan(-1);
+    const fim = PANEL_APP.indexOf('function PanelHeader(', inicio);
+    expect(fim, 'não achei function PanelHeader( depois do LiveBody').toBeGreaterThan(inicio);
+    const trecho = PANEL_APP.slice(inicio, fim);
+    expect(trecho).toContain('statsInControlsRow');
+    expect(trecho).toContain('stats={');
+  });
+
+  it('as classes da linha própria, da linha dos botões e a raiz do LiveControls aparecem uma vez só', () => {
+    const vezes = (trecho: string) => PANEL_APP.split(trecho).length - 1;
+    expect(vezes('mt-2.5 shrink-0 px-1 text-caption')).toBe(1);
+    expect(vezes('min-w-0 flex-1 px-1 text-caption leading-tight')).toBe(1);
+    expect(vezes('mt-2.5 flex shrink-0 items-center gap-1.5')).toBe(1);
+  });
 });
