@@ -100,6 +100,15 @@ describe('AgpQuestionsPanel — rolagem, texto longo e emblemas (10-07, M-3)', (
     expect(scroller?.classList.contains('outline-none')).toBe(true);
   });
 
+  it('o contêiner da lista corta o excesso (overflow-hidden) e só a região rolável rola', async () => {
+    await show({ sessionId: SID, connection: 'live', questions: [q('a')] });
+    const scroller = host.querySelector('ul')?.parentElement;
+    const container = scroller?.parentElement;
+    expect(container?.classList.contains('overflow-hidden')).toBe(true);
+    expect(scroller?.classList.contains('scroll-region')).toBe(true);
+    expect(scroller?.getAttribute('tabindex')).toBe('0');
+  });
+
   it('pergunta sem lente e não fixada: o cartão só tem o parágrafo do texto', async () => {
     await show({ sessionId: SID, connection: 'live', questions: [q('a', { lens: null, status: 'queued' })] });
     const li = host.querySelector('li');

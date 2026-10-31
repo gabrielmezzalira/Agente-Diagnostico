@@ -280,3 +280,19 @@ describe('AgpLiveTabs — faixa de status na linha das abas (10-13, G-10-7)', ()
     expect(banners()).toHaveLength(0);
   });
 });
+
+describe('AgpLiveTabs — corte do transbordo (10-13, G-10-7)', () => {
+  it('a raiz corta o excesso com folga de 4 px para o anel de foco e mantém o layout flex', () => {
+    const rootEl = host.firstElementChild as HTMLElement;
+    for (const cls of ['overflow-clip', '[overflow-clip-margin:4px]', 'flex', 'min-h-0', 'flex-1', 'flex-col']) {
+      expect(rootEl.classList.contains(cls)).toBe(true);
+    }
+  });
+
+  it('o tabpanel corta o excesso e mantém o layout flex', () => {
+    const panel = host.querySelector('[role="tabpanel"]') as HTMLElement;
+    for (const cls of ['overflow-hidden', 'flex', 'min-h-0', 'flex-1', 'flex-col']) {
+      expect(panel.classList.contains(cls)).toBe(true);
+    }
+  });
+});
