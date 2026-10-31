@@ -4,18 +4,18 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 14
+current_plan: 15
 status: executing
-stopped_at: Completed 10-13-PLAN.md
-last_updated: "2026-10-31T20:25:04.654Z"
+stopped_at: Completed 10-14-PLAN.md
+last_updated: "2026-10-31T20:45:41.940Z"
 last_activity: 2026-10-31
 last_activity_desc: Phase 10 execution started
-state_head: 356ab2fb6aafe622166f008ce95723d38b8353b2
+state_head: 9f559af2a29d8fec7e04d82a4c4db4140d9579f9
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 77
-  completed_plans: 72
+  completed_plans: 73
 ---
 
 > **Sessão anterior encerrada com feature-flow ativo.**
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 14
+Current Plan: 15
 Total Plans in Phase: 18
 Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING
 Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
@@ -139,6 +139,7 @@ Progress: [████████░░] 80%
 | Phase 10 P10 | 16 min | 2 tasks | 1 files |
 | Phase 10 P12 | 11 min | 3 tasks | 1 files |
 | Phase 10 P13 | 14 min | 2 tasks | 5 files |
+| Phase 10 P14 | 18 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,7 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-12: D-07 (frase do CLAUDE.md sobre a Taqciti ler /ws/{session_id} só para a aba AGP, commit b64d8b6) mantido provisoriamente; aprovação humana do texto PENDENTE — o usuário adiou a verificação para o fim da fase — Resposta do usuário ao checkpoint: concluir o que for automatizável e verificar tudo no fim. Não é d07-ok nem d07-reverter. Para desfazer: git revert b64d8b6. Resolver antes do merge da Fase 10 na main; TAQ-05 não marcado (depende do UAT do 10-11).
 - [Phase 10]: 10-11: plano BLOQUEADO (status: blocked), não concluído: a prova em Chrome real com o Gemini com crédito foi adiada pelo usuário para a verificação final dele — Nenhum teste rodou nem resultado foi gravado; o 10-UAT.md segue com 12 testes pending. TAQ-05 e a Fase 10 só fecham com os testes 2 e 3 passando com IA real (D-13)
 - [Phase 10]: 10-13: faixa de status da aba AGP fica na linha das abas (so com a AGP aberta) e o corte do transbordo usa overflow-clip com folga de 4px na raiz (preserva o anel de foco)
+- [Phase 10]: 10-14: aviso de legendas divide a caixa da barra de vínculo em qualquer estado; sem barra aparece sozinho (nunca some). Aviso de conta vazio com empty:hidden.
 
 ### Pending Todos
 
@@ -267,8 +269,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-31T20:25:01.717Z
-Stopped at: Completed 10-13-PLAN.md
+Last session: 2026-10-31T20:45:38.693Z
+Stopped at: Completed 10-14-PLAN.md
 Resume file: None
 
 ---
