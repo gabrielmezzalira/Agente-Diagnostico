@@ -901,7 +901,7 @@ function LiveBody({
   return (
     <>
       {liveSlot}
-      <div className="mb-2 shrink-0">
+      <div className="mb-2 shrink-0 empty:hidden">
         <AccountBoundaryNotice boundary={session.accountBoundary} compact />
       </div>
       {session.captionLanguage !== 'unknown' &&
