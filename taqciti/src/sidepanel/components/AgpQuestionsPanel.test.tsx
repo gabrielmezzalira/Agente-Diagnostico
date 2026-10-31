@@ -59,27 +59,17 @@ describe('AgpQuestionsPanel', () => {
     expect(items).toEqual(['ProdutoPergunta a?', 'DadosPergunta b?', 'FixadaPergunta c?']);
   });
 
-  it.each([
-    ['connecting', 'Conectando ao Agente…'],
-    ['reconnecting', 'Reconectando ao Agente…'],
-  ] as const)('%s mostra o aviso de conexão e mantém as perguntas', async (connection, notice) => {
+  it.each(['connecting', 'reconnecting'] as const)('%s não desenha faixa própria (ela mora na linha das abas) e mantém as perguntas', async (connection) => {
     await show({ sessionId: SID, connection, questions: [q('a')] });
-    expect(host.querySelector('[role="status"]')?.textContent).toBe(notice);
+    expect(host.querySelector('[role="status"]')).toBeNull();
     expect(text()).toContain('Pergunta a?');
   });
 });
 
 describe('AgpQuestionsPanel — estado "Pausado" e faixa fixa (10-07)', () => {
-  const PAUSED_TEXT = 'Pausado · mostrando as últimas perguntas';
-  const PAUSED_HINT =
-    'A atualização volta sozinha quando a captura estiver gravando e o envio ao Agente estiver ligado.';
-
-  it('paused com perguntas: faixa com ícone e dica, e a lista recebida continua visível', async () => {
+  it('paused com perguntas: sem faixa própria, e a lista recebida continua visível', async () => {
     await show({ sessionId: SID, connection: 'paused', questions: [q('a'), q('b', { lens: 'dados' })] });
-    const banner = host.querySelector('[role="status"]');
-    expect(banner?.textContent).toContain(PAUSED_TEXT);
-    expect(banner?.getAttribute('title')).toBe(PAUSED_HINT);
-    expect(banner?.querySelector('svg')).not.toBeNull();
+    expect(host.querySelector('[role="status"]')).toBeNull();
     const items = Array.from(host.querySelectorAll('li')).map((li) => li.textContent);
     expect(items).toEqual(['ProdutoPergunta a?', 'DadosPergunta b?']);
   });

@@ -210,3 +210,73 @@ describe('AgpLiveTabs — abas acessíveis (10-09, M-4)', () => {
     }
   });
 });
+
+describe('AgpLiveTabs — faixa de status na linha das abas (10-13, G-10-7)', () => {
+  const PAUSED_TEXT = 'Pausado · mostrando as últimas perguntas';
+  const PAUSED_HINT =
+    'A atualização volta sozinha quando a captura estiver gravando e o envio ao Agente estiver ligado.';
+  const tabpanel = () => host.querySelector('[role="tabpanel"]') as HTMLElement;
+  const tablist = () => host.querySelector('[role="tablist"]') as HTMLElement;
+  const banners = () => host.querySelectorAll('[role="status"]');
+
+  it('paused com a aba AGP aberta: uma faixa com texto, dica e ícone, irmã do tablist e fora do tabpanel', async () => {
+    await writeFeed({ sessionId: SID, connection: 'paused', questions: [question('a', 'produto'), question('b', 'dados')] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(1);
+    const banner = banners()[0] as HTMLElement;
+    expect(banner.textContent).toContain(PAUSED_TEXT);
+    expect(banner.getAttribute('title')).toBe(PAUSED_HINT);
+    expect(banner.querySelector('svg')).not.toBeNull();
+    expect(tabpanel().contains(banner)).toBe(false);
+    expect(tablist().contains(banner)).toBe(false);
+    expect(banner.parentElement).toBe(tablist().parentElement);
+    expect(Array.from(host.querySelectorAll('li')).map((li) => li.textContent)).toEqual([
+      'ProdutoPergunta a?',
+      'DadosPergunta b?',
+    ]);
+  });
+
+  it.each([
+    ['connecting', 'Conectando ao Agente…'],
+    ['reconnecting', 'Reconectando ao Agente…'],
+  ] as const)('%s: a faixa diz o texto certo, sem ícone, e a lista continua visível', async (connection, notice) => {
+    await writeFeed({ sessionId: SID, connection, questions: [question('a', 'produto')] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(1);
+    expect(banners()[0]?.textContent).toBe(notice);
+    expect(banners()[0]?.querySelector('svg')).toBeNull();
+    expect(host.querySelectorAll('li')).toHaveLength(1);
+  });
+
+  it('ao vivo com perguntas: nenhuma faixa', async () => {
+    await writeFeed({ sessionId: SID, connection: 'live', questions: [question('a', 'produto')] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(0);
+  });
+
+  it('feed pausado com a aba Transcrição aberta (padrão): nenhuma faixa', async () => {
+    await writeFeed({ sessionId: SID, connection: 'paused', questions: [question('a', 'produto')] });
+    expect(banners()).toHaveLength(0);
+    expect(host.textContent).toContain('TRANSCRICAO');
+  });
+
+  it('voltar para a Transcrição some com a faixa', async () => {
+    await writeFeed({ sessionId: SID, connection: 'paused', questions: [question('a', 'produto')] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(1);
+    await click(tab('Transcrição'));
+    expect(banners()).toHaveLength(0);
+  });
+
+  it('sem vínculo, com a aba AGP aberta: nenhuma faixa', async () => {
+    await writeFeed({ sessionId: null, connection: 'idle', questions: [] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(0);
+  });
+
+  it('sessão não ativa (idle) com vínculo: nenhuma faixa', async () => {
+    await writeFeed({ sessionId: SID, connection: 'idle', questions: [] });
+    await click(tab('AGP'));
+    expect(banners()).toHaveLength(0);
+  });
+});
