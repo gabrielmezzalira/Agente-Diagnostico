@@ -74,9 +74,13 @@ import { detectNextMeeting, type NextMeetingHypothesis } from '@/features/meetin
 import { AgenteEndSlot } from '@/sidepanel/components/AgenteEndSlot';
 import { AgenteLiveSlot } from '@/sidepanel/components/AgenteLiveSlot';
 import { AgpLiveTabs } from '@/sidepanel/components/AgpLiveTabs';
+import { StripNotice } from '@/sidepanel/components/StripNotice';
 import { AgenteNudgeAnchor } from '@/sidepanel/components/AgenteNudgeAnchor';
 import { useFloating } from './useFloating';
 import { PANEL_OPEN_EVENT } from './mount';
+
+/** Aviso amarelo de captura parada (G-10-7). O texto mora aqui, uma cópia só. */
+const CAPTURE_STALL_NOTICE = 'As legendas do Meet pararam de chegar. Religando sozinho.';
 
 /**
  * Para onde a saída larga deve abrir.
@@ -908,11 +912,7 @@ function LiveBody({
             onDismissMeeting={callbacks.onDismissLanguageWarning}
           />
         )}
-      {!ctx.captureHealthy && (
-        <p className="mb-2 shrink-0 rounded-control border border-[#f2c94c]/25 bg-[#f2c94c]/10 px-3 py-2 text-caption leading-relaxed text-[#f7dd8f]">
-          As legendas do Meet pararam de chegar. Religando sozinho.
-        </p>
-      )}
+      {!ctx.captureHealthy && <StripNotice>{CAPTURE_STALL_NOTICE}</StripNotice>}
       <AgpLiveTabs>
         <TranscriptView
           segments={session.segments}
