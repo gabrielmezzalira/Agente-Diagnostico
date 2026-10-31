@@ -1,21 +1,14 @@
 ---
-status: testing
+status: partial
 phase: 10-agp-question-panel-in-taqciti
 source: 10-PLAN.md do Gabriel (seção 7, os 7 testes de base), 10-CONTEXT.md (D-13, D-15, D-16, D-18, D-19), 10-RESEARCH.md (UAT de 7 para 12 testes), 10-UI-SPEC.md (contrato de copy)
 started: 2026-10-30T14:28:03Z
-updated: 2026-10-30T14:33:29Z
+updated: 2026-10-31T18:15:04.870Z
 ---
 
 ## Current Test
-<!-- OVERWRITE each test - shows where we are -->
 
-number: 1
-name: Aba AGP sem cliente vinculado
-expected: |
-  Entre numa reunião do Meet com o TaqCITi ligado, SEM vincular cliente. No painel aparecem as abas "Transcrição" e "AGP",
-  com "Transcrição" selecionada. Ao clicar em "AGP" aparece só o aviso "Vincule esta reunião a um cliente para ver aqui as
-  perguntas do Agente." e nenhuma pergunta; nenhum número aparece ao lado de "AGP".
-awaiting: user response
+[testing complete]
 
 ## Preparo comum
 
@@ -58,7 +51,7 @@ esperado: |
   - Ao clicar em "AGP" no painel do Meet, aparece exatamente: "Vincule esta reunião a um cliente para ver aqui as perguntas do Agente." Nenhuma pergunta, nem de outra sessão.
   - Na tela larga, o mesmo aviso ganha uma segunda frase: "O vínculo é feito no painel do TaqCITi dentro do Meet."
   - A transcrição rola normalmente nas duas telas.
-result: [pending]
+result: pass
 
 ### 2. Perguntas reais do Agente aparecem na AGP com a lente
 depende_de_ia: sim
@@ -79,8 +72,16 @@ esperado: |
   - O número ao lado de "AGP" conta as perguntas e sobe mesmo com a aba "Transcrição" selecionada.
   - Pelo menos uma pergunta de cada lente apareceu ao longo do teste.
   - A pergunta nova entra no fim da lista. Anote em "evidence:" se, com a lista cheia, ela fica fora da vista e exige rolar (observação A-3 do UI-SPEC).
-evidence:
-result: [pending]
+evidence: |
+  2026-10-31, chamada 6. Usuário relatou "as perguntas estão sendo geradas, pass" (contador e cartões na aba AGP).
+  Banco (sessão d369b2c1-9047-4772-9806-7ca0733ffc6f, cliente ZZ-TESTE-D20): 8 perguntas, TODAS com lens `produto`
+  (3 `used` às 14:18:37; 5 `dismissed` entre 14:22:22 e 14:22:28), nenhuma com lens `dados`; sem 402 no log (Gemini voltou).
+  Falta provar o critério "pelo menos uma pergunta de cada lente": o planner Dados só roda quando o contador de gatilhos
+  fecha ciclo par (pipeline.py, D-13), então são precisos pelo menos 2 cliques em "Gerar" falando também de dados
+  (fontes, qualidade, planilhas, LGPD). Refazer na próxima reunião vinculada (a sessão d369b2c1 já está `finished`).
+  Refeito na mesma chamada: relato do usuário "apareceram as perguntas de dados". Banco, sessão
+  09127df0-a093-4072-8fa0-df3fdc22748a (14:31:42 a 14:35:16): 8 perguntas com 2 lentes distintas (produto e dados). Critério das duas lentes atendido.
+result: pass
 
 ### 3. A pergunta na fila some quando o tempo dela acaba
 depende_de_ia: sim
@@ -94,7 +95,8 @@ como fazer:
 esperado: |
   - Passados os 30 s, a pergunta que ninguém tocou some da aba AGP de uma vez, sem animação de saída e sem barra de tempo (a Taqciti não tem relógio próprio: só obedece ao aviso do backend). O número ao lado de "AGP" desce junto. Se era a única, a aba mostra "Nenhuma pergunta por enquanto. Elas aparecem aqui conforme o Agente gera."
   - A pergunta fixada no site continua na aba AGP depois de 60 s: o backend só avisa a expiração de pergunta que ainda está na fila. (O selo "Fixada" ainda não aparece na Taqciti; isso é o teste 12.)
-result: [pending]
+evidence: 2026-10-31, chamada 6 (sessão 734148a1-809a-4aa6-a0b0-d7d8bb1fd0e4, ZZ-TESTE-D20). Relato do usuário sobre o Bloco 1: "aconteceu exatamente o que você disse" (a pergunta que ninguém tocou sumiu; a fixada continuou). Adaptação ao roteiro: no mesmo intervalo o usuário também fixou uma e descartou outra no site, deixando uma sem tocar. Limite da prova: o banco não mostra mais pergunta `pinned` nessa sessão (só `used` e `dismissed`), então a contra-prova da fixada se apoia só no relato.
+result: pass
 
 ### 4. Backend cai e volta
 depende_de_ia: parte B
@@ -114,7 +116,9 @@ como fazer:
 esperado: |
   - Parte A: sem backend aparece "Reconectando ao Agente…" fixa no topo da aba (não rola junto com a lista); sem botão e sem aviso sonoro. Com o backend de volta a faixa some sozinha, sem recarregar.
   - Parte B: durante a queda a pergunta já recebida continua na tela (a lista não esvazia) e a faixa "Reconectando ao Agente…" está no topo. Quando o backend volta a faixa some. A lista passa a ser a que o backend tem agora: uma pergunta da fila que passou do tempo nesse intervalo pode sumir, e isso é normal.
-result: [pending]
+parte_A: pass em 2026-10-31 (chamada 1): faixa "Reconectando ao Agente…" apareceu com o backend parado e sumiu sozinha ao voltar; log mostra reconexão `WebSocket /ws/` [accepted]. Cliente usado: ZZ-TESTE-D20.
+parte_B: pass em 2026-10-31 (chamada 6, sessão 883199c9-2454-4119-9275-9f6237734919, ZZ-TESTE-D20), relato do usuário: "acontece exatamente o esperado" nos dois momentos (backend parado: faixa "Reconectando ao Agente…" e perguntas continuam na tela; backend de volta: faixa some sozinha). Log: depois do reinício, `WebSocket /ws/883199c9… [accepted]` e `connection open`, sem erro nem 402.
+result: pass
 
 ### 5. Fim da call fecha a conexão
 depende_de_ia: não
@@ -130,7 +134,8 @@ esperado: |
   - Nunca aparece "Reconectando ao Agente…" depois do fim da chamada.
   - No terminal: uma linha parecida com `connection closed` e, em até cerca de 30 segundos, `POST /webhook/extension/sessions/<id>/finish` com 200.
   - Depois disso, nenhuma linha nova com `WebSocket /ws/` aparece (nenhuma reconexão depois do fim).
-result: [pending]
+evidence: 2026-10-31, chamada 1. Painel: tela de fim sem "Reconectando…" (relato do usuário). Log do backend depois do marcador: `connection closed` e `POST /webhook/extension/sessions/f6540a7c-e3ca-43cd-9b27-fe3f35495db1/finish` 200 (uma vez); nenhuma linha nova `WebSocket /ws/`.
+result: pass
 
 ### 6. Navegar para outro site no meio da call encerra a reunião (DA-4)
 depende_de_ia: não
@@ -144,7 +149,8 @@ como fazer:
 esperado: |
   - Contra-prova: recarregar a sala NÃO encerra a reunião (nada de "Transcrição salva"; a mesma reunião continua, voltando a gravar quando você entra de novo).
   - Prova: depois de ir para `example.com` a tela larga mostra a reunião como encerrada ("Transcrição salva", com as falas no histórico) e o terminal mostra `POST /webhook/extension/sessions/<id>/finish` com 200.
-result: [pending]
+evidence: 2026-10-31, chamada 2. Relato do usuário: pass. Log do backend: 1 `POST /webhook/extension/sessions` 201 (sessão ab528c8d-2a22-465c-ada3-ed151e8b2086, nenhuma sessão nova depois do F5), 7 envios de transcrição 202, WebSocket aberto e fechado uma vez, 1 `POST …/ab528c8d…/finish` 200; sem erro nem 402.
+result: pass
 
 ### 7. As duas telas ao vivo têm a aba AGP, e o visual está bom
 depende_de_ia: parte B
@@ -167,8 +173,17 @@ esperado: |
   - Nos três tamanhos do painel a barra de abas aparece inteira; nos compactos, uma pergunta ou duas já ocupam a lista, e ela rola.
   - A faixa "Reconectando ao Agente…" fica parada no topo da aba enquanto a lista rola por baixo.
   - O texto sem espaços quebra dentro do cartão e não aparece rolagem horizontal em nenhum tamanho do painel.
-evidence:
-result: [pending]
+evidence: |
+  parte_A: pass em 2026-10-31 (chamada 1), relato do usuário.
+  parte_B (chamada 6, 2026-10-31): defeito no tamanho compacto do painel. Print `Screenshot 2026-10-31 144656.png`:
+  painel "Pausado · 03:45" com a aba AGP mostrando o contador 3 e NENHUM cartão visível; o aviso amarelo "As legendas do Meet
+  pararam de chegar. Religando sozinho.", a faixa "Pausado · mostrando as últimas perguntas" e o rodapé ocupam o espaço, e a faixa
+  fica SOBREPOSTA à linha "1 fala · 1 pessoa · 31 palavras".
+  Relato do usuário: depois de clicar em usar/fixar/descartar no site, no tamanho comprimido não dá mais para ver as perguntas,
+  "porém antes disso eu conseguia". Faltam ainda os passos da faixa fixa com rolagem e do texto comprido.
+result: issue
+reported: "capturei esse defeito em que o pausado fica junto com o numero de falas pessoas e palavras. quando eu clico em deixar ou fixar ou descartar ai na parte de comprimido eu não consigo visualizar mais as perguntas, porem antes disso eu conseguia"
+severity: major
 
 ### 8. "Continuar envio" durante o encerramento da sessão é ignorado (procedimento assistido)
 depende_de_ia: não
@@ -188,8 +203,31 @@ esperado: |
   - Passo 5: o clique em "Continuar envio" não faz nada visível: o cartão continua "O envio parou na parte X de Y..." com o botão (não vira "Enviando para…", não aparece barra de progresso). A recusa é silenciosa de propósito (D-18).
   - Passo 6: quando o `finish` termina com sucesso (status 200), o cartão ganha o aviso "A sessão no Agente já foi encerrada. O restante entra na transcrição, mas o relatório precisa ser gerado de novo."
   - Passo 7: agora "Continuar envio" funciona: o cartão passa a "Enviando para ZZ-TESTE-WR05 <data>…" com a barra e termina em "Reunião enviada para ZZ-TESTE-WR05 <data>."
-evidence:
-result: [pending]
+evidence: |
+  NÃO é uma falha do produto: o teste não chegou a exercitar o que mede. Tentado em 2026-10-31 (chamada 5), duas vezes.
+  O que aconteceu: o passo 2 (bloquear só o envio das falas) não surtiu efeito. Nas duas tentativas a reunião foi enviada inteira
+  (log do backend: `POST /webhook/extension/sessions` 201, 1 e depois 8 `POST /webhook/extension` 202, `POST …/finish` 200),
+  então nunca apareceu o cartão "O envio parou na parte X de Y" e não houve janela para clicar em "Continuar envio".
+  Diferença do roteiro: o DevTools desta máquina (Chrome em português) não tem mais o painel "Bloqueio de solicitação de rede".
+  O painel atual se chama "Condições de solicitação" (Esc → gaveta de baixo → aba "Condições de solicitação"; a opção do menu
+  Ctrl+Shift+P é "Ativar o bloqueio e a limitação de solicitações") e usa padrões no formato URLPattern, não o `*/webhook/extension`
+  do roteiro. A regra criada foi trocada para `http://127.0.0.1:8000/webhook/extension` com condição "Bloco", e mesmo assim os
+  envios passaram. Não se sabe ainda se foi regra não aplicada (contador "Afetados" não conferido), padrão que não casa ou o
+  service worker reiniciado.
+  Já descartado: o envio é feito pelo service worker (`taqciti/src/background/agenteAssociation.ts`, `fetch` com
+  `AbortSignal.timeout`), que é o DevTools que foi aberto; criar o perfil de limitação não foi necessário porque o envio nunca parou.
+  Para quem for refazer: (1) abrir o DevTools do "service worker" em `chrome://extensions`; (2) no painel "Condições de solicitação"
+  criar a regra, marcar, e CONFERIR que "Afetados" sobe ao tentar enviar uma reunião; se ficar em 0, testar outros padrões
+  (ex.: `*://127.0.0.1:8000/webhook/extension`) ou usar uma versão de Chrome/DevTools que ainda tenha o painel antigo;
+  (3) só depois seguir o passo 3 do "como fazer". Alternativa a avaliar: provocar a falha do lado do backend (derrubar o backend
+  logo após a criação da sessão), mas o envio local termina em milissegundos, então isso exigiria também a limitação de rede.
+  O teste automatizado da recusa (D-02/WR-05, plano 10-01) continua existindo; falta só a prova no Chrome real.
+  Dados de teste deixados no Supabase de produção por estas tentativas (para a limpeza M9, sessões primeiro, cliente depois):
+  sessões 0a03a5a1-c081-48fc-b8d8-557aa4f06beb e 8daafe6c-11b0-4774-86ee-1cb3fcd1f221, e os clientes `ZZ-TESTE-WR05` /
+  `ZZ-TESTE-WR05B` que o usuário tiver criado (conferir pelo nome).
+result: blocked
+blocked_by: other
+reason: "Procedimento assistido de DevTools adiado pelo usuário: o bloqueio de requisições do DevTools atual não casou com o envio da Taqciti; refazer com quem conhece o Chrome DevTools (ver evidence)."
 
 ### 9. A mesma reunião em duas abas não encerra quando uma aba sai
 depende_de_ia: não
@@ -210,7 +248,8 @@ esperado: |
   - Passo 6: a reunião encerra uma única vez, só depois de sair nas duas abas: o terminal mostra exatamente UMA linha `POST /webhook/extension/sessions/<id>/finish` com 200.
   - Passo 7: a aba parada na pré-entrada não segura a reunião: ao sair da chamada na aba 1 a reunião encerra normalmente.
   - Se algum passo 3 a 5 encerrar a reunião da aba 1, anote qual passo foi e se a aba 2 estava com as legendas ligadas (se a Taqciti não "enxerga" a outra aba, ela encerra de propósito; é o comportamento seguro, D-17).
-result: [pending]
+evidence: 2026-10-31, chamada 4. Relato do usuário: rodadas A e B pass. Log do backend: cada sessão criada depois do teste 6 (c53f2762…, ec4dac9a…, e9d2eb76…) tem exatamente UM `finish` 200 e nenhuma tem dois; nenhum erro nem 402. Observação: apareceram 3 sessões entre o teste 6 e o fim do teste 9 (esperado: 2 se o 10A não foi vinculado); a mais antiga provavelmente é do 10A vinculado, a confirmar com o usuário.
+result: pass
 
 ### 10. Ir para a Nova Guia (`chrome://`) encerra a reunião, e o aviso de instalação não muda (D-04)
 depende_de_ia: não
@@ -234,7 +273,12 @@ esperado: |
   - Se as listas forem diferentes, anote as duas em "evidence:": não é defeito do código, é o custo do D-04 (o Chrome desativa a extensão até a pessoa aceitar a permissão), e o time precisa decidir como comunicar quando houver distribuição.
   - Limite: carregar a pasta e dar ↻ não exercita o diálogo de nova permissão (isso só acontece numa atualização de pacote instalado); a prova definitiva só vem na distribuição.
 evidence:
-result: [pending]
+parte_A: pass em 2026-10-31 (chamada 3), relato do usuário: ao ir para `chrome://newtab` a reunião apareceu como encerrada (A1 confirmada).
+parte_B: pass em 2026-10-31 (prints Captura de tela 2026-10-31 151310.png e 151415.png, console da tela larga). Saídas literais:
+  `COM tabs: ["Ler e mudar seus dados em qualquer site"]` e `SEM tabs: ["Ler e mudar seus dados em qualquer site"]`. As duas listas são iguais:
+  a permissão "tabs" não acrescenta aviso de instalação (A2 confirmada). Efeito colateral visto no console: 5 erros `ERR_CONNECTION_REFUSED` em
+  `ws://localhost:8000/ws/883199c9…` são as tentativas de reconexão feitas enquanto o backend esteve parado no teste 4B (esperado).
+result: pass
 
 ### 11. O feed fecha em pausa ou com o envio desligado e mantém as perguntas
 depende_de_ia: sim
@@ -253,8 +297,17 @@ esperado: |
   - Passo 4: a dica diz "A atualização volta sozinha quando a captura estiver gravando e o envio ao Agente estiver ligado." No terminal não aparece nenhuma linha nova `WebSocket /ws/` durante a pausa (a linha `connection closed` do instante da pausa é normal).
   - Passo 5: ao retomar passa por "Conectando ao Agente…" mantendo a lista, e depois por um estado normal, com a lista do backend (a pergunta fixada continua; perguntas da fila podem ter expirado). O terminal mostra UMA conexão nova.
   - Passo 6: com o envio desligado a aba AGP mostra a faixa "Pausado" e o terminal não mostra conexão nova; ao religar, volta a conectar.
-evidence:
-result: [pending]
+evidence: |
+  Observação já feita em 2026-10-31 (Bloco 3a, pausa): a faixa "Pausado · mostrando as últimas perguntas" aparece, mas no tamanho compacto
+  se sobrepõe ao rodapé "N falas · N pessoas · N palavras" (ver G-10-7 e o print Screenshot 2026-10-31 144656.png).
+  Execução completa em 2026-10-31 (chamada 6, sessão 883199c9-2454-4119-9275-9f6237734919). Relato do usuário: "pela minha visão foi pass"
+  (pausa, retomada, envio desligado e religado, com a faixa "Pausado" e as perguntas mantidas).
+  Log do backend depois do marcador (linha 19): para a sessão 883199c9 apareceram exatamente 2 conexões novas `WebSocket /ws/` aceitas
+  e 2 `connection closed`, nenhuma a mais, seguidas do `finish` 200 ao sair da chamada; sem erro nem 402. Isso bate com o esperado
+  (uma conexão nova em "Retomar" e outra ao religar o envio, nenhuma por reconexão repetida).
+  Limite da prova: o usuário não mandou os avisos intermediários (A e B), então não há marcador entre as etapas; o log (sem horário) não
+  separa o que aconteceu dentro de cada janela de 60 s. A prova de "nenhuma conexão nova durante a pausa" vem da contagem total (2 em vez de mais) e do relato.
+result: pass
 
 ### 12. Fixar ou descartar no site não muda a aba AGP até reconectar (D-09 corrigido)
 depende_de_ia: sim
@@ -269,27 +322,78 @@ como fazer:
 esperado: |
   - Passo 3: a pergunta fixada e a pergunta descartada no site continuam na aba AGP, e a fixada não mostra o selo "Fixada". O backend não avisa fixar nem descartar por WebSocket: fixar ou descartar no site não tira nada da aba AGP, o cartão continua na aba AGP até a Taqciti reconectar. Isso é o combinado da fase (D-09) e a Fase 10.1 resolve.
   - Passo 5: depois da reconexão a aba mostra o estado real: a pergunta fixada aparece com o selo "Fixada" e a descartada sumiu.
-evidence:
-result: [pending]
+evidence: |
+  Passos 1 a 3 feitos em 2026-10-31 (Bloco 1, chamada 6): o comportamento foi o descrito (fixada e descartada continuaram na aba AGP).
+  O usuário discorda do desenho: "a descartada deveria sumir e não permanecer" (follow-up registrado, não é falha do teste).
+  Passo 5 (reconexão) feito na mesma chamada, sessão 883199c9-2454-4119-9275-9f6237734919: relato do usuário "aconteceu exatamente o esperado"
+  (a fixada ganhou o selo "Fixada" e a descartada sumiu). Log: nova conexão `WebSocket /ws/883199c9…` aceita depois da volta do backend.
+result: pass
 
 ## Summary
 
 total: 12
-passed: 0
-issues: 0
-pending: 12
+passed: 10
+issues: 1
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 1
 
 ## Gaps
 
-[none yet]
+- gap_id: G-10-7
+  truth: "Nos tamanhos compactos do painel a aba AGP mostra pelo menos uma ou duas perguntas e a lista rola; a faixa de status não cobre o rodapé."
+  status: failed
+  reason: "User reported: depois de usar/fixar/descartar, no tamanho comprimido as perguntas deixam de ser visíveis (contador mostra 3, nenhum cartão aparece) e a faixa 'Pausado' se sobrepõe a '1 fala · 1 pessoa · 31 palavras'. Print: Screenshot 2026-10-31 144656.png."
+  severity: major
+  test: 7
+  artifacts: []  # Filled by diagnosis
+  missing: []    # Filled by diagnosis
+
+## Deferred Follow-Ups
+
+- test: 9
+  idea: "Na aba do TaqCITi não tem um indicador explícito de gravação, e poderia ter uma lixeira ao lado de 'ver no histórico'."
+  deferred_at: 2026-10-31
+- test: 2
+  idea: "Botão de gerar perguntas dentro da própria aba AGP da TaqCITi (hoje só existe o Gerar do site). O backend já aceita o evento generate_questions por WebSocket, mas exige mudar o D-07 (TaqCITi só lê) e planejar na Fase 10.1."
+  deferred_at: 2026-10-31
+- test: 2
+  idea: "Marcar uma pergunta como usada no site deveria tirá-la da aba AGP da TaqCITi (como acontece quando ela expira). Hoje o backend não avisa used/pinned/dismissed por WebSocket (ws.py só atualiza o estado), então a pergunta fica até a TaqCITi reconectar (D-09). Exige novo evento do backend e decisão do time na Fase 10.1."
+  deferred_at: 2026-10-31
+- test: 2
+  idea: "Poder descartar, no painel da TaqCITi, uma pergunta já fixada, para as perguntas não se acumularem. Exige botões na aba AGP (muda o D-07) e o backend refletir o descarte; Fase 10.1."
+  deferred_at: 2026-10-31
+- test: 2
+  idea: "PRIORIDADE (custo): o backend continua chamando o Gemini com a TaqCITi pausada ou sem fala nova. Em pipeline.py, _coverage_task (a cada 30 s) e _red_flag_task (a cada 15 s) só checam `if not self.state.transcript_chunks` (já houve alguma fala), sem checar se chegou fala nova desde a última chamada; pausada, a TaqCITi para de enviar e o backend repete a análise da mesma transcrição. Evidência: relato do usuário (o consumo continua com a TaqCITi pausada) mais a leitura do código. Os contadores do banco (red flags, snapshots de cobertura) NÃO provam a frequência das chamadas, porque red flag repetido é descartado e a cobertura só grava quando o score sobe; medir pela barra de custo da sessão no site. Plano: PLANO_CONSUMO_GEMINI_PAUSADO.md (raiz do repositório). O SDD diz que a cobertura roda 'a cada 30s ou 250 tokens novos' e o red flag em 'timer fixo de 15s', então a mudança é decisão do time. Fix provável: só chamar o Gemini se houver chunks novos (ou tokens novos) desde a última execução. É mudança de comportamento do backend, fora da fase 10: planejar à parte (7 seções, branch própria)."
+  deferred_at: 2026-10-31
+- test: 12
+  idea: "Pergunta descartada no site deveria sumir da aba AGP da TaqCITi na hora, e não permanecer até a reconexão (hoje é o combinado D-09: o backend não avisa descarte por WebSocket). Mesmo pacote do evento de status da Fase 10.1."
+  deferred_at: 2026-10-31
+- test: 3
+  idea: "Medição do consumo com a TaqCITi pausada (Bloco 3a, 2026-10-31): o usuário viu o custo da sessão, na barra do site, subir de US$ 0,001 para US$ 0,007 em poucos segundos durante a pausa, e considera exagerado. Confirma o problema do item de prioridade de custo; corrigir via PLANO_CONSUMO_GEMINI_PAUSADO.md. Falta anotar a duração exata e a leitura inicial/final para o 'antes e depois'."
+  deferred_at: 2026-10-31
 
 ## Ordem sugerida
 
 Os testes se dividem pelo que dependem (D-13, D-19):
 - **Sem crédito do Gemini (sem IA):** 1, 4 (parte A), 5, 6, 7 (parte A), 8, 9 e 10. Rode estes primeiro.
 - **Com crédito do Gemini (precisam de pergunta de verdade):** 2, 3, 4 (parte B), 7 (parte B), 11 e 12. Só rode depois de confirmar o crédito (item 6 do "Preparo comum"). Enquanto não houver crédito, deixe-os "blocked" com o motivo "Gemini sem crédito (D-13)"; o backend falso nunca conta como prova final.
+
+## Roteiro por chamada (12 testes em 6 chamadas)
+
+A numeração dos testes não muda; só a ordem de execução. Responda por chamada (ex.: `1 pass, 7A pass, 4A: ..., 5 pass`).
+O backend local é iniciado pelo assistente: ele lê o log (`WebSocket /ws/`, `finish`, `402`) e para/sobe o backend quando o teste pedir.
+
+| Chamada | Testes | Observação |
+|---|---|---|
+| 1 (~15 min, sem IA) | 1 → 7A → 4A → 5 | Começa sem vincular (1). Depois vincula `ZZ-TESTE-AGP-4` (4A, backend parado/subido) e sai da chamada (5). Não abrir a sessão no `:5173`. |
+| 2 (~5 min) | 6 | Vinculada. F5 como contra-prova e depois `example.com`. |
+| 3 (~5 min) | 10A | `chrome://newtab`. Não precisa vincular. |
+| 4 (~15 min) | 9 (rodadas A e B) | Duas abas do Meet. |
+| 5 (~10 min) | 8 + 10B | Os 5 min de espera do 8 servem para rodar os 2 comandos do 10B no console da tela larga (locais, sem rede). Precisa de DevTools. |
+| 6 (~25 min, com IA) | 2 → 3 → 4B → 7B → 11 → 12 | Uma única chamada vinculada. Só com crédito do Gemini; sem crédito, marcar `blocked` ("Gemini sem crédito (D-13)"). |
+
+Rode as chamadas 1 a 5 primeiro; a 6 só depois de confirmar o crédito.
 
 Dicas para juntar chamadas (menos reuniões para fazer):
 - Uma chamada só pode cobrir 1, 7 (parte A) e 4 (parte A) e terminar com o 5 (sair da chamada).
