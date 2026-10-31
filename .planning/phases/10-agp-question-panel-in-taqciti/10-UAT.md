@@ -3,7 +3,7 @@ status: diagnosed
 phase: 10-agp-question-panel-in-taqciti
 source: 10-PLAN.md do Gabriel (seção 7, os 7 testes de base), 10-CONTEXT.md (D-13, D-15, D-16, D-18, D-19), 10-RESEARCH.md (UAT de 7 para 12 testes), 10-UI-SPEC.md (contrato de copy)
 started: 2026-10-30T14:28:03Z
-updated: 2026-10-31T18:15:04.870Z
+updated: 2026-10-31T21:15:00.000Z
 ---
 
 ## Current Test
@@ -181,6 +181,119 @@ evidence: |
   fica SOBREPOSTA à linha "1 fala · 1 pessoa · 31 palavras".
   Relato do usuário: depois de clicar em usar/fixar/descartar no site, no tamanho comprimido não dá mais para ver as perguntas,
   "porém antes disso eu conseguia". Faltam ainda os passos da faixa fixa com rolagem e do texto comprido.
+reteste_G-10-7: |
+  Roteiro do reteste do G-10-7 (gravado em 2026-10-31, depois dos planos 10-13, 10-14, 10-15 e 10-17; plano 10-16).
+  O build da Taqciti foi refeito com 127.0.0.1:8000 e o envio ao Agente ligado: falta só o ↻ em chrome://extensions.
+
+  Antes de começar — alturas ESTIMADAS da lista da aba AGP no compacto (lidas do CSS, NÃO medidas; o que vale é a
+  medida que você anotar). Um cartão de pergunta precisa de ~105 px (texto de 2 linhas) a ~125 px (3 linhas).
+  - gravando, saudável: ~116 px (passo 6);
+  - pausado: ~115 a ~116 px (passo 7);
+  - estatísticas em 3 linhas na linha dos botões: ~113 px; em 4 linhas (quando aparece "· próxima: …"): ~98 px;
+  - gravando, com o aviso amarelo de legendas dentro da barra (só num travamento real, não dá para provocar): ~95 px
+    (passo 15);
+  - barra de vínculo de alerta com texto de 2 a 3 linhas (fora do ar, recusado, envio parado): ~84 a ~103 px (o passo 13
+    provoca o "fora do ar");
+  - aviso "Conta do Meet: …" visível: ~73 px; aviso de idioma da legenda (legenda fora do português): ~16 a ~36 px;
+  - cartão de 3 linhas: pela estimativa não cabe inteiro em nenhum estado, nem no saudável.
+  Como julgar: o combinado "pelo menos um cartão inteiro no compacto" é conferido gravando e pausado (passos 6, 7, 11 e
+  12). Nos passos 6 e 7, menos de 105 px é "menos de um cartão" (ver o fim da Parte A). Nos outros estados (passos 11
+  com cartão de 3 linhas ou mais, 13 e 15), menos de 105 px ou um cartão de 3 linhas cortado NÃO é defeito do passo:
+  anote "abaixo do limiar: passo <n>, <estado>, <altura>" e siga em frente. Se esses estados entram no combinado é uma
+  DECISÃO EM ABERTO do time, não de quem testa nem do executor.
+
+  Preparo (uma vez):
+  1. Backend local rodando (item 1 do "Preparo comum") e o site do Agente aberto (item 2). No Windows, `127.0.0.1`.
+  2. Em `chrome://extensions`, clique no ↻ (Recarregar) do TaqCITi: o build com as correções do G-10-7 já foi refeito
+     pelo executor. Recarregue também a aba do Meet, se ela já estava aberta.
+  3. Use só o cliente `ZZ-TESTE-G107 2026-10-31`.
+
+  Parte A — medida sem IA (não gasta crédito do Gemini):
+  4. Entre numa reunião do Meet ("Nova reunião" → "Iniciar uma reunião instantânea") e espere o painel mostrar "Gravando".
+     Vincule: "Selecionar cliente agora" → "Criar cliente novo" → `ZZ-TESTE-G107 2026-10-31` → "Vincular reunião". Espere a
+     barra "Enviando ao vivo para ZZ-TESTE-G107 2026-10-31".
+  5. Ainda no tamanho médio (o padrão), confira: o campo com o nome da reunião aparece no topo do painel, abaixo do logo, e
+     a linha "N falas · N pessoas · N palavras" fica numa linha só dela, acima dos botões de pausa, legendas, copiar e
+     "Finalizar". Agora, no cabeçalho do painel, clique em "Comprimir" até ele ficar apagado (tamanho compacto). Clique na
+     aba "AGP". Ela deve mostrar "Nenhuma pergunta por enquanto. Elas aparecem aqui conforme o Agente gera."
+     Esperado no compacto: o campo do nome da reunião NÃO aparece (o topo fica só com o logo, o status e os botões de
+     janela; isso é o combinado, não defeito); a linha "N falas · N pessoas · N palavras" aparece DENTRO da linha dos
+     botões, entre o botão de copiar e o "Finalizar" (pode quebrar em 2 linhas), legível e sem nada por cima; o
+     "Finalizar" aparece inteiro, dentro do painel; a barra de abas aparece inteira.
+  6. Medida: clique com o botão direito no texto "Nenhuma pergunta por enquanto…" → "Inspecionar". No DevTools, na aba
+     Elements, clique na linha logo ACIMA da selecionada (a `div` cuja classe começa com `scroll-region`). Passe o mouse
+     sobre ela: o Chrome mostra o tamanho (por exemplo `352 × 116`). Anote o segundo número (altura em px). Esperado: 105
+     ou mais (é o espaço de um cartão de pergunta de 2 linhas). Anote também em quantas linhas as estatísticas aparecem
+     na linha dos botões (1 a 4).
+  7. Clique em "Pausar" (botão de pausa do painel). Fique 60 segundos olhando o painel (mais que os 25 s do vigia).
+     Esperado: "Pausado · mostrando as últimas perguntas", com o ícone de pausa, aparece NA MESMA LINHA das abas, à
+     direita de "Transcrição | AGP", com o texto inteiro (pode quebrar em 2 linhas, sem reticências); o aviso amarelo
+     "As legendas do Meet pararam de chegar. Religando sozinho." NÃO
+     aparece em nenhum momento; logo depois do clique, o aviso rápido "Captura pausada" aparece por uns 2 segundos no
+     lugar das estatísticas, na linha dos botões, e depois as estatísticas voltam; nada cobre a linha dos botões. Repita
+     a medida do passo 6 e anote a altura (esperado: 105 ou mais).
+  8. Clique em "Retomar" e fale normalmente por 40 segundos. Esperado: a faixa "Pausado" some (pode passar rapidamente
+     por "Conectando ao Agente…" na linha das abas); o aviso amarelo NÃO aparece logo depois de retomar.
+  9. Anel de foco: clique na aba "Transcrição" e aperte a seta → e depois a seta ←. Esperado: o contorno verde de foco
+     aparece inteiro em volta da aba focada (não cortado em cima nem do lado).
+  9a. Botão "Novas falas": ainda no compacto, com a aba "Transcrição" aberta, fale sem parar por uns 20 segundos e,
+      enquanto fala, role a transcrição para CIMA com a roda do mouse. Esperado: aparece o botão "Novas falas" (com uma
+      seta para baixo) inteiro, perto da parte de baixo da transcrição, sem ser cortado pela borda da aba; clicar nele
+      leva a transcrição de volta ao fim e o botão some.
+  9b. Tela larga: abra a tela larga numa aba nova (ver "Preparo comum"). Esperado: as abas "Transcrição" e "AGP"
+      aparecem; com "Transcrição" aberta nenhuma faixa de status aparece e a transcrição rola com a roda do mouse (as
+      falas dos passos 8 e 9a estão lá). Volte à aba do Meet e clique em "Pausar"; volte à tela larga e clique em
+      "AGP". Esperado: "Pausado · mostrando as últimas perguntas" aparece NA MESMA LINHA das abas, à direita delas (não
+      numa linha própria acima da lista), com o texto inteiro, e o aviso da lista vazia aparece abaixo, inteiro. Volte à
+      aba do Meet e clique em "Retomar".
+  9c. Volta do nome: no painel do Meet, clique em "Expandir" uma vez (tamanho médio). Esperado: o campo com o nome da
+      reunião volta ao topo e as estatísticas voltam para a linha própria, acima dos botões. Clique em "Comprimir" de
+      novo (compacto) para seguir.
+  Se a altura anotada nos passos 6 ou 7 for menor que 105 px, um cartão de 2 linhas não cabe inteiro: pode parar aqui
+  e responder "menos de um cartão: <alturas anotadas>" (a Parte B fica para depois da decisão do time). Se o nome da
+  reunião aparecer no compacto, ou as estatísticas não estiverem na linha dos botões, responda "defeito: passo 5, <o que
+  viu>".
+
+  Parte B — com IA (precisa de crédito do Gemini, item 6 do "Preparo comum"):
+  10. Com a reunião vinculada, fale 1 a 2 minutos misturando produto (dor, processo, o que a solução faz) e dados
+      (fontes, planilhas, qualidade). No site do Agente, abra a sessão do `ZZ-TESTE-G107 2026-10-31` e clique em "Gerar";
+      espere ~30 s e clique em "Gerar" de novo, até a aba AGP ter pelo menos 3 perguntas. Logo que aparecerem (antes de
+      30 s), clique no alfinete ("Fixar") de 2 ou 3 delas no site, para não expirarem durante o teste.
+  11. Painel no tamanho compacto, aba AGP aberta. Esperado: pelo menos UM cartão de pergunta de 2 linhas aparece INTEIRO
+      (emblema "Produto" ou "Dados" e todas as linhas do texto) sem rolar; a lista rola para mostrar os outros; nada cobre
+      a linha dos botões com as estatísticas; o nome da reunião continua fora do topo. Anote quantas linhas tem o
+      primeiro cartão e se ele aparece inteiro. Como julgar cartões de 3 linhas ou mais: o que aprova é um cartão de 2
+      linhas inteiro (se nenhuma pergunta real tiver só 2 linhas, valem as alturas de 105 px ou mais dos passos 6 e 7).
+      Se o primeiro cartão tiver 3 linhas ou mais e não aparecer inteiro, isso NÃO é defeito: anote "abaixo do limiar:
+      passo 11, cartão de <n> linhas, <altura do passo 6>".
+  12. Clique em "Pausar". Esperado: o mesmo do passo 11, com "Pausado · mostrando as últimas perguntas" na linha das abas
+      e sem aviso amarelo. Clique em "Retomar".
+  13. Faixa fixa com rolagem: com a aba AGP aberta, pare o backend (Ctrl+C no terminal dele) e role a lista. Esperado:
+      "Reconectando ao Agente…" fica parada na linha das abas enquanto a lista rola por baixo, e nada cobre a linha dos
+      botões. Com o backend parado, a barra de vínculo pode trocar "Enviando ao vivo para …" por um aviso de alerta (por
+      exemplo "O Agente está fora do ar.") com texto de 2 ou 3 linhas: isso é esperado e deixa a lista mais baixa
+      (estimativa ~84 a ~103 px). Com a barra assim, repita a medida do passo 6 e anote a altura e o texto da barra.
+      Como julgar o passo 13: ele passa se a faixa ficar parada na linha das abas e nada cobrir a linha dos botões; a
+      altura medida aqui NÃO reprova o passo; se der menos de 105 px, anote "abaixo do limiar: passo 13, <texto da
+      barra>, <altura>". Suba o backend de novo e espere até 40 s: a faixa some sozinha.
+  14. Texto comprido (procedimento assistido): botão direito num cartão → "Inspecionar", dê duplo clique no texto da
+      pergunta e cole uma sequência de 120 letras "a" sem espaços. Esperado: o texto quebra dentro do cartão e não aparece
+      rolagem para o lado.
+  15. Opcional: se em algum momento aparecer sozinho o aviso amarelo de legendas com a reunião GRAVANDO, confira que ele
+      aparece como segunda linha DENTRO da faixa "Enviando ao vivo para …" (uma caixa só) e anote; se der, repita a medida
+      do passo 6 nesse momento e anote a altura (estimativa ~95 px). Não é defeito do passo: se der menos de 105 px,
+      anote "abaixo do limiar: passo 15, aviso de legendas na barra, <altura>".
+  16. Saia da chamada. Anote em evidence as alturas medidas (passos 6, 7, 13 e 15, se houve), em quantas linhas ficaram
+      as estatísticas e o primeiro cartão, cada anotação "abaixo do limiar", o que viu em cada passo e os ids de sessão
+      para a limpeza M9.
+
+  Resposta esperada, uma destas:
+  - "aprovado": passos 5 a 14 (incluindo 9a, 9b e 9c) como esperado, alturas dos passos 6 e 7 com 105 px ou mais, um
+    cartão de 2 linhas inteiro, e NENHUMA anotação "abaixo do limiar";
+  - "abaixo do limiar: <cada anotação>": tudo como no "aprovado", mas com uma ou mais anotações "abaixo do limiar"
+    (passos 11, 13 ou 15);
+  - "menos de um cartão: <alturas e o que viu>": passo 6 ou 7 com menos de 105 px, ou nenhum cartão de 2 linhas inteiro;
+  - "defeito: <passo e o que viu>".
 result: issue
 reported: "capturei esse defeito em que o pausado fica junto com o numero de falas pessoas e palavras. quando eu clico em deixar ou fixar ou descartar ai na parte de comprimido eu não consigo visualizar mais as perguntas, porem antes disso eu conseguia"
 severity: major

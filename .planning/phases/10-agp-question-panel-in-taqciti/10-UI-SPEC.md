@@ -80,6 +80,19 @@ Regras comuns `[TRAVADO]`:
 
 Estimativa de altura útil da lista no painel (a validar no UAT 7, não é medida): no `compact` (320 px) sobra algo em torno de uma fração de cartão depois do cabeçalho, da barra de abas, dos controles e das estatísticas. No `regular` (564 px) cabem cerca de 2 cartões. Ver A-2.
 
+> **Atualizado em 2026-10-31 (G-10-7, decisões do usuário).** A suposição A-2 ("quase nada" no compacto) foi substituída.
+> No `compact` (320 px) deve caber **pelo menos um cartão de pergunta de 2 linhas visível**, sem o painel crescer sozinho.
+> Isso é obtido compactando as faixas: a faixa de status (Conectando/Reconectando/Pausado) fica na linha das abas (plano
+> 10-13); o aviso amarelo de legendas fica dentro da barra de vínculo e não tem mais margem fantasma do aviso de conta vazio
+> (plano 10-14); e, **só no compacto**, o campo do nome da reunião some do cabeçalho e a linha de estatísticas ("N falas ·
+> N pessoas · N palavras") vai para a linha dos botões de controle (opções (a)+(b) escolhidas pelo usuário, plano 10-17;
+> renomear continua nos tamanhos médio e alto). O aviso amarelo de legendas não aparece com a captura pausada (plano 10-15).
+> Se a medição no Chrome real (plano 10-16) mostrar que ainda não cabe, a escolha de mais compactação está em aberto no
+> `10-UAT.md` (gap G-10-7). O limiar do contrato para cartões de 3 linhas e para os estados do compacto que ficam abaixo de
+> ~105 px pela estimativa (estatísticas em 4 linhas, aviso de legendas na barra, barra de alerta de 2 a 3 linhas, aviso de
+> conta, aviso de idioma; lista completa no começo do roteiro `reteste_G-10-7`) é **DECISÃO EM ABERTO do time**, registrada
+> no gap G-10-7 do `10-UAT.md`.
+
 ---
 
 ## Linguagem visual do cartão `[TRAVADO]`
@@ -269,7 +282,7 @@ Cada item é uma correção de lacuna, não reescrita. Arquivos e testes existen
 | ID | Mudança | Arquivo(s) | Origem | Prioridade |
 |----|---------|-----------|--------|------------|
 | **M-1** | Novo valor de conexão `'paused'` e o estado 7 (faixa + corpo vazio). O feed, em vez de limpar tudo quando não há alvo por causa de pausa/legendas/envio desligado, **mantém `sessionId` e `questions`** e publica `paused`. O painel mostra a faixa com ícone `pause`. `CONNECTIONS` inclui `'paused'`. A decisão de "pausa" x "encerrou/sem vínculo" (que continua limpando) é da regra pura de alvo, com teste de tabela por estado | `agpQuestionsStore.ts`, `agpQuestionsFeed.ts` (+ `agpTarget.ts`, `agpQuestionsFeedInstance.ts`), `AgpQuestionsPanel.tsx` | D-11, WR-04 | **Obrigatória** |
-| **M-2** | A faixa de status (`role="status"`) sai da região que rola e fica **fixa acima da lista** (`shrink-0`). Hoje ela é filha do contêiner `overflow-y-auto` e some quando a lista rola, escondendo justamente "reconectando" e "pausado" | `AgpQuestionsPanel.tsx` | D-14 (estados visíveis) | **Obrigatória** |
+| **M-2** | A faixa de status (`role="status"`) sai da região que rola e fica **fixa acima da lista** (`shrink-0`). Hoje ela é filha do contêiner `overflow-y-auto` e some quando a lista rola, escondendo justamente "reconectando" e "pausado" **Posição atualizada em 2026-10-31: a faixa fica na linha das abas (10-13).** | `AgpQuestionsPanel.tsx` | D-14 (estados visíveis) | **Obrigatória** |
 | **M-3** | Região de rolagem da lista: trocar `overflow-y-auto` por `scroll-region` com `tabIndex={0}` e `outline-none` (mesmo padrão de `HistoryList`): sem "vazar" a rolagem para a página do Meet e rolável pelo teclado. Texto da pergunta ganha `break-words` (um trecho sem espaço, como uma URL, não pode estourar os 396 px nem criar rolagem horizontal). A linha de emblemas só é renderizada quando há emblema (hoje, com `lens: null` e não fixada, sobra um `mb-1.5` (6 px) vazio). Cartões entram com `animate-fade-in motion-reduce:animate-none` (só opacidade, como na transcrição) | `AgpQuestionsPanel.tsx` | D-14 (painel compacto no Meet) | Recomendada |
 | **M-4** | Aba: altura 32 px (`h-8`); `aria-label` do contador (ver acima); o corpo da aba selecionada ganha `role="tabpanel"` com `aria-labelledby` apontando para a aba (e as abas `id` + `aria-controls`); setas esquerda/direita movem entre as duas abas, com `tabIndex` móvel (padrão WAI-ARIA de abas, já que as abas usam `role="tab"`) | `AgpLiveTabs.tsx` | acessibilidade | Recomendada |
 | **M-5** | Na **saída larga**, o aviso de "sem vínculo" ganha a segunda frase (ver Copy), porque `LiveScreen` não tem o espaço de vínculo e o aviso atual não diz onde vincular. A primeira frase fica idêntica. Mecanismo (prop `surface` ou texto opcional) fica a critério do plano, com `AgenteEndSlot` (`surface="panel"`) como precedente | `AgpQuestionsPanel.tsx`, `AgpLiveTabs.tsx`, `LiveScreen.tsx` | D-14 (tela larga) | Baixa |
@@ -332,7 +345,7 @@ Nenhuma bloqueia o plano. Cada uma foi resolvida pela escolha mais conservadora,
 | ID | Suposição adotada | O que o time pode querer decidir |
 |----|-------------------|----------------------------------|
 | **A-1** | A Taqciti **não** mostra o nome do bloco temático (o web app mostra, ex.: "Gargalo"). O campo `block` já chega e fica guardado, mas não há mapa de rótulos na Taqciti; copiar `BLOCK_LABELS` do `frontend/` duplicaria uma tabela de 26 entradas | Mostrar o bloco na 10.1 (ou antes), com um mapa único compartilhado |
-| **A-2** | **Sem redimensionamento automático.** Em `compact` (320 px) a lista tem quase nenhum espaço; o usuário usa `regular` ou `tall`. O seletor de cliente já sobe `compact` para `regular` sozinho (precedente em `AgenteLiveSlot`) | Fazer o mesmo ao abrir a aba AGP no `compact` (muda comportamento do painel, exigiria passar `panelSize` ao `AgpLiveTabs`) |
+| **A-2** | **Sem redimensionamento automático.** Em `compact` (320 px) a lista tem quase nenhum espaço; o usuário usa `regular` ou `tall`. O seletor de cliente já sobe `compact` para `regular` sozinho (precedente em `AgenteLiveSlot`) **Substituído em 2026-10-31: ver nota em Superfícies.** | Fazer o mesmo ao abrir a aba AGP no `compact` (muda comportamento do painel, exigiria passar `panelSize` ao `AgpLiveTabs`) |
 | **A-3** | Ordem = ordem de chegada; pergunta nova entra **no fim** e, com a lista rolando, pode ficar fora da vista. O contador avisa quando a aba não está aberta, mas não há rolagem automática | Mostrar a mais nova primeiro, ou rolar até ela. Verificar no UAT 2 se a pergunta nova aparece sem precisar rolar |
 | **A-4** | Pergunta some de repente no `question_expired` (sem barra de TTL, por D-12: dependeria de relógio local, que esconderia pergunta num relógio adiantado). Pelo D-09 (texto corrigido em 2026-10-28), pergunta fixada **ou** descartada **no site** continua aqui até a Taqciti reconectar (o backend não emite `question_expired` para ela; Armadilha 7 da pesquisa) | **Decidido em 2026-10-28 (usuário): aceitar o sumiço imediato.** Transmitir prazo e status pelo backend fica para a Fase 10.1 |
 | **A-5** | Um único aviso "Pausado" cobre as três causas (reunião em pausa, legendas desligadas, envio desligado). A causa exata não é dita; a dica fala das duas condições | Texto por causa exigiria um campo `reason` no feed |
