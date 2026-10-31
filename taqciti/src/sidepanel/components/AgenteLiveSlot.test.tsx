@@ -368,7 +368,8 @@ describe('AgenteLiveSlot — aviso de legendas dividindo a faixa (G-10-7)', () =
     const text = Array.from(h.host.querySelectorAll('span')).find((el) =>
       (el.textContent ?? '').includes('Enviando ao vivo para'),
     );
-    return text!.parentElement!;
+    // span -> linha (LINE) -> caixa externa da barra.
+    return text!.parentElement!.parentElement!;
   };
 
   it('vinculada: o aviso aparece 1 vez e dentro da mesma caixa da barra', async () => {

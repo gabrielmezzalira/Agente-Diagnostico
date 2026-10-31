@@ -492,6 +492,7 @@ export function PanelApp({ state, ctx, prefs, callbacks }: PanelAppProps) {
                   panelSize={prefs.size}
                   onPanelSizeChange={(size) => callbacks.onPrefsChange({ size })}
                   onToast={showToast}
+                  stripNotice={ctx.captureHealthy ? null : CAPTURE_STALL_NOTICE}
                 />
               )
             }
@@ -912,7 +913,8 @@ function LiveBody({
             onDismissMeeting={callbacks.onDismissLanguageWarning}
           />
         )}
-      {!ctx.captureHealthy && <StripNotice>{CAPTURE_STALL_NOTICE}</StripNotice>}
+      {/* Reserva: com o espaço do vínculo, o aviso mora nele (divide a barra); sem ele, aparece aqui. */}
+      {!liveSlot && !ctx.captureHealthy && <StripNotice>{CAPTURE_STALL_NOTICE}</StripNotice>}
       <AgpLiveTabs>
         <TranscriptView
           segments={session.segments}

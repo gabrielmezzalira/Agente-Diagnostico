@@ -24,6 +24,7 @@ import type { PanelSize } from '@/shared/types/domain';
 import { AgenteBindingBar } from './AgenteBindingBar';
 import { AgenteDecisionCard } from './AgenteDecisionCard';
 import { ClientPicker, type ClientPickerError } from './ClientPicker';
+import { StripNotice } from './StripNotice';
 
 const RECOVERED_TOAST = 'Agente de volta. Falas reenviadas.';
 
@@ -34,6 +35,11 @@ interface AgenteLiveSlotProps {
   panelSize: PanelSize;
   onPanelSizeChange: (size: PanelSize) => void;
   onToast: (message: string) => void;
+  /**
+   * Aviso amarelo que divide a faixa do vínculo. Quando este espaço mostra a barra, o aviso entra
+   * nela; quando não mostra (cartão, seletor, sem associação), aparece sozinho e nunca some (G-10-7).
+   */
+  stripNotice?: string | null | undefined;
 }
 
 /** Erro do comando -> cópia do seletor. Falha sem causa clara cai no texto da etapa que estava rodando. */
@@ -48,6 +54,7 @@ export function AgenteLiveSlot({
   panelSize,
   onPanelSizeChange,
   onToast,
+  stripNotice,
 }: AgenteLiveSlotProps) {
   const { association, delivery, open, defer, bind } = useMeetingAssociation(meetingId);
   const [view, setView] = useState<'card' | 'picker'>('card');
@@ -113,41 +120,54 @@ export function AgenteLiveSlot({
     if (!result.ok) setPickerError(toPickerError(result.error, target));
   };
 
-  if (association === null) return null;
+  // O aviso sozinho: só quando não há barra para dividir a caixa com ele. Nunca some.
+  const noticeAlone = stripNotice ? <StripNotice>{stripNotice}</StripNotice> : null;
+
+  if (association === null) return noticeAlone;
 
   if (pickerOpen) {
     return (
-      <div data-picker-takeover className="mb-2 flex min-h-0 flex-1 flex-col">
-        <ClientPicker
-          density="compact"
-          status={directory.status}
-          clients={directory.clients}
-          mode="live"
-          busy={busy}
-          error={pickerError}
-          onConfirm={(client) => void handleBind({ kind: 'client', clientId: client.id, clientName: client.client })}
-          onCreate={(name) => void handleBind({ kind: 'new-client', name })}
-          onManualId={(sessionId) => void handleBind({ kind: 'manual', sessionId })}
-          onRetry={directory.retry}
-          onBack={handleDefer}
-        />
-      </div>
+      <>
+        {noticeAlone}
+        <div data-picker-takeover className="mb-2 flex min-h-0 flex-1 flex-col">
+          <ClientPicker
+            density="compact"
+            status={directory.status}
+            clients={directory.clients}
+            mode="live"
+            busy={busy}
+            error={pickerError}
+            onConfirm={(client) => void handleBind({ kind: 'client', clientId: client.id, clientName: client.client })}
+            onCreate={(name) => void handleBind({ kind: 'new-client', name })}
+            onManualId={(sessionId) => void handleBind({ kind: 'manual', sessionId })}
+            onRetry={directory.retry}
+            onBack={handleDefer}
+          />
+        </div>
+      </>
     );
   }
 
   if (state === 'choosing') {
     return (
-      <div className="mb-2 shrink-0">
-        <AgenteDecisionCard onSelect={showPicker} onDefer={handleDefer} />
-      </div>
+      <>
+        <div className="mb-2 shrink-0">
+          <AgenteDecisionCard onSelect={showPicker} onDefer={handleDefer} />
+        </div>
+        {noticeAlone}
+      </>
     );
   }
 
   const barView = toBindingBarView(association, delivery, true);
-  if (barView === null) return null;
+  if (barView === null) return noticeAlone;
   return (
     <div className="mb-2 shrink-0">
-      <AgenteBindingBar view={barView} onSelectClient={handleSelectFromBar} />
+      <AgenteBindingBar
+        view={barView}
+        onSelectClient={handleSelectFromBar}
+        notice={stripNotice || undefined}
+      />
     </div>
   );
 }
