@@ -366,7 +366,7 @@ Plans:
   3. AGP renders questions only when the session binding is explicit (from Phase 8); with no bound session it shows an empty/prompt state, never questions from a guessed or defaulted session
   4. The panel lives in `taqciti/` of this repo and does not disturb Taqciti's existing capture/streaming flow (Phases 7-8) nor the Agente web app's own question view (Phase 5)
 
-**Plans**: 12/13 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
+**Plans**: 12/17 plans executed (+ `10-PLAN.md` original do Gabriel, já executado e integrado em `d896c64`)
 - [x] 10-PLAN.md
 
 **Wave 1**
@@ -395,6 +395,18 @@ Plans:
 
 - [ ] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo) — **BLOQUEADO: UAT em Chrome real adiado pelo usuário para a verificação final (SUMMARY `status: blocked`; 12 testes `pending`)**
 - [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (adiada pelo usuário para o fim da fase; desfazer com `git revert b64d8b6`)**
+
+**Gap closure G-10-7 (UAT 7 parte B: lista da AGP some no painel compacto e a faixa "Pausado" cobre o rodapé)** — decisões do usuário de 2026-10-31
+
+*Wave 1 (paralela, sem arquivo em comum)*
+
+- [ ] 10-13-PLAN.md — Layout: faixa de status da aba AGP na linha das abas + corte do transbordo (`AgpStatusBanner`, `AgpLiveTabs`, `AgpQuestionsPanel`)
+- [ ] 10-14-PLAN.md — Layout: aviso de legendas dentro da barra de vínculo (`StripNotice`, `AgenteBindingBar`, `AgenteLiveSlot`, `PanelApp`) + `empty:hidden` no aviso de conta vazio
+- [ ] 10-15-PLAN.md — Comportamento (commits próprios): `checkCaptureHealth` ciente da pausa; retomar recomeça a janela de 25 s do vigia
+
+*Wave 2 (bloqueada nos três acima)*
+
+- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo); se ainda não couber um cartão inteiro, registra a DECISÃO EM ABERTO de qual faixa a mais compactar
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
