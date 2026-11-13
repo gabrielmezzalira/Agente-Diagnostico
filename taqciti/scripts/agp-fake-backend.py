@@ -1,5 +1,5 @@
 """Servidor de fumaça: o roteador WebSocket REAL do backend (app/routers/ws.py) e o ws_manager REAL,
-com só o pipeline trocado por um falso (sem banco, sem Gemini). Uso: python agp_fake_backend.py PORT"""
+com só o pipeline trocado por um falso (sem banco, sem Gemini). Uso: python agp-fake-backend.py PORT"""
 import os, sys
 BACKEND = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "backend"))
 os.chdir(BACKEND); sys.path.insert(0, BACKEND)
@@ -36,4 +36,5 @@ async def emit_expired(sid: str, qid: str):
 @app.get("/stats/{sid}")
 async def stats(sid: str):
     return {"connections": len(ws_manager._connections.get(sid, [])) if hasattr(ws_manager, "_connections") else -1}
-uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[1]), log_level="warning")
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[1]), log_level="warning")
