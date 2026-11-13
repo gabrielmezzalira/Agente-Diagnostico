@@ -1,6 +1,6 @@
 /**
  * Raiz de composição dos comandos do vínculo (Fase 8, TAQ-02): monta o serviço de associação com as
- * dependências de produção e expõe `agenteAssociation` para o `index.ts` — cada `case ui/agente/*`
+ * dependências de produção e expõe `agenteAssociation` para o `messageRouter.ts` — cada `case ui/agente/*`
  * lá é só uma linha que chama um método daqui. Mesmo padrão de `agenteStreamer.ts`.
  *
  * As portas de clientes e de sessão de produção falam com as rotas /webhook/extension/* do backend
@@ -71,7 +71,7 @@ export function configureAgenteAssociation(
   activeService = createAgenteAssociationService(activeDeps);
 }
 
-/** O que o `index.ts` chama — delegação pura para o serviço ativo. */
+/** O que o `messageRouter.ts` chama — delegação pura para o serviço ativo. */
 export const agenteAssociation = {
   listClients: () => activeService.listClients(),
   open: (meetingId: string) => activeService.open(meetingId),

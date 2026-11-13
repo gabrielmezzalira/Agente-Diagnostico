@@ -6,7 +6,7 @@
  * captura nunca atrasar.
  *
  * Só lê a associação quando a fase é `ended` e a sala é a mesma; nas demais detecções (a cada poll) devolve
- * falso sem tocar o storage (T-08-51). Quem chama é o `case 'meet/detected'` do `index.ts`.
+ * falso sem tocar o storage (T-08-51). Quem chama é o `case 'meet/detected'` do `messageRouter.ts`.
  */
 import type { MeetingAssociation } from '@/features/agente/association';
 import { getAssociation } from '@/shared/config/agenteAssociationStore';

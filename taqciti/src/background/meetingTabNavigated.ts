@@ -6,7 +6,7 @@
  * "ao vivo" no estado, o encerramento da sessão do Agente nunca era agendado e o backend seguia chamando o
  * Gemini a cada 15/30 s à toa — o mesmo custo que o DA-3 (aba fechada) já resolve.
  *
- * Quem chama é o `chrome.tabs.onUpdated` do `index.ts`, DEPOIS do `ready`. Só importa a mudança de URL:
+ * Quem chama é o `chrome.tabs.onUpdated` do `browserListeners.ts`, DEPOIS do `ready`. Só importa a mudança de URL:
  * - Reunião AO VIVO na aba e a URL já não é a sala dela: dispara o MESMO `MEETING_FINISHED` do `meet/ended`
  *   (sem RESET — a reentrada na mesma sala, plano 08-24, só vale com a fase `ended`) — A MENOS QUE outra aba já
  *   tenha entrado na mesma call (D-03, Fase 10): aí a reunião só passa para ela (`MEETING_TAB_CHANGED`) e

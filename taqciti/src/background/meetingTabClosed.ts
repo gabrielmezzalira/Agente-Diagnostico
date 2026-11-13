@@ -1,7 +1,7 @@
 /**
  * O que a aba da reunião fechada significa para o estado da reunião (Fase 8, TAQ-02, plano 08-26).
  *
- * Quem chama é o `chrome.tabs.onRemoved` do `index.ts`, DEPOIS do `ready` (o estado já foi hidratado). Aqui
+ * Quem chama é o `chrome.tabs.onRemoved` do `browserListeners.ts`, DEPOIS do `ready` (o estado já foi hidratado). Aqui
  * mora só a regra, com `getState`, `dispatch` e o relógio injetados para ela ser testável sem o Chrome.
  *
  * - Reunião AO VIVO (`captionsRequired`, `recording` ou `paused`) e a aba da reunião: conta como o FIM dela
