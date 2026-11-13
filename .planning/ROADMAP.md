@@ -431,7 +431,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | In Progress | - |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 16/18 | In Progress | - |
+| 10. AGP Question Panel in Taqciti | 16/18 | Código concluído; testes humanos adiados (10-11, 10-12, 10-16 Task 2) | - |
 
 ## Backlog
 
