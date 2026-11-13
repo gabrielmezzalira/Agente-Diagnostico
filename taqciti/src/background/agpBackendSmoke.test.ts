@@ -23,13 +23,14 @@ const targetOf = (id: string): AgpFeedTarget => ({ sessionId: id, url: `ws://127
 
 let proc: ChildProcess | null = null;
 async function startServer(): Promise<void> {
-  proc = spawn(PYTHON, [SERVER as string, String(PORT)], { stdio: 'ignore' });
+  proc = spawn(PYTHON, [SERVER as string, String(PORT)], { stdio: ['ignore', 'ignore', 'inherit'] });
   await vi.waitFor(async () => { expect((await fetch(`${HTTP}/stats/x`)).ok).toBe(true); }, { timeout: 20_000, interval: 250 });
 }
 async function stopServer(): Promise<void> {
   if (proc === null) return;
   const p = proc;
   proc = null;
+  if (p.exitCode !== null || p.signalCode !== null) return; // já saiu sozinho: o 'exit' já passou
   p.kill('SIGKILL');
   await new Promise((resolve) => p.once('exit', resolve));
 }
