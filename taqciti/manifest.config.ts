@@ -23,7 +23,7 @@ const OAUTH_CLIENT_ID =
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'TaqCITi Standalone',
+  name: 'TaqCITi',
   description:
     'Transcreve reuniões do Google Meet. O histórico fica no navegador; ao vincular um cliente, a transcrição vai ao Agente Diagnóstico.',
   version: '2.2.0',
