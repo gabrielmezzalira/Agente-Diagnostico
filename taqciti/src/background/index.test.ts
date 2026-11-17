@@ -499,6 +499,12 @@ const CURRENT_LIVE = {
   phase: 'recording',
   session: { meetingId: 'm1', meetingCode: MEETING_CODE },
 };
+/** Reunião ao vivo cuja aba dona é conhecida (WR-01, plano 10-18). */
+const CURRENT_LIVE_OWNED = {
+  phase: 'recording',
+  session: { meetingId: 'm1', meetingCode: MEETING_CODE, tabId: TAB_ID },
+};
+const OTHER_TAB_ID = 8;
 
 const ROUTER_CASES: RouterCase[] = [
   {
@@ -589,6 +595,36 @@ const ROUTER_CASES: RouterCase[] = [
     check: () => {
       expect(ports.noteTabCaptionActivity).toHaveBeenCalledWith(TAB_ID, MEETING_CODE);
     },
+  },
+  {
+    name: 'meet/chunk da aba dona da reunião: despacha CAPTION_CHUNK (WR-01)',
+    message: { type: 'meet/chunk', chunk: { captionId: 'c3', speaker: 'Ana', text: 'bom dia', atMs: 30 } },
+    arrange: () => ports.getState.mockReturnValue(CURRENT_LIVE_OWNED),
+    check: dispatches({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c3', speaker: 'Ana', text: 'bom dia', atMs: 30 },
+    }),
+  },
+  {
+    name: 'meet/chunk de aba que não é a dona: não despacha, mas reaprende a aba na call (WR-01)',
+    message: { type: 'meet/chunk', chunk: { captionId: 'x9', speaker: 'Ana', text: 'bom dia', atMs: 31 } },
+    sender: { tab: { id: OTHER_TAB_ID } },
+    arrange: () => ports.getState.mockReturnValue(CURRENT_LIVE_OWNED),
+    check: (response) => {
+      expect(ports.noteTabCaptionActivity).toHaveBeenCalledWith(OTHER_TAB_ID, MEETING_CODE);
+      expect(ports.dispatch).not.toHaveBeenCalled();
+      expect(response).toEqual(CURRENT_LIVE_OWNED);
+    },
+  },
+  {
+    name: 'meet/chunk sem aba dona conhecida: despacha como antes (WR-01)',
+    message: { type: 'meet/chunk', chunk: { captionId: 'c4', speaker: null, text: 'ok', atMs: 40 } },
+    sender: { tab: { id: OTHER_TAB_ID } },
+    arrange: () => ports.getState.mockReturnValue(CURRENT_LIVE),
+    check: dispatches({
+      type: 'CAPTION_CHUNK',
+      chunk: { captionId: 'c4', speaker: null, text: 'ok', atMs: 40 },
+    }),
   },
   {
     name: 'meet/participants: PARTICIPANTS_UPDATED',
