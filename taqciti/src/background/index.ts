@@ -6,9 +6,9 @@
  *
  * Listeners registrados sincronamente aqui no topo (exigência do MV3); handlers aguardam a hidratação.
  *
- * Versão standalone: captura, guarda no histórico local, mostra. Sem envio a
- * nenhum backend, sem autenticação de produto, sem diagnóstico técnico — só
- * transcrição.
+ * O que a extensão faz: captura as legendas do Meet, guarda no histórico local e mostra. Quando a reunião é
+ * vinculada a um cliente, envia a transcrição ao Agente Diagnóstico (`/webhook/extension`, Fase 8) e lê as
+ * perguntas da sessão pelo `/ws/{session_id}`, só leitura (aba AGP, Fase 10). A ata pode ser salva no Google Drive.
  */
 import { registerAgpQuestionsFeed } from './agpQuestionsFeedInstance';
 import { registerBrowserListeners } from './browserListeners';
