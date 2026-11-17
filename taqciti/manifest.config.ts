@@ -26,7 +26,7 @@ export default defineManifest({
   name: 'TaqCITi Standalone',
   description:
     'Transcreve reuniões do Google Meet. O histórico fica no navegador; ao vincular um cliente, a transcrição vai ao Agente Diagnóstico.',
-  version: '2.1.2',
+  version: '2.2.0',
   minimum_chrome_version: '116',
 
   /*
