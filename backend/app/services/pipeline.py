@@ -28,6 +28,12 @@ class SessionPipeline:
         self.state = state
         self._tasks: list[asyncio.Task] = []
         self._running = False
+        # Quantas falas (transcript_chunks) cada laço já mandou para o Gemini.
+        # O laço só chama o LLM de novo quando chega fala nova: com a TaqCITi
+        # pausada ou em silêncio, reanalisar a mesma transcrição é gasto à toa
+        # (PLANO_CONSUMO_GEMINI_PAUSADO.md). O force_classify não passa por aqui.
+        self._coverage_seen_chunks = 0
+        self._red_flag_seen_chunks = 0
 
     def _resolve_gemini_key(self) -> str:
         """Retorna a chave Gemini, re-buscando do banco se ainda não está em memória."""
@@ -120,8 +126,14 @@ class SessionPipeline:
             await asyncio.sleep(30)
             if not self.state.transcript_chunks or not self._resolve_gemini_key():
                 continue
+            total_chunks = len(self.state.transcript_chunks)
+            if total_chunks <= self._coverage_seen_chunks:
+                continue  # sem fala nova desde a última análise
             if not self._budget_ok():
                 continue
+            # Avança ANTES da chamada: fala que chega durante a análise conta como
+            # nova no próximo ciclo, e chamada que falha só repete com fala nova.
+            self._coverage_seen_chunks = total_chunks
             try:
                 await self._run_coverage_classifier()
             except Exception:
@@ -133,8 +145,13 @@ class SessionPipeline:
             await asyncio.sleep(15)
             if not self.state.transcript_chunks or not self._resolve_gemini_key():
                 continue
+            total_chunks = len(self.state.transcript_chunks)
+            if total_chunks <= self._red_flag_seen_chunks:
+                continue  # sem fala nova desde a última análise
             if not self._budget_ok():
                 continue
+            # Avança ANTES da chamada (mesma regra do _coverage_task).
+            self._red_flag_seen_chunks = total_chunks
             try:
                 await self._run_red_flag_detector()
             except Exception:
