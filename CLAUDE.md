@@ -351,8 +351,8 @@ Reunião Google Meet
 | Task | O que faz | Cadência |
 |------|-----------|----------|
 | `_ingestion_task` | Recebe chunks de transcrição | Por evento (push) |
-| `_coverage_task` | CoverageClassifier classifica áreas de risco via LLM | A cada 30s ou 250 tokens novos |
-| `_red_flag_task` | RedFlagDetector emite até 2 alertas por janela | A cada 15s (timer fixo) |
+| `_coverage_task` | CoverageClassifier classifica áreas de risco via LLM | A cada 30s ou 250 tokens novos, e só se houver fala nova |
+| `_red_flag_task` | RedFlagDetector emite até 2 alertas por janela | A cada 15s (timer fixo), e só se houver fala nova |
 | `_watchdog_task` | Detecta se o stream pausou | A cada 10s |
 | `_render_task` | Envia estado atualizado via WebSocket para o frontend | A cada 250ms |
 
