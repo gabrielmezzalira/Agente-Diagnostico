@@ -835,11 +835,12 @@ terminal (~3000 linhas, 31 arquivos), anterior à reescrita web. Foi confirmado 
 (2026-09-15, Task 5 do `PLANO_AJUSTES.md`) que ela **não está ligada ao sistema web (v2) nem à
 extensão Chrome**:
 
-- **A extensão de captura é a Taqciti** (`taqciti/`, subtree importado na Fase 7) e fala apenas com o
-  backend v2 (`backend/`, FastAPI no Railway) via `POST /webhook/extension` e as rotas
+- **A extensão de captura é a Taqciti** (`taqciti/`, subtree importado na Fase 7). Do lado do produto, ela
+  só fala com o backend v2 (`backend/`, FastAPI no Railway) via `POST /webhook/extension` e as rotas
   `/webhook/extension/clients`, `/webhook/extension/sessions` e
-  `/webhook/extension/sessions/{id}/finish` (Fase 8). Nunca com `diagnostico/`. A extensão antiga foi
-  removida na Fase 9 (continua no histórico do git).
+  `/webhook/extension/sessions/{id}/finish` (Fase 8). Fora do produto, usa o Google Drive/Docs, com a conta
+  de quem instalou, para salvar a ata, e o servidor próprio do "Gerar Documento". Nunca fala com
+  `diagnostico/`. A extensão antiga foi removida na Fase 9 (continua no histórico do git).
 - Desde a Fase 10, a Taqciti também abre o WebSocket `/ws/{session_id}` do backend, só para
   leitura: a aba AGP mostra as perguntas da sessão vinculada e nunca manda comando por ele
   (D-07 da Fase 10).
