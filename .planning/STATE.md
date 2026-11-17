@@ -4,9 +4,9 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 18
+current_plan: 19
 status: executing
-stopped_at: Fase 10 retomada em 2026-11-17 (planos 10-18 e 10-19)
+stopped_at: Completed 10-19-PLAN.md (10-18 e 10-19 feitos em 2026-11-17)
 last_updated: "2026-11-17T18:00:00.000Z"
 last_activity: 2026-11-17
 last_activity_desc: Fase 8 registrada como concluída; Fase 10 retomada com as decisões do usuário; Fase 10.1 inserida
@@ -15,7 +15,7 @@ progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 79
-  completed_plans: 75
+  completed_plans: 77
 ---
 
 > **Feature-flow do redesign (2026-10-14):** o redesign do Agente já foi mergeado (PR #10 na `origin/main`). Seguem
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 18
+Current Plan: 19
 Total Plans in Phase: 20
 Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING (retomada em 2026-11-17, branch `feat/fase-10-agp-integracao`)
-Next: 10-18 (WR-01, filtrar a fala da aba que não é a dona) e 10-19 (WR-02 + IN-08, texto e versão do manifesto); depois
-D-07 (revisão junto com o usuário), reteste do 10-16 e teste 8 nos testes manuais do fim
+Next: D-07 (revisão do texto junto com o usuário, com o IN-05); depois os testes manuais do fim (reteste do 10-16,
+teste 8, duas abas sem fala em dobro) e o merge da Fase 10 na `main`. 10-18 (WR-01) e 10-19 (WR-02 + IN-08) concluídos.
 Status: Executing
 Last activity: 2026-11-17 — Fase 8 registrada como concluída (TAQ-02 Complete); `main` empurrada para a `origin`
 (`638f0f7..5944748`); UAT de 31/10 registrado no `10-VERIFICATION.md` (10/12); Fase 10.1 inserida no ROADMAP
@@ -138,6 +138,8 @@ Progress: [█████████░] 82%
 | Phase 10 P14 | 18 min | 3 tasks | 7 files |
 | Phase 10 P15 | 12 min | 2 tasks | 2 files |
 | Phase 10 P17 | 15min | 2 tasks | 3 files |
+| Phase 10 P18 | 10 min | 2 tasks | 2 files |
+| Phase 10 P19 | 15 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 

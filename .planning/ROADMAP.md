@@ -416,8 +416,8 @@ Plans:
 
 **Retomada de 2026-11-17** *(decisões do usuário sobre os avisos deferidos do `10-REVIEW.md`)*
 
-- [ ] 10-18-PLAN.md — WR-01 = filtrar: só a aba dona da reunião alimenta a transcrição (`meet/chunk` de outra aba continua só reaprendendo a memória das abas); teste de roteador com dois `sender.tab.id` como semente
-- [ ] 10-19-PLAN.md — WR-02 + IN-08: o texto do manifesto e o cabeçalho do `background/index.ts` dizem o que a extensão envia de verdade; versão 2.1.2 → 2.2.0 (permissão `tabs` e aba AGP novas)
+- [x] 10-18-PLAN.md — WR-01 = filtrar: só a aba dona da reunião alimenta a transcrição (`meet/chunk` de outra aba continua só reaprendendo a memória das abas); teste de roteador com dois `sender.tab.id` como semente
+- [x] 10-19-PLAN.md — WR-02 + IN-08: o texto do manifesto e o cabeçalho do `background/index.ts` dizem o que a extensão envia de verdade; versão 2.1.2 → 2.2.0 (permissão `tabs` e aba AGP novas)
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
@@ -454,7 +454,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | Complete | 2026-10-26 |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 16/20 | Retomada em 2026-11-17: 10-18 (WR-01) e 10-19 (WR-02/IN-08); D-07, reteste do 10-16 e teste 8 pendentes | - |
+| 10. AGP Question Panel in Taqciti | 18/20 | Retomada em 2026-11-17: 10-18 (WR-01) e 10-19 (WR-02/IN-08) feitos; faltam o D-07 (revisão com o usuário), o reteste do 10-16 e o teste 8 | - |
 | 10.1. AGP Actions + Live Status Events | 0/0 | Not started | - |
 
 ## Backlog
