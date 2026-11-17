@@ -4,9 +4,9 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 19
+current_plan: 20
 status: executing
-stopped_at: Completed 10-19-PLAN.md (10-18 e 10-19 feitos em 2026-11-17)
+stopped_at: Completed 10-20-PLAN.md (10-18, 10-19 e 10-20 feitos em 2026-11-17)
 last_updated: "2026-11-17T18:00:00.000Z"
 last_activity: 2026-11-17
 last_activity_desc: Fase 8 registrada como concluída; Fase 10 retomada com as decisões do usuário; Fase 10.1 inserida
@@ -14,8 +14,8 @@ state_head: 82e2552575d0dbef902bf3b41de05d31b74f100b
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 79
-  completed_plans: 77
+  total_plans: 80
+  completed_plans: 78
 ---
 
 > **Feature-flow do redesign (2026-10-14):** o redesign do Agente já foi mergeado (PR #10 na `origin/main`). Seguem
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 19
-Total Plans in Phase: 20
+Current Plan: 20
+Total Plans in Phase: 21
 Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING (retomada em 2026-11-17, branch `feat/fase-10-agp-integracao`)
-Next: D-07 (revisão do texto junto com o usuário, com o IN-05); depois os testes manuais do fim (reteste do 10-16,
-teste 8, duas abas sem fala em dobro) e o merge da Fase 10 na `main`. 10-18 (WR-01) e 10-19 (WR-02 + IN-08) concluídos.
+Next: os testes manuais do fim (reteste do 10-16, teste 8, duas abas sem fala em dobro) e o merge da Fase 10 na `main`
+(o PR é do usuário). 10-18 (WR-01), 10-19 (WR-02 + IN-08) e 10-20 (D-07 mantido, IN-05, nome TaqCITi) concluídos.
 Status: Executing
 Last activity: 2026-11-17 — Fase 8 registrada como concluída (TAQ-02 Complete); `main` empurrada para a `origin`
 (`638f0f7..5944748`); UAT de 31/10 registrado no `10-VERIFICATION.md` (10/12); Fase 10.1 inserida no ROADMAP
@@ -140,6 +140,7 @@ Progress: [█████████░] 82%
 | Phase 10 P17 | 15min | 2 tasks | 3 files |
 | Phase 10 P18 | 10 min | 2 tasks | 2 files |
 | Phase 10 P19 | 15 min | 2 tasks | 4 files |
+| Phase 10 P20 | 25 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,7 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-14: aviso de legendas divide a caixa da barra de vínculo em qualquer estado; sem barra aparece sozinho (nunca some). Aviso de conta vazio com empty:hidden.
 - [Phase 10]: 10-15: com a captura pausada o vigia nunca anuncia legendas paradas (stall nem parser); ao retomar a janela de 25 s recomeça do zero (G-10-7, decisão 2)
 - [Phase 10]: 10-17: compacto sem o campo do nome da reunião e com as estatísticas na linha dos botões (G-10-7, opções a e b), via compactLayoutFor; médio e alto inalterados
+- [Phase 10]: 10-20: D-07 aprovado pelo usuário (mantido, `b64d8b6` fica) e IN-05 corrigido na seção 10 do CLAUDE.md; extensão renomeada de "TaqCITi Standalone" para "TaqCITi"; README, INSTALL e package.json deixam de negar o envio da transcrição (inclui o "Gerar documento") — Decisões do usuário de 2026-11-17: "pode fazer o recomendado" e "Renomeia para TaqCITi"
 
 ### Decisões do usuário em 2026-11-17
 
@@ -246,7 +248,8 @@ Recent decisions affecting current work:
 - Push liberado: `main` empurrada agora; a `master` vem depois (só o usuário mexe nos remotos). O PR fica com o usuário.
 - WR-01 da Fase 10 = **filtrar** (só a aba dona alimenta a transcrição). WR-02 = **corrigir** o texto do manifesto, junto
   com a versão (IN-08).
-- D-07: o usuário quer ver o texto junto antes de aprovar ou reverter (IN-05 entra junto).
+- D-07: **mantido** ("pode fazer o recomendado"); IN-05 corrigido e extensão renomeada para "TaqCITi" (plano 10-20).
+- Segurança: ordem de execução e respostas às decisões registradas no plano da branch local `fix/seguranca-pre-deploy` (sem push). LGPD (decisões 17, 18 e 19): a decidir antes da primeira reunião real.
 - Limiar do painel compacto: o usuário pediu uma explicação melhor antes de decidir.
 - Distribuição da Taqciti: **link do Google Drive enviado por e-mail** a cada pessoa; computadores Mac, Windows e Linux.
 - Segurança (S1, S2, S3, S5, S6, S7 + rotação da `service_role`): **fazer**; plano em `PLANO-SEGURANCA-PRE-DEPLOY.md`.
@@ -260,7 +263,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Revisar o D-07 com o usuário (`git show b64d8b6 -- CLAUDE.md`) e o IN-05.
+- Decidir a LGPD (17, 18 e 19) antes da primeira reunião real; material na branch `fix/seguranca-pre-deploy`.
+- Limiar do painel compacto (a explicação já foi dada; falta a decisão) e o reteste do 10-16.
 - Testes manuais no fim: reteste do 10-16 (Task 2), teste 8 com DevTools, M1 a M9 de `TESTES-MANUAIS-POS-FASE-10.md`,
   medição do consumo antes/depois (999.10), limpeza dos `ZZ-TESTE-*`.
 - Conferir a `GEMINI_API_KEY` no Railway antes de qualquer deploy na `master`.
@@ -294,6 +298,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-17T18:00:00.000Z
-Stopped at: Fase 10 retomada (10-18 e 10-19); conserto do consumo na branch `fix/consumo-gemini-sem-fala-nova`
+Stopped at: Fase 10 retomada (10-18, 10-19 e 10-20); conserto do consumo na branch `fix/consumo-gemini-sem-fala-nova`
 Resume file: None
 

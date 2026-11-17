@@ -396,7 +396,7 @@ Plans:
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
 - [x] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo) — **UAT rodado em 2026-10-31 com IA real: 10 pass, 1 issue (teste 7 → gap G-10-7) e 1 blocked (teste 8: o bloqueio de requisição do DevTools não pegou o envio; refazer com quem conheça o DevTools). O SUMMARY ainda diz `blocked` porque foi escrito antes da rodada; o resultado vale o que está no `10-UAT.md`**
-- [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (o usuário quer revisar o texto junto antes de responder, 2026-11-17; desfazer com `git revert b64d8b6`)**
+- [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; texto APROVADO pelo usuário em 2026-11-17 (mantido; IN-05 corrigido no 10-20; para desfazer, `git revert b64d8b6`)**
 
 **Gap closure G-10-7 (UAT 7 parte B: lista da AGP some no painel compacto e a faixa "Pausado" cobre o rodapé)** — decisões do usuário de 2026-10-31
 
@@ -418,6 +418,7 @@ Plans:
 
 - [x] 10-18-PLAN.md — WR-01 = filtrar: só a aba dona da reunião alimenta a transcrição (`meet/chunk` de outra aba continua só reaprendendo a memória das abas); teste de roteador com dois `sender.tab.id` como semente
 - [x] 10-19-PLAN.md — WR-02 + IN-08: o texto do manifesto e o cabeçalho do `background/index.ts` dizem o que a extensão envia de verdade; versão 2.1.2 → 2.2.0 (permissão `tabs` e aba AGP novas)
+- [x] 10-20-PLAN.md — D-07 mantido (aprovado pelo usuário), IN-05 corrigido no `CLAUDE.md`, extensão renomeada de "TaqCITi Standalone" para "TaqCITi" e README/INSTALL/`package.json` deixam de negar o envio da transcrição
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
@@ -454,7 +455,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
 | 8. Taqciti Session Association | 28/28 | Complete | 2026-10-26 |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 18/20 | Retomada em 2026-11-17: 10-18 (WR-01) e 10-19 (WR-02/IN-08) feitos; faltam o D-07 (revisão com o usuário), o reteste do 10-16 e o teste 8 | - |
+| 10. AGP Question Panel in Taqciti | 19/21 | Retomada em 2026-11-17: 10-18 (WR-01), 10-19 (WR-02/IN-08) e 10-20 (D-07 mantido, IN-05, nome TaqCITi) feitos; faltam o reteste do 10-16 e o teste 8 (testes manuais do fim) | - |
 | 10.1. AGP Actions + Live Status Events | 0/0 | Not started | - |
 
 ## Backlog

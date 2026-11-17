@@ -1,12 +1,12 @@
 ---
 phase: "10"
 slug: "agp-question-panel-in-taqciti"
-status: draft
+status: verified
 # threats_open = ameaças ABERTAS com severidade igual ou acima de workflow.security_block_on (o portão que bloqueia)
 threats_open: 0
-threats_open_nonblocking: 1
+threats_open_nonblocking: 0
 threats_total: 21
-threats_closed: 20
+threats_closed: 21
 asvs_level: 1
 block_on: high
 register_authored_at_plan_time: true
@@ -20,7 +20,7 @@ created: "2026-10-30"
 > Auditoria retroativa (`/gsd-secure-phase 10`), estado B (havia PLAN.md com `<threat_model>` e SUMMARY.md, mas
 > nenhum SECURITY.md). O registro foi montado dos 12 PLAN.md; cada mitigação foi conferida no código implementado.
 
-**Veredito: OPEN_THREATS — 1 ameaça aberta (T-10-21, severidade `medium`, abaixo do limiar `high`, não bloqueante).
+**Veredito atualizado em 2026-11-17: SECURED — a T-10-21 foi fechada com o d07-ok do usuário (D-07 mantido). Veredito original, de 2026-10-30: OPEN_THREATS — 1 ameaça aberta (T-10-21, severidade `medium`, abaixo do limiar `high`, não bloqueante).
 Nenhuma ameaça bloqueante. As 6 ameaças de severidade `high` (T-10-04, T-10-05, T-10-12, T-10-15, T-10-18, T-10-19)
 estão fechadas com evidência no código.**
 
@@ -71,7 +71,7 @@ site, todos passando). Nenhum arquivo de código ou de teste foi alterado. Nenhu
 | T-10-18 | Information Disclosure | Chave do Gemini (crédito D-13) | high | mitigate | `10-UAT.md` (preparo item 6): recarregar ou trocar a chave é ação humana; "ninguém abre nem cola o conteúdo de arquivos de segredo"; nenhum passo manda abrir `.env`. Varredura nos arquivos rastreados: nenhuma chave `AIza...` nem JWT. | closed |
 | T-10-19 | Information Disclosure | Chave do Gemini durante a recarga de crédito | high | mitigate | `10-11-SUMMARY.md` registra que nenhum arquivo `.env` foi aberto e que a recarga é feita por quem tem a chave; a evidência gravada não leva segredo (varredura de padrões de chave sem ocorrência). | closed |
 | T-10-20 | Tampering | Clientes e sessões de teste no Supabase de produção | medium | mitigate | Regra `ZZ-TESTE-*` e limpeza por id, com a trava `client like 'ZZ-TESTE%'`, documentada no `10-UAT.md` e no `TESTES-MANUAIS-POS-FASE-10.md` (item M9). O plano 10-11 não rodou, então nenhum dado novo foi criado por ele; a limpeza dos dados antigos segue pendente. | closed |
-| T-10-21 | Tampering | `CLAUDE.md` (manual do projeto) | medium | mitigate | Parte técnica provada: `git show --numstat b64d8b6` = `3 0 CLAUDE.md` (só acréscimo, só esse arquivo); o texto acrescentado descreve corretamente o que o código faz (só leitura). **Falta a aprovação humana do texto** ("d07-ok" ou "d07-reverter"), adiada por decisão do usuário. | open — abaixo do limiar `high` (não bloqueante) |
+| T-10-21 | Tampering | `CLAUDE.md` (manual do projeto) | medium | mitigate | Parte técnica provada: `git show --numstat b64d8b6` = `3 0 CLAUDE.md` (só acréscimo, só esse arquivo); o texto acrescentado descreve corretamente o que o código faz (só leitura). **Aprovação humana do texto dada em 2026-11-17** (d07-ok, mantido por decisão do usuário). | closed (2026-11-17, d07-ok) |
 
 *Status: open · closed · open — abaixo do limiar `high` (não bloqueante)*
 *Severidade: critical > high > medium > low — só ameaças abertas com severidade igual ou acima de `workflow.security_block_on` (`high`) contam para `threats_open`.*
@@ -97,7 +97,7 @@ site, todos passando). Nenhum arquivo de código ou de teste foi alterado. Nenhu
 
 | # | Ameaça | O que falta | Quem resolve | Quando |
 |---|--------|-------------|--------------|--------|
-| 1 | T-10-21 | Ler `git show b64d8b6 -- CLAUDE.md` (3 linhas, seção 10) e responder "d07-ok" ou "d07-reverter". Ao responder "d07-ok", a ameaça fecha e o `threats_open_nonblocking` vai a 0. | Usuário | Antes do merge da Fase 10 na `main` |
+| 1 | T-10-21 | **FEITO em 2026-11-17 (d07-ok).** Era: ler `git show b64d8b6 -- CLAUDE.md` (3 linhas, seção 10) e responder "d07-ok" ou "d07-reverter". Ao responder "d07-ok", a ameaça fecha e o `threats_open_nonblocking` vai a 0. | Usuário | Antes do merge da Fase 10 na `main` |
 | 2 | T-10-17 / T-10-20 | Apagar do Supabase de produção os dados de teste antigos que ainda existem: o projeto `ZZ-TESTE-D20…` e a sessão da prova SC1 (ids no `TESTES-MANUAIS-POS-FASE-10.md`, item M9), sessões primeiro e projeto depois, com a trava `client like 'ZZ-TESTE%'`. Depois, apagar também o que o UAT 10-11 vier a criar e anotar os ids no `10-UAT.md`. | Usuário (autoriza a exclusão em produção) | No fim da Fase 10, junto com o UAT em Chrome real |
 | 3 | T-10-10 / T-10-09 | Medir os avisos de permissão da instalação com `chrome.management.getPermissionWarningsByManifest` (teste 10 do UAT). Sem isso, a afirmação "o aviso da `tabs` não aparece porque `<all_urls>` já é pedido" segue sem medição. | Usuário (UAT em Chrome real, adiado) | Verificação final da fase |
 | 4 | T-10-14 / T-10-03 | Opcional, de baixo custo: trocar os portões de grep feitos uma vez por travas permanentes, por exemplo a regra `react/no-danger` no ESLint da Taqciti e um teste que falhe se `meetingRoomTabs.ts`, `meetingTabNavigated.ts` ou `meetingTabClosed.ts` passarem a importar `@/shared/services/*`. Hoje a proteção contra regressão é só a revisão humana. | Time (decisão de adicionar) | Quando houver oportunidade; não bloqueia a fase |
@@ -117,7 +117,7 @@ site, todos passando). Nenhum arquivo de código ou de teste foi alterado. Nenhu
 - [x] Todas as ameaças têm disposição (mitigate / accept)
 - [x] Riscos aceitos documentados no log de riscos aceitos
 - [x] `threats_open: 0` (nenhuma ameaça aberta com severidade igual ou acima de `high`)
-- [ ] `threats_open_nonblocking: 0` (falta a aprovação humana do D-07, T-10-21)
-- [ ] `status: verified` na frontmatter (depende do item acima)
+- [x] `threats_open_nonblocking: 0` (T-10-21 fechada em 2026-11-17, d07-ok)
+- [x] `status: verified` na frontmatter (o item acima foi cumprido)
 
-**Aprovação:** pendente — fechar T-10-21 com a resposta "d07-ok" do usuário.
+**Aprovação:** T-10-21 fechada em 2026-11-17 com o "d07-ok" do usuário (manter o D-07).

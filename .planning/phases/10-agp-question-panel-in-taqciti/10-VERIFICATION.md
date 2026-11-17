@@ -3,7 +3,7 @@ phase: 10-agp-question-panel-in-taqciti
 verified: 2026-10-30T15:30:00Z
 status: human_needed
 updated: 2026-11-17T00:00:00Z
-score: 10/12 must-haves verified
+score: 11/12 must-haves verified
 covered_files:
   - .planning/phases/10-agp-question-panel-in-taqciti/10-01-PLAN.md
   - .planning/phases/10-agp-question-panel-in-taqciti/10-01-SUMMARY.md
@@ -70,9 +70,9 @@ human_verification:
   - test: "Teste 11 do 10-UAT.md: com a captura pausada ou o envio desligado, a aba mostra 'Pausado' com as perguntas e o terminal do backend NÃO mostra conexão nova de /ws"
     expected: "Faixa 'Pausado · mostrando as últimas perguntas' e nenhuma nova conexão no log do backend"
     why_human: "Depende do log do backend rodando de verdade e de IA com crédito"
-  - test: "Aprovar ou reverter o texto do D-07 no CLAUDE.md (commit b64d8b6): responder d07-ok ou d07-reverter (git revert b64d8b6)"
-    expected: "Decisão humana registrada; a ameaça T-10-21 do 10-SECURITY.md fecha"
-    why_human: "Plano 10-12 é não autônomo: a aprovação do texto foi adiada pelo usuário e continua pendente. Não tratar como aprovada"
+  - test: "DECIDIDO em 2026-11-17: d07-ok (D-07 mantido). Era: aprovar ou reverter o texto do D-07 no CLAUDE.md (commit b64d8b6)"
+    expected: "Registrado: o usuário mandou fazer o recomendado (manter a frase e corrigir o IN-05, plano 10-20); T-10-21 do 10-SECURITY.md fechada"
+    why_human: "Plano 10-12 é não autônomo; a aprovação veio do próprio usuário em 2026-11-17"
   - test: "Decidir o aviso WR-01 do 10-REVIEW.md (com a mesma call em duas abas, a fala entra duas vezes) e o WR-02 (texto do manifesto diz 'sem integração com nenhum backend')"
     expected: "DECIDIDO pelo usuário em 2026-11-17: WR-01 = filtrar (só a aba dona alimenta a transcrição) e WR-02 = corrigir o texto (junto com a versão do manifesto, IN-08). Executados nos planos 10-18 e 10-19; a prova das duas abas fica para os testes manuais do fim"
     why_human: "WR-01 muda comportamento da captura; WR-02 mexe em texto público e no nome da extensão"
@@ -91,10 +91,10 @@ O UAT de 12 testes rodou em 31/10 no Chrome real e com IA de verdade: **10 passa
 
 - **SC1 e D-13 passam a VERIFICADO por pessoa:** os testes 2 e 3 passaram com perguntas reais do Gemini, lente certa e expiração pelo tempo da fila.
 - **SC4 continua sem prova completa:** os testes 5, 6, 9 e 10 passaram, mas o 8 ficou bloqueado porque o bloqueio de requisição do DevTools não pegou o envio. O WR-01 (fala em dobro com duas abas) foi decidido pelo usuário (filtrar) e entra pelo plano 10-18.
-- **D-07 continua incerto:** o usuário quer ver o texto junto antes de aprovar ou reverter.
+- **D-07 (atualizado no mesmo dia):** o usuário mandou fazer o recomendado: **manter** a frase. O IN-05 e o nome da extensão ("TaqCITi") foram tratados no plano 10-20.
 - **G-10-7:** corrigido no código pelos planos 10-13, 10-14, 10-15 e 10-17. Falta o reteste humano (10-16, Task 2) e a decisão do limiar.
 
-**Pontuação atualizada:** 10/12. Faltam o SC4 (teste 8 e as duas abas depois do filtro) e o D-07 (aprovação). O status continua `human_needed`. Os testes manuais ficam para o fim da implementação, por decisão do usuário.
+**Pontuação atualizada:** 11/12 (o D-07 passou a verificado depois da decisão do usuário, no mesmo dia). Falta o SC4 (teste 8 e as duas abas depois do filtro). O status continua `human_needed`. Os testes manuais ficam para o fim da implementação, por decisão do usuário.
 
 ## Resumo em português claro
 
@@ -116,7 +116,7 @@ O código da aba AGP existe, está ligado nas duas telas ao vivo (painel do Meet
 | 8 | D-04 (WR-06): permissão `tabs` no manifesto | ✓ VERIFIED | `manifest.config.ts:165` lista `'tabs'`; `manifest.test.ts` passa. A medição do aviso de instalação (A1/A2) é item humano (teste 10) |
 | 9 | D-05: `background/index.ts` dividido por refator puro (sem mudar comportamento) | ✓ VERIFIED | `index.ts` com 27 linhas, só compõe `bootstrap.ts`, `browserListeners.ts`, `messageRouter.ts`; o 10-REVIEW.md comparou a ordem da cadeia `ready`, os listeners síncronos e cada `case` com `6968bb9^` e achou idêntico. Os 3 arquivos acima de 200 linhas em `background/` (`agenteBindFlow.ts`, `agenteStreamerInstance.ts`, `sessionController.ts`) são anteriores à fase |
 | 10 | D-06: documentos velhos marcados como superados, sem apagar | ✓ VERIFIED | Os três (`RETOMAR-AQUI.md`, `PENDENCIAS-FASE-08.md`, `PENDENCIAS-FASE-10.md`) têm o aviso `SUPERADO (2026-10-28)` no topo apontando para este CONTEXT e o ROADMAP; continuam no repositório |
-| 11 | D-07: `CLAUDE.md` diz que a Taqciti lê `/ws/{session_id}` só para leitura | ? UNCERTAIN | Texto aplicado no commit `b64d8b6` (+3 linhas, nenhuma linha existente alterada; prohibition do 10-12 respeitada), `CLAUDE.md:843-845`. A APROVAÇÃO HUMANA do texto está pendente (adiada pelo usuário); tratada como provisória, não aprovada. Ameaça T-10-21 segue aberta (medium, não bloqueante) |
+| 11 | D-07: `CLAUDE.md` diz que a Taqciti lê `/ws/{session_id}` só para leitura | ✓ VERIFIED | Texto aplicado no commit `b64d8b6` (+3 linhas, nenhuma linha existente alterada). **Aprovado pelo usuário em 2026-11-17** ("pode fazer o recomendado": manter a frase e corrigir o IN-05, feito no plano 10-20). Ameaça T-10-21 fechada. |
 | 12 | D-13: prova no Chrome real com IA real (pergunta real, lente certa, expirando) | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Plano 10-11 com `status: blocked`, 0 tarefas, 0 commits; `10-UAT.md` tem 12 testes e 12 `result: [pending]` (conferido por grep). Nenhum resultado inventado |
 
 **Pontuação:** 8/12 verdades verificadas (3 presentes e ligadas, comportamento não provado no Chrome real; 1 incerta, depende de aprovação humana)
@@ -214,14 +214,18 @@ Todos os itens abaixo estão no `10-UAT.md` (12 testes, cada um com "como fazer"
 **Esperado:** decisão registrada; T-10-21 fecha.
 **Por que humano:** plano não autônomo, aprovação adiada pelo usuário; não tratada como aprovada.
 
+**RESOLVIDO em 2026-11-17:** o usuário respondeu d07-ok (manter) e mandou corrigir o IN-05 (plano 10-20).
+
 #### 4. Decisões do time dos avisos do review
 
 **Teste:** decidir WR-01 (filtrar `meet/chunk` de aba não dona) depois de ver o resultado real do teste 9; decidir WR-02 (texto do manifesto e nome "Standalone").
 **Por que humano:** mudança de comportamento e de texto público são DECISÃO EM ABERTO pela regra do `CLAUDE.md`.
 
+**RESOLVIDO em 2026-11-17:** WR-01 = filtrar (plano 10-18); WR-02 = corrigir (plano 10-19, e README/INSTALL/`package.json` no 10-20); nome da extensão = "TaqCITi" (plano 10-20).
+
 ### Resumo das lacunas
 
-Não há lacunas de código. O que impede o status `passed` é só a prova humana que o usuário adiou de propósito: Chrome real com Gemini com crédito (D-13, que o próprio CONTEXT definiu como condição de fechamento da fase), a aprovação do texto do D-07 e a decisão sobre os avisos WR-01/WR-02. Ao fechar esses itens com `pass`, a fase pode virar `passed` e o TAQ-05 pode ser marcado como concluído (isso não foi feito aqui: REQUIREMENTS.md e o ROADMAP não foram alterados por esta verificação). O plano 10-11 segue com `status: blocked` e é a pendência a destravar.
+Não há lacunas de código. O que impede o status `passed` é só a prova humana que o usuário adiou de propósito: Chrome real com Gemini com crédito (D-13, que o próprio CONTEXT definiu como condição de fechamento da fase) (a aprovação do D-07 e as decisões sobre WR-01/WR-02 já foram dadas em 2026-11-17). Ao fechar esses itens com `pass`, a fase pode virar `passed` e o TAQ-05 pode ser marcado como concluído (isso não foi feito aqui: REQUIREMENTS.md e o ROADMAP não foram alterados por esta verificação). O plano 10-11 segue com `status: blocked` e é a pendência a destravar.
 
 ---
 

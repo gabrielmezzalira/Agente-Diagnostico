@@ -77,7 +77,9 @@ status: complete
 
 **Um item novo na seção 10 do CLAUDE.md (commit b64d8b6, 3 linhas acrescentadas, 0 removidas) diz que, desde a Fase 10, a Taqciti abre `/ws/{session_id}` só para leitura e a aba AGP nunca manda comando por ele — mantido provisoriamente, com a aprovação humana do texto PENDENTE.**
 
-> **ATENÇÃO — aprovação pendente.** O texto do D-07 foi aplicado e commitado, mas **nenhuma pessoa aprovou ainda**. O usuário adiou a verificação para o fim da fase. Esta SUMMARY NÃO registra "D-07 aprovado pelo humano" porque isso não aconteceu.
+> **ATUALIZAÇÃO (2026-11-17): D-07 APROVADO pelo usuário** ("pode fazer o recomendado": manter a frase e corrigir o IN-05, no plano 10-20). O aviso abaixo é o registro histórico do dia em que este plano rodou.
+>
+> **ATENÇÃO — aprovação pendente (histórico).** O texto do D-07 foi aplicado e commitado, mas **nenhuma pessoa aprovou ainda**. O usuário adiou a verificação para o fim da fase. Esta SUMMARY NÃO registra "D-07 aprovado pelo humano" porque isso não aconteceu.
 
 ## Performance
 
