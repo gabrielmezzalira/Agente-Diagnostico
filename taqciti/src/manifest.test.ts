@@ -43,6 +43,11 @@ describe('manifest.config.ts', () => {
     expect(description.length).toBeLessThanOrEqual(132);
   });
 
+  // Plano 10-20 (decisão do usuário, 2026-11-17): "Standalone" sugeria "sem ligação com nada", o que deixou de ser verdade.
+  it('o nome da extensão é "TaqCITi", sem "Standalone"', () => {
+    expect(manifest.name).toBe('TaqCITi');
+  });
+
   // IN-08 (plano 10-19): o número da versão é o que separa uma build da outra na distribuição.
   it('a versão do manifesto é a mesma do package.json', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
