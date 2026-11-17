@@ -1,7 +1,7 @@
 {
   "name": "taqciti-standalone",
   "version": "2.2.0",
-  "description": "TaqCITi Standalone — extensão Chrome/Edge de transcrição automática do Google Meet, 100% local, sem backend.",
+  "description": "TaqCITi — extensão Chrome/Edge que transcreve reuniões do Google Meet. O histórico fica no navegador; ao vincular um cliente, a transcrição vai ao Agente Diagnóstico.",
   "private": true,
   "type": "module",
   "scripts": {

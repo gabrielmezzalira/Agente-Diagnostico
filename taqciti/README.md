@@ -1,9 +1,13 @@
-# TaqCITi Standalone
+# TaqCITi
 
 Extensão para Chrome e Edge de transcrição automática de reuniões do Google
-Meet — captura invisível, histórico 100% local. Sem envio a nenhum backend,
-sem conta de produto, sem diagnóstico técnico: só escuta a reunião e guarda
-a transcrição.
+Meet — captura invisível. O histórico fica no navegador. Quando a pessoa
+vincula a reunião a um cliente, a transcrição é enviada ao Agente Diagnóstico
+(e a aba AGP mostra as perguntas da sessão, só para leitura). Quando ela pede
+para gerar o documento da reunião, o texto vai ao servidor de geração de
+documento. A ata pode ser salva no Google Drive. Sem conta de produto e sem
+diagnóstico técnico dentro da extensão: ela escuta a reunião e guarda a
+transcrição.
 
 Extraída do núcleo de captura da extensão TaqCITi (repositório
 `citi-flow-companion`), removendo tudo que dependia da plataforma CITi Flow

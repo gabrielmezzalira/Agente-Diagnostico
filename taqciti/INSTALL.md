@@ -135,8 +135,11 @@ que signifique "desenhar por cima, sem ler nada".
 
 Na prática, o que a extensão faz com esse acesso é: desenhar o próprio painel e,
 **apenas em `meet.google.com`**, ler as legendas da reunião. Nenhuma outra página
-é lida, e nada sai do seu computador — o histórico fica todo em armazenamento
-local, sem backend nenhum.
+é lida. O histórico fica no armazenamento do seu navegador. A transcrição só sai
+do seu computador em duas situações, sempre por ação sua: quando você vincula a
+reunião a um cliente (ela é enviada ao Agente Diagnóstico da CITi) e quando você
+pede para gerar o documento da reunião (o texto vai ao servidor de geração de
+documento da CITi). Sem uma dessas duas ações, nada é enviado.
 
 Se preferir não conceder isso, é possível restringir o acesso pela própria
 página de extensões do navegador → TaqCITi → **Detalhes** → **Acesso ao
