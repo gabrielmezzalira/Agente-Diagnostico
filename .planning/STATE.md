@@ -4,26 +4,22 @@ milestone: v3.0
 milestone_name: Pivot Discovery
 current_phase: 10
 current_phase_name: AGP Question Panel in Taqciti
-current_plan: 17
+current_plan: 18
 status: executing
-stopped_at: Completed 10-17-PLAN.md
-last_updated: "2026-10-31T21:04:27.767Z"
-last_activity: 2026-10-31
-last_activity_desc: Phase 10 execution started
+stopped_at: Fase 10 retomada em 2026-11-17 (planos 10-18 e 10-19)
+last_updated: "2026-11-17T18:00:00.000Z"
+last_activity: 2026-11-17
+last_activity_desc: Fase 8 registrada como concluída; Fase 10 retomada com as decisões do usuário; Fase 10.1 inserida
 state_head: 82e2552575d0dbef902bf3b41de05d31b74f100b
 progress:
-  total_phases: 10
-  completed_phases: 8
-  total_plans: 77
+  total_phases: 11
+  completed_phases: 9
+  total_plans: 79
   completed_plans: 75
 ---
 
-> **Sessão anterior encerrada com feature-flow ativo.**
-> Use `/feature-flow` para retomar de onde parou.
-
-- **Feature:** Redesign das telas do Agente Diagnóstico e do DocuData no design system CITi (tema escuro) + telas novas (Discovery/Produto no DocuData; configuração/vínculo, setup de sessão, histórico/relatório e status de envio no Agente)
-- **Etapa atual:** Revisão do usuário do Agente; depois DocuData (mesmo kit). Etapa 12 (verificação) pendente.
-- **Última sessão:** 2026-10-14T20:58:59Z
+> **Feature-flow do redesign (2026-10-14):** o redesign do Agente já foi mergeado (PR #10 na `origin/main`). Seguem
+> pendentes o redesign do DocuData e a etapa 12 (verificação); o estado fica em `feature-flow-state.md`. Não é o foco atual.
 
 See: .planning/PROJECT.md (updated 2026-09-27)
 
@@ -32,19 +28,19 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-Current Plan: 17
-Total Plans in Phase: 18
-Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING
-Next: Phase 10 (branch de integração com a Fase 10 do Gabriel)
-Status: Ready to execute
-Last activity: 2026-10-31 — Phase 10 execution started
+Current Plan: 18
+Total Plans in Phase: 20
+Phase: 10 (AGP Question Panel in Taqciti) — EXECUTING (retomada em 2026-11-17, branch `feat/fase-10-agp-integracao`)
+Next: 10-18 (WR-01, filtrar a fala da aba que não é a dona) e 10-19 (WR-02 + IN-08, texto e versão do manifesto); depois
+D-07 (revisão junto com o usuário), reteste do 10-16 e teste 8 nos testes manuais do fim
+Status: Executing
+Last activity: 2026-11-17 — Fase 8 registrada como concluída (TAQ-02 Complete); `main` empurrada para a `origin`
+(`638f0f7..5944748`); UAT de 31/10 registrado no `10-VERIFICATION.md` (10/12); Fase 10.1 inserida no ROADMAP
 
-> **Pendência de registro (não é erro de código):** o ROADMAP ainda não marca a Fase 8 como concluída
-> e o TAQ-02 segue `Pending` no REQUIREMENTS.md, embora a Fase 8 esteja verificada (`08-VERIFICATION.md`
-> = passed, UAT 135/135). O `phase.complete` da Fase 9 chegou a gravar "Phase 8" como atual por causa
-> disso; foi corrigido aqui. Marcar a Fase 8 concluída é decisão do time (HANDOFF-FASE-09-10, §2).
+**Em paralelo, fora das fases:** branch `fix/consumo-gemini-sem-fala-nova`, cortada da `main` em 2026-11-17 (o
+`pipeline.py` é idêntico na `main` e na branch da Fase 10, então não há conflito).
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 82%
 
 ## Performance Metrics
 
@@ -242,9 +238,30 @@ Recent decisions affecting current work:
 - [Phase 10]: 10-15: com a captura pausada o vigia nunca anuncia legendas paradas (stall nem parser); ao retomar a janela de 25 s recomeça do zero (G-10-7, decisão 2)
 - [Phase 10]: 10-17: compacto sem o campo do nome da reunião e com as estatísticas na linha dos botões (G-10-7, opções a e b), via compactLayoutFor; médio e alto inalterados
 
+### Decisões do usuário em 2026-11-17
+
+- Fase 8 fechada no registro (ROADMAP, STATE, TAQ-02 Complete).
+- Push liberado: `main` empurrada agora; a `master` vem depois (só o usuário mexe nos remotos). O PR fica com o usuário.
+- WR-01 da Fase 10 = **filtrar** (só a aba dona alimenta a transcrição). WR-02 = **corrigir** o texto do manifesto, junto
+  com a versão (IN-08).
+- D-07: o usuário quer ver o texto junto antes de aprovar ou reverter (IN-05 entra junto).
+- Limiar do painel compacto: o usuário pediu uma explicação melhor antes de decidir.
+- Distribuição da Taqciti: **link do Google Drive enviado por e-mail** a cada pessoa; computadores Mac, Windows e Linux.
+- Segurança (S1, S2, S3, S5, S6, S7 + rotação da `service_role`): **fazer**; plano em `PLANO-SEGURANCA-PRE-DEPLOY.md`.
+- DocuData: o usuário aplica as migrations; ele acredita que o `DOCUDATA_URL` já está no `.env` local (o Railway é à parte).
+- PRD: **esconder** (backlog 999.11). Falha do Gemini: **mostrar uma frase por tipo de erro** (backlog 999.12).
+- Fase 10.1: **sim** (inserida no ROADMAP, requisito TAQ-06).
+- Backlog 999.1 a 999.4: o usuário pediu uma recomendação considerando as mudanças recentes do Google Meet.
+- Sobras da Fase 8 (DA-5, código da Fase 7, histórico cheio, "Enviando…" preso, WR-03/06/07): o usuário pediu uma explicação.
+- Dívidas de teste e todos os testes manuais: no fim da implementação.
+- `GEMINI_API_KEY` no Railway: o usuário acredita que já criou; **a verificar**.
+
 ### Pending Todos
 
-None yet.
+- Revisar o D-07 com o usuário (`git show b64d8b6 -- CLAUDE.md`) e o IN-05.
+- Testes manuais no fim: reteste do 10-16 (Task 2), teste 8 com DevTools, M1 a M9 de `TESTES-MANUAIS-POS-FASE-10.md`,
+  medição do consumo antes/depois (999.10), limpeza dos `ZZ-TESTE-*`.
+- Conferir a `GEMINI_API_KEY` no Railway antes de qualquer deploy na `master`.
 
 ### Blockers/Concerns
 
@@ -252,10 +269,11 @@ None yet.
 - Phases 2 and 3 need additive-only Supabase migrations (`projects.mode`, `questions.lens`) — confirm migration approach before Phase 2 execution
 - Phases 7-8 live in `taqciti/` (subtree imported in Phase 7)
 - Phase 9 (cutover) should not start until a real Meet call has validated Phases 6-8 end-to-end
-- ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway) — DECISÃO EM ABERTO do time (D-03); a proteção do webhook só entra em vigor quando alguém configurar a env var lá
+- ⚠️ [Phase 06] EXTENSION_SHARED_KEY ainda não foi ativada em produção (Railway). Em 2026-11-17 o usuário decidiu tratar a segurança antes do deploy; o como e o quando estão no `PLANO-SEGURANCA-PRE-DEPLOY.md` (item S1)
 - [Phase 02-03] RESOLVIDO (2026-09-21): Task 3 aplicada — migration 20260921000000_add_mode_to_projects.sql executada no Supabase (SQL Editor), coluna projects.mode confirmada com default 'sales'::text. Task 4 (toggle frontend) concluida em dacc146.
 - [Phase 07] RESOLVIDO (2026-09-27): SC1 e SC2 verificados via /gsd-verify-work. SC1 encontrou G-07-1/G-07-2 (fala fragmentada em varias linhas) na primeira rodada; fechados pelo plano 07-04 (janela de agrupamento por fala) e confirmados OK no reteste ao vivo no Meet. SC2 (Gerar Documento sem regressao) passou de primeira.
-- Fase 8: D-20/UAT concluido (132/132, 2026-10-26), mas a verificacao deu gaps_found por causa do CR-02 (08-VERIFICATION.md); nao distribuir build da Taqciti antes de fechar o CR-02; criar GEMINI_API_KEY no Railway antes de deploy/merge; revisar T-08-10; pendencias DA-4, DA-5, B3-b/c, finishGaveUp; 22 achados do 08-REVIEW em aberto (08-REVIEW-DISPOSITION.md)
+- RESOLVIDO (2026-11-17): Fase 8 concluída no registro — CR-02 fechado pelo 08-28, `08-VERIFICATION.md` passed, UAT 135/135. Seguem como pendência do time: DA-5 (confirmação formal), B3-b/c (padrão sem resposta), finishGaveUp, histórico cheio, remoção do código da Fase 7 e os achados deferidos do `08-REVIEW-DISPOSITION.md`
+- `GEMINI_API_KEY` no Railway: o usuário acredita que já criou (2026-11-17); conferir antes de qualquer deploy ou merge na `master`
 
 ## Deferred Items
 
@@ -273,19 +291,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-31T21:04:24.449Z
-Stopped at: Completed 10-17-PLAN.md
+Last session: 2026-11-17T18:00:00.000Z
+Stopped at: Fase 10 retomada (10-18 e 10-19); conserto do consumo na branch `fix/consumo-gemini-sem-fala-nova`
 Resume file: None
 
----
-
-## Feature Flow em Progresso
-
-> **Sessão anterior encerrada com feature-flow ativo.**
-> Use `/feature-flow` para retomar de onde parou.
-
-- **Feature:** Redesign das telas do Agente Diagnóstico e do DocuData no design system CITi (tema escuro) + telas novas (Discovery/Produto no DocuData; configuração/vínculo, setup de sessão, histórico/relatório e status de envio no Agente)
-- **Etapa atual:** Revisão do usuário do Agente; depois DocuData (mesmo kit). Etapa 12 (verificação) pendente.
-- **Última sessão:** 2026-10-14T20:58:59Z
-
-Para retomar: `/feature-flow` — a skill vai detectar o estado automaticamente.

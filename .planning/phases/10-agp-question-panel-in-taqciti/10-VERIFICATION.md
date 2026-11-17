@@ -2,7 +2,8 @@
 phase: 10-agp-question-panel-in-taqciti
 verified: 2026-10-30T15:30:00Z
 status: human_needed
-score: 8/12 must-haves verified
+updated: 2026-11-17T00:00:00Z
+score: 10/12 must-haves verified
 covered_files:
   - .planning/phases/10-agp-question-panel-in-taqciti/10-01-PLAN.md
   - .planning/phases/10-agp-question-panel-in-taqciti/10-01-SUMMARY.md
@@ -49,25 +50,20 @@ covered_files:
   - taqciti/src/sidepanel/components/AgpQuestionsPanel.tsx
   - taqciti/src/sidepanel/screens/LiveScreen.tsx
 covered_digest: "v4:sha256:b31e26fa04ca15f3518c6290b7bdd245ed36b6193c06b7e6731085384f90efe4"
-behavior_unverified: 3
+behavior_unverified: 1
 overrides_applied: 0
 behavior_unverified_items:
-  - truth: "SC1: com a Taqciti vinculada a uma sessão ativa, a aba AGP mostra a fila viva dela (cada cartão com a lente produto/dados) e atualiza conforme o backend emite perguntas"
-    test: "Teste 2 do 10-UAT.md: reunião real no Meet, vincular a ZZ-TESTE-AGP <data>, clicar em Gerar no site, olhar a aba AGP e o contador"
-    expected: "Cartões aparecem sozinhos em poucos segundos, com emblema Produto ou Dados, e o número ao lado de AGP sobe com a aba Transcrição selecionada"
-    why_human: "O fluxo está coberto por testes com socket falso e pela fumaça contra o roteador /ws real (3/3), mas o D-13 do CONTEXT exige Chrome real e Gemini com crédito; o backend falso nunca vale como prova final"
   - truth: "SC4: a aba não atrapalha a captura/envio da Taqciti (Fases 7-8) nem a tela de perguntas do web app (Fase 5)"
     test: "Testes 5, 6, 8, 9 e 10 do 10-UAT.md (fim da call, navegação, Continuar envio, duas abas, Nova Guia) numa call real"
     expected: "A captura e o encerramento se comportam como antes; a reunião sobrevive quando só uma das duas abas sai; a fala não aparece duplicada na transcrição com duas abas abertas"
     why_human: "A suíte automática (1737 testes) está verde e backend/ e supabase/ não mudaram, mas o comportamento das duas abas depende do Chrome real e há o aviso WR-01 do 10-REVIEW.md (fala duplicada) que só um teste real confirma"
-  - truth: "D-13: a fase só fecha com uma pergunta real gerada pela IA chegando na Taqciti com a lente certa e expirando pelo tempo (testes 2 e 3)"
-    test: "Testes 2 e 3 do 10-UAT.md, com o Gemini com crédito (sem 402 RESOURCE_EXHAUSTED no terminal do backend)"
-    expected: "Pergunta real com a lente certa aparece; a pergunta que ninguém tocou some após o tempo da fila (30 s); a fixada no site continua"
-    why_human: "Exige Chrome real, uma call no Meet, e crédito do Gemini (ação de quem tem a chave). O plano 10-11 está com status blocked, adiado pelo usuário; nenhum dos 12 testes rodou"
 human_verification:
-  - test: "Rodar os 12 testes do 10-UAT.md (ou /gsd-verify-work 10), com prioridade para os testes 2 e 3 (IA real) e o teste 7 (layout do painel do Meet nos degraus compact/regular, sem rolagem horizontal nos 396 px)"
-    expected: "Todos em result: pass. O roteiro e o passo a passo de cada teste já estão no 10-UAT.md (Preparo comum + como fazer)"
-    why_human: "Chrome real, call no Meet, Gemini com crédito e medição de layout; o jsdom não mede rolagem nem layout"
+  - test: "Reteste do G-10-7 no Chrome real (plano 10-16, Task 2): painel compacto sem o nome da reunião, estatísticas na linha dos botões, lista da aba AGP medida no DevTools com pelo menos ~105 px gravando e pausado"
+    expected: "Um cartão de 2 linhas inteiro e nada cobrindo a linha dos botões; depois o time decide o limiar (cartões de 3 linhas e estados abaixo de ~105 px)"
+    why_human: "O jsdom não mede layout; o UAT de 31/10 achou o G-10-7 e o conserto (10-13/14/15/17) ainda não foi visto no Chrome real"
+  - test: "Teste 8 do 10-UAT.md (Continuar envio durante o encerramento), refeito com alguém que conheça o DevTools"
+    expected: "O clique em Continuar envio durante o encerramento é ignorado e a sessão encerra uma vez só"
+    why_human: "Em 31/10 o bloqueio de requisição do DevTools não pegou o envio (o painel novo se chama Condições de solicitação e usa padrões URLPattern)"
   - test: "Teste 10 do 10-UAT.md: medir getPermissionWarningsByManifest com e sem a permissão tabs e anotar a saída (suposições A1/A2 do D-04)"
     expected: "A diferença do aviso de instalação fica registrada para a decisão de comunicação da nova permissão"
     why_human: "Só se mede no DevTools do service worker do Chrome real"
@@ -78,7 +74,7 @@ human_verification:
     expected: "Decisão humana registrada; a ameaça T-10-21 do 10-SECURITY.md fecha"
     why_human: "Plano 10-12 é não autônomo: a aprovação do texto foi adiada pelo usuário e continua pendente. Não tratar como aprovada"
   - test: "Decidir o aviso WR-01 do 10-REVIEW.md (com a mesma call em duas abas, a fala entra duas vezes) e o WR-02 (texto do manifesto diz 'sem integração com nenhum backend')"
-    expected: "Decisão do time (mudança de comportamento é DECISÃO EM ABERTO pela regra do CLAUDE.md); a confirmação real da duplicação vem do teste 9"
+    expected: "DECIDIDO pelo usuário em 2026-11-17: WR-01 = filtrar (só a aba dona alimenta a transcrição) e WR-02 = corrigir o texto (junto com a versão do manifesto, IN-08). Executados nos planos 10-18 e 10-19; a prova das duas abas fica para os testes manuais do fim"
     why_human: "WR-01 muda comportamento da captura; WR-02 mexe em texto público e no nome da extensão"
 ---
 
@@ -87,7 +83,18 @@ human_verification:
 **Objetivo da fase:** Durante uma call ao vivo, as perguntas de discovery geradas pelo backend (cada uma com a lente produto/dados) aparecem em quase tempo real numa aba dedicada "AGP" dentro da extensão Taqciti, restritas à sessão de discovery vinculada, para o operador ler as perguntas sem sair da Taqciti.
 **Verificado em:** 2026-10-30
 **Status:** human_needed
-**Re-verificação:** Não, verificação inicial
+**Re-verificação:** Atualização de registro em 2026-11-17 com o resultado do UAT de 31/10 (sem nova rodada do verificador)
+
+## Atualização de 2026-11-17 (registro do UAT de 31/10)
+
+O UAT de 12 testes rodou em 31/10 no Chrome real e com IA de verdade: **10 passaram, 1 deu problema (teste 7, gap G-10-7) e 1 ficou bloqueado (teste 8)**. Com isso:
+
+- **SC1 e D-13 passam a VERIFICADO por pessoa:** os testes 2 e 3 passaram com perguntas reais do Gemini, lente certa e expiração pelo tempo da fila.
+- **SC4 continua sem prova completa:** os testes 5, 6, 9 e 10 passaram, mas o 8 ficou bloqueado porque o bloqueio de requisição do DevTools não pegou o envio. O WR-01 (fala em dobro com duas abas) foi decidido pelo usuário (filtrar) e entra pelo plano 10-18.
+- **D-07 continua incerto:** o usuário quer ver o texto junto antes de aprovar ou reverter.
+- **G-10-7:** corrigido no código pelos planos 10-13, 10-14, 10-15 e 10-17. Falta o reteste humano (10-16, Task 2) e a decisão do limiar.
+
+**Pontuação atualizada:** 10/12. Faltam o SC4 (teste 8 e as duas abas depois do filtro) e o D-07 (aprovação). O status continua `human_needed`. Os testes manuais ficam para o fim da implementação, por decisão do usuário.
 
 ## Resumo em português claro
 

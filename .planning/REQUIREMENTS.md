@@ -37,10 +37,11 @@ Requirements for the discovery pivot (MVP vertical slice). Each maps to a roadma
 ### Taqciti Transcription (TAQ)
 
 - [x] **TAQ-01**: Taqciti streams live captions (merged segments) to the backend during the call.
-- [ ] **TAQ-02**: A Taqciti meeting binds to the correct backend discovery session through an explicit per-meeting client selection (choose or create a client, or defer to the end of the meeting); the manual session-id field stays as a hidden fallback.
+- [x] **TAQ-02**: A Taqciti meeting binds to the correct backend discovery session through an explicit per-meeting client selection (choose or create a client, or defer to the end of the meeting); the manual session-id field stays as a hidden fallback.
 - [x] **TAQ-03**: The transcription webhook is protected by an opt-in shared-secret header (does not break current production when unset).
 - [x] **TAQ-04**: The old custom extension is retired after Taqciti is validated (cutover).
 - [ ] **TAQ-05**: During a live call, backend-generated discovery questions (each with its produto/dados lens) appear in near-real-time inside a dedicated "AGP" tab in the Taqciti extension, scoped to the bound session.
+- [ ] **TAQ-06**: From the AGP tab the operator can generate, pin and dismiss questions of the bound session, and status changes made on the Agente web app (used, pinned, dismissed) reach the AGP tab at once, without waiting for a reconnection.
 
 ## Future Requirements
 
@@ -91,16 +92,17 @@ Which phases cover which requirements. Filled during roadmap creation.
 | UI-03 | Phase 5 | Complete |
 | TAQ-03 | Phase 6 | Complete |
 | TAQ-01 | Phase 7 | Complete |
-| TAQ-02 | Phase 8 | Pending |
+| TAQ-02 | Phase 8 | Complete |
 | TAQ-04 | Phase 9 | Complete |
 | TAQ-05 | Phase 10 | Pending |
+| TAQ-06 | Phase 10.1 | Pending |
 
 **Coverage:**
 
-- v3.0 requirements: 20 total
-- Mapped to phases: 20
+- v3.0 requirements: 21 total
+- Mapped to phases: 21
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-19*
-*Last updated: 2026-10-11 — TAQ-02 reescrito para o seletor de cliente por reunião (discussão da Fase 8)*
+*Last updated: 2026-11-17 — TAQ-02 Complete (Fase 8 verificada em 2026-10-26); TAQ-06 novo para a Fase 10.1 (aprovada pelo usuário)*

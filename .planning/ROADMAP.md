@@ -35,9 +35,10 @@ streaming → session binding → cutover), so discovery correctness is proven b
 - [x] **Phase 5: Two-Lens Monitoring (Frontend)** - Coverage grouped by lens, lens badges, server-driven area rendering (completed 2026-09-24)
 - [x] **Phase 6: Opt-In Webhook Auth** - Non-breaking shared-secret gate on the transcription webhook (completed 2026-09-25)
 - [x] **Phase 7: Taqciti Config + Background Streamer** - Taqciti streams live captions to the backend during the call (completed 2026-09-27)
-- [ ] **Phase 8: Taqciti Session Association** - A Taqciti meeting binds to a backend session through an explicit per-meeting client selection
-- [x] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source
+- [x] **Phase 8: Taqciti Session Association** - A Taqciti meeting binds to a backend session through an explicit per-meeting client selection (completed 2026-10-26; registro fechado em 2026-11-17)
+- [x] **Phase 9: Cutover + Retire Custom Extension** - Taqciti becomes the sole transcription source (completed 2026-10-28)
 - [ ] **Phase 10: AGP Question Panel in Taqciti** - Discovery questions (with lens) appear live in an "AGP" tab inside the Taqciti extension during the call
+- [ ] **Phase 10.1: AGP Actions + Live Status Events (INSERTED)** - From the AGP tab the operator generates, pins and dismisses questions, and changes made on the site reach the tab at once (aprovada pelo usuário em 2026-11-17)
 
 ## Phase Details
 
@@ -247,9 +248,10 @@ Plans:
 
 **Open team decisions** (block the tasks that depend on them; see `08-CONTEXT.md`): new extension routes for listing clients, creating clients and creating sessions (API contract); removing the required Gemini key from project creation (API contract); a per-chunk identifier on the webhook to avoid duplicates on resend (webhook contract)
 
-**Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). Open and non-blocking: DA-4 (tab navigates away from Meet mid-call) and DA-5 (what closes a session after the Taqciti gave up closing it)
+**Answered team decisions (2026-10-12, see `08-DECISOES-PENDENTES.md`)**: B4-b (close the session on meeting end with an empty queue; 5 minutes when sending is stalled; coming back to the same room = new meeting); DA-1 (the new meeting gets a new history record, a new association and a session with only what is said after coming back); DA-2 ("Continuar envio" after the session was closed shows the closed-session notice); DA-3 (closing the meeting tab mid-call counts as the end of the meeting). DA-4 (tab navigates away from Meet mid-call) was settled by Phase 10 (D-03/D-04, UAT test 6 pass on 2026-10-31). DA-5 (what closes a session after the Taqciti gave up closing it) was implemented as "one new round at boot" (closed in `10-CONTEXT.md`, WR-08 of `10-REVIEW.md`) and still waits for an explicit team confirmation
 
 **Plans**: 28/28 plans executed (+1 gap closure: 08-28)
+**Status**: Complete — `08-VERIFICATION.md` passed and UAT 135/135 (2026-10-26); code-review disposition merged into `main`; TAQ-02 Complete. Phase registry closed on 2026-11-17. Deferred review items (WR-01, WR-03, WR-06, WR-07, IN-01..IN-15) stay in `08-REVIEW-DISPOSITION.md`
 **UI hint**: yes
 
 **Wave 1**
@@ -393,8 +395,8 @@ Plans:
 
 **Wave 5** *(bloqueada na conclusão da Wave 4)*
 
-- [x] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo) — **BLOQUEADO: UAT em Chrome real adiado pelo usuário para a verificação final (SUMMARY `status: blocked`; 12 testes `pending`)**
-- [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (adiada pelo usuário para o fim da fase; desfazer com `git revert b64d8b6`)**
+- [x] 10-11-PLAN.md — Prova no Chrome real com Gemini com crédito (D-13): a pessoa roda o UAT de 12 testes e o executor grava os resultados no `10-UAT.md` (não autônomo) — **UAT rodado em 2026-10-31 com IA real: 10 pass, 1 issue (teste 7 → gap G-10-7) e 1 blocked (teste 8: o bloqueio de requisição do DevTools não pegou o envio; refazer com quem conheça o DevTools). O SUMMARY ainda diz `blocked` porque foi escrito antes da rodada; o resultado vale o que está no `10-UAT.md`**
+- [x] 10-12-PLAN.md — D-07: frase no `CLAUDE.md` sobre o `/ws/{session_id}` só para leitura, aplicada por task automática e aprovada pelo humano (não autônomo) — **commit `b64d8b6` aplicado; aprovação humana do texto PENDENTE (o usuário quer revisar o texto junto antes de responder, 2026-11-17; desfazer com `git revert b64d8b6`)**
 
 **Gap closure G-10-7 (UAT 7 parte B: lista da AGP some no painel compacto e a faixa "Pausado" cobre o rodapé)** — decisões do usuário de 2026-10-31
 
@@ -410,15 +412,36 @@ Plans:
 
 *Wave 3 (bloqueada nos quatro acima)*
 
-- [ ] 10-16-PLAN.md — Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo): lista do compacto medida com pelo menos ~105 px e um cartão de 2 linhas inteiro; se não, registra a DECISÃO EM ABERTO de o que mais compactar além de (a)+(b); em qualquer resultado, registra a DECISÃO EM ABERTO do limiar (cartões de 3 linhas e estados abaixo de ~105 px, como o backend fora do ar)
+- [ ] 10-16-PLAN.md — *(Task 1 feita em `502f7f2`; Tasks 2 e 3 = reteste humano, adiado pelo usuário para os testes manuais do fim)* Portão, build local e reteste do UAT 7 parte B no Chrome real (não autônomo): lista do compacto medida com pelo menos ~105 px e um cartão de 2 linhas inteiro; se não, registra a DECISÃO EM ABERTO de o que mais compactar além de (a)+(b); em qualquer resultado, registra a DECISÃO EM ABERTO do limiar (cartões de 3 linhas e estados abaixo de ~105 px, como o backend fora do ar)
+
+**Retomada de 2026-11-17** *(decisões do usuário sobre os avisos deferidos do `10-REVIEW.md`)*
+
+- [ ] 10-18-PLAN.md — WR-01 = filtrar: só a aba dona da reunião alimenta a transcrição (`meet/chunk` de outra aba continua só reaprendendo a memória das abas); teste de roteador com dois `sender.tab.id` como semente
+- [ ] 10-19-PLAN.md — WR-02 + IN-08: o texto do manifesto e o cabeçalho do `background/index.ts` dizem o que a extensão envia de verdade; versão 2.1.2 → 2.2.0 (permissão `tabs` e aba AGP novas)
 
 **UI hint**: yes
 **Note**: Lives in `taqciti/` of this repo (subtree imported in Phase 7), like Phases 7-8. Ordered after cutover for a clean insertion, but depends only on Phases 3 and 8 — it can be pulled earlier if the team prefers to validate capture + questions display in a single real call.
 
+### Phase 10.1: AGP Actions + Live Status Events (INSERTED)
+
+**Goal**: From the AGP tab inside Taqciti the operator can generate, pin and dismiss questions, and every status change made on the site (used, pinned, dismissed) reaches the AGP tab at once, without waiting for a reconnection
+**Depends on**: Phase 10
+**Requirements**: TAQ-06
+**Inserted**: 2026-11-17 (decisão do usuário; nasce do `<deferred>` do `10-CONTEXT.md` e dos itens 999.5, 999.6, 999.7 e 999.9 do backlog)
+**Success Criteria** (rascunho — confirmar no `/gsd-discuss-phase 10.1`):
+
+  1. The AGP tab has a "Gerar" action that asks the backend for questions of the bound session (999.5)
+  2. The operator can pin and dismiss a question from the AGP tab, including one already pinned (999.7), and the site shows the same state
+  3. A question marked used, pinned or dismissed on the site changes in the AGP tab at once, not only after a reconnection (999.6, 999.9) — the backend starts emitting a status event over the WebSocket
+  4. Commands from Taqciti only act on the bound session and do not open a new uncontrolled way to spend AI
+
+**Open decisions for the discussion**: reuse the `/ws/{session_id}` (unauthenticated today, D-10) or new HTTP routes behind `x-agente-key`; how this fits the security plan (`.planning/PLANO-SEGURANCA-PRE-DEPLOY.md`, item S2); rewrite of the D-07 sentence in `CLAUDE.md` (the tab stops being read-only)
+**Plans**: 0 plans (run `/gsd-discuss-phase 10.1` on its own branch, after Phase 10 is merged into `main`)
+
 ## Progress
 
 **Execution Order:**
-Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP panel): 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP panel): 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 10.1
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -429,9 +452,10 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 | 5. Two-Lens Monitoring (Frontend) | 5/5 | Complete    | 2026-09-24 |
 | 6. Opt-In Webhook Auth | 2/2 | Complete    | 2026-09-25 |
 | 7. Taqciti Config + Background Streamer | 4/4 | Complete    | 2026-09-27 |
-| 8. Taqciti Session Association | 28/28 | In Progress | - |
+| 8. Taqciti Session Association | 28/28 | Complete | 2026-10-26 |
 | 9. Cutover + Retire Custom Extension | 7/7 | Complete | 2026-10-28 |
-| 10. AGP Question Panel in Taqciti | 16/18 | Código concluído; testes humanos adiados (10-11, 10-12, 10-16 Task 2) | - |
+| 10. AGP Question Panel in Taqciti | 16/20 | Retomada em 2026-11-17: 10-18 (WR-01) e 10-19 (WR-02/IN-08); D-07, reteste do 10-16 e teste 8 pendentes | - |
+| 10.1. AGP Actions + Live Status Events | 0/0 | Not started | - |
 
 ## Backlog
 
@@ -474,6 +498,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
 - [ ] Test 2: Botão de gerar perguntas dentro da própria aba AGP da TaqCITi (hoje só existe o Gerar do site). O backend já aceita o evento generate_questions por WebSocket, mas exige mudar o D-07 (TaqCITi só lê) e planejar na Fase 10.1. (deferred 2026-10-31)
+- **Promovido para a Fase 10.1 em 2026-11-17.**
 
 ### Phase 999.6: Follow-up — Phase 10 deferred UAT follow-up: Test 2: a question marked "used" on the site should leave the Taqciti AGP tab (BACKLOG)
 
@@ -482,6 +507,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
 - [ ] Test 2: Marcar uma pergunta como usada no site deveria tirá-la da aba AGP da TaqCITi (como acontece quando ela expira). Hoje o backend não avisa used/pinned/dismissed por WebSocket (ws.py só atualiza o estado), então a pergunta fica até a TaqCITi reconectar (D-09). Exige novo evento do backend e decisão do time na Fase 10.1. (deferred 2026-10-31)
+- **Promovido para a Fase 10.1 em 2026-11-17.**
 
 ### Phase 999.7: Follow-up — Phase 10 deferred UAT follow-up: Test 2: discard an already pinned question from the Taqciti panel (BACKLOG)
 
@@ -490,10 +516,11 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
 - [ ] Test 2: Poder descartar, no painel da TaqCITi, uma pergunta já fixada, para as perguntas não se acumularem. Exige botões na aba AGP (muda o D-07) e o backend refletir o descarte; Fase 10.1. (deferred 2026-10-31)
+- **Promovido para a Fase 10.1 em 2026-11-17.**
 
 ### Phase 999.8: Follow-up — Phase 10 deferred UAT follow-up: Test 2: PRIORITY cost — backend keeps calling Gemini with the Taqciti paused (BACKLOG)
 
-**Goal:** Stop the red-flag and coverage loops from calling Gemini when no new speech arrived since the last analysis (plan: PLANO_CONSUMO_GEMINI_PAUSADO.md; decisions 1-4 already taken on 2026-10-31; runs on branch fix/consumo-gemini-sem-fala-nova after the Phase 10 merge)
+**Goal:** Stop the red-flag and coverage loops from calling Gemini when no new speech arrived since the last analysis (plan: PLANO_CONSUMO_GEMINI_PAUSADO.md; decisions 1-4 already taken on 2026-10-31; runs on branch fix/consumo-gemini-sem-fala-nova; on 2026-11-17 the user asked to execute it now, so the branch was cut from `main` before the Phase 10 merge — `pipeline.py` is identical in `main` and in the Phase 10 branch)
 **Source phase:** 10
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
@@ -506,6 +533,7 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
 - [ ] Test 12: Pergunta descartada no site deveria sumir da aba AGP da TaqCITi na hora, e não permanecer até a reconexão (hoje é o combinado D-09: o backend não avisa descarte por WebSocket). Mesmo pacote do evento de status da Fase 10.1. (deferred 2026-10-31)
+- **Promovido para a Fase 10.1 em 2026-11-17.**
 
 ### Phase 999.10: Follow-up — Phase 10 deferred UAT follow-up: Test 3: record the before/after Gemini cost measurement with the Taqciti paused (BACKLOG)
 
@@ -514,3 +542,18 @@ Phases 1-5 (domain reframe) then Phases 6-10 (Taqciti transcription swap + AGP p
 **Deferred at:** 2026-10-31 during /gsd-verify-work 10 session completion
 **Follow-ups:**
 - [ ] Test 3: Medição do consumo com a TaqCITi pausada (Bloco 3a, 2026-10-31): o usuário viu o custo da sessão, na barra do site, subir de US$ 0,001 para US$ 0,007 em poucos segundos durante a pausa. Falta anotar a duração exata e as leituras inicial e final para o "antes e depois" do conserto (999.8). (deferred 2026-10-31)
+
+### Phase 999.11: Esconder o PRD do web app (DECIDIDO, aguardando execução)
+
+**Goal:** Esconder (não remover) o card "Gerar PRD" e o que depende dele no web app, porque o time não gera mais PRD a partir de reuniões (virão os "fluxos por sessão")
+**Decided at:** 2026-11-17 (decisão do usuário: esconder, que é reversível)
+**Follow-ups:**
+- [ ] Esconder `frontend/src/components/project/PrdCard.tsx` e o bloco em `ProjectDetailPage.tsx`; backend e banco intactos. Prova: teste M6 de `TESTES-MANUAIS-POS-FASE-10.md`
+
+### Phase 999.12: Mostrar na tela por que a IA falhou (DECIDIDO, aguardando execução)
+
+**Goal:** Quando uma chamada ao Gemini falhar, o site mostra uma frase simples explicando o que deu errado, em vez de ficar em silêncio (Q1 de `FECHAMENTO-FASE-09-PLANO.md`)
+**Decided at:** 2026-11-17 (decisão do usuário)
+**Follow-ups:**
+- [ ] Uma frase por tipo de erro. Exemplo do usuário: `RESOURCE_EXHAUSTED` (402/429) = "O agente está sem créditos no momento." O mesmo para chave inválida, modelo indisponível, tempo esgotado e resposta bloqueada. Usar o evento `error` do WebSocket (`{code, message}`, já previsto no SDD §6.1) e um aviso na tela de monitoramento
+- [ ] Mexe no `pipeline.py`: fazer depois do merge do `fix/consumo-gemini-sem-fala-nova`, para não conflitar
