@@ -67,11 +67,20 @@ export function registerMessageRouter(ready: Promise<void>): void {
         }
         case 'meet/captions':
           return dispatch({ type: 'CAPTIONS_STATE', enabled: message.enabled });
-        case 'meet/chunk':
+        case 'meet/chunk': {
+          const current = getState();
           // D-03: legenda só existe dentro da call — reaprende a aba como "na call" depois do reinício do worker.
           // Só aqui (nunca em meet/participants nem meet/captions, que podem vir da pré-entrada). Síncrono, sem I/O.
-          noteTabCaptionActivity(sender.tab?.id, getState().session?.meetingCode);
+          // Vale para QUALQUER aba, inclusive a que não é a dona: é o que mantém a regra das duas abas viva.
+          noteTabCaptionActivity(sender.tab?.id, current.session?.meetingCode);
+          // WR-01 (plano 10-18): com a mesma call em duas abas, só a aba dona alimenta a transcrição; a outra
+          // veria as mesmas falas com outro captionId e cada fala entraria duas vezes. Sem dona conhecida, segue.
+          const ownerTabId = current.session?.tabId ?? null;
+          const senderTabId = sender.tab?.id;
+          const fromOtherTab = ownerTabId !== null && senderTabId !== undefined && senderTabId !== ownerTabId;
+          if (fromOtherTab) return current;
           return dispatch({ type: 'CAPTION_CHUNK', chunk: message.chunk });
+        }
         case 'meet/participants':
           return dispatch({
             type: 'PARTICIPANTS_UPDATED',
